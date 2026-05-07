@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "CebSpot",
+    "slug": "cebspot",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "splash": {
+      "backgroundColor": "#F8F7F3"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.cebspot.app"
+    },
+    "android": {
+      "package": "com.cebspot.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow CebSpot to access your location."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow CebSpot to access your photos.",
+          "cameraPermission": "Allow CebSpot to access your camera."
+        }
+      ]
+    ],
+    "scheme": "cebspot",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}

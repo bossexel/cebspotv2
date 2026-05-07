@@ -1,0 +1,158 @@
+import type { Activity, Circle, Reservation, Review, Spot } from '../types';
+
+export const sampleSpots: Spot[] = [
+  {
+    id: 'neon-brew',
+    name: 'Neon Brew Terminal',
+    description: 'High-energy specialty coffee, deep focus corners, and warm city glow in IT Park.',
+    category: 'Specialty Coffee',
+    categories: ['Specialty Coffee', 'Co-working'],
+    address: 'IT Park, Lahug, Cebu City',
+    latitude: 10.3298,
+    longitude: 123.9054,
+    images: [
+      'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=900',
+      'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=900',
+      'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&q=80&w=900',
+    ],
+    rating: 4.8,
+    review_count: 125,
+    reservation_fee: 250,
+    opening_hours: '8:00 AM - 11:00 PM',
+    is_public: true,
+    is_reservable: true,
+    owner_id: null,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'terraces-garden',
+    name: 'The Terraces Garden',
+    description: 'An airy garden venue with relaxed seating, greenery, and polished event energy.',
+    category: 'Outdoor',
+    categories: ['Outdoor', 'Social Hub'],
+    address: 'Ayala Center, Cebu City',
+    latitude: 10.3175,
+    longitude: 123.9051,
+    images: [
+      'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=900',
+      'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&q=80&w=900',
+      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&q=80&w=900',
+    ],
+    rating: 4.5,
+    review_count: 95,
+    reservation_fee: 200,
+    opening_hours: '10:00 AM - 10:00 PM',
+    is_public: true,
+    is_reservable: true,
+    owner_id: null,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'fuente-street',
+    name: 'Fuente Street Table',
+    description: 'A favorite local street food stop near Fuente with quick bites and late-night buzz.',
+    category: 'Street Food',
+    categories: ['Street Food'],
+    address: 'Fuente Osmena, Cebu City',
+    latitude: 10.3117,
+    longitude: 123.8931,
+    images: [
+      'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&q=80&w=900',
+      'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&q=80&w=900',
+      'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&q=80&w=900',
+    ],
+    rating: 4.2,
+    review_count: 230,
+    reservation_fee: 0,
+    opening_hours: '4:00 PM - 1:00 AM',
+    is_public: true,
+    is_reservable: false,
+    owner_id: null,
+    created_at: new Date().toISOString(),
+  },
+];
+
+export const sampleActivities: Activity[] = [
+  {
+    id: 'activity-1',
+    user_id: 'sample-user',
+    user_name: 'Sarah Chen',
+    action: 'discovered',
+    target_name: 'Neon Brew Terminal',
+    type: 'discovery',
+    created_at: new Date(Date.now() - 1000 * 60 * 38).toISOString(),
+  },
+  {
+    id: 'activity-2',
+    user_id: 'sample-user-2',
+    user_name: 'Marco Santos',
+    action: 'reserved',
+    target_name: 'The Terraces Garden',
+    type: 'reservation',
+    created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+  },
+];
+
+export const sampleCircles: Circle[] = [
+  {
+    id: 'circle-1',
+    name: 'Cebu Coffee Circuit',
+    owner_id: 'sample-user',
+    members: ['sample-user', 'friend-1', 'friend-2', 'friend-3'],
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'circle-2',
+    name: 'Weekend City Walks',
+    owner_id: 'sample-user',
+    members: ['sample-user', 'friend-4', 'friend-5'],
+    created_at: new Date().toISOString(),
+  },
+];
+
+export const sampleReviews: Review[] = [
+  {
+    id: 'review-neon-1',
+    spot_id: 'neon-brew',
+    user_id: 'sample-user',
+    user_name: 'Mika Reyes',
+    user_photo_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200',
+    rating: 4.8,
+    comment: 'Great lighting, fast coffee, and a good place to meet before heading around IT Park.',
+    media_urls: ['https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=700'],
+    media_types: ['image'],
+    likes_count: 12,
+    reports_count: 0,
+    created_at: new Date(Date.now() - 1000 * 60 * 42).toISOString(),
+  },
+  {
+    id: 'review-terraces-1',
+    spot_id: '22222222-2222-4222-8222-222222222222',
+    user_id: 'sample-user-2',
+    user_name: 'Andre Lim',
+    rating: 4.6,
+    comment: 'Calm outdoor vibe. The garden setup looks premium at night.',
+    media_urls: ['https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=700'],
+    media_types: ['image'],
+    likes_count: 8,
+    reports_count: 0,
+    created_at: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
+  },
+];
+
+export function makeSampleReservation(spot: Spot): Reservation {
+  return {
+    id: `sample-res-${spot.id}`,
+    user_id: 'sample-user',
+    spot_id: spot.id,
+    spot_name: spot.name,
+    reservation_date: new Date().toISOString().slice(0, 10),
+    reservation_time: '18:00',
+    guests: 2,
+    fee: spot.reservation_fee,
+    status: 'confirmed',
+    payment_status: spot.reservation_fee > 0 ? 'paid' : 'on-site',
+    qr_code: `CEBSPOT-${spot.id.toUpperCase()}`,
+    created_at: new Date().toISOString(),
+  };
+}

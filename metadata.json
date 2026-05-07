@@ -1,0 +1,8 @@
+{
+  "name": "CebSpot",
+  "description": "An urban exploration and social map app for discovering spots, making reservations, and tracking friends in real-time circles.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": []
+}
