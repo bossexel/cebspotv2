@@ -1,5 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -24,8 +25,10 @@ function AppNavigator() {
   useEffect(() => {
     if (authLoading || themeLoading) return;
 
+    const publicRoutes = ['login', 'admin', 'owner-dashboard'];
+    const isPublicRoute = publicRoutes.includes(segments[0] ?? '');
     const onLogin = segments[0] === 'login';
-    if (!isSignedIn && !onLogin) {
+    if (!isSignedIn && !isPublicRoute) {
       router.replace('/login');
     }
     if (isSignedIn && onLogin) {
@@ -33,7 +36,9 @@ function AppNavigator() {
     }
   }, [authLoading, isSignedIn, router, segments, themeLoading]);
 
-  if (authLoading || themeLoading) return null;
+  if (authLoading || themeLoading) {
+    return <StartupFallback appColors={appColors} />;
+  }
 
   return (
     <>
@@ -47,7 +52,11 @@ function AppNavigator() {
         <Stack.Screen name="index" />
         <Stack.Screen name="circle" />
         <Stack.Screen name="activity" />
+        <Stack.Screen name="reservations" />
         <Stack.Screen name="profile" />
+        <Stack.Screen name="admin" />
+        <Stack.Screen name="owner-dashboard" />
+        <Stack.Screen name="owner-access" options={{ presentation: 'modal' }} />
         <Stack.Screen name="submit-spot" options={{ presentation: 'modal' }} />
         <Stack.Screen name="spot/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="reservation/[id]" options={{ presentation: 'card' }} />
@@ -56,6 +65,15 @@ function AppNavigator() {
       </Stack>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} backgroundColor={appColors.surface} />
     </>
+  );
+}
+
+function StartupFallback({ appColors }: { appColors: ReturnType<typeof useTheme>['appColors'] }) {
+  return (
+    <View style={[styles.startupScreen, { backgroundColor: appColors.surface }]}>
+      <ActivityIndicator color={appColors.primary} />
+      <Text style={[styles.startupText, { color: appColors.onSurfaceVariant }]}>Starting CebSpot...</Text>
+    </View>
   );
 }
 
@@ -70,3 +88,16 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  startupScreen: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  startupText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+});

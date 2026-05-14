@@ -5,14 +5,18 @@
   "main": "expo-router/entry",
   "private": true,
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
+    "start": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --go --lan --clear --port 8081",
+    "android": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --android --go --lan --clear --port 8081",
+    "ios": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --ios --go --lan --clear --port 8081",
+    "web": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --web --port 8081",
+    "web:clean": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --web --clear --port 8081",
+    "dev": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --web --port 8081",
+    "start:tunnel": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --go --tunnel --clear",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@expo/metro-runtime": "4.0.1",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@supabase/supabase-js": "^2.48.0",
     "clsx": "^2.1.1",
@@ -27,6 +31,7 @@
     "expo-status-bar": "~2.0.1",
     "lucide-react-native": "^0.468.0",
     "react": "18.3.1",
+    "react-dom": "18.3.1",
     "react-native": "0.76.9",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-maps": "1.18.0",
@@ -35,6 +40,8 @@
     "react-native-safe-area-context": "4.12.0",
     "react-native-screens": "~4.4.0",
     "react-native-svg": "15.8.0",
+    "react-native-web": "~0.19.13",
+    "react-native-webview": "13.12.5",
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {

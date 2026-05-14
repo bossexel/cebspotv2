@@ -39,8 +39,9 @@ export const activityService = {
       return () => undefined;
     }
 
+    const channelName = `activities-feed-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel('activities-feed')
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, async () => {
         callback(await this.getRecentActivities());
       })

@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
+  Linking,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,19 +14,22 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
 import {
   ArrowLeft,
   Camera,
   CheckCircle,
   Clock,
+  ExternalLink,
+  Globe2,
   Heart,
   Info,
   MapPin,
   MoreHorizontal,
   Navigation,
+  Phone,
   Send,
   Share2,
   ShieldCheck,
@@ -38,15 +41,17 @@ import {
 import { AppButton } from '../../src/components/AppButton';
 import { CategoryChip } from '../../src/components/CategoryChip';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
+import { TileMap } from '../../src/components/TileMap';
 import { colors } from '../../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../../src/constants/design';
-import { lightTileUrl, mapAttribution } from '../../src/constants/mapTiles';
 import { sampleSpots } from '../../src/constants/sampleData';
 import { useAuth } from '../../src/hooks/useAuth';
+import { useLocation } from '../../src/hooks/useLocation';
 import { useTheme } from '../../src/hooks/useTheme';
 import { reviewService } from '../../src/services/reviewService';
 import { spotService } from '../../src/services/spotService';
 import type { Review, Spot } from '../../src/types';
+import { calculateReservationFee, getReservationTypeLabel, getSpotReservationType, isPaymentRequired } from '../../src/utils/reservations';
 
 const fallbackImage =
   'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=900';
@@ -63,12 +68,74 @@ const reportReasons = [
   'Child or minor safety',
 ];
 
+type MapCoordinate = {
+  latitude: number;
+  longitude: number;
+};
+
+function midpoint(
+  first: { latitude: number; longitude: number },
+  second: { latitude: number; longitude: number },
+) {
+  return {
+    latitude: (first.latitude + second.latitude) / 2,
+    longitude: (first.longitude + second.longitude) / 2,
+  };
+}
+
+function formatUrlForDisplay(url: string) {
+  return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
+}
+
+function normalizeWebsiteUrl(url: string) {
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+function openPhoneNumber(phoneNumber: string) {
+  const normalizedNumber = phoneNumber.replace(/[^\d+]/g, '');
+  Linking.openURL(`tel:${normalizedNumber}`).catch((error) => {
+    console.error('Unable to open phone number:', error);
+  });
+}
+
+async function fetchRoute(origin: MapCoordinate, destination: MapCoordinate) {
+  try {
+    const url =
+      `https://router.project-osrm.org/route/v1/driving/` +
+      `${origin.longitude},${origin.latitude};` +
+      `${destination.longitude},${destination.latitude}` +
+      `?overview=full&geometries=geojson`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn(`Urban Transit route request failed with status ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    if (!data.routes || data.routes.length === 0) {
+      console.warn('No Urban Transit route found');
+      return [];
+    }
+
+    return data.routes[0].geometry.coordinates.map(([longitude, latitude]: [number, number]) => ({
+      latitude,
+      longitude,
+    }));
+  } catch (error) {
+    console.error('Failed to fetch Urban Transit route:', error);
+    return [];
+  }
+}
+
 export default function SpotDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { appColors } = useTheme();
   const { profile } = useAuth();
+  const { getCurrentLocation, location } = useLocation();
+  const heroGalleryRef = useRef<FlatList<string> | null>(null);
   const [spot, setSpot] = useState<Spot | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,6 +149,10 @@ export default function SpotDetailsScreen() {
   const [selectedReportReason, setSelectedReportReason] = useState('');
   const [reportDetails, setReportDetails] = useState('');
   const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [websitePreviewUrl, setWebsitePreviewUrl] = useState<string | null>(null);
+  const [websitePreviewLoading, setWebsitePreviewLoading] = useState(false);
+  const [websitePreviewError, setWebsitePreviewError] = useState(false);
+  const [routeCoordinates, setRouteCoordinates] = useState<MapCoordinate[]>([]);
 
   useEffect(() => {
     async function loadSpot() {
@@ -101,6 +172,10 @@ export default function SpotDetailsScreen() {
   }, [id]);
 
   useEffect(() => {
+    getCurrentLocation();
+  }, [getCurrentLocation]);
+
+  useEffect(() => {
     async function loadReviews() {
       if (!id) return;
       try {
@@ -115,6 +190,38 @@ export default function SpotDetailsScreen() {
 
     loadReviews();
   }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTransitRoute() {
+      if (!location || !spot) {
+        setRouteCoordinates([]);
+        return;
+      }
+
+      const coords = await fetchRoute(
+        {
+          latitude: location.latitude,
+          longitude: location.longitude,
+        },
+        {
+          latitude: spot.latitude,
+          longitude: spot.longitude,
+        },
+      );
+
+      if (!cancelled) {
+        setRouteCoordinates(coords);
+      }
+    }
+
+    loadTransitRoute();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location?.latitude, location?.longitude, spot?.id, spot?.latitude, spot?.longitude]);
 
   if (loading) {
     return (
@@ -139,6 +246,64 @@ export default function SpotDetailsScreen() {
 
   const imageUrls = spot.images?.length ? spot.images : [fallbackImage];
   const spotCategories = Array.from(new Set(spot.categories?.length ? spot.categories : [spot.category]));
+  const reservationType = getSpotReservationType(spot);
+  const reservationFee = calculateReservationFee(spot);
+  const paymentRequired = isPaymentRequired(spot);
+  const spotCoordinate = { latitude: spot.latitude, longitude: spot.longitude };
+  const userCoordinate = location ? { latitude: location.latitude, longitude: location.longitude } : null;
+  const transitCenter = userCoordinate ? midpoint(userCoordinate, spotCoordinate) : spotCoordinate;
+  const transitMarkers = [
+    ...(userCoordinate
+      ? [
+          {
+            id: 'current-location',
+            ...userCoordinate,
+            color: '#2563EB',
+            selected: true,
+            category: 'current location',
+            label: 'You',
+            variant: 'circle' as const,
+            showIcon: false,
+          },
+        ]
+      : []),
+    {
+      id: spot.id,
+      ...spotCoordinate,
+      color: colors.primary,
+      selected: true,
+      category: [spot.category, ...(spot.categories ?? [])].join(' '),
+      label: spot.category,
+    },
+  ];
+  const spotDetails = [
+    {
+      id: 'hours',
+      label: 'Opening Hours',
+      value: spot.opening_hours ?? 'Hours not posted',
+      Icon: Clock,
+    },
+    {
+      id: 'address',
+      label: 'Address',
+      value: spot.address,
+      Icon: MapPin,
+    },
+    {
+      id: 'website',
+      label: 'Website',
+      value: spot.website_url ? formatUrlForDisplay(spot.website_url) : 'Website not posted',
+      Icon: Globe2,
+      onPress: spot.website_url ? () => openWebsitePreview(spot.website_url as string) : undefined,
+    },
+    {
+      id: 'contact',
+      label: 'Contact Number',
+      value: spot.contact_number ?? 'Contact not posted',
+      Icon: Phone,
+      onPress: spot.contact_number ? () => openPhoneNumber(spot.contact_number as string) : undefined,
+    },
+  ];
 
   async function attachReviewMedia() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -243,6 +408,23 @@ export default function SpotDetailsScreen() {
     setReportSubmitted(false);
   }
 
+  function openWebsitePreview(url: string) {
+    setWebsitePreviewUrl(normalizeWebsiteUrl(url));
+    setWebsitePreviewLoading(true);
+    setWebsitePreviewError(false);
+  }
+
+  function showGalleryImage(index: number) {
+    setActiveImageIndex(index);
+    heroGalleryRef.current?.scrollToIndex({ index, animated: true });
+  }
+
+  function closeWebsitePreview() {
+    setWebsitePreviewUrl(null);
+    setWebsitePreviewLoading(false);
+    setWebsitePreviewError(false);
+  }
+
   async function reportReview(reason: string, details = '') {
     if (!reportingReview) return;
     if (!profile) {
@@ -267,11 +449,15 @@ export default function SpotDetailsScreen() {
     <ScreenContainer appColors={appColors} scroll padded={false}>
       <View style={styles.hero}>
         <FlatList
+          ref={heroGalleryRef}
           data={imageUrls}
           keyExtractor={(item, index) => `${item}-${index}`}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
+          onScrollToIndexFailed={({ index }) => {
+            setTimeout(() => heroGalleryRef.current?.scrollToIndex({ index, animated: true }), 100);
+          }}
           onMomentumScrollEnd={(event) => setActiveImageIndex(Math.round(event.nativeEvent.contentOffset.x / width))}
           renderItem={({ item }) => <Image source={{ uri: item }} style={[styles.heroImage, { width }]} />}
         />
@@ -293,6 +479,11 @@ export default function SpotDetailsScreen() {
         </View>
         <View style={styles.heroText}>
           <Text style={styles.badge}>Premium Spot</Text>
+          {spot.is_reservable && (
+            <Text style={styles.reservationBadge}>
+              {paymentRequired ? `Reservation Fee: ₱${reservationFee}` : 'Free Reservation'}
+            </Text>
+          )}
           <Text style={styles.heroTitle}>{spot.name}</Text>
           <View style={styles.heroMeta}>
             <MapPin size={14} color={colors.white} />
@@ -318,17 +509,27 @@ export default function SpotDetailsScreen() {
             <View style={styles.bookingCopy}>
               <Text style={[styles.cardTitle, { color: appColors.onSurface }]}>Reservation Access</Text>
               <Text style={[styles.cardSub, { color: appColors.onSurfaceVariant }]}>
-                PHP {spot.reservation_fee} per booking, deducted from your venue bill.
+                {paymentRequired
+                  ? `₱${reservationFee} fixed reservation fee required to secure this booking.`
+                  : 'Free reservation. No payment is required for this booking.'}
               </Text>
             </View>
           </View>
         )}
 
+        <View style={styles.chips}>
+          {spotCategories.map((category) => (
+            <CategoryChip key={category} label={category} appColors={appColors} />
+          ))}
+        </View>
+
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, { backgroundColor: appColors.surfaceLow }]}>
-            <Clock size={18} color={colors.primary} />
-            <Text style={[styles.statLabel, { color: appColors.onSurfaceVariant }]}>Hours</Text>
-            <Text style={[styles.statValue, { color: appColors.onSurface }]}>{spot.opening_hours ?? 'Open today'}</Text>
+            <Star size={18} color={colors.primary} />
+            <Text style={[styles.statLabel, { color: appColors.onSurfaceVariant }]}>Rating</Text>
+            <Text style={[styles.statValue, { color: appColors.onSurface }]}>
+              {spot.rating ? `${spot.rating.toFixed(1)} / 5.0` : 'No rating yet'}
+            </Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: appColors.surfaceLow }]}>
             <Users size={18} color={colors.primary} />
@@ -345,6 +546,35 @@ export default function SpotDetailsScreen() {
           <Text style={[styles.description, { color: appColors.onSurfaceVariant }]}>
             {spot.description ?? 'A community-discovered Cebu spot with real local pulse.'}
           </Text>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: appColors.onSurfaceVariant }]}>Gallery</Text>
+            <Text style={styles.reviewCount}>{imageUrls.length} photos</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.spotGalleryList}>
+            {imageUrls.map((imageUrl, index) => (
+              <Pressable
+                key={`${imageUrl}-gallery-${index}`}
+                style={[
+                  styles.spotGalleryTile,
+                  {
+                    borderColor: activeImageIndex === index ? colors.primary : appColors.outlineVariant + '55',
+                    backgroundColor: appColors.surfaceLow,
+                  },
+                ]}
+                onPress={() => showGalleryImage(index)}
+              >
+                <Image source={{ uri: imageUrl }} style={styles.spotGalleryImage} />
+                {activeImageIndex === index && (
+                  <View style={styles.spotGalleryActiveBadge}>
+                    <Text style={styles.spotGalleryActiveText}>Main</Text>
+                  </View>
+                )}
+              </Pressable>
+            ))}
+          </ScrollView>
         </View>
 
         <View style={styles.section}>
@@ -484,10 +714,34 @@ export default function SpotDetailsScreen() {
           )}
         </View>
 
-        <View style={styles.chips}>
-          {spotCategories.map((category) => (
-            <CategoryChip key={category} label={category} appColors={appColors} />
-          ))}
+        <View style={[styles.detailsPanel, { backgroundColor: appColors.surfaceLow }]}>
+          <View style={styles.inlineTitle}>
+            <Info size={14} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: appColors.onSurfaceVariant }]}>Spot Details</Text>
+          </View>
+          <View style={styles.detailList}>
+            {spotDetails.map(({ id: detailId, label, value, Icon, onPress }) => {
+              const RowContainer = onPress ? Pressable : View;
+              return (
+                <RowContainer
+                  key={detailId}
+                  style={[styles.detailRow, { backgroundColor: appColors.white }]}
+                  onPress={onPress}
+                >
+                  <View style={styles.detailIcon}>
+                    <Icon size={17} color={colors.primary} />
+                  </View>
+                  <View style={styles.detailCopy}>
+                    <Text style={[styles.detailLabel, { color: appColors.onSurfaceVariant }]}>{label}</Text>
+                    <Text style={[styles.detailValue, { color: appColors.onSurface }]} numberOfLines={2}>
+                      {value}
+                    </Text>
+                  </View>
+                  {onPress && <ExternalLink size={15} color={appColors.onSurfaceVariant} />}
+                </RowContainer>
+              );
+            })}
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -499,26 +753,20 @@ export default function SpotDetailsScreen() {
             </View>
           </View>
           <View style={styles.mapCard}>
-            <MapView
+            <TileMap
               style={styles.map}
-              mapType={Platform.OS === 'android' ? 'none' : 'standard'}
-              initialRegion={{
-                latitude: spot.latitude,
-                longitude: spot.longitude,
-                latitudeDelta: 0.018,
-                longitudeDelta: 0.018,
-              }}
-              scrollEnabled={false}
-            >
-              <UrlTile urlTemplate={lightTileUrl} maximumZ={19} tileSize={256} />
-              <Marker
-                coordinate={{ latitude: spot.latitude, longitude: spot.longitude }}
-                title={spot.name}
-                pinColor={colors.primary}
-              />
-            </MapView>
-            <Text style={styles.attribution}>{mapAttribution}</Text>
+              center={transitCenter}
+              zoom={15}
+              markers={transitMarkers}
+              routeLine={routeCoordinates}
+            />
           </View>
+          <Text style={[styles.ownerPrompt, { color: appColors.onSurfaceVariant }]}>
+            Own this spot?{' '}
+            <Text style={styles.ownerPromptLink} onPress={() => router.push('/owner-access')}>
+              Contact us.
+            </Text>
+          </Text>
         </View>
       </View>
 
@@ -526,7 +774,9 @@ export default function SpotDetailsScreen() {
         <View style={[styles.floatingFooter, { backgroundColor: appColors.surfaceLow }]}>
           <View>
             <Text style={[styles.accessLabel, { color: appColors.onSurfaceVariant }]}>Access</Text>
-            <Text style={styles.accessPrice}>PHP {spot.reservation_fee}</Text>
+            <Text style={styles.accessPrice}>
+              {paymentRequired ? `₱${reservationFee}` : getReservationTypeLabel(reservationType)}
+            </Text>
           </View>
           <AppButton
             label="Secure Spot"
@@ -618,6 +868,57 @@ export default function SpotDetailsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <Modal visible={Boolean(websitePreviewUrl)} transparent animationType="slide" onRequestClose={closeWebsitePreview}>
+        <View style={styles.websiteBackdrop}>
+          <View style={[styles.websitePreview, { backgroundColor: appColors.surface }]}>
+            <View style={styles.websiteHeader}>
+              <View style={styles.websiteHeaderCopy}>
+                <Text style={[styles.websiteTitle, { color: appColors.onSurface }]}>Website Preview</Text>
+                <Text style={[styles.websiteUrl, { color: appColors.onSurfaceVariant }]} numberOfLines={1}>
+                  {websitePreviewUrl ? formatUrlForDisplay(websitePreviewUrl) : ''}
+                </Text>
+              </View>
+              <Pressable style={[styles.reportClose, { backgroundColor: appColors.surfaceLow }]} onPress={closeWebsitePreview}>
+                <X size={18} color={appColors.onSurface} />
+              </Pressable>
+            </View>
+
+            <View style={[styles.websiteFrame, { borderColor: appColors.outlineVariant + '55' }]}>
+              {websitePreviewUrl && (
+                <WebView
+                  source={{ uri: websitePreviewUrl }}
+                  startInLoadingState
+                  onLoadStart={() => {
+                    setWebsitePreviewLoading(true);
+                    setWebsitePreviewError(false);
+                  }}
+                  onLoadEnd={() => setWebsitePreviewLoading(false)}
+                  onError={(event) => {
+                    console.error('Website preview failed:', event.nativeEvent);
+                    setWebsitePreviewError(true);
+                    setWebsitePreviewLoading(false);
+                  }}
+                  style={styles.websiteWebView}
+                />
+              )}
+              {websitePreviewLoading && (
+                <View style={[styles.websiteLoading, { backgroundColor: appColors.surface }]}>
+                  <ActivityIndicator color={colors.primary} size="large" />
+                </View>
+              )}
+              {websitePreviewError && (
+                <View style={[styles.websiteLoading, { backgroundColor: appColors.surface }]}>
+                  <Text style={[styles.websiteErrorTitle, { color: appColors.onSurface }]}>Website unavailable</Text>
+                  <Text style={[styles.websiteErrorText, { color: appColors.onSurfaceVariant }]}>
+                    This site could not be loaded inside CebSpot.
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -695,6 +996,20 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 1,
+    overflow: 'hidden',
+  },
+  reservationBadge: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
+    backgroundColor: colors.white,
+    color: colors.primary,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
     overflow: 'hidden',
   },
   heroTitle: {
@@ -808,6 +1123,37 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     lineHeight: 25,
     fontWeight: '600',
+  },
+  spotGalleryList: {
+    gap: spacing.md,
+    paddingRight: spacing.lg,
+  },
+  spotGalleryTile: {
+    width: 148,
+    height: 108,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    borderWidth: 2,
+  },
+  spotGalleryImage: {
+    width: '100%',
+    height: '100%',
+  },
+  spotGalleryActiveBadge: {
+    position: 'absolute',
+    left: spacing.sm,
+    bottom: spacing.sm,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    backgroundColor: colors.primary,
+  },
+  spotGalleryActiveText: {
+    color: colors.white,
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   reviewCount: {
     color: colors.primary,
@@ -1013,6 +1359,47 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
+  detailsPanel: {
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+  detailList: {
+    gap: spacing.sm,
+  },
+  detailRow: {
+    minHeight: 62,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  detailIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary + '12',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  detailLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  detailValue: {
+    marginTop: 3,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
   routeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1040,18 +1427,16 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  attribution: {
-    position: 'absolute',
-    left: spacing.sm,
-    bottom: spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.86)',
-    color: colors.onSurfaceVariant,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    fontSize: 9,
+  ownerPrompt: {
+    fontSize: fontSize.sm,
+    lineHeight: 19,
     fontWeight: '800',
-    overflow: 'hidden',
+    textAlign: 'center',
+  },
+  ownerPromptLink: {
+    color: colors.primary,
+    fontWeight: '900',
+    textDecorationLine: 'underline',
   },
   floatingFooter: {
     position: 'absolute',
@@ -1088,6 +1473,68 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.38)',
     justifyContent: 'flex-end',
+  },
+  websiteBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.42)',
+    justifyContent: 'flex-end',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
+  },
+  websitePreview: {
+    height: '82%',
+    borderRadius: radius.xxl,
+    overflow: 'hidden',
+    ...shadow.lifted,
+  },
+  websiteHeader: {
+    minHeight: 70,
+    paddingHorizontal: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  websiteHeaderCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  websiteTitle: {
+    fontSize: fontSize.md,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  websiteUrl: {
+    marginTop: 2,
+    fontSize: fontSize.xs,
+    fontWeight: '800',
+  },
+  websiteFrame: {
+    flex: 1,
+    borderTopWidth: 1,
+    overflow: 'hidden',
+  },
+  websiteWebView: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  websiteLoading: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    gap: spacing.sm,
+  },
+  websiteErrorTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  websiteErrorText: {
+    textAlign: 'center',
+    fontSize: fontSize.sm,
+    fontWeight: '700',
   },
   reportSheet: {
     borderTopLeftRadius: radius.xxl,

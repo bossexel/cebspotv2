@@ -49,7 +49,7 @@ export default function LoginScreen() {
         </View>
         <Text style={styles.brand}>CebSpot</Text>
         <Text style={[styles.copy, { color: appColors.onSurfaceVariant }]}>
-          The heartbeat of the city is waiting. Sign in to explore, reserve, and share your next spot.
+          Rada ya? Asa mang spot nato ron?.
         </Text>
       </View>
 
@@ -58,7 +58,7 @@ export default function LoginScreen() {
           <TextInput
             value={displayName}
             onChangeText={setDisplayName}
-            placeholder="Display name"
+            placeholder="Name"
             placeholderTextColor={appColors.onSurfaceVariant}
             style={[styles.input, { color: appColors.onSurface, backgroundColor: appColors.white }]}
           />
@@ -82,7 +82,7 @@ export default function LoginScreen() {
         />
 
         <AppButton
-          label={mode === 'sign-in' ? 'Enter the Pulse' : 'Create Account'}
+          label={mode === 'sign-in' ? 'Login' : 'Create Account'}
           loading={loading}
           onPress={submit}
         />
@@ -94,9 +94,6 @@ export default function LoginScreen() {
         </Pressable>
       </View>
 
-      <Text style={[styles.todo, { color: appColors.onSurfaceVariant }]}>
-        TODO: Add Google Sign-In with Supabase OAuth after native client IDs are configured.
-      </Text>
     </KeyboardAvoidingView>
   );
 }
@@ -158,11 +155,5 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
     paddingVertical: spacing.sm,
-  },
-  todo: {
-    marginTop: spacing.xl,
-    textAlign: 'center',
-    fontSize: fontSize.xs,
-    lineHeight: 16,
   },
 });

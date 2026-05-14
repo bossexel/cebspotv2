@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Navigation, QrCode, UserPlus, Users } from 'lucide-react-native';
 import { ScreenContainer } from '../src/components/ScreenContainer';
+import { TileMap } from '../src/components/TileMap';
 import { colors } from '../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../src/constants/design';
-import { lightTileUrl, mapAttribution } from '../src/constants/mapTiles';
 import { sampleCircles } from '../src/constants/sampleData';
 import { useAuth } from '../src/hooks/useAuth';
 import { useTheme } from '../src/hooks/useTheme';
@@ -83,32 +82,28 @@ export default function CircleScreen() {
       </View>
 
       <View style={styles.mapCard}>
-        <MapView
+        <TileMap
           style={styles.map}
-          mapType={Platform.OS === 'android' ? 'none' : 'standard'}
-          initialRegion={{
+          center={{
             latitude: 10.321,
             longitude: 123.901,
-            latitudeDelta: 0.045,
-            longitudeDelta: 0.045,
           }}
-        >
-          <UrlTile urlTemplate={lightTileUrl} maximumZ={19} tileSize={256} />
-          {friends.map((friend) => (
-            <Marker
-              key={friend.id}
-              coordinate={{ latitude: friend.latitude, longitude: friend.longitude }}
-              title={friend.name}
-              description={friend.status}
-              pinColor={friend.active ? colors.primary : colors.outline}
-            />
-          ))}
-        </MapView>
+          zoom={14}
+          markers={friends.map((friend) => ({
+            id: friend.id,
+            latitude: friend.latitude,
+            longitude: friend.longitude,
+            color: friend.active ? colors.primary : colors.outline,
+            selected: friend.active,
+            category: 'friend',
+            label: friend.name,
+            imageUrl: friend.image,
+          }))}
+        />
         <View style={styles.liveBadge}>
           <View style={styles.liveDot} />
           <Text style={styles.liveText}>Live Grid</Text>
         </View>
-        <Text style={styles.attribution}>{mapAttribution}</Text>
       </View>
 
       <View style={styles.friendList}>
@@ -221,19 +216,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-  },
-  attribution: {
-    position: 'absolute',
-    right: spacing.md,
-    bottom: spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.86)',
-    color: colors.onSurfaceVariant,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    fontSize: 9,
-    fontWeight: '800',
-    overflow: 'hidden',
   },
   liveDot: {
     width: 7,

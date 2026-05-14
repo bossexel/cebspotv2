@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Award, Calendar, ChevronRight, LogOut, MapPin, Moon, Settings, Star, Sun } from 'lucide-react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Award, Calendar, ChevronRight, LogOut, MapPin, Moon, Settings, Star, Store, Sun } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { colors } from '../src/constants/colors';
@@ -15,6 +15,7 @@ export default function ProfileScreen() {
   const { appColors, isDarkMode, toggleDarkMode } = useTheme();
   const { profile, logOut } = useAuth();
   const [reservationCount, setReservationCount] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     async function loadStats() {
@@ -65,7 +66,12 @@ export default function ProfileScreen() {
             </View>
           </View>
         </View>
-        <Pressable style={[styles.settings, { backgroundColor: appColors.surfaceLow }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open settings"
+          style={[styles.settings, { backgroundColor: appColors.surfaceLow }]}
+          onPress={() => setSettingsOpen(true)}
+        >
           <Settings size={20} color={appColors.onSurface} />
         </Pressable>
       </View>
@@ -93,13 +99,17 @@ export default function ProfileScreen() {
           <Text style={[styles.statValue, { color: appColors.onSurface }]}>{profile?.points ?? 0}</Text>
           <Text style={[styles.statLabel, { color: appColors.onSurfaceVariant }]}>Points</Text>
         </View>
-        <View style={[styles.statCard, styles.orangeCard]}>
+        <Pressable
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.statCard, styles.orangeCard, pressed && styles.pressed]}
+          onPress={() => router.push('/reservations')}
+        >
           <View style={styles.statIconLight}>
             <Calendar size={20} color={colors.white} />
           </View>
           <Text style={[styles.statValue, { color: colors.white }]}>{reservationCount}</Text>
           <Text style={[styles.statLabel, { color: colors.white }]}>Reservations</Text>
-        </View>
+        </Pressable>
       </View>
 
       <View style={styles.section}>
@@ -120,26 +130,75 @@ export default function ProfileScreen() {
         ))}
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Settings</Text>
-        <Pressable style={[styles.listItem, { backgroundColor: appColors.surfaceLow }]} onPress={toggleDarkMode}>
-          <View style={styles.settingIcon}>
-            {isDarkMode ? <Moon size={20} color={colors.primary} /> : <Sun size={20} color={colors.primary} />}
-          </View>
-          <View style={styles.listCopy}>
-            <Text style={[styles.listTitle, { color: appColors.onSurface }]}>Dark Mode</Text>
-            <Text style={[styles.listSub, { color: appColors.onSurfaceVariant }]}>Preserve your preferred vibe</Text>
-          </View>
-          <View style={[styles.switchTrack, { backgroundColor: isDarkMode ? colors.primary : appColors.outlineVariant }]}>
-            <View style={[styles.switchThumb, isDarkMode && styles.switchOn]} />
-          </View>
-        </Pressable>
-      </View>
-
       <Pressable style={styles.logout} onPress={logout}>
         <LogOut size={20} color={colors.white} />
         <Text style={styles.logoutText}>Logout</Text>
       </Pressable>
+
+      <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)}>
+        <Pressable style={styles.modalScrim} onPress={() => setSettingsOpen(false)}>
+          <Pressable
+            style={[styles.settingsSheet, { backgroundColor: appColors.surface }]}
+            onPress={(event) => event.stopPropagation()}
+          >
+            <View style={styles.sheetHeader}>
+              <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Settings</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close settings"
+                style={[styles.sheetClose, { backgroundColor: appColors.surfaceLow }]}
+                onPress={() => setSettingsOpen(false)}
+              >
+                <Text style={[styles.sheetCloseText, { color: appColors.onSurface }]}>×</Text>
+              </Pressable>
+            </View>
+            <Pressable
+              style={[styles.listItem, { backgroundColor: appColors.surfaceLow }]}
+              onPress={() => {
+                setSettingsOpen(false);
+                router.push('/owner-dashboard');
+              }}
+            >
+              <View style={styles.settingIcon}>
+                <Store size={20} color={colors.primary} />
+              </View>
+              <View style={styles.listCopy}>
+                <Text style={[styles.listTitle, { color: appColors.onSurface }]}>Store Owner Dashboard</Text>
+                <Text style={[styles.listSub, { color: appColors.onSurfaceVariant }]}>Test live Supabase owner tools</Text>
+              </View>
+              <ChevronRight size={20} color={appColors.onSurfaceVariant} />
+            </Pressable>
+            <Pressable
+              style={[styles.listItem, { backgroundColor: appColors.surfaceLow }]}
+              onPress={() => {
+                setSettingsOpen(false);
+                router.push('/owner-access');
+              }}
+            >
+              <View style={styles.settingIcon}>
+                <Store size={20} color={colors.primary} />
+              </View>
+              <View style={styles.listCopy}>
+                <Text style={[styles.listTitle, { color: appColors.onSurface }]}>Spot Owner Access</Text>
+                <Text style={[styles.listSub, { color: appColors.onSurfaceVariant }]}>Contact CebSpot for reservation tools</Text>
+              </View>
+              <ChevronRight size={20} color={appColors.onSurfaceVariant} />
+            </Pressable>
+            <Pressable style={[styles.listItem, { backgroundColor: appColors.surfaceLow }]} onPress={toggleDarkMode}>
+              <View style={styles.settingIcon}>
+                {isDarkMode ? <Moon size={20} color={colors.primary} /> : <Sun size={20} color={colors.primary} />}
+              </View>
+              <View style={styles.listCopy}>
+                <Text style={[styles.listTitle, { color: appColors.onSurface }]}>Dark Mode</Text>
+                <Text style={[styles.listSub, { color: appColors.onSurfaceVariant }]}>Preserve your preferred vibe</Text>
+              </View>
+              <View style={[styles.switchTrack, { backgroundColor: isDarkMode ? colors.primary : appColors.outlineVariant }]}>
+                <View style={[styles.switchThumb, isDarkMode && styles.switchOn]} />
+              </View>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -220,6 +279,36 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modalScrim: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: colors.black + '66',
+  },
+  settingsSheet: {
+    gap: spacing.md,
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
+    ...shadow.card,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sheetClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetCloseText: {
+    fontSize: 24,
+    fontWeight: '800',
+    lineHeight: 26,
   },
   milestone: {
     borderRadius: radius.xxl,
@@ -380,5 +469,8 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
+  },
+  pressed: {
+    transform: [{ scale: 0.98 }],
   },
 });

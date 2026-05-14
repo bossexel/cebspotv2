@@ -2,6 +2,13 @@ import { useCallback, useState } from 'react';
 import * as Location from 'expo-location';
 import type { LocationData } from '../types';
 
+const devFallbackLocation: LocationData = {
+  latitude: 10.3298,
+  longitude: 123.9054,
+  accuracy: 25,
+  timestamp: Date.now(),
+};
+
 export function useLocation() {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +43,24 @@ export function useLocation() {
       setLocation(nextLocation);
       return nextLocation;
     } catch (locationError) {
-      console.error('Location error:', locationError);
+      console.warn('Location unavailable, checking last known location:', locationError);
+      const lastKnown = await Location.getLastKnownPositionAsync();
+      if (lastKnown) {
+        const nextLocation: LocationData = {
+          latitude: lastKnown.coords.latitude,
+          longitude: lastKnown.coords.longitude,
+          accuracy: lastKnown.coords.accuracy ?? undefined,
+          timestamp: lastKnown.timestamp,
+        };
+        setLocation(nextLocation);
+        setError(null);
+        return nextLocation;
+      }
+      if (__DEV__) {
+        setLocation(devFallbackLocation);
+        setError(null);
+        return devFallbackLocation;
+      }
       setError('Unable to get your current location.');
       return null;
     } finally {

@@ -1,10 +1,11 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Image,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,25 +15,19 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import MapView, { Marker, Region, UrlTile } from 'react-native-maps';
 import {
   Bookmark,
-  Coffee,
   Layers,
-  Music2,
   Search,
   SlidersHorizontal,
   Star,
   Target,
-  Trees,
-  Utensils,
-  Wine,
   X,
 } from 'lucide-react-native';
 import { ScreenContainer } from '../src/components/ScreenContainer';
-import { colors } from '../src/constants/colors';
+import { TileMap } from '../src/components/TileMap';
+import { AppColors, colors } from '../src/constants/colors';
 import { fontSize, radius, shadow, spacing, tabBarHeight } from '../src/constants/design';
-import { darkTileUrl, mapAttribution } from '../src/constants/mapTiles';
 import { sampleSpots } from '../src/constants/sampleData';
 import { useLocation } from '../src/hooks/useLocation';
 import { useTheme } from '../src/hooks/useTheme';
@@ -45,16 +40,15 @@ type EnhancedSpot = Spot & {
   isLive?: boolean;
 };
 
-const cebuRegion: Region = {
+const cebuRegion = {
   latitude: 10.3298,
   longitude: 123.9054,
-  latitudeDelta: 0.06,
-  longitudeDelta: 0.06,
 };
 
 const fallbackImage =
   'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=600';
 
+const FAVORITE_SPOTS_KEY = 'cebspot_favorite_spot_ids';
 const categories = ['All', 'Outdoor', 'Specialty Coffee', 'Social Dining', 'Street Food', 'Chill Vibe', 'High Pulse'];
 const ratingOptions = [0, 3, 3.5, 4, 4.5];
 const distanceOptions = [1, 5, 10, 25, 50];
@@ -83,57 +77,21 @@ function enhanceSpots(spots: Spot[]): EnhancedSpot[] {
   }));
 }
 
-function spotRegion(spot: EnhancedSpot): Region {
+function spotCenter(spot: EnhancedSpot) {
   return {
     latitude: spot.latitude,
     longitude: spot.longitude,
-    latitudeDelta: 0.018,
-    longitudeDelta: 0.018,
   };
 }
 
 function categoryColor(spot: EnhancedSpot) {
   const allCategories = [spot.category, ...(spot.categories ?? [])].join(' ').toLowerCase();
   if (allCategories.includes('coffee') || allCategories.includes('cafe')) return '#D4A373';
-  if (allCategories.includes('pulse') || allCategories.includes('club')) return '#8B5CF6';
+  if (allCategories.includes('pulse') || allCategories.includes('club') || allCategories.includes('night')) return '#EC4899';
   if (allCategories.includes('bar') || allCategories.includes('night') || allCategories.includes('chill')) return '#3B82F6';
   if (allCategories.includes('outdoor') || allCategories.includes('park') || allCategories.includes('garden')) return '#22C55E';
   if (allCategories.includes('food') || allCategories.includes('dining') || allCategories.includes('hub')) return '#10B981';
   return '#10B981';
-}
-
-function CategoryMarker({ spot, selected }: { spot: EnhancedSpot; selected: boolean }) {
-  const markerColor = categoryColor(spot);
-  const allCategories = [spot.category, ...(spot.categories ?? [])].join(' ').toLowerCase();
-  const Icon = allCategories.includes('coffee')
-    ? Coffee
-    : allCategories.includes('bar') || allCategories.includes('chill')
-      ? Wine
-      : allCategories.includes('club') || allCategories.includes('pulse')
-        ? Music2
-        : allCategories.includes('outdoor') || allCategories.includes('garden')
-          ? Trees
-          : Utensils;
-
-  return (
-    <View style={styles.markerWrap}>
-      {selected && <View style={[styles.markerHalo, { borderColor: colors.white + '88' }]} />}
-      <View
-        style={[
-          styles.marker,
-          {
-            width: selected ? 38 : 22,
-            height: selected ? 38 : 22,
-            borderRadius: selected ? 19 : 11,
-            backgroundColor: markerColor,
-          },
-        ]}
-      >
-        <Icon size={selected ? 18 : 12} color={colors.white} strokeWidth={2.6} />
-      </View>
-      {selected && <View style={styles.markerShadow} />}
-    </View>
-  );
 }
 
 export default function ExploreScreen() {
@@ -141,16 +99,18 @@ export default function ExploreScreen() {
   const { width } = useWindowDimensions();
   const { appColors } = useTheme();
   const { getCurrentLocation, location, loading: locating } = useLocation();
-  const mapRef = useRef<MapView | null>(null);
   const listRef = useRef<FlatList<EnhancedSpot> | null>(null);
   const [spots, setSpots] = useState<EnhancedSpot[]>(enhanceSpots(sampleSpots));
   const [search, setSearch] = useState('');
   const [zoomedOnce, setZoomedOnce] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [mapReady, setMapReady] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedSpot, setSelectedSpot] = useState<EnhancedSpot | null>(spots[0] ?? null);
+  const [mapCenter, setMapCenter] = useState(cebuRegion);
+  const [mapZoom, setMapZoom] = useState(14);
+  const [favoriteSpotIds, setFavoriteSpotIds] = useState<string[]>([]);
+  const [favoritesLoaded, setFavoritesLoaded] = useState(false);
   const [filters, setFilters] = useState({
     category: 'All',
     minRating: 0,
@@ -183,17 +143,40 @@ export default function ExploreScreen() {
   }, []);
 
   useEffect(() => {
-    if (!location || !mapReady) return;
-    mapRef.current?.animateToRegion(
-      {
-        latitude: location.latitude,
-        longitude: location.longitude,
-        latitudeDelta: 0.04,
-        longitudeDelta: 0.04,
-      },
-      450,
-    );
-  }, [location, mapReady]);
+    let mounted = true;
+
+    async function loadFavorites() {
+      try {
+        const saved = await AsyncStorage.getItem(FAVORITE_SPOTS_KEY);
+        const parsed = saved ? JSON.parse(saved) : [];
+        if (mounted && Array.isArray(parsed)) {
+          setFavoriteSpotIds(parsed.filter((id): id is string => typeof id === 'string'));
+        }
+      } catch (error) {
+        console.error('Unable to load favorite spots:', error);
+      } finally {
+        if (mounted) setFavoritesLoaded(true);
+      }
+    }
+
+    loadFavorites();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!favoritesLoaded) return;
+    AsyncStorage.setItem(FAVORITE_SPOTS_KEY, JSON.stringify(favoriteSpotIds)).catch((error) => {
+      console.error('Unable to save favorite spots:', error);
+    });
+  }, [favoriteSpotIds, favoritesLoaded]);
+
+  useEffect(() => {
+    if (!location) return;
+    setMapCenter({ latitude: location.latitude, longitude: location.longitude });
+    setMapZoom(16);
+  }, [location]);
 
   const filteredSpots = useMemo(() => {
     const lowerSearch = search.trim().toLowerCase();
@@ -221,15 +204,17 @@ export default function ExploreScreen() {
     if (!filteredSpots.find((spot) => spot.id === selectedSpot?.id)) {
       setActiveIndex(0);
       setSelectedSpot(nextSpot);
-      if (mapReady) mapRef.current?.animateToRegion(spotRegion(nextSpot), 600);
+      setMapCenter(spotCenter(nextSpot));
+      setMapZoom(16);
     }
-  }, [activeIndex, filteredSpots, mapReady, selectedSpot?.id]);
+  }, [activeIndex, filteredSpots, selectedSpot?.id]);
 
   useEffect(() => {
-    if (!selectedSpot || !mapReady || zoomedOnce) return;
-    mapRef.current?.animateToRegion(spotRegion(selectedSpot), 700);
+    if (!selectedSpot || zoomedOnce) return;
+    setMapCenter(spotCenter(selectedSpot));
+    setMapZoom(16);
     setZoomedOnce(true);
-  }, [mapReady, selectedSpot, zoomedOnce]);
+  }, [selectedSpot, zoomedOnce]);
 
   async function centerOnUser() {
     await getCurrentLocation();
@@ -238,7 +223,8 @@ export default function ExploreScreen() {
   function setActiveSpot(spot: EnhancedSpot, index: number, scroll = true) {
     setSelectedSpot(spot);
     setActiveIndex(index);
-    mapRef.current?.animateToRegion(spotRegion(spot), 650);
+    setMapCenter(spotCenter(spot));
+    setMapZoom(16);
     if (scroll) {
       listRef.current?.scrollToIndex({ index, animated: true });
     }
@@ -251,6 +237,12 @@ export default function ExploreScreen() {
     setActiveSpot(spot, index, false);
   }
 
+  function toggleFavorite(spotId: string) {
+    setFavoriteSpotIds((current) =>
+      current.includes(spotId) ? current.filter((id) => id !== spotId) : [...current, spotId]
+    );
+  }
+
   function resetFilters() {
     setFilters({ category: 'All', minRating: 0, maxDistance: 10 });
   }
@@ -258,47 +250,41 @@ export default function ExploreScreen() {
   return (
     <ScreenContainer appColors={appColors} showBottomNav padded={false}>
       <View style={[styles.screen, { backgroundColor: appColors.surface }]}>
-        <MapView
-          ref={mapRef}
+        <TileMap
           style={styles.map}
-          mapType={Platform.OS === 'android' ? 'none' : 'standard'}
-          initialRegion={cebuRegion}
-          showsUserLocation={Boolean(location)}
-          showsMyLocationButton={false}
-          onMapReady={() => setMapReady(true)}
-        >
-          <UrlTile urlTemplate={darkTileUrl} maximumZ={19} tileSize={256} />
-          {filteredSpots.map((spot, index) => (
-            <Marker
-              key={spot.id}
-              coordinate={{ latitude: spot.latitude, longitude: spot.longitude }}
-              anchor={{ x: 0.5, y: 0.5 }}
-              onPress={() => setActiveSpot(spot, index)}
-            >
-              <CategoryMarker spot={spot} selected={selectedSpot?.id === spot.id} />
-            </Marker>
-          ))}
-          {location && (
-            <Marker
-              key="current-location"
-              coordinate={{ latitude: location.latitude, longitude: location.longitude }}
-              anchor={{ x: 0.5, y: 0.5 }}
-            >
-              <View style={styles.userMarkerOuter}>
-                <View style={styles.userMarkerInner} />
-              </View>
-            </Marker>
-          )}
-        </MapView>
-
-        <Text style={styles.attribution}>{mapAttribution}</Text>
-
-        {!mapReady && (
-          <View style={[styles.mapLoading, { backgroundColor: appColors.surfaceContainer }]}>
-            <ActivityIndicator color={colors.primary} />
-            <Text style={[styles.mapLoadingText, { color: appColors.onSurfaceVariant }]}>Loading map</Text>
-          </View>
-        )}
+          center={mapCenter}
+          zoom={mapZoom}
+          onCenterChange={setMapCenter}
+          onZoomChange={setMapZoom}
+          markers={[
+            ...filteredSpots.map((spot) => ({
+              id: spot.id,
+              latitude: spot.latitude,
+              longitude: spot.longitude,
+              color: categoryColor(spot),
+              selected: selectedSpot?.id === spot.id,
+              category: [spot.category, ...(spot.categories ?? [])].join(' '),
+            })),
+            ...(location
+              ? [
+                  {
+                    id: 'current-location',
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    color: '#2563EB',
+                    selected: true,
+                    category: 'current location',
+                    variant: 'circle' as const,
+                    showIcon: false,
+                  },
+                ]
+              : []),
+          ]}
+          onMarkerPress={(marker) => {
+            const index = filteredSpots.findIndex((spot) => spot.id === marker.id);
+            if (index >= 0) setActiveSpot(filteredSpots[index], index);
+          }}
+        />
 
         <View style={styles.searchWrap} pointerEvents="box-none">
           <View style={[styles.searchBar, { backgroundColor: appColors.surfaceHighest + 'F2' }]}>
@@ -306,7 +292,7 @@ export default function ExploreScreen() {
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder="Search vibes..."
+              placeholder="Search spots..."
               placeholderTextColor={appColors.onSurfaceVariant + '99'}
               style={[styles.searchInput, { color: appColors.onSurface }]}
             />
@@ -378,13 +364,24 @@ export default function ExploreScreen() {
                   spot={item}
                   active={selectedSpot?.id === item.id}
                   width={cardWidth}
+                  appColors={appColors}
                   onFocus={() => setActiveSpot(item, index, false)}
                   onOpen={() => router.push(`/spot/${item.id}`)}
+                  isFavorite={favoriteSpotIds.includes(item.id)}
+                  onToggleFavorite={() => toggleFavorite(item.id)}
                 />
               )}
             />
           ) : (
-            <View style={[styles.emptyCard, { backgroundColor: appColors.white }]}>
+            <View
+              style={[
+                styles.emptyCard,
+                {
+                  backgroundColor: appColors.surfaceLow,
+                  borderColor: appColors.outlineVariant + '55',
+                },
+              ]}
+            >
               <Text style={[styles.emptyTitle, { color: appColors.onSurface }]}>No matches found</Text>
               <Pressable onPress={resetFilters}>
                 <Text style={styles.clearFilters}>Clear filters</Text>
@@ -395,7 +392,7 @@ export default function ExploreScreen() {
 
         <Modal visible={filterOpen} transparent animationType="slide" onRequestClose={() => setFilterOpen(false)}>
           <Pressable style={styles.modalBackdrop} onPress={() => setFilterOpen(false)}>
-            <Pressable style={[styles.filterSheet, { backgroundColor: colors.white }]}>
+            <Pressable style={[styles.filterSheet, { backgroundColor: appColors.surface }]}>
               <View style={styles.filterHeader}>
                 <Text style={[styles.filterTitle, { color: appColors.onSurface }]}>Filters</Text>
                 <Pressable style={[styles.closeButton, { backgroundColor: appColors.surfaceContainer }]} onPress={() => setFilterOpen(false)}>
@@ -535,32 +532,68 @@ function PulseSpotCard({
   spot,
   active,
   width,
+  appColors,
   onFocus,
   onOpen,
+  isFavorite,
+  onToggleFavorite,
 }: {
   spot: EnhancedSpot;
   active: boolean;
   width: number;
+  appColors: AppColors;
   onFocus: () => void;
   onOpen: () => void;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
 }) {
+  const focusAnim = useRef(new Animated.Value(active ? 1 : 0)).current;
   const imageUrl = spot.images?.[0] ?? fallbackImage;
   const spotCategories = Array.from(new Set([spot.category, ...(spot.categories ?? [])].filter(Boolean))).slice(0, 2);
 
+  useEffect(() => {
+    Animated.spring(focusAnim, {
+      toValue: active ? 1 : 0,
+      friction: 7,
+      tension: 90,
+      useNativeDriver: true,
+    }).start();
+  }, [active, focusAnim]);
+
+  const animatedCardStyle = {
+    opacity: focusAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.72, 1],
+    }),
+    transform: [
+      {
+        scale: focusAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.94, 1],
+        }),
+      },
+      {
+        translateY: focusAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [8, 0],
+        }),
+      },
+    ],
+  };
+
   return (
-    <Pressable
-      onPress={onFocus}
-      style={[
-        styles.cardShell,
-        {
-          width,
-          opacity: active ? 1 : 0.7,
-          transform: [{ scale: active ? 1 : 0.94 }, { translateY: active ? 0 : 8 }],
-        },
-      ]}
-    >
-      <View style={[styles.pulseCard, active && styles.pulseCardActive]}>
-        <View style={styles.imageWrap}>
+    <Animated.View style={[styles.cardShell, { width }, animatedCardStyle]}>
+      <Pressable onPress={onFocus}>
+        <View
+          style={[
+            styles.pulseCard,
+            {
+              backgroundColor: appColors.surfaceLow + 'F2',
+              borderColor: active ? colors.primary + '55' : appColors.outlineVariant + '40',
+            },
+          ]}
+        >
+        <View style={[styles.imageWrap, { backgroundColor: appColors.surfaceContainer }]}>
           <Image source={{ uri: imageUrl }} style={styles.cardImage} />
           {spot.isLive && (
             <View style={styles.liveBadge}>
@@ -573,19 +606,41 @@ function PulseSpotCard({
         <View style={styles.cardBody}>
           <View>
             <View style={styles.cardTitleRow}>
-              <Text style={styles.cardTitle} numberOfLines={1}>
+              <Text style={[styles.cardTitle, { color: appColors.onSurface }]} numberOfLines={1}>
                 {spot.name}
               </Text>
-              <Bookmark size={15} color={colors.onSurfaceVariant} />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${isFavorite ? 'Remove' : 'Add'} ${spot.name} ${isFavorite ? 'from' : 'to'} favorites`}
+                hitSlop={8}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  onToggleFavorite();
+                }}
+                style={({ pressed }) => [
+                  styles.favoriteButton,
+                  {
+                    backgroundColor: isFavorite ? colors.primary + '16' : appColors.surfaceContainer,
+                    borderColor: isFavorite ? colors.primary + '66' : appColors.outlineVariant + '44',
+                  },
+                  pressed && styles.favoriteButtonPressed,
+                ]}
+              >
+                <Bookmark
+                  size={15}
+                  color={isFavorite ? colors.primary : appColors.onSurfaceVariant}
+                  fill={isFavorite ? colors.primary : 'transparent'}
+                />
+              </Pressable>
             </View>
 
-            <Text style={styles.cardMeta} numberOfLines={1}>
+            <Text style={[styles.cardMeta, { color: appColors.onSurfaceVariant }]} numberOfLines={1}>
               {spot.address} - {spot.distanceValue.toFixed(1)}km
             </Text>
 
             <View style={styles.tagRow}>
               {spotCategories.map((category) => (
-                <Text key={category} style={styles.tag} numberOfLines={1}>
+                <Text key={category} style={[styles.tag, { backgroundColor: colors.primary + '14' }]} numberOfLines={1}>
                   {category}
                 </Text>
               ))}
@@ -602,8 +657,9 @@ function PulseSpotCard({
             <Text style={styles.goButtonText}>Go to Spot</Text>
           </Pressable>
         </View>
-      </View>
-    </Pressable>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -655,19 +711,6 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 8,
     backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  attribution: {
-    position: 'absolute',
-    left: spacing.md,
-    bottom: tabBarHeight + 160,
-    backgroundColor: 'rgba(255,255,255,0.84)',
-    color: colors.onSurfaceVariant,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    fontSize: 8,
-    fontWeight: '800',
-    overflow: 'hidden',
   },
   userMarkerOuter: {
     width: 28,
@@ -771,22 +814,16 @@ const styles = StyleSheet.create({
     height: 148,
     borderRadius: radius.xxl,
     padding: spacing.md,
-    backgroundColor: colors.surfaceLow + 'F2',
     borderWidth: 1,
-    borderColor: colors.outlineVariant + '2A',
     flexDirection: 'row',
     gap: spacing.md,
     ...shadow.lifted,
-  },
-  pulseCardActive: {
-    borderColor: colors.primary + '44',
   },
   imageWrap: {
     width: 112,
     height: 112,
     borderRadius: radius.lg,
     overflow: 'hidden',
-    backgroundColor: colors.surfaceContainer,
   },
   cardImage: {
     width: '100%',
@@ -826,16 +863,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
   },
+  favoriteButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  favoriteButtonPressed: {
+    opacity: 0.76,
+    transform: [{ scale: 0.94 }],
+  },
   cardTitle: {
     flex: 1,
-    color: colors.onSurface,
     fontSize: fontSize.lg,
     fontWeight: '900',
     fontStyle: 'italic',
     lineHeight: 19,
   },
   cardMeta: {
-    color: colors.onSurfaceVariant,
     fontSize: 10,
     fontWeight: '800',
     lineHeight: 13,
@@ -895,7 +942,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.outlineVariant + '55',
     ...shadow.card,
   },
   emptyTitle: {

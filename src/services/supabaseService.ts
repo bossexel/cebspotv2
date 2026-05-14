@@ -1,5 +1,7 @@
 export { activityService } from './activityService';
 export { circleService } from './circleService';
+export { localUpdateService } from './localUpdateService';
+export { ownerAccessService } from './ownerAccessService';
 export { profileService } from './profileService';
 export { reservationService } from './reservationService';
 export { reviewService } from './reviewService';

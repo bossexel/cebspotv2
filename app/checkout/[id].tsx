@@ -10,8 +10,6 @@ import { useAuth } from '../../src/hooks/useAuth';
 import { useTheme } from '../../src/hooks/useTheme';
 import { reservationService } from '../../src/services/reservationService';
 
-const platformFee = 15;
-
 export default function CheckoutScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -19,8 +17,17 @@ export default function CheckoutScreen() {
     spotName?: string;
     date?: string;
     time?: string;
+    timeEnd?: string;
     guests?: string;
+    tableId?: string;
+    slotId?: string;
+    groupSizeType?: string;
+    adjustmentAcknowledged?: string;
+    adjustmentAcknowledgedAt?: string;
     fee?: string;
+    note?: string;
+    reservationType?: string;
+    paymentRequired?: string;
   }>();
   const { appColors } = useTheme();
   const { profile } = useAuth();
@@ -30,12 +37,26 @@ export default function CheckoutScreen() {
   const spotName = params.spotName ?? 'CebSpot Venue';
   const date = params.date ?? new Date().toISOString().slice(0, 10);
   const time = params.time ?? '18:00';
+  const timeEnd = params.timeEnd ?? null;
   const guests = Number(params.guests ?? 1);
+  const tableId = params.tableId ?? null;
+  const slotId = params.slotId ?? null;
+  const groupSizeType = params.groupSizeType ?? null;
+  const adjustmentAcknowledged = params.adjustmentAcknowledged === 'true';
+  const adjustmentAcknowledgedAt = params.adjustmentAcknowledgedAt ?? null;
   const reservationFee = Number(params.fee ?? 0);
-  const reward = Math.floor(reservationFee * 0.05);
-  const total = Math.max(0, reservationFee + (reservationFee > 0 ? platformFee : 0) - reward);
+  const note = params.note?.trim() || null;
+  const total = Math.max(0, reservationFee);
 
   async function confirmPayment() {
+    if (!adjustmentAcknowledged) {
+      Alert.alert(
+        'Acknowledgement needed',
+        'Please acknowledge the reservation adjustment conditions before confirming.'
+      );
+      return;
+    }
+
     if (!profile) {
       Alert.alert('Authentication required', 'Please sign in again to complete this reservation.');
       return;
@@ -52,10 +73,26 @@ export default function CheckoutScreen() {
         spot_name: spotName,
         reservation_date: date,
         reservation_time: time,
+        reservation_time_start: time,
+        reservation_time_end: timeEnd,
+        guest_count: guests,
         guests,
+        table_id: tableId,
+        slot_id: slotId,
+        group_size_type: groupSizeType,
+        note,
         fee: total,
-        status: 'confirmed',
-        payment_status: total > 0 ? 'paid' : 'on-site',
+        reservation_type: 'paid',
+        reservation_fee: reservationFee,
+        payment_required: true,
+        status: 'pending_payment',
+        payment_status: 'pending',
+        payment_method: 'direct_to_venue',
+        payment_reference: null,
+        payment_proof_url: null,
+        refund_status: 'not_applicable',
+        adjustment_acknowledged: true,
+        adjustment_acknowledged_at: adjustmentAcknowledgedAt ?? new Date().toISOString(),
         qr_code: qrCode,
       });
 
@@ -82,9 +119,9 @@ export default function CheckoutScreen() {
         <View style={styles.heroIcon}>
           <ShieldCheck size={30} color={colors.white} />
         </View>
-        <Text style={[styles.heroTitle, { color: appColors.onSurface }]}>Secure your pulse</Text>
+        <Text style={[styles.heroTitle, { color: appColors.onSurface }]}> Secure Your Spot</Text>
         <Text style={[styles.heroCopy, { color: appColors.onSurfaceVariant }]}>
-          Demo payment only. Your reservation pass is generated after confirmation.
+          Please pay the reservation fee directly to the spot owner or cashier. Your reservation will remain pending until confirmed.
         </Text>
       </View>
 
@@ -95,7 +132,7 @@ export default function CheckoutScreen() {
             <View>
               <Text style={[styles.itemName, { color: appColors.onSurface }]}>{spotName}</Text>
               <Text style={[styles.itemSub, { color: appColors.onSurfaceVariant }]}>
-                Reservation fee per booking
+                Fixed reservation fee
               </Text>
             </View>
             <Text style={[styles.value, { color: appColors.onSurface }]}>PHP {reservationFee}</Text>
@@ -108,30 +145,30 @@ export default function CheckoutScreen() {
             <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Guests</Text>
             <Text style={[styles.value, { color: appColors.onSurface }]}>{guests}</Text>
           </View>
-          <View style={styles.row}>
-            <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Platform Fee</Text>
-            <Text style={[styles.value, { color: appColors.onSurface }]}>PHP {reservationFee > 0 ? platformFee : 0}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Pulse Reward</Text>
-            <Text style={[styles.value, { color: colors.primary }]}>- PHP {reward}</Text>
-          </View>
+          {!!note && (
+            <View style={styles.row}>
+              <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Note</Text>
+              <Text style={[styles.value, { color: appColors.onSurface }]}>{note}</Text>
+            </View>
+          )}
           <View style={[styles.totalRow, { borderTopColor: appColors.outlineVariant }]}>
-            <Text style={[styles.totalLabel, { color: appColors.onSurface }]}>Total</Text>
+            <Text style={[styles.totalLabel, { color: appColors.onSurface }]}>Reservation Fee</Text>
             <Text style={styles.totalValue}>PHP {total}</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Payment Method</Text>
+        <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Payment Instructions</Text>
         <Pressable style={[styles.paymentCard, { backgroundColor: appColors.white }]}>
           <View style={styles.paymentIcon}>
             <CreditCard size={22} color={colors.primary} />
           </View>
           <View style={styles.paymentText}>
-            <Text style={[styles.itemName, { color: appColors.onSurface }]}>Demo Card</Text>
-            <Text style={[styles.itemSub, { color: appColors.onSurfaceVariant }]}>4242 4242 4242 4242</Text>
+            <Text style={[styles.itemName, { color: appColors.onSurface }]}>Pay Directly at Venue</Text>
+            <Text style={[styles.itemSub, { color: appColors.onSurfaceVariant }]}>
+              Your payment status will be pending until the owner or cashier confirms it.
+            </Text>
           </View>
           <ChevronRight size={20} color={appColors.onSurfaceVariant} />
         </Pressable>
@@ -142,7 +179,7 @@ export default function CheckoutScreen() {
       </View>
 
       <AppButton
-        label={loading ? 'Processing' : `Confirm Payment - PHP ${total}`}
+        label={loading ? 'Processing' : `Create Reservation - PHP ${total}`}
         loading={loading}
         onPress={confirmPayment}
       />

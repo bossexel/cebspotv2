@@ -1,87 +1,73 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Bell, Calendar, CheckCircle2, MapPin, Plus, Trash2, Users } from 'lucide-react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ArrowUpCircle, Bell, MapPin, MessageCircle, MoreVertical, Plus, Trash2, User } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { colors } from '../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../src/constants/design';
-import { sampleActivities } from '../src/constants/sampleData';
-import { useAuth } from '../src/hooks/useAuth';
 import { useTheme } from '../src/hooks/useTheme';
-import { activityService } from '../src/services/activityService';
-import { reservationService } from '../src/services/reservationService';
-import type { Activity, Reservation } from '../src/types';
+import { localUpdateService } from '../src/services/localUpdateService';
+import type { LocalUpdate } from '../src/types';
+
+function formatUpdateTime(createdAt: string) {
+  const elapsedMs = Date.now() - new Date(createdAt).getTime();
+  const elapsedMinutes = Math.max(0, Math.floor(elapsedMs / 60000));
+  if (elapsedMinutes < 1) return 'Just now';
+  if (elapsedMinutes < 60) return `${elapsedMinutes}m ago`;
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) return `${elapsedHours}h ago`;
+  return `${Math.floor(elapsedHours / 24)}d ago`;
+}
 
 export default function ActivityScreen() {
   const router = useRouter();
-  const { profile } = useAuth();
   const { appColors } = useTheme();
-  const [activities, setActivities] = useState<Activity[]>(sampleActivities);
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [localUpdates, setLocalUpdates] = useState<LocalUpdate[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let unsubscribeActivities: (() => void) | undefined;
-    let unsubscribeReservations: (() => void) | undefined;
+    let unsubscribe: (() => void) | undefined;
 
-    async function load() {
+    async function loadLocalUpdates() {
       try {
-        setActivities(await activityService.getRecentActivities());
-        if (profile?.id) {
-          setReservations(await reservationService.getUserReservations(profile.id));
-          unsubscribeReservations = reservationService.subscribeToUserReservations(profile.id, setReservations);
-        }
-        unsubscribeActivities = activityService.subscribeToActivities(setActivities);
-      } catch (error) {
-        console.error('Unable to load activity:', error);
-        setActivities(sampleActivities);
+        const updates = await localUpdateService.getLocalUpdates();
+        setLocalUpdates(updates);
+        unsubscribe = localUpdateService.subscribeToLocalUpdates(setLocalUpdates);
       } finally {
         setLoading(false);
       }
     }
 
-    load();
-    return () => {
-      unsubscribeActivities?.();
-      unsubscribeReservations?.();
-    };
-  }, [profile?.id]);
+    loadLocalUpdates();
+    return () => unsubscribe?.();
+  }, []);
 
   return (
     <ScreenContainer appColors={appColors} showBottomNav scroll>
       <View style={styles.header}>
         <View>
           <Text style={[styles.title, { color: appColors.onSurface }]}>Activity</Text>
-          <Text style={[styles.subtitle, { color: appColors.onSurfaceVariant }]}>Your urban pulse updates</Text>
+          <Text style={[styles.subtitle, { color: appColors.onSurfaceVariant }]}>Notifications and local updates</Text>
         </View>
         <Pressable style={styles.clearButton}>
           <Trash2 size={16} color={appColors.onSurfaceVariant} />
         </Pressable>
       </View>
 
-      {!!reservations[0] && (
-        <View style={[styles.upcomingCard, { backgroundColor: appColors.white }]}>
-          <View style={styles.upcomingAccent} />
-          <Text style={styles.kicker}>Upcoming</Text>
-          <Text style={[styles.upcomingTitle, { color: appColors.onSurface }]}>{reservations[0].spot_name}</Text>
-          <View style={styles.upcomingMeta}>
-            <Calendar size={13} color={colors.primary} />
-            <Text style={[styles.metaText, { color: appColors.onSurfaceVariant }]}>
-              {reservations[0].reservation_date}, {reservations[0].reservation_time}
-            </Text>
-            <Users size={13} color={colors.primary} />
-            <Text style={[styles.metaText, { color: appColors.onSurfaceVariant }]}>
-              {reservations[0].guests}
-            </Text>
-          </View>
-          <Pressable style={styles.viewButton} onPress={() => router.push(`/confirmed/${reservations[0].id}`)}>
-            <Text style={styles.viewText}>View Pass</Text>
-          </Pressable>
+      <View style={[styles.noticeCard, { backgroundColor: appColors.surfaceLow }]}>
+        <View style={styles.noticeIcon}>
+          <Bell size={20} color={colors.primary} />
         </View>
-      )}
+        <View style={styles.noticeCopy}>
+          <Text style={[styles.noticeTitle, { color: appColors.onSurface }]}>Notifications</Text>
+          <Text style={[styles.noticeText, { color: appColors.onSurfaceVariant }]}>
+            Reservation updates now live in your Reservations screen. This space is for alerts, circle activity, and spot updates.
+          </Text>
+        </View>
+      </View>
 
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Pulse Feed</Text>
+        <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Local Updates</Text>
         <View style={styles.liveDot} />
       </View>
 
@@ -89,27 +75,52 @@ export default function ActivityScreen() {
         <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
       ) : (
         <View style={styles.feed}>
-          {activities.map((item) => (
-            <View key={item.id} style={[styles.activityCard, { backgroundColor: appColors.surfaceLow }]}>
-              <View style={styles.activityIcon}>
-                {item.type === 'reservation' ? (
-                  <Calendar size={18} color={colors.primary} />
-                ) : item.type === 'submission' ? (
-                  <CheckCircle2 size={18} color={colors.primary} />
+          {localUpdates.map((item) => (
+            <View key={item.id} style={[styles.updateCard, { backgroundColor: appColors.surfaceLow }]}>
+              <View style={styles.updateHeader}>
+                {item.user_photo_url ? (
+                  <Image source={{ uri: item.user_photo_url }} style={styles.avatarImage} />
                 ) : (
-                  <MapPin size={18} color={colors.primary} />
+                  <View style={[styles.avatarFallback, { backgroundColor: appColors.surfaceHighest }]}>
+                    <User size={20} color={appColors.onSurfaceVariant} />
+                  </View>
                 )}
-              </View>
-              <View style={styles.activityBody}>
-                <View style={styles.activityTop}>
-                  <Text style={[styles.activityName, { color: appColors.onSurface }]}>{item.user_name}</Text>
-                  <Text style={[styles.time, { color: appColors.onSurfaceVariant }]}>
-                    {new Date(item.created_at).toLocaleDateString()}
+                <View style={styles.authorBlock}>
+                  <Text style={[styles.authorName, { color: appColors.onSurface }]} numberOfLines={1}>
+                    {item.user_name}
+                  </Text>
+                  <Text style={[styles.updateTime, { color: appColors.onSurfaceVariant }]}>
+                    {formatUpdateTime(item.created_at)}
                   </Text>
                 </View>
-                <Text style={[styles.activityCopy, { color: appColors.onSurfaceVariant }]}>
-                  {item.action ?? 'shared'} <Text style={styles.strong}>{item.target_name ?? item.spot_name}</Text>
-                </Text>
+                <Pressable style={styles.moreButton}>
+                  <MoreVertical size={18} color={appColors.onSurfaceVariant} />
+                </Pressable>
+              </View>
+
+              <View style={styles.updateCopy}>
+                <Text style={styles.updateTitle}>{item.title}</Text>
+                <Text style={[styles.updateBody, { color: appColors.onSurfaceVariant }]}>{item.body}</Text>
+                <View style={styles.locationRow}>
+                  <MapPin size={15} color={appColors.onSurfaceVariant} fill={appColors.onSurfaceVariant} />
+                  <Text style={[styles.locationText, { color: appColors.onSurfaceVariant }]}>{item.location_name}</Text>
+                </View>
+              </View>
+
+              {item.image_url && <Image source={{ uri: item.image_url }} style={styles.updateImage} />}
+
+              <View style={styles.updateActions}>
+                <Pressable style={styles.urgencyButton}>
+                  <ArrowUpCircle size={25} color={colors.primary} fill={colors.primary} />
+                  <Text style={[styles.actionText, { color: appColors.onSurface }]}>+{item.spot_count} Spot</Text>
+                </Pressable>
+                <View style={styles.actionSpacer} />
+                <Pressable style={styles.discussButton}>
+                  <MessageCircle size={22} color={appColors.onSurfaceVariant} />
+                  <Text style={[styles.actionText, { color: appColors.onSurfaceVariant }]}>
+                    {item.comments_count} Comments
+                  </Text>
+                </Pressable>
               </View>
             </View>
           ))}
@@ -120,8 +131,8 @@ export default function ActivityScreen() {
         <View style={styles.submitIcon}>
           <Plus size={22} color={colors.white} />
         </View>
-        <Text style={styles.submitTitle}>Found a New Location?</Text>
-        <Text style={styles.submitCopy}>Earn pulse points by sharing it with the network.</Text>
+        <Text style={styles.submitTitle}>Found a New Spot?</Text>
+        <Text style={styles.submitCopy}>Earn spot points by sharing it with the network.</Text>
       </Pressable>
     </ScreenContainer>
   );
@@ -151,56 +162,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  upcomingCard: {
+  noticeCard: {
     borderRadius: radius.xl,
-    padding: spacing.lg,
+    padding: spacing.md,
+    flexDirection: 'row',
+    gap: spacing.md,
     marginBottom: spacing.xl,
-    overflow: 'hidden',
     ...shadow.card,
   },
-  upcomingAccent: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 5,
-    backgroundColor: colors.primary,
-  },
-  kicker: {
-    color: colors.primary,
-    fontSize: fontSize.xs,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
-  upcomingTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: '900',
-    marginTop: spacing.xs,
-  },
-  upcomingMeta: {
-    flexDirection: 'row',
+  noticeIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
     alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
+    justifyContent: 'center',
+    backgroundColor: colors.primary + '12',
   },
-  metaText: {
-    fontSize: fontSize.xs,
-    fontWeight: '800',
+  noticeCopy: {
+    flex: 1,
   },
-  viewButton: {
-    marginTop: spacing.md,
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  viewText: {
-    color: colors.white,
-    fontSize: fontSize.xs,
+  noticeTitle: {
+    fontSize: fontSize.md,
     fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
+  },
+  noticeText: {
+    marginTop: 3,
+    fontSize: fontSize.xs,
+    lineHeight: 17,
+    fontWeight: '700',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -224,44 +213,103 @@ const styles = StyleSheet.create({
   feed: {
     gap: spacing.md,
   },
-  activityCard: {
+  updateCard: {
     borderRadius: radius.xl,
-    padding: spacing.md,
-    flexDirection: 'row',
-    gap: spacing.md,
+    overflow: 'hidden',
+    ...shadow.card,
   },
-  activityIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.lg,
+  updateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+  },
+  avatarImage: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+  },
+  avatarFallback: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary + '12',
   },
-  activityBody: {
+  authorBlock: {
     flex: 1,
+    minWidth: 0,
   },
-  activityTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing.md,
+  authorName: {
+    fontSize: fontSize.md,
+    fontWeight: '900',
   },
-  activityName: {
+  updateTime: {
+    marginTop: 2,
+    fontSize: fontSize.xs,
+    fontWeight: '800',
+  },
+  moreButton: {
+    width: 28,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  updateCopy: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+  },
+  updateTitle: {
+    color: colors.success,
     fontSize: fontSize.sm,
     fontWeight: '900',
   },
-  time: {
-    fontSize: 9,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  activityCopy: {
+  updateBody: {
     marginTop: spacing.xs,
-    fontSize: fontSize.sm,
-    lineHeight: 19,
-    fontWeight: '600',
+    fontSize: fontSize.md,
+    lineHeight: 22,
+    fontWeight: '800',
   },
-  strong: {
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  locationText: {
+    fontSize: fontSize.sm,
+    fontWeight: '800',
+  },
+  updateImage: {
+    width: '100%',
+    height: 250,
+  },
+  updateActions: {
+    minHeight: 58,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.black + '10',
+  },
+  urgencyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  actionSpacer: {
+    flex: 1,
+  },
+  discussButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  actionText: {
+    fontSize: fontSize.sm,
     fontWeight: '900',
   },
   submitCard: {

@@ -4,12 +4,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { ArrowRight, Calendar, CheckCircle2, Download, Share2, Users } from 'lucide-react-native';
 import { AppButton } from '../../src/components/AppButton';
+import { ReservationTermsCard } from '../../src/components/ReservationTermsCard';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
 import { colors } from '../../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../../src/constants/design';
 import { useTheme } from '../../src/hooks/useTheme';
 import { reservationService } from '../../src/services/reservationService';
 import type { Reservation } from '../../src/types';
+import { getPaymentStatusLabel, getReservationStatusLabel, getReservationTypeLabel } from '../../src/utils/reservations';
 
 export default function BookingConfirmedScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -17,6 +19,7 @@ export default function BookingConfirmedScreen() {
   const { appColors } = useTheme();
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showTerms, setShowTerms] = useState(true);
   const confirmationColors = { ...colors, surface: colors.primary };
 
   useEffect(() => {
@@ -51,14 +54,20 @@ export default function BookingConfirmedScreen() {
     );
   }
 
+  const requiresPayment = reservation.payment_required || reservation.reservation_type === 'paid';
+  const title = requiresPayment ? 'Reservation Pending Payment' : 'Reservation Confirmed';
+  const subtitle = requiresPayment
+    ? 'Your reservation has been created. Please complete the reservation fee payment to secure your booking.'
+    : 'Your CebSpot pass is ready. Show this when you arrive.';
+
   return (
     <ScreenContainer appColors={confirmationColors} scroll padded>
       <View style={styles.successTop}>
         <View style={styles.successIcon}>
           <CheckCircle2 size={44} color={colors.primary} />
         </View>
-        <Text style={styles.title}>Pulse Confirmed</Text>
-        <Text style={styles.subtitle}>Your CebSpot pass is ready. Show this when you arrive.</Text>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
 
       <View style={styles.ticket}>
@@ -76,6 +85,10 @@ export default function BookingConfirmedScreen() {
             <Text style={styles.detailValue}>{reservation.spot_name}</Text>
           </View>
           <View style={styles.detail}>
+            <Text style={styles.detailLabel}>Status</Text>
+            <Text style={styles.detailValue}>{getReservationStatusLabel(reservation.status)}</Text>
+          </View>
+          <View style={styles.detail}>
             <Calendar size={14} color={colors.primary} />
             <Text style={styles.detailLabel}>Schedule</Text>
             <Text style={styles.detailValue}>
@@ -85,12 +98,25 @@ export default function BookingConfirmedScreen() {
           <View style={styles.detail}>
             <Users size={14} color={colors.primary} />
             <Text style={styles.detailLabel}>Party</Text>
-            <Text style={styles.detailValue}>{reservation.guests} guests</Text>
+            <Text style={styles.detailValue}>{reservation.guest_count ?? reservation.guests} guests</Text>
           </View>
           <View style={styles.detail}>
-            <Text style={styles.detailLabel}>Paid</Text>
-            <Text style={[styles.detailValue, styles.amount]}>PHP {reservation.fee}</Text>
+            <Text style={styles.detailLabel}>Reservation Type</Text>
+            <Text style={[styles.detailValue, styles.amount]}>{getReservationTypeLabel(reservation)}</Text>
           </View>
+          {requiresPayment && (
+            <View style={styles.detail}>
+              <Text style={styles.detailLabel}>Payment</Text>
+              <Text style={[styles.detailValue, styles.amount]}>{getPaymentStatusLabel(reservation.payment_status)}</Text>
+            </View>
+          )}
+          {requiresPayment && (
+            <View style={styles.paymentNotice}>
+              <Text style={styles.paymentNoticeText}>
+                Please pay the reservation fee directly to the spot owner or cashier. Your reservation will remain pending until confirmed.
+              </Text>
+            </View>
+          )}
         </View>
 
         <Pressable style={styles.walletButton}>
@@ -98,6 +124,10 @@ export default function BookingConfirmedScreen() {
           <Text style={styles.walletText}>Save to Wallet</Text>
         </Pressable>
       </View>
+
+      {showTerms && (
+        <ReservationTermsCard appColors={appColors} onContinue={() => setShowTerms(false)} />
+      )}
 
       <View style={styles.actions}>
         <AppButton
@@ -217,6 +247,17 @@ const styles = StyleSheet.create({
   },
   amount: {
     color: colors.primary,
+  },
+  paymentNotice: {
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    backgroundColor: colors.primary + '10',
+  },
+  paymentNoticeText: {
+    color: colors.onSurfaceVariant,
+    fontSize: fontSize.xs,
+    lineHeight: 17,
+    fontWeight: '800',
   },
   walletButton: {
     marginTop: spacing.xl,

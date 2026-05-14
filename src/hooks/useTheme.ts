@@ -21,6 +21,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    const startupTimeout = setTimeout(() => {
+      if (!mounted) return;
+      console.warn('Theme restore timed out. Continuing with the default theme.');
+      setLoading(false);
+    }, 3000);
 
     async function loadTheme() {
       try {
@@ -30,6 +35,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('Error loading theme:', error);
       } finally {
+        clearTimeout(startupTimeout);
         if (mounted) setLoading(false);
       }
     }
@@ -37,6 +43,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     loadTheme();
     return () => {
       mounted = false;
+      clearTimeout(startupTimeout);
     };
   }, [systemScheme]);
 

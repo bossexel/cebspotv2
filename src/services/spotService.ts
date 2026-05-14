@@ -1,22 +1,44 @@
 import { sampleSpots } from '../constants/sampleData';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import type { Spot } from '../types';
+import { calculateReservationFee, getSpotReservationType, isPaymentRequired } from '../utils/reservations';
 
 function normalizeSpot(row: any): Spot {
+  const reservationFee = calculateReservationFee(row);
+  const reservationType = getSpotReservationType({
+    reservation_fee: reservationFee,
+    reservation_type: row.reservation_type,
+    payment_required: row.payment_required,
+  });
+
   return {
     ...row,
     latitude: Number(row.latitude),
     longitude: Number(row.longitude),
     rating: row.rating == null ? null : Number(row.rating),
     review_count: row.review_count == null ? 0 : Number(row.review_count),
-    reservation_fee: row.reservation_fee == null ? 0 : Number(row.reservation_fee),
+    reservation_type: reservationType,
+    reservation_fee: reservationType === 'paid' ? reservationFee : 0,
+    payment_required: isPaymentRequired({
+      reservation_fee: reservationFee,
+      reservation_type: reservationType,
+      payment_required: row.payment_required,
+    }),
     is_public: Boolean(row.is_public),
     is_reservable: Boolean(row.is_reservable),
   };
 }
 
+function withLocalTestSpots(spots: Spot[]) {
+  const cebspotCafe = sampleSpots.find((spot) => spot.id === 'cebspot-cafe');
+  if (!cebspotCafe || spots.some((spot) => spot.id === cebspotCafe.id || spot.name === cebspotCafe.name)) {
+    return spots;
+  }
+  return [cebspotCafe, ...spots];
+}
+
 export const spotService = {
-  async getSpots(limit = 50): Promise<Spot[]> {
+  async getSpots(limit = 75): Promise<Spot[]> {
     if (!hasSupabaseConfig) return sampleSpots.slice(0, limit);
 
     const { data, error } = await supabase
@@ -27,7 +49,7 @@ export const spotService = {
       .limit(limit);
     if (error) throw error;
     const spots = (data ?? []).map(normalizeSpot);
-    return spots.length ? spots : sampleSpots;
+    return spots.length ? withLocalTestSpots(spots).slice(0, limit) : sampleSpots;
   },
 
   async getSpotById(id: string): Promise<Spot | null> {
@@ -46,8 +68,9 @@ export const spotService = {
       return () => undefined;
     }
 
+    const channelName = `spots-feed-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel('spots-feed')
+      .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'spots' }, async () => {
         callback(await this.getSpots());
       })

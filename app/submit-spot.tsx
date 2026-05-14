@@ -1,19 +1,54 @@
 import React, { useState } from 'react';
-import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
-import { ArrowLeft, Camera, Check, ChevronRight, MapPin, ShieldCheck, Sparkles, X } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  Camera,
+  Check,
+  ChevronRight,
+  Coffee,
+  Martini,
+  MapPin,
+  Music2,
+  ShieldCheck,
+  Sparkles,
+  Trees,
+  Utensils,
+  X,
+} from 'lucide-react-native';
 import { AppButton } from '../src/components/AppButton';
 import { CategoryChip } from '../src/components/CategoryChip';
 import { ScreenContainer } from '../src/components/ScreenContainer';
+import { TileMap } from '../src/components/TileMap';
 import { colors } from '../src/constants/colors';
 import { categories, fontSize, radius, shadow, spacing } from '../src/constants/design';
-import { lightTileUrl, mapAttribution } from '../src/constants/mapTiles';
 import { useAuth } from '../src/hooks/useAuth';
 import { useLocation } from '../src/hooks/useLocation';
 import { useTheme } from '../src/hooks/useTheme';
 import { spotSubmissionService } from '../src/services/spotSubmissionService';
+
+function getCategoryIcon(category = '') {
+  const lower = category.toLowerCase();
+  if (lower.includes('coffee') || lower.includes('cafe') || lower.includes('co-working')) return Coffee;
+  if (lower.includes('club') || lower.includes('pulse') || lower.includes('night')) return Music2;
+  if (lower.includes('bar') || lower.includes('chill')) return Martini;
+  if (lower.includes('outdoor') || lower.includes('garden') || lower.includes('park')) return Trees;
+  return Utensils;
+}
+
+function CenterPin({ category }: { category: string | null }) {
+  const Icon = category ? getCategoryIcon(category) : null;
+
+  return (
+    <View pointerEvents="none" style={styles.centerPinWrap}>
+      <View style={styles.centerPinHead}>
+        {Icon ? <Icon size={17} color={colors.secondary} strokeWidth={2.8} /> : <View style={styles.centerPinDot} />}
+      </View>
+      <View style={styles.centerPinTip} />
+    </View>
+  );
+}
 
 export default function SubmitSpotScreen() {
   const router = useRouter();
@@ -23,13 +58,20 @@ export default function SubmitSpotScreen() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
-  const [category, setCategory] = useState(categories[0]);
-  const [fee, setFee] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [acceptsReservations, setAcceptsReservations] = useState<boolean | null>(null);
   const [images, setImages] = useState<string[]>([]);
   const [latitude, setLatitude] = useState(10.3157);
   const [longitude, setLongitude] = useState(123.8854);
   const [showMap, setShowMap] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const primaryCategory = selectedCategories[0] ?? null;
+
+  function toggleCategory(item: string) {
+    setSelectedCategories((current) =>
+      current.includes(item) ? current.filter((category) => category !== item) : [...current, item]
+    );
+  }
 
   async function selectImage() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -56,8 +98,12 @@ export default function SubmitSpotScreen() {
       Alert.alert('Authentication required', 'Please sign in again to submit a spot.');
       return;
     }
-    if (!name.trim() || !address.trim() || !category) {
+    if (!name.trim() || !address.trim() || !primaryCategory) {
       Alert.alert('Missing details', 'Spot name, address, and category are required.');
+      return;
+    }
+    if (acceptsReservations === null) {
+      Alert.alert('Missing reservation info', 'Please choose whether this spot accepts reservations.');
       return;
     }
 
@@ -68,11 +114,15 @@ export default function SubmitSpotScreen() {
           name: name.trim(),
           description: description.trim() || null,
           address: address.trim(),
-          category,
+          category: primaryCategory,
+          categories: selectedCategories,
           latitude,
           longitude,
           images,
-          reservation_fee: Number(fee || 0),
+          reservation_fee: 0,
+          reservation_type: 'free',
+          payment_required: false,
+          is_reservable: acceptsReservations,
           submitter_id: profile.id,
         },
         profile.display_name || 'Explorer'
@@ -94,12 +144,12 @@ export default function SubmitSpotScreen() {
         <Pressable style={[styles.backButton, { backgroundColor: appColors.white }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={appColors.onSurface} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: appColors.onSurface }]}>New Pulse</Text>
+        
         <View style={styles.headerSpacer} />
       </View>
 
       <View style={styles.intro}>
-        <Text style={[styles.title, { color: appColors.onSurface }]}>Found a hidden gem?</Text>
+        <Text style={[styles.title, { color: appColors.onSurface }]}>Found a Spot?</Text>
         <Text style={[styles.subtitle, { color: appColors.onSurfaceVariant }]}>
           Help the community expand the network.
         </Text>
@@ -143,14 +193,14 @@ export default function SubmitSpotScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Category</Text>
+          <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Categories</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
             {categories.map((item) => (
               <CategoryChip
                 key={item}
                 label={item}
-                selected={item === category}
-                onPress={() => setCategory(item)}
+                selected={selectedCategories.includes(item)}
+                onPress={() => toggleCategory(item)}
                 appColors={appColors}
               />
             ))}
@@ -163,7 +213,7 @@ export default function SubmitSpotScreen() {
             <TextInput
               value={address}
               onChangeText={setAddress}
-              placeholder="Street, barangay, city"
+              placeholder="Street, Barangay, City"
               placeholderTextColor={appColors.onSurfaceVariant}
               style={[styles.addressInput, { color: appColors.onSurface }]}
             />
@@ -182,24 +232,23 @@ export default function SubmitSpotScreen() {
 
         {showMap && (
           <View style={styles.mapBox}>
-            <MapView
+            <TileMap
               style={styles.map}
-              mapType={Platform.OS === 'android' ? 'none' : 'standard'}
-              initialRegion={{
+              center={{
                 latitude,
                 longitude,
-                latitudeDelta: 0.02,
-                longitudeDelta: 0.02,
               }}
-              onPress={(event) => {
-                setLatitude(event.nativeEvent.coordinate.latitude);
-                setLongitude(event.nativeEvent.coordinate.longitude);
+              zoom={15}
+              onCenterChange={(coordinate) => {
+                setLatitude(coordinate.latitude);
+                setLongitude(coordinate.longitude);
               }}
-            >
-              <UrlTile urlTemplate={lightTileUrl} maximumZ={19} tileSize={256} />
-              <Marker coordinate={{ latitude, longitude }} pinColor={colors.primary} />
-            </MapView>
-            <Text style={styles.attribution}>{mapAttribution}</Text>
+              onPressCoordinate={(coordinate) => {
+                setLatitude(coordinate.latitude);
+                setLongitude(coordinate.longitude);
+              }}
+            />
+            <CenterPin category={primaryCategory} />
             <Pressable style={styles.closeMap} onPress={() => setShowMap(false)}>
               <X size={16} color={colors.white} />
             </Pressable>
@@ -207,21 +256,43 @@ export default function SubmitSpotScreen() {
         )}
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Reservation Fee</Text>
-          <TextInput
-            value={fee}
-            onChangeText={setFee}
-            keyboardType="number-pad"
-            placeholder="Optional, PHP"
-            placeholderTextColor={appColors.onSurfaceVariant}
-            style={[styles.input, { backgroundColor: appColors.white, color: appColors.onSurface }]}
-          />
+          <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Accepts Reservations?</Text>
+          <View style={styles.reservationChoiceRow}>
+            {[
+              { label: 'Yes', value: true },
+              { label: 'No', value: false },
+            ].map((option) => {
+              const selected = acceptsReservations === option.value;
+              return (
+                <Pressable
+                  key={option.label}
+                  onPress={() => setAcceptsReservations(option.value)}
+                  style={[
+                    styles.reservationChoice,
+                    {
+                      backgroundColor: selected ? colors.primary : appColors.white,
+                      borderColor: selected ? colors.primary : colors.outlineVariant + '55',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.reservationChoiceText,
+                      { color: selected ? colors.white : appColors.onSurfaceVariant },
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
         <View style={styles.policy}>
           <ShieldCheck size={16} color={colors.primary} />
           <Text style={[styles.policyText, { color: appColors.onSurfaceVariant }]}>
-            Submitted spots go into Supabase spot_submissions and can be approved before becoming public.
+            Submitted spots are reviewed before becoming public. Reservation pricing is added by verified owners and checked by admins.
           </Text>
         </View>
       </View>
@@ -375,18 +446,42 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  attribution: {
+  centerPinWrap: {
     position: 'absolute',
-    left: spacing.sm,
-    bottom: spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.86)',
-    color: colors.onSurfaceVariant,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    fontSize: 9,
-    fontWeight: '800',
-    overflow: 'hidden',
+    left: '50%',
+    top: '50%',
+    width: 38,
+    height: 48,
+    marginLeft: -19,
+    marginTop: -45,
+    alignItems: 'center',
+  },
+  centerPinHead: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: colors.white,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadow.card,
+  },
+  centerPinDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.white,
+  },
+  centerPinTip: {
+    width: 15,
+    height: 15,
+    marginTop: -9,
+    borderRightWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: colors.white,
+    backgroundColor: colors.primary,
+    transform: [{ rotateZ: '45deg' }],
   },
   closeMap: {
     position: 'absolute',
@@ -398,6 +493,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.secondary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  reservationChoiceRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  reservationChoice: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reservationChoiceText: {
+    fontSize: fontSize.sm,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
   },
   policy: {
     borderRadius: radius.lg,

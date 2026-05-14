@@ -11,3 +11,7 @@ export const lightTileUrl = mapTilerKey
 export const mapAttribution = mapTilerKey
   ? 'MapTiler | OpenStreetMap contributors'
   : 'OpenStreetMap contributors | CARTO';
+
+export const staticMapTileUrl = 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+export const fallbackStaticMapTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+export const staticMapAttribution = 'OpenStreetMap contributors | CARTO';

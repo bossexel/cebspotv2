@@ -29,6 +29,11 @@ function makeDemoUser(email: string, displayName: string): User {
   } as User;
 }
 
+function isInvalidRefreshToken(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.toLowerCase().includes('invalid refresh token');
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [demoUser, setDemoUser] = useState<User | null>(null);
@@ -50,20 +55,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    const startupTimeout = setTimeout(() => {
+      if (!mounted) return;
+      console.warn('Supabase session restore timed out. Continuing without a restored session.');
+      setSession(null);
+      setProfile(null);
+      setLoading(false);
+    }, 8000);
 
     if (!hasSupabaseConfig) {
+      clearTimeout(startupTimeout);
       setLoading(false);
       return;
     }
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      if (data.session?.user) {
-        await loadProfile(data.session.user);
-      }
-      if (mounted) setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(async ({ data }) => {
+        if (!mounted) return;
+        setSession(data.session);
+        if (data.session?.user) {
+          await loadProfile(data.session.user);
+        }
+      })
+      .catch(async (error) => {
+        if (!mounted) return;
+        if (isInvalidRefreshToken(error)) {
+          console.warn('Stored Supabase session expired. Clearing local session.');
+          await supabase.auth.signOut({ scope: 'local' });
+          setSession(null);
+          setProfile(null);
+        } else {
+          console.error('Unable to restore Supabase session:', error);
+        }
+      })
+      .finally(() => {
+        clearTimeout(startupTimeout);
+        if (mounted) setLoading(false);
+      });
 
     const { data } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       setSession(nextSession);
@@ -77,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
+      clearTimeout(startupTimeout);
       data.subscription.unsubscribe();
     };
   }, [loadProfile]);
@@ -146,7 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    if (error && !isInvalidRefreshToken(error)) throw error;
     setSession(null);
     setProfile(null);
   }, []);

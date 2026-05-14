@@ -46,8 +46,9 @@ export const profileService = {
   },
 
   subscribeToProfile(userId: string, callback: (profile: UserProfile) => void) {
+    const channelName = `profile-${userId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const channel = supabase
-      .channel(`profile-${userId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },

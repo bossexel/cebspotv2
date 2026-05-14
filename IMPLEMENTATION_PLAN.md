@@ -4,7 +4,7 @@ Implemented.
 
 The current app uses the requested root Expo Router structure:
 
-- `app/index.tsx`
+- `app/explore.tsx`
 - `app/circle.tsx`
 - `app/activity.tsx`
 - `app/profile.tsx`

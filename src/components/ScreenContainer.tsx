@@ -9,6 +9,7 @@ interface ScreenContainerProps {
   appColors: AppColors;
   children: React.ReactNode;
   scroll?: boolean;
+  scrollRef?: React.RefObject<ScrollView>;
   showBottomNav?: boolean;
   padded?: boolean;
 }
@@ -17,6 +18,7 @@ export function ScreenContainer({
   appColors,
   children,
   scroll,
+  scrollRef,
   showBottomNav,
   padded = true,
 }: ScreenContainerProps) {
@@ -29,6 +31,7 @@ export function ScreenContainer({
     <SafeAreaView style={[styles.safe, { backgroundColor: appColors.surface }]}>
       {scroll ? (
         <ScrollView
+          ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={contentStyle}
           showsVerticalScrollIndicator={false}

@@ -7,7 +7,7 @@ CebSpot is now structured as an Expo React Native app with Expo Router and Supab
 ```text
 app/
   _layout.tsx
-  index.tsx
+  explore.tsx
   circle.tsx
   activity.tsx
   profile.tsx
