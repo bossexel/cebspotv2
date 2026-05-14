@@ -11,6 +11,7 @@
     "web": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --web --port 8081",
     "web:clean": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --web --clear --port 8081",
     "dev": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --web --port 8081",
+    "build": "expo export --platform web",
     "start:tunnel": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --go --tunnel --clear",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
