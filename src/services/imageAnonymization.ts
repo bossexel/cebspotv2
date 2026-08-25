@@ -2,6 +2,9 @@ import * as FileSystem from 'expo-file-system';
 
 const configuredFaceBlurApiUrl = process.env.EXPO_PUBLIC_FACE_BLUR_API_URL?.replace(/\/+$/, '') ?? '';
 const healthCheckCacheMs = 30_000;
+const healthWakeTimeoutMs = 90_000;
+const healthRequestTimeoutMs = 15_000;
+const healthRetryDelayMs = 2_000;
 const jobPollIntervalMs = 1_000;
 const jobTimeoutMs = 5 * 60_000;
 const maxConsecutivePollFailures = 5;
@@ -100,19 +103,39 @@ async function assertFaceBlurServiceReachable() {
     throw new Error('Face anonymization URL still uses YOUR_COMPUTER_LAN_IP. Set it to your laptop IP in .env.local.');
   }
 
-  try {
-    const response = await fetchWithTimeout(`${configuredFaceBlurApiUrl}/health`, { method: 'GET' }, 8_000);
-    if (!response.ok) throw new Error(`Health check returned HTTP ${response.status}.`);
-    lastHealthyCheckAt = Date.now();
-  } catch (error) {
-    console.warn('Face anonymization health check failed', {
-      url: configuredFaceBlurApiUrl,
-      error: getErrorMessage(error),
-    });
-    throw new Error(
-      `Unable to reach the face anonymization service at ${configuredFaceBlurApiUrl}. The original photo was not uploaded.`
-    );
+  const deadline = Date.now() + healthWakeTimeoutMs;
+  let lastError: unknown = new Error('The service did not become ready.');
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetchWithTimeout(
+        `${configuredFaceBlurApiUrl}/health`,
+        { method: 'GET' },
+        healthRequestTimeoutMs
+      );
+      if (!response.ok) throw new Error(`Health check returned HTTP ${response.status}.`);
+
+      const health = (await response.json()) as { status?: string; service?: string };
+      if (health.status !== 'ok' || health.service !== 'cebspot-face-anonymizer') {
+        throw new Error('Health check returned an unexpected service response.');
+      }
+
+      lastHealthyCheckAt = Date.now();
+      return;
+    } catch (error) {
+      lastError = error;
+      if (Date.now() + healthRetryDelayMs >= deadline) break;
+      await wait(healthRetryDelayMs);
+    }
   }
+
+  console.warn('Face anonymization health check failed', {
+    url: configuredFaceBlurApiUrl,
+    error: getErrorMessage(lastError),
+  });
+  throw new Error(
+    `Unable to reach the face anonymization service at ${configuredFaceBlurApiUrl}. The original photo was not uploaded.`
+  );
 }
 
 async function prepareImageForUpload(uri: string, extension: string) {
