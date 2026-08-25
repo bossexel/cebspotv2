@@ -1,5 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -14,6 +13,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Bookmark,
@@ -31,13 +31,12 @@ import { fontSize, radius, shadow, spacing, tabBarHeight } from '../src/constant
 import { sampleSpots } from '../src/constants/sampleData';
 import { useLocation } from '../src/hooks/useLocation';
 import { useTheme } from '../src/hooks/useTheme';
+import { savedSpotService } from '../src/services/savedSpotService';
 import { spotService } from '../src/services/spotService';
 import type { Spot } from '../src/types';
 
 type EnhancedSpot = Spot & {
   distanceValue: number;
-  pulseCount?: number;
-  isLive?: boolean;
 };
 
 const cebuRegion = {
@@ -48,8 +47,7 @@ const cebuRegion = {
 const fallbackImage =
   'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=600';
 
-const FAVORITE_SPOTS_KEY = 'cebspot_favorite_spot_ids';
-const categories = ['All', 'Outdoor', 'Specialty Coffee', 'Social Dining', 'Street Food', 'Chill Vibe', 'High Pulse'];
+const categories = ['All', 'Outdoor', 'Specialty Coffee', 'Social Dining', 'Street Food', 'Chill Vibe', 'High Pulse', 'Club'];
 const ratingOptions = [0, 3, 3.5, 4, 4.5];
 const distanceOptions = [1, 5, 10, 25, 50];
 
@@ -71,8 +69,6 @@ function enhanceSpots(spots: Spot[]): EnhancedSpot[] {
   return spots.map((spot, index) => ({
     ...spot,
     rating: spot.rating ?? 4.2 + (index % 5) * 0.13,
-    pulseCount: index === 0 ? 1250 : index === 1 ? 750 : index === 2 ? 350 : 150,
-    isLive: index % 2 === 0,
     distanceValue: calculateDistance(10.3298, 123.9054, spot.latitude, spot.longitude),
   }));
 }
@@ -100,15 +96,18 @@ export default function ExploreScreen() {
   const { appColors } = useTheme();
   const { getCurrentLocation, location, loading: locating } = useLocation();
   const listRef = useRef<FlatList<EnhancedSpot> | null>(null);
+  const requestedInitialLocationRef = useRef(false);
   const [spots, setSpots] = useState<EnhancedSpot[]>(enhanceSpots(sampleSpots));
   const [search, setSearch] = useState('');
   const [zoomedOnce, setZoomedOnce] = useState(false);
+  const [initialLocationChecked, setInitialLocationChecked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedSpot, setSelectedSpot] = useState<EnhancedSpot | null>(spots[0] ?? null);
   const [mapCenter, setMapCenter] = useState(cebuRegion);
   const [mapZoom, setMapZoom] = useState(14);
+  const [mapTransitionKey, setMapTransitionKey] = useState(0);
   const [favoriteSpotIds, setFavoriteSpotIds] = useState<string[]>([]);
   const [favoritesLoaded, setFavoritesLoaded] = useState(false);
   const [filters, setFilters] = useState({
@@ -119,27 +118,47 @@ export default function ExploreScreen() {
 
   const cardWidth = Math.min(width - spacing.md * 2, 390);
   const snapInterval = cardWidth + spacing.md;
+  const favoriteSpotIdSet = useMemo(() => new Set(favoriteSpotIds), [favoriteSpotIds]);
 
   useEffect(() => {
+    let mounted = true;
+
     async function load() {
       try {
         const fetchedSpots = await spotService.getSpots();
         const nextSpots = enhanceSpots(fetchedSpots.length ? fetchedSpots : sampleSpots);
+        if (!mounted) return;
         setSpots(nextSpots);
         setSelectedSpot(nextSpots[0] ?? null);
         setActiveIndex(0);
       } catch (error) {
         console.error('Unable to load spots:', error);
         const nextSpots = enhanceSpots(sampleSpots);
+        if (!mounted) return;
         setSpots(nextSpots);
         setSelectedSpot(nextSpots[0] ?? null);
         setActiveIndex(0);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
 
     load();
+
+    const unsubscribe = spotService.subscribeToSpots((nextRows) => {
+      if (!mounted) return;
+      const nextSpots = enhanceSpots(nextRows.length ? nextRows : sampleSpots);
+      setSpots(nextSpots);
+      setSelectedSpot((current) => {
+        if (!current) return nextSpots[0] ?? null;
+        return nextSpots.find((spot) => spot.id === current.id) ?? nextSpots[0] ?? null;
+      });
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -147,11 +166,8 @@ export default function ExploreScreen() {
 
     async function loadFavorites() {
       try {
-        const saved = await AsyncStorage.getItem(FAVORITE_SPOTS_KEY);
-        const parsed = saved ? JSON.parse(saved) : [];
-        if (mounted && Array.isArray(parsed)) {
-          setFavoriteSpotIds(parsed.filter((id): id is string => typeof id === 'string'));
-        }
+        const savedIds = await savedSpotService.getSavedSpotIds();
+        if (mounted) setFavoriteSpotIds(savedIds);
       } catch (error) {
         console.error('Unable to load favorite spots:', error);
       } finally {
@@ -167,15 +183,25 @@ export default function ExploreScreen() {
 
   useEffect(() => {
     if (!favoritesLoaded) return;
-    AsyncStorage.setItem(FAVORITE_SPOTS_KEY, JSON.stringify(favoriteSpotIds)).catch((error) => {
+    savedSpotService.saveSavedSpotIds(favoriteSpotIds).catch((error) => {
       console.error('Unable to save favorite spots:', error);
     });
   }, [favoriteSpotIds, favoritesLoaded]);
 
   useEffect(() => {
+    if (requestedInitialLocationRef.current) return;
+    requestedInitialLocationRef.current = true;
+    getCurrentLocation().finally(() => {
+      setInitialLocationChecked(true);
+    });
+  }, [getCurrentLocation]);
+
+  useEffect(() => {
     if (!location) return;
     setMapCenter({ latitude: location.latitude, longitude: location.longitude });
     setMapZoom(16);
+    setMapTransitionKey((current) => current + 1);
+    setZoomedOnce(true);
   }, [location]);
 
   const filteredSpots = useMemo(() => {
@@ -206,46 +232,119 @@ export default function ExploreScreen() {
       setSelectedSpot(nextSpot);
       setMapCenter(spotCenter(nextSpot));
       setMapZoom(16);
+      setMapTransitionKey((current) => current + 1);
     }
   }, [activeIndex, filteredSpots, selectedSpot?.id]);
 
   useEffect(() => {
-    if (!selectedSpot || zoomedOnce) return;
+    if (!selectedSpot || zoomedOnce || !initialLocationChecked || location) return;
     setMapCenter(spotCenter(selectedSpot));
     setMapZoom(16);
+    setMapTransitionKey((current) => current + 1);
     setZoomedOnce(true);
-  }, [selectedSpot, zoomedOnce]);
+  }, [initialLocationChecked, location, selectedSpot, zoomedOnce]);
 
-  async function centerOnUser() {
+  const mapMarkers = useMemo(
+    () => [
+      ...filteredSpots.map((spot) => ({
+        id: spot.id,
+        latitude: spot.latitude,
+        longitude: spot.longitude,
+        color: categoryColor(spot),
+        selected: selectedSpot?.id === spot.id,
+        category: [spot.category, ...(spot.categories ?? [])].join(' '),
+      })),
+      ...(location
+        ? [
+            {
+              id: 'current-location',
+              latitude: location.latitude,
+              longitude: location.longitude,
+              color: '#2563EB',
+              selected: true,
+              category: 'current location',
+              variant: 'circle' as const,
+              size: 'small' as const,
+              showIcon: false,
+            },
+          ]
+        : []),
+    ],
+    [filteredSpots, location, selectedSpot?.id]
+  );
+
+  const centerOnUser = useCallback(async () => {
     await getCurrentLocation();
-  }
+  }, [getCurrentLocation]);
 
-  function setActiveSpot(spot: EnhancedSpot, index: number, scroll = true) {
+  const setActiveSpot = useCallback((spot: EnhancedSpot, index: number, scroll = true) => {
     setSelectedSpot(spot);
     setActiveIndex(index);
     setMapCenter(spotCenter(spot));
     setMapZoom(16);
+    setMapTransitionKey((current) => current + 1);
     if (scroll) {
       listRef.current?.scrollToIndex({ index, animated: true });
     }
-  }
+  }, []);
 
-  function handleCardSnap(offsetX: number) {
+  const handleCardSnap = useCallback((offsetX: number) => {
     const index = Math.round(offsetX / snapInterval);
     const spot = filteredSpots[index];
     if (!spot) return;
     setActiveSpot(spot, index, false);
-  }
+  }, [filteredSpots, setActiveSpot, snapInterval]);
 
-  function toggleFavorite(spotId: string) {
+  const handleCardMomentumEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      handleCardSnap(event.nativeEvent.contentOffset.x);
+    },
+    [handleCardSnap]
+  );
+
+  const toggleFavorite = useCallback((spotId: string) => {
     setFavoriteSpotIds((current) =>
       current.includes(spotId) ? current.filter((id) => id !== spotId) : [...current, spotId]
     );
-  }
+  }, []);
 
-  function resetFilters() {
+  const resetFilters = useCallback(() => {
     setFilters({ category: 'All', minRating: 0, maxDistance: 10 });
-  }
+  }, []);
+
+  const keyExtractor = useCallback((spot: EnhancedSpot) => spot.id, []);
+
+  const getCardItemLayout = useCallback(
+    (_: ArrayLike<EnhancedSpot> | null | undefined, index: number) => ({
+      length: snapInterval,
+      offset: snapInterval * index,
+      index,
+    }),
+    [snapInterval]
+  );
+
+  const handleScrollToIndexFailed = useCallback(
+    ({ index }: { index: number }) => {
+      listRef.current?.scrollToOffset({ offset: index * snapInterval, animated: true });
+    },
+    [snapInterval]
+  );
+
+  const renderSpotCard = useCallback(
+    ({ item, index }: { item: EnhancedSpot; index: number }) => (
+      <PulseSpotCard
+        spot={item}
+        active={selectedSpot?.id === item.id}
+        width={cardWidth}
+        appColors={appColors}
+        onFocus={() => setActiveSpot(item, index, false)}
+        onOpen={() => router.push(`/spot/${item.id}`)}
+        isFavorite={favoriteSpotIdSet.has(item.id)}
+        onToggleFavorite={() => toggleFavorite(item.id)}
+      />
+    ),
+    [appColors, cardWidth, favoriteSpotIdSet, router, selectedSpot?.id, setActiveSpot, toggleFavorite]
+  );
 
   return (
     <ScreenContainer appColors={appColors} showBottomNav padded={false}>
@@ -254,32 +353,10 @@ export default function ExploreScreen() {
           style={styles.map}
           center={mapCenter}
           zoom={mapZoom}
+          transitionKey={mapTransitionKey}
           onCenterChange={setMapCenter}
           onZoomChange={setMapZoom}
-          markers={[
-            ...filteredSpots.map((spot) => ({
-              id: spot.id,
-              latitude: spot.latitude,
-              longitude: spot.longitude,
-              color: categoryColor(spot),
-              selected: selectedSpot?.id === spot.id,
-              category: [spot.category, ...(spot.categories ?? [])].join(' '),
-            })),
-            ...(location
-              ? [
-                  {
-                    id: 'current-location',
-                    latitude: location.latitude,
-                    longitude: location.longitude,
-                    color: '#2563EB',
-                    selected: true,
-                    category: 'current location',
-                    variant: 'circle' as const,
-                    showIcon: false,
-                  },
-                ]
-              : []),
-          ]}
+          markers={mapMarkers}
           onMarkerPress={(marker) => {
             const index = filteredSpots.findIndex((spot) => spot.id === marker.id);
             if (index >= 0) setActiveSpot(filteredSpots[index], index);
@@ -344,33 +421,22 @@ export default function ExploreScreen() {
             <FlatList
               ref={listRef}
               data={filteredSpots}
-              keyExtractor={(spot) => spot.id}
+              keyExtractor={keyExtractor}
               horizontal
               showsHorizontalScrollIndicator={false}
               snapToInterval={snapInterval}
               decelerationRate="fast"
               contentContainerStyle={styles.cardRail}
-              getItemLayout={(_, index) => ({
-                length: snapInterval,
-                offset: snapInterval * index,
-                index,
-              })}
-              onMomentumScrollEnd={(event) => handleCardSnap(event.nativeEvent.contentOffset.x)}
-              onScrollToIndexFailed={({ index }) => {
-                listRef.current?.scrollToOffset({ offset: index * snapInterval, animated: true });
-              }}
-              renderItem={({ item, index }) => (
-                <PulseSpotCard
-                  spot={item}
-                  active={selectedSpot?.id === item.id}
-                  width={cardWidth}
-                  appColors={appColors}
-                  onFocus={() => setActiveSpot(item, index, false)}
-                  onOpen={() => router.push(`/spot/${item.id}`)}
-                  isFavorite={favoriteSpotIds.includes(item.id)}
-                  onToggleFavorite={() => toggleFavorite(item.id)}
-                />
-              )}
+              getItemLayout={getCardItemLayout}
+              onMomentumScrollEnd={handleCardMomentumEnd}
+              onScrollToIndexFailed={handleScrollToIndexFailed}
+              renderItem={renderSpotCard}
+              scrollEventThrottle={16}
+              initialNumToRender={4}
+              maxToRenderPerBatch={4}
+              windowSize={5}
+              updateCellsBatchingPeriod={80}
+              removeClippedSubviews
             />
           ) : (
             <View
@@ -528,16 +594,7 @@ export default function ExploreScreen() {
   );
 }
 
-function PulseSpotCard({
-  spot,
-  active,
-  width,
-  appColors,
-  onFocus,
-  onOpen,
-  isFavorite,
-  onToggleFavorite,
-}: {
+interface PulseSpotCardProps {
   spot: EnhancedSpot;
   active: boolean;
   width: number;
@@ -546,7 +603,18 @@ function PulseSpotCard({
   onOpen: () => void;
   isFavorite: boolean;
   onToggleFavorite: () => void;
-}) {
+}
+
+const PulseSpotCard = memo(function PulseSpotCard({
+  spot,
+  active,
+  width,
+  appColors,
+  onFocus,
+  onOpen,
+  isFavorite,
+  onToggleFavorite,
+}: PulseSpotCardProps) {
   const focusAnim = useRef(new Animated.Value(active ? 1 : 0)).current;
   const imageUrl = spot.images?.[0] ?? fallbackImage;
   const spotCategories = Array.from(new Set([spot.category, ...(spot.categories ?? [])].filter(Boolean))).slice(0, 2);
@@ -595,12 +663,6 @@ function PulseSpotCard({
         >
         <View style={[styles.imageWrap, { backgroundColor: appColors.surfaceContainer }]}>
           <Image source={{ uri: imageUrl }} style={styles.cardImage} />
-          {spot.isLive && (
-            <View style={styles.liveBadge}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>Live</Text>
-            </View>
-          )}
         </View>
 
         <View style={styles.cardBody}>
@@ -660,6 +722,16 @@ function PulseSpotCard({
         </View>
       </Pressable>
     </Animated.View>
+  );
+}, arePulseSpotCardPropsEqual);
+
+function arePulseSpotCardPropsEqual(previous: PulseSpotCardProps, next: PulseSpotCardProps) {
+  return (
+    previous.spot === next.spot &&
+    previous.active === next.active &&
+    previous.width === next.width &&
+    previous.appColors === next.appColors &&
+    previous.isFavorite === next.isFavorite
   );
 }
 
@@ -791,7 +863,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: fontSize.lg,
     fontWeight: '900',
-    fontStyle: 'italic',
     textTransform: 'uppercase',
   },
   sectionSub: {
@@ -829,30 +900,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  liveBadge: {
-    position: 'absolute',
-    left: 6,
-    top: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderRadius: radius.pill,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    backgroundColor: colors.primary,
-  },
-  liveDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.white,
-  },
-  liveText: {
-    color: colors.white,
-    fontSize: 7,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
   cardBody: {
     flex: 1,
     minWidth: 0,
@@ -877,12 +924,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     flex: 1,
+    fontFamily: 'Montserrat_900Black',
     fontSize: fontSize.lg,
     fontWeight: '900',
-    fontStyle: 'italic',
     lineHeight: 19,
   },
   cardMeta: {
+    fontFamily: 'Montserrat_700Bold',
     fontSize: 10,
     fontWeight: '800',
     lineHeight: 13,
@@ -903,6 +951,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     paddingHorizontal: 6,
     paddingVertical: 3,
+    fontFamily: 'Montserrat_900Black',
     fontSize: 8,
     fontWeight: '900',
     textTransform: 'uppercase',
@@ -918,6 +967,7 @@ const styles = StyleSheet.create({
   },
   ratingTagText: {
     color: '#CA8A04',
+    fontFamily: 'Montserrat_900Black',
     fontSize: 8,
     fontWeight: '900',
   },
@@ -931,6 +981,7 @@ const styles = StyleSheet.create({
   },
   goButtonText: {
     color: colors.white,
+    fontFamily: 'Montserrat_900Black',
     fontSize: fontSize.xs,
     fontWeight: '900',
     textTransform: 'uppercase',
@@ -982,7 +1033,6 @@ const styles = StyleSheet.create({
   filterTitle: {
     fontSize: fontSize.xxl,
     fontWeight: '900',
-    fontStyle: 'italic',
     textTransform: 'uppercase',
   },
   closeButton: {

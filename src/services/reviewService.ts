@@ -51,6 +51,11 @@ export const reviewService = {
       reporter_id: reporterId,
       reason,
     });
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') {
+        throw new Error('You already reported this review. It is already in the admin moderation queue.');
+      }
+      throw error;
+    }
   },
 };

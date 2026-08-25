@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Pressable,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 import { Svg, Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { useRouter } from 'expo-router';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   BarChart3,
   Bell,
@@ -24,7 +26,6 @@ import {
   Edit3,
   FileText,
   Filter,
-  HelpCircle,
   LayoutDashboard,
   LogOut,
   LucideIcon,
@@ -34,6 +35,7 @@ import {
   MoreHorizontal,
   Plus,
   Radio,
+  RefreshCw,
   Search,
   Settings,
   ShieldCheck,
@@ -46,10 +48,25 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { SupabaseConnectionPanel } from '../src/components/SupabaseConnectionPanel';
+import { TileMap } from '../src/components/TileMap';
+import { ADMIN_EMAIL, hasAdminAccess, normalizeAuthEmail } from '../src/constants/authRoles';
 import { colors } from '../src/constants/colors';
 import { shadow } from '../src/constants/design';
-import { sampleSpots } from '../src/constants/sampleData';
-import { useAuth } from '../src/hooks/useAuth';
+import { useScopedAuth } from '../src/hooks/useScopedAuth';
+import {
+  applySpotEditSuggestion,
+  approveSpotSubmission,
+  dismissAdminReport,
+  getAdminDashboardData,
+  type AdminDashboardData,
+  type AdminListingRow,
+  type AdminOwnerRequestRow,
+  type AdminProgressItem,
+  type AdminPulseRow,
+  type AdminReportRow,
+  type AdminSpotSubmissionRow,
+  type AdminUserRow,
+} from '../src/services/adminDashboardService';
 
 type AdminSection = 'overview' | 'spots' | 'reports' | 'users' | 'requests' | 'system';
 
@@ -88,9 +105,9 @@ const adminPalette = {
   onSurfaceVariant: '#5c5b5b',
   outline: '#787676',
   outlineVariant: '#afacac',
-  primary: '#a33800',
-  primaryFixed: '#ff7941',
-  primaryContainer: '#ff7941',
+  primary: '#FA5F00',
+  primaryFixed: '#FA5F00',
+  primaryContainer: '#FA5F00',
   secondaryContainer: '#ffc5a5',
   tertiaryContainer: '#f8a91f',
   error: '#b31b25',
@@ -108,149 +125,7 @@ const navItems: NavItem[] = [
   { id: 'system', label: 'System', icon: Settings, searchPlaceholder: 'Search system settings...' },
 ];
 
-const reservationsBars = [38, 58, 44, 73, 90, 82, 64, 48, 28, 44];
 const requestBars = [40, 60, 30, 80, 100, 52, 70];
-
-const recentListings = [
-  {
-    id: 'SP-8842',
-    name: 'Draft House Cebu',
-    category: 'Bars',
-    barangay: 'Lahug',
-    status: 'Verified',
-    date: 'Oct 24, 2023',
-    image:
-      'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&q=80&w=240',
-  },
-  {
-    id: 'SP-8841',
-    name: 'Civet Coffee',
-    category: 'Cafes',
-    barangay: 'IT Park',
-    status: 'Pending',
-    date: 'Oct 23, 2023',
-    image:
-      'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&q=80&w=240',
-  },
-  {
-    id: 'SP-8839',
-    name: 'The Social Cebu',
-    category: 'Restaurant',
-    barangay: 'Luz',
-    status: 'Verified',
-    date: 'Oct 22, 2023',
-    image:
-      'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=240',
-  },
-];
-
-const livePulse = [
-  {
-    id: 'pulse-1',
-    action: 'New Reservation',
-    user: 'Alex Rivera',
-    location: 'Downtown Hub - Spot #402',
-    value: 'P 1,240.00',
-    status: 'Success',
-  },
-  {
-    id: 'pulse-2',
-    action: 'New Spot Request',
-    user: 'Sarah Jenkins',
-    location: 'Westside Rooftop',
-    value: '-',
-    status: 'Pending',
-  },
-];
-
-const reports = [
-  {
-    id: 'report-1',
-    type: 'Spot Issue',
-    spot: 'Lantaw Il Corso',
-    area: 'South Road Properties',
-    reporter: 'JD',
-    date: 'Oct 24, 2023',
-    description: 'The location pinned on the map is approximately two blocks away from the entrance.',
-  },
-  {
-    id: 'report-2',
-    type: 'Fake Review',
-    spot: 'Le Village Cebu',
-    area: 'Lahug',
-    reporter: 'MK',
-    date: 'Oct 23, 2023',
-    description:
-      "This review seems completely fabricated. The user mentions dishes that are not even on the menu, and the photo appears unrelated.",
-    expanded: true,
-  },
-  {
-    id: 'report-3',
-    type: 'Wrong Info',
-    spot: 'Cebu Ocean Park',
-    area: 'Mambaling',
-    reporter: 'AL',
-    date: 'Oct 22, 2023',
-    description: 'The opening hours listed are outdated. They now close at 6 PM instead of 8 PM.',
-  },
-];
-
-const users = [
-  { id: 'CS-2938', name: 'Exiel', role: 'Spotter', location: 'Mabolo, Cebu City', joined: 'Oct 12, 2023', avatar: 'E' },
-  { id: 'CS-1042', name: 'Clyde', role: 'Owner', location: 'Lahug, Cebu City', joined: 'Aug 28, 2023', avatar: 'C' },
-  { id: 'CS-3101', name: 'Recanil', role: 'Spotter', location: 'Guadalupe, Cebu City', joined: 'Nov 05, 2023', avatar: 'R' },
-  { id: 'CS-2884', name: 'Eniceta', role: 'Spotter', location: 'Banilad, Cebu City', joined: 'Dec 15, 2023', avatar: 'E' },
-  { id: 'CS-0821', name: 'Brian', role: 'Owner', location: 'Apas, Cebu City', joined: 'Jun 14, 2023', avatar: 'B' },
-  { id: 'CS-4112', name: 'Ocio', role: 'Spotter', location: 'Talamban, Cebu City', joined: 'Jan 02, 2024', avatar: 'O' },
-];
-
-const ownerRequests = [
-  {
-    id: 'REQ-1028',
-    applicant: '-',
-    initials: 'JD',
-    email: 'j.delacruz@email.com',
-    spot: 'Liv Superclub',
-    category: 'Coffee Shop',
-    barangay: 'Mabolo',
-    applied: 'Oct 24, 2023',
-  },
-  {
-    id: 'REQ-1029',
-    applicant: '-',
-    initials: 'MS',
-    email: 'm.santos@bizhub.ph',
-    spot: 'The Social Cebu',
-    category: 'Restaurant',
-    barangay: 'Luz',
-    applied: 'Oct 25, 2023',
-    expanded: true,
-  },
-  {
-    id: 'REQ-1030',
-    applicant: 'Rico Blanco',
-    initials: 'RC',
-    email: 'rico.b@itpark.org',
-    spot: 'Draft Punk',
-    category: 'Bar',
-    barangay: 'Lahug',
-    applied: 'Oct 26, 2023',
-  },
-];
-
-const categories = [
-  { label: 'Cafes', value: 42 },
-  { label: 'Restaurants', value: 35 },
-  { label: 'Clubs', value: 18 },
-  { label: 'Bars', value: 5 },
-];
-
-const barangays = [
-  { label: 'Lahug', value: 70, copy: '24 spots' },
-  { label: 'IT Park', value: 55, copy: '18 spots' },
-  { label: 'Mabolo', value: 40, copy: '14 spots' },
-  { label: 'Guadalupe', value: 35, copy: '12 spots' },
-];
 
 function iconTone(tone: StatCardProps['tone']) {
   switch (tone) {
@@ -272,31 +147,201 @@ function iconTone(tone: StatCardProps['tone']) {
 export default function AdminConsoleScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { profile, logOut } = useAuth();
+  const { client, isSignedIn, loading: authLoading, profile, signIn, logOut } = useScopedAuth('admin');
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
   const [query, setQuery] = useState('');
+  const [signingOut, setSigningOut] = useState(false);
+  const [dashboard, setDashboard] = useState<AdminDashboardData | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [approvingSubmissionId, setApprovingSubmissionId] = useState<string | null>(null);
+  const [moderatingReportId, setModeratingReportId] = useState<string | null>(null);
+  const [approvalNotice, setApprovalNotice] = useState<{ tone: 'success' | 'error'; title: string; copy: string } | null>(null);
 
   const activeNav = navItems.find((item) => item.id === activeSection) ?? navItems[0];
   const compact = width < 1180;
+  const isAdmin = hasAdminAccess(profile);
   const adminName = profile?.display_name || 'Admin User';
   const adminInitial = adminName.charAt(0).toUpperCase();
 
-  const platformTotals = useMemo(() => {
-    const reservable = sampleSpots.filter((spot) => spot.is_reservable).length;
-    const estimatedRevenue = sampleSpots.reduce((sum, spot) => sum + (spot.reservation_fee || 0) * 42, 0);
-    return {
-      reservable,
-      estimatedRevenue: Math.max(estimatedRevenue, 42069),
-    };
-  }, []);
+  const refreshDashboard = useCallback(async () => {
+    if (!isSignedIn || !isAdmin) return;
 
-  async function handleSignOut() {
     try {
+      setDashboardLoading(true);
+      setDashboardError(null);
+      setDashboard(await getAdminDashboardData(client));
+    } catch (error: any) {
+      setDashboardError(error?.message ?? 'Unable to load admin dashboard data.');
+    } finally {
+      setDashboardLoading(false);
+    }
+  }, [client, isAdmin, isSignedIn]);
+
+  useEffect(() => {
+    refreshDashboard();
+  }, [refreshDashboard]);
+
+  useEffect(() => {
+    if (!isSignedIn || !isAdmin) return undefined;
+
+    const channel = client
+      .channel(`admin-dashboard-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spots' }, refreshDashboard)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, refreshDashboard)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, refreshDashboard)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'owner_access_requests' }, refreshDashboard)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spot_submissions' }, refreshDashboard)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spot_submission_votes' }, refreshDashboard)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spot_search_events' }, refreshDashboard)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'review_reports' }, refreshDashboard)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spot_edit_suggestions' }, refreshDashboard)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, refreshDashboard)
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, [client, isAdmin, isSignedIn, refreshDashboard]);
+
+  async function handleSignOut(redirectToLogin = true) {
+    try {
+      setSigningOut(true);
       await logOut();
-      router.replace('/login');
+      if (redirectToLogin) {
+        router.replace('/login');
+      }
     } catch (error: any) {
       Alert.alert('Sign out failed', error.message ?? 'Please try again.');
+    } finally {
+      setSigningOut(false);
     }
+  }
+
+  async function handleApproveSubmission(submission: AdminSpotSubmissionRow) {
+    try {
+      setApprovingSubmissionId(submission.id);
+      setApprovalNotice(null);
+      await approveSpotSubmission(submission.id, client);
+      setDashboard((current) =>
+        current
+          ? {
+              ...current,
+              metrics: {
+                ...current.metrics,
+                pendingSpotSubmissions: Math.max(0, current.metrics.pendingSpotSubmissions - 1),
+              },
+              pendingSubmissions: current.pendingSubmissions.filter((item) => item.id !== submission.id),
+            }
+          : current,
+      );
+      setApprovalNotice({
+        tone: 'success',
+        title: 'Spot approved',
+        copy: `${submission.name} is now public and will appear on the map.`,
+      });
+      refreshDashboard().catch((error: any) => {
+        setDashboardError(error?.message ?? 'Spot was approved, but dashboard refresh failed.');
+      });
+    } catch (error: any) {
+      const message = error?.message ?? 'Please try again.';
+      setApprovalNotice({
+        tone: 'error',
+        title: 'Approval failed',
+        copy: message,
+      });
+    } finally {
+      setApprovingSubmissionId(null);
+    }
+  }
+
+  async function handleDismissReport(report: AdminReportRow, notes: string) {
+    try {
+      setModeratingReportId(report.id);
+      setApprovalNotice(null);
+      await dismissAdminReport(report, notes, client);
+      setDashboard((current) =>
+        current
+          ? {
+              ...current,
+              metrics: {
+                ...current.metrics,
+                reportsFiled: Math.max(0, current.metrics.reportsFiled - 1),
+              },
+              reports: current.reports.filter((item) => item.id !== report.id),
+            }
+          : current,
+      );
+      setApprovalNotice({
+        tone: 'success',
+        title: 'Report dismissed',
+        copy: `${report.spot} was removed from the active moderation queue.`,
+      });
+      refreshDashboard().catch(() => undefined);
+    } catch (error: any) {
+      setApprovalNotice({
+        tone: 'error',
+        title: 'Dismiss failed',
+        copy: error?.message ?? 'Please try again.',
+      });
+    } finally {
+      setModeratingReportId(null);
+    }
+  }
+
+  async function handleApplyReport(report: AdminReportRow, notes: string) {
+    try {
+      setModeratingReportId(report.id);
+      setApprovalNotice(null);
+      await applySpotEditSuggestion(report, notes, client);
+      setDashboard((current) =>
+        current
+          ? {
+              ...current,
+              metrics: {
+                ...current.metrics,
+                reportsFiled: Math.max(0, current.metrics.reportsFiled - 1),
+              },
+              reports: current.reports.filter((item) => item.id !== report.id),
+            }
+          : current,
+      );
+      setApprovalNotice({
+        tone: 'success',
+        title: 'Spot updated',
+        copy: `${report.spot} was updated and the suggestion was marked approved.`,
+      });
+      refreshDashboard().catch(() => undefined);
+    } catch (error: any) {
+      setApprovalNotice({
+        tone: 'error',
+        title: 'Update failed',
+        copy: error?.message ?? 'Please try again.',
+      });
+    } finally {
+      setModeratingReportId(null);
+    }
+  }
+
+  function openReportSpot(report: AdminReportRow) {
+    if (!report.spotId) {
+      Alert.alert('Spot unavailable', 'This report is not linked to a spot record.');
+      return;
+    }
+    router.push(`/spot/${report.spotId}`);
+  }
+
+  if (authLoading) {
+    return (
+      <View style={styles.adminGateScreen}>
+        <Text style={styles.adminGateBrand}>CebSpot Admin</Text>
+        <Text style={styles.adminGateCopy}>Checking admin session...</Text>
+      </View>
+    );
+  }
+
+  if (!isSignedIn || !isAdmin) {
+    return <AdminLoginGate signedInEmail={profile?.email ?? null} onSignIn={signIn} onLogout={() => handleSignOut(false)} />;
   }
 
   return (
@@ -335,9 +380,9 @@ export default function AdminConsoleScreen() {
               </View>
             )}
           </View>
-          <Pressable style={styles.signOutButton} onPress={handleSignOut}>
+          <Pressable style={styles.signOutButton} onPress={() => handleSignOut()} disabled={signingOut}>
             <LogOut size={18} color={adminPalette.outlineVariant} />
-            {!compact && <Text style={styles.signOutText}>Sign out</Text>}
+            {!compact && <Text style={styles.signOutText}>{signingOut ? 'Signing out...' : 'Sign out'}</Text>}
           </Pressable>
         </View>
       </View>
@@ -355,12 +400,12 @@ export default function AdminConsoleScreen() {
             />
           </View>
           <View style={styles.topbarActions}>
-            <IconButton icon={HelpCircle} />
+            <IconButton icon={RefreshCw} onPress={refreshDashboard} loading={dashboardLoading} />
             <IconButton icon={Bell} dot />
             <View style={styles.topbarDivider} />
-            <View style={styles.liveBadge}>
+            <View style={[styles.liveBadge, dashboard?.source === 'sample' && styles.sampleBadge]}>
               <Radio size={14} color={colors.white} fill={colors.white} />
-              <Text style={styles.liveBadgeText}>Live</Text>
+              <Text style={styles.liveBadgeText}>{dashboard?.source === 'sample' ? 'Sample' : 'Live'}</Text>
             </View>
           </View>
         </View>
@@ -370,13 +415,144 @@ export default function AdminConsoleScreen() {
           contentContainerStyle={styles.canvasContent}
           showsVerticalScrollIndicator={false}
         >
-          {activeSection === 'overview' && <OverviewSection estimatedRevenue={platformTotals.estimatedRevenue} />}
-          {activeSection === 'spots' && <SpotsSection />}
-          {activeSection === 'reports' && <ReportsSection />}
-          {activeSection === 'users' && <UsersSection />}
-          {activeSection === 'requests' && <OwnerRequestsSection />}
-          {activeSection === 'system' && <SystemSection />}
+          {dashboardError && <InlineNotice title="Live data issue" copy={dashboardError} />}
+          {!!dashboard?.errors.length && <InlineNotice title="Partial data loaded" copy={dashboard.errors.slice(0, 2).join(' | ')} />}
+          {approvalNotice && (
+            <InlineNotice title={approvalNotice.title} copy={approvalNotice.copy} tone={approvalNotice.tone} />
+          )}
+          {dashboardLoading && !dashboard ? (
+            <LoadingPanel />
+          ) : dashboard ? (
+            <>
+              {activeSection === 'overview' && (
+                <OverviewSection
+                  dashboard={dashboard}
+                  client={client}
+                  userId={profile?.id}
+                  query={query}
+                />
+              )}
+              {activeSection === 'spots' && (
+                <SpotsSection
+                  dashboard={dashboard}
+                  query={query}
+                  approvingSubmissionId={approvingSubmissionId}
+                  onApproveSubmission={handleApproveSubmission}
+                />
+              )}
+              {activeSection === 'reports' && (
+                <ReportsSection
+                  reports={dashboard.reports}
+                  query={query}
+                  moderatingReportId={moderatingReportId}
+                  onDismissReport={handleDismissReport}
+                  onApplyReport={handleApplyReport}
+                  onOpenSpot={openReportSpot}
+                />
+              )}
+              {activeSection === 'users' && <UsersSection dashboard={dashboard} query={query} />}
+              {activeSection === 'requests' && <OwnerRequestsSection dashboard={dashboard} query={query} />}
+              {activeSection === 'system' && <SystemSection dashboard={dashboard} />}
+            </>
+          ) : (
+            <EmptyState title="No dashboard data yet" copy="Refresh the console to request live Supabase data." />
+          )}
         </ScrollView>
+      </View>
+    </View>
+  );
+}
+
+function AdminLoginGate({
+  signedInEmail,
+  onSignIn,
+  onLogout,
+}: {
+  signedInEmail: string | null;
+  onSignIn: (email: string, password: string) => Promise<void>;
+  onLogout: () => Promise<void>;
+}) {
+  const [email, setEmail] = useState(ADMIN_EMAIL);
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const hasWrongAccount = Boolean(signedInEmail && normalizeAuthEmail(signedInEmail) !== ADMIN_EMAIL);
+
+  async function logoutWrongAccount() {
+    try {
+      setSigningOut(true);
+      await onLogout();
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
+  async function submit() {
+    const normalizedEmail = normalizeAuthEmail(email);
+    if (!normalizedEmail || !password) {
+      Alert.alert('Missing details', 'Enter the admin email and password.');
+      return;
+    }
+    if (normalizedEmail !== ADMIN_EMAIL) {
+      Alert.alert('Admin only', `Use the CebSpot admin account: ${ADMIN_EMAIL}`);
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await onSignIn(normalizedEmail, password);
+    } catch (error: any) {
+      Alert.alert('Admin login failed', error.message ?? 'Please check the admin credentials.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <View style={styles.adminGateScreen}>
+      <View style={styles.adminGateCard}>
+        <View style={styles.adminGateIcon}>
+          <ShieldCheck size={30} color={adminPalette.primaryFixed} />
+        </View>
+        <Text style={styles.adminGateBrand}>CebSpot Admin</Text>
+        <Text style={styles.adminGateCopy}>Sign in with the admin account issued by CebSpot.</Text>
+
+        {hasWrongAccount ? (
+          <>
+            <View style={styles.adminGateNotice}>
+              <TriangleAlert size={18} color={adminPalette.error} />
+              <Text style={styles.adminGateNoticeText}>
+                {signedInEmail} is signed in, but it does not have admin access.
+              </Text>
+            </View>
+            <Pressable disabled={submitting || signingOut} onPress={logoutWrongAccount} style={styles.adminGateButton}>
+              <Text style={styles.adminGateButtonText}>{signingOut ? 'Signing Out...' : 'Sign Out'}</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              placeholder="Admin email"
+              placeholderTextColor={adminPalette.outline}
+              style={styles.adminGateInput}
+            />
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholder="Password"
+              placeholderTextColor={adminPalette.outline}
+              style={styles.adminGateInput}
+            />
+            <Pressable disabled={submitting} onPress={submit} style={styles.adminGateButton}>
+              <Text style={styles.adminGateButtonText}>{submitting ? 'Signing In...' : 'Sign In'}</Text>
+            </Pressable>
+          </>
+        )}
       </View>
     </View>
   );
@@ -402,10 +578,20 @@ function SidebarItem({
   );
 }
 
-function IconButton({ icon: Icon, dot }: { icon: LucideIcon; dot?: boolean }) {
+function IconButton({
+  icon: Icon,
+  dot,
+  loading,
+  onPress,
+}: {
+  icon: LucideIcon;
+  dot?: boolean;
+  loading?: boolean;
+  onPress?: () => void;
+}) {
   return (
-    <Pressable style={styles.iconButton}>
-      <Icon size={18} color={adminPalette.onSurfaceVariant} />
+    <Pressable style={styles.iconButton} onPress={onPress} disabled={loading}>
+      {loading ? <ActivityIndicator color={adminPalette.primary} /> : <Icon size={18} color={adminPalette.onSurfaceVariant} />}
       {dot && <View style={styles.notificationDot} />}
     </Pressable>
   );
@@ -445,25 +631,108 @@ function SegmentedRange() {
       <View style={styles.rangeDivider} />
       <View style={styles.calendarChip}>
         <CalendarDays size={15} color={adminPalette.onSurfaceVariant} />
-        <Text style={styles.calendarChipText}>Oct 1 - Oct 31</Text>
+        <Text style={styles.calendarChipText}>Last 30 days</Text>
       </View>
     </View>
   );
 }
 
-function OverviewSection({ estimatedRevenue }: { estimatedRevenue: number }) {
+function formatLastUpdated(value: string) {
+  return new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatCompactNumber(value: number) {
+  if (value >= 1000) return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
+  return String(value);
+}
+
+function matchesQuery(values: Array<string | number | null | undefined>, query: string) {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  return values.some((value) => String(value ?? '').toLowerCase().includes(needle));
+}
+
+function filterListings(rows: AdminListingRow[], query: string) {
+  return rows.filter((item) => matchesQuery([item.name, item.category, item.barangay, item.status, item.id], query));
+}
+
+function filterSubmissions(rows: AdminSpotSubmissionRow[], query: string) {
+  return rows.filter((item) =>
+    matchesQuery([
+      item.name,
+      item.category,
+      item.barangay,
+      item.status,
+      item.id,
+      item.description,
+      item.popularityScore,
+      item.voteCount,
+    ], query),
+  );
+}
+
+function filterPulse(rows: AdminPulseRow[], query: string) {
+  return rows.filter((item) => matchesQuery([item.action, item.user, item.location, item.status, item.value], query));
+}
+
+function filterReports(rows: AdminReportRow[], query: string) {
+  return rows.filter((item) => matchesQuery([item.type, item.spot, item.area, item.reporter, item.description], query));
+}
+
+function filterUsers(rows: AdminUserRow[], query: string) {
+  return rows.filter((item) => matchesQuery([item.name, item.email, item.role, item.location, item.id], query));
+}
+
+function filterOwnerRequests(rows: AdminOwnerRequestRow[], query: string) {
+  return rows.filter((item) => matchesQuery([item.applicant, item.email, item.spot, item.category, item.barangay, item.status], query));
+}
+
+function OverviewSection({
+  dashboard,
+  client,
+  userId,
+  query,
+}: {
+  dashboard: AdminDashboardData;
+  client: SupabaseClient;
+  userId?: string;
+  query: string;
+}) {
+  const pulseRows = filterPulse(dashboard.livePulse, query);
+  const dailyInsights = dashboard.dailyInsights;
+  const latestDayIndex = Math.max(0, dailyInsights.length - 1);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(latestDayIndex);
+
+  useEffect(() => {
+    setSelectedDayIndex((current) => Math.min(current, Math.max(0, dailyInsights.length - 1)));
+  }, [dailyInsights.length, dashboard.generatedAt]);
+
+  const selectedDay = dailyInsights[selectedDayIndex] ?? dailyInsights[latestDayIndex];
+  const selectedDayLabel = selectedDay?.label ?? 'Latest';
+  const selectedRevenue = selectedDay?.estimatedRevenue ?? dashboard.metrics.estimatedRevenue;
+  const selectedTotalSpots = selectedDay?.totalSpots ?? dashboard.metrics.totalSpots;
+  const selectedOwners = selectedDay?.activeOwners ?? dashboard.metrics.activeOwners;
+  const selectedReports = selectedDay?.reportsFiled ?? dashboard.metrics.reportsFiled;
+
   return (
     <View>
       <PageIntro
         eyebrow="Insights"
         title="Overview"
-        subtitle="Real-time platform health - last update Oct 24, 2023"
+        subtitle={`Live platform health - refreshed ${formatLastUpdated(dashboard.generatedAt)}`}
         right={<SegmentedRange />}
       />
 
       <View style={styles.supabaseHealthWrap}>
         <SupabaseConnectionPanel
           scope="admin"
+          client={client}
+          userId={userId}
           title="Admin Supabase Connectivity"
           subtitle="Checks auth, public spots, reservations, and owner request tables from this dashboard."
         />
@@ -474,26 +743,32 @@ function OverviewSection({ estimatedRevenue }: { estimatedRevenue: number }) {
           <View style={styles.heroContent}>
             <Text style={styles.heroLabel}>Estimated Spot Revenue</Text>
             <View style={styles.heroValueRow}>
-              <Text style={styles.heroValue}>P {estimatedRevenue.toLocaleString('en-US')}</Text>
+              <Text style={styles.heroValue}>P {selectedRevenue.toLocaleString('en-US')}</Text>
               <View style={styles.heroDelta}>
                 <TrendingUp size={12} color={colors.white} />
-                <Text style={styles.heroDeltaText}>12.4%</Text>
+                <Text style={styles.heroDeltaText}>{selectedDayLabel}</Text>
               </View>
             </View>
-            <Text style={styles.heroCopy}>From confirmed bookings only through platform transactions.</Text>
+            <Text style={styles.heroCopy}>Confirmed paid bookings for the selected chart day.</Text>
           </View>
           <View style={styles.heroStats}>
-            <DarkMiniStat label="Spots Today" value="42" />
-            <DarkMiniStat label="Reservations" value="118" />
-            <DarkMiniStat label="Lifetime Total" value="18.4k" />
+            <DarkMiniStat label="Selected Day" value={selectedDayLabel} />
+            <DarkMiniStat label="Reservations" value={formatCompactNumber(selectedDay?.reservations ?? dashboard.metrics.reservationsToday)} />
+            <DarkMiniStat label="New Spots" value={formatCompactNumber(selectedDay?.newSpots ?? dashboard.metrics.spotsToday)} />
           </View>
-          <TrendingUp size={210} color="#a33800" style={styles.heroWatermark} />
+          <TrendingUp size={210} color="#FA5F00" style={styles.heroWatermark} />
         </View>
 
         <View style={styles.overviewSideStats}>
-          <StatCard label="Total Spots" value="842" icon={Map} />
-          <StatCard label="Active Owners" value="156" icon={User} />
-          <StatCard label="Reports Filed" value="14" icon={TriangleAlert} tone="danger" />
+          <StatCard label="Published Spots" value={formatCompactNumber(selectedTotalSpots)} icon={Map} delta={selectedDayLabel} />
+          <StatCard label="Active Owners" value={formatCompactNumber(selectedOwners)} icon={User} delta={selectedDayLabel} />
+          <StatCard
+            label="Reports Filed"
+            value={formatCompactNumber(selectedReports)}
+            icon={TriangleAlert}
+            tone="danger"
+            delta={selectedDayLabel}
+          />
         </View>
       </View>
 
@@ -501,20 +776,32 @@ function OverviewSection({ estimatedRevenue }: { estimatedRevenue: number }) {
         <ChartCard
           title="Reservations per day"
           subtitle="Volume tracking for confirmed bookings"
-          action={<MoreHorizontal size={20} color={adminPalette.outline} />}
+          action={<Text style={styles.chartSelectedLabel}>{selectedDayLabel}</Text>}
         >
-          <BarChart values={reservationsBars} activeIndex={5} labels={['Oct 01', 'Oct 10', 'Oct 20', 'Oct 31']} />
+          <BarChart
+            values={dashboard.reservationsBars}
+            activeIndex={selectedDayIndex}
+            labels={dashboard.reservationBarLabels}
+            onBarPress={setSelectedDayIndex}
+            barAccessibilityLabel={(index) => `${dailyInsights[index]?.label ?? 'Day'} reservations`}
+          />
         </ChartCard>
         <ChartCard
           title="New spots per day"
           subtitle="Inventory growth metrics"
-          action={<Text style={styles.exportLink}>Export CSV</Text>}
+          action={<Text style={styles.chartSelectedLabel}>{selectedDayLabel}</Text>}
         >
-          <LineChart />
+          <BarChart
+            values={dashboard.newSpotBars}
+            activeIndex={selectedDayIndex}
+            labels={dashboard.newSpotBarLabels}
+            onBarPress={setSelectedDayIndex}
+            barAccessibilityLabel={(index) => `${dailyInsights[index]?.label ?? 'Day'} new spots`}
+          />
         </ChartCard>
       </View>
 
-      <DataPanel title="Live Platform Pulse" right={<LiveSessionLabel count={32} />}>
+      <DataPanel title="Live Platform Pulse" right={<LiveSessionLabel count={dashboard.livePulse.length} />}>
         <DataTable
           columns={[
             {
@@ -545,7 +832,8 @@ function OverviewSection({ estimatedRevenue }: { estimatedRevenue: number }) {
               render: (item) => <StatusBadge label={item.status} />,
             },
           ]}
-          data={livePulse}
+          data={pulseRows}
+          emptyCopy="No matching platform activity yet."
         />
       </DataPanel>
     </View>
@@ -561,7 +849,19 @@ function DarkMiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SpotsSection() {
+function SpotsSection({
+  dashboard,
+  query,
+  approvingSubmissionId,
+  onApproveSubmission,
+}: {
+  dashboard: AdminDashboardData;
+  query: string;
+  approvingSubmissionId: string | null;
+  onApproveSubmission: (submission: AdminSpotSubmissionRow) => void;
+}) {
+  const listings = filterListings(dashboard.recentListings, query);
+  const pendingSubmissions = filterSubmissions(dashboard.pendingSubmissions, query);
   return (
     <View>
       <PageIntro
@@ -571,14 +871,15 @@ function SpotsSection() {
         right={<SimpleRangePills />}
       />
       <View style={styles.spotStatsGrid}>
-        <StatCard label="Spots in range" value="86" icon={MapPin} delta="+12%" />
-        <StatCard label="Active owners" value="34" icon={ShieldCheck} tone="warning" delta="+5.4%" />
+        <StatCard label="Spots in range" value={formatCompactNumber(dashboard.metrics.publicSpots)} icon={MapPin} delta="Live" />
+        <StatCard label="Reservable spots" value={formatCompactNumber(dashboard.metrics.reservableSpots)} icon={ShieldCheck} tone="warning" delta="Ready" />
+        <StatCard label="Needs Approval" value={formatCompactNumber(dashboard.metrics.pendingSpotSubmissions)} icon={CheckCircle2} tone="blue" delta="Queue" />
         <View style={styles.growthCard}>
           <View style={styles.growthContent}>
-            <Text style={styles.growthLabel}>Growth Projection</Text>
-            <Text style={styles.growthTitle}>Network expansion expected to reach +120 spots by Q4.</Text>
+            <Text style={styles.growthLabel}>Inventory Signal</Text>
+            <Text style={styles.growthTitle}>{dashboard.metrics.spotsToday} new spots were added today.</Text>
             <View style={styles.growthLinkRow}>
-              <Text style={styles.growthLink}>View forecast report</Text>
+              <Text style={styles.growthLink}>Refreshed {formatLastUpdated(dashboard.generatedAt)}</Text>
               <TrendingUp size={15} color={colors.white} />
             </View>
           </View>
@@ -587,9 +888,71 @@ function SpotsSection() {
       </View>
 
       <View style={styles.twoColumnGrid}>
-        <ProgressPanel title="Top spot categories" subtitle="Categorical distribution by venue type" data={categories} />
-        <ProgressPanel title="Top barangays in Cebu" subtitle="Leaderboard areas for registered spots." data={barangays} yellow />
+        <ProgressPanel title="Top spot categories" subtitle="Categorical distribution by venue type" data={dashboard.categories} />
+        <ProgressPanel title="Top barangays in Cebu" subtitle="Leaderboard areas for registered spots." data={dashboard.barangays} yellow />
       </View>
+
+      <DataPanel title="Pending Spot Submissions" right={<Text style={styles.exportLink}>{pendingSubmissions.length} Pending</Text>}>
+        <DataTable
+          columns={[
+            {
+              key: 'name',
+              label: 'Submitted Spot',
+              flex: 1.8,
+              render: (item) => (
+                <View style={styles.listingCell}>
+                  <Image source={{ uri: item.image }} style={styles.listingImage} />
+                  <View>
+                    <Text style={styles.tableStrong}>{item.name}</Text>
+                    <Text style={styles.tableMini} numberOfLines={1}>
+                      {item.description || `ID: ${item.id}`}
+                    </Text>
+                  </View>
+                </View>
+              ),
+            },
+            { key: 'category', label: 'Category', render: (item) => <Text style={styles.tableMuted}>{item.category}</Text> },
+            { key: 'barangay', label: 'Barangay', render: (item) => <Text style={styles.tableMuted}>{item.barangay}</Text> },
+            {
+              key: 'popularity',
+              label: 'Popularity',
+              render: (item) => (
+                <View>
+                  <Text style={styles.tablePrimary}>{item.popularityScore} pts</Text>
+                  <Text style={styles.tableMini}>
+                    {item.voteCount} votes / {item.searchCount} searches / {item.similarSubmissionCount} similar
+                  </Text>
+                </View>
+              ),
+            },
+            { key: 'submitted', label: 'Submitted', render: (item) => <Text style={styles.tableMuted}>{item.submitted}</Text> },
+            { key: 'status', label: 'Status', render: (item) => <StatusBadge label={item.status} warning /> },
+            {
+              key: 'actions',
+              label: 'Actions',
+              align: 'right',
+              render: (item) => (
+                <Pressable
+                  style={[styles.approveSubmissionButton, approvingSubmissionId === item.id && styles.tableIconButtonDisabled]}
+                  onPress={() => onApproveSubmission(item)}
+                  disabled={approvingSubmissionId === item.id}
+                >
+                  {approvingSubmissionId === item.id ? (
+                    <ActivityIndicator color={colors.white} />
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} color={colors.white} />
+                      <Text style={styles.approveSubmissionText}>Approve</Text>
+                    </>
+                  )}
+                </Pressable>
+              ),
+            },
+          ]}
+          data={pendingSubmissions}
+          emptyCopy="No pending spot submissions need approval."
+        />
+      </DataPanel>
 
       <DataPanel title="Recent Listings" right={<Text style={styles.exportLink}>Export CSV</Text>}>
         <DataTable
@@ -623,7 +986,8 @@ function SpotsSection() {
               ),
             },
           ]}
-          data={recentListings}
+          data={listings}
+          emptyCopy="No spots match this search."
         />
       </DataPanel>
 
@@ -634,7 +998,41 @@ function SpotsSection() {
   );
 }
 
-function ReportsSection() {
+const reportFilters = ['All', 'Spot Issue', 'Fake Review', 'Wrong Info', 'Offensive Content'] as const;
+type ReportFilter = (typeof reportFilters)[number];
+
+function ReportsSection({
+  reports,
+  query,
+  moderatingReportId,
+  onDismissReport,
+  onApplyReport,
+  onOpenSpot,
+}: {
+  reports: AdminReportRow[];
+  query: string;
+  moderatingReportId: string | null;
+  onDismissReport: (report: AdminReportRow, notes: string) => void;
+  onApplyReport: (report: AdminReportRow, notes: string) => void;
+  onOpenSpot: (report: AdminReportRow) => void;
+}) {
+  const [selectedReportType, setSelectedReportType] = useState<ReportFilter>('All');
+  const [activeReportId, setActiveReportId] = useState<string | null>(reports[0]?.id ?? null);
+  const visibleReports = filterReports(
+    selectedReportType === 'All' ? reports : reports.filter((report) => report.type === selectedReportType),
+    query,
+  );
+
+  useEffect(() => {
+    if (!visibleReports.length) {
+      setActiveReportId(null);
+      return;
+    }
+    if (!activeReportId || !visibleReports.some((report) => report.id === activeReportId)) {
+      setActiveReportId(visibleReports[0].id);
+    }
+  }, [activeReportId, visibleReports]);
+
   return (
     <View>
       <PageIntro
@@ -643,9 +1041,13 @@ function ReportsSection() {
         subtitle="Issues submitted by users about spots, reviews, or content."
       />
       <View style={styles.reportTabs}>
-        {['All', 'Spot Issue', 'Fake Review', 'Wrong Info', 'Offensive Content'].map((tab) => (
-          <Pressable key={tab} style={[styles.reportTab, tab === 'All' && styles.reportTabActive]}>
-            <Text style={[styles.reportTabText, tab === 'All' && styles.reportTabTextActive]}>{tab}</Text>
+        {reportFilters.map((tab) => (
+          <Pressable
+            key={tab}
+            style={[styles.reportTab, selectedReportType === tab && styles.reportTabActive]}
+            onPress={() => setSelectedReportType(tab)}
+          >
+            <Text style={[styles.reportTabText, selectedReportType === tab && styles.reportTabTextActive]}>{tab}</Text>
           </Pressable>
         ))}
       </View>
@@ -658,9 +1060,12 @@ function ReportsSection() {
             </Text>
           ))}
         </View>
-        {reports.map((report) => (
+        {visibleReports.map((report) => (
           <View key={report.id}>
-            <View style={[styles.reportRow, report.expanded && styles.reportRowExpanded]}>
+            <Pressable
+              style={[styles.reportRow, activeReportId === report.id && styles.reportRowExpanded]}
+              onPress={() => setActiveReportId((current) => (current === report.id ? null : report.id))}
+            >
               <View style={styles.reportColumn}>
                 <StatusBadge label={report.type} danger={report.type === 'Fake Review'} warning={report.type === 'Wrong Info'} />
               </View>
@@ -677,74 +1082,215 @@ function ReportsSection() {
                 <Text style={styles.tableMuted}>{report.date}</Text>
               </View>
               <View style={[styles.reportColumn, styles.reportDescriptionColumn]}>
-                <Text style={styles.tableMuted} numberOfLines={report.expanded ? 3 : 1}>
+                <Text style={styles.tableMuted} numberOfLines={activeReportId === report.id ? 3 : 1}>
                   {report.description}
                 </Text>
               </View>
               <View style={[styles.reportColumn, styles.reportActions]}>
-                <Pressable style={styles.reviewButton}>
-                  <Text style={styles.reviewButtonText}>Review</Text>
+                <Pressable
+                  style={[styles.reviewButton, activeReportId === report.id && styles.reviewButtonActive]}
+                  onPress={() => setActiveReportId((current) => (current === report.id ? null : report.id))}
+                >
+                  <Text style={styles.reviewButtonText}>{activeReportId === report.id ? 'Hide' : 'Review'}</Text>
                 </Pressable>
-                <Trash2Safe />
+                <Trash2Safe onPress={() => onDismissReport(report, '')} disabled={moderatingReportId === report.id} />
               </View>
-            </View>
-            {report.expanded && <ExpandedReport />}
+            </Pressable>
+            {activeReportId === report.id && (
+              <ExpandedReport
+                report={report}
+                busy={moderatingReportId === report.id}
+                onDismiss={onDismissReport}
+                onApply={onApplyReport}
+                onOpenSpot={onOpenSpot}
+              />
+            )}
           </View>
         ))}
-        <Pagination copy="Showing 1-10 of 42 reports" />
+        {!visibleReports.length && <EmptyState title="No reports found" copy="There are no matching reports in the moderation queue." compact />}
+        <Pagination copy={`Showing ${visibleReports.length} of ${reports.length} reports`} />
       </View>
     </View>
   );
 }
 
-function Trash2Safe() {
+function Trash2Safe({ onPress, disabled }: { onPress?: () => void; disabled?: boolean }) {
   return (
-    <Pressable style={styles.tableIconButton}>
-      <XCircle size={17} color={adminPalette.error} />
+    <Pressable style={[styles.tableIconButton, disabled && styles.tableIconButtonDisabled]} onPress={onPress} disabled={disabled}>
+      {disabled ? <ActivityIndicator color={adminPalette.error} /> : <XCircle size={17} color={adminPalette.error} />}
     </Pressable>
   );
 }
 
-function ExpandedReport() {
+function formatCoordinateLabel(coordinate?: { latitude: number; longitude: number } | null) {
+  if (!coordinate) return 'No pin data';
+  return `${coordinate.latitude.toFixed(5)}, ${coordinate.longitude.toFixed(5)}`;
+}
+
+function ExpandedReport({
+  report,
+  busy,
+  onDismiss,
+  onApply,
+  onOpenSpot,
+}: {
+  report: AdminReportRow;
+  busy: boolean;
+  onDismiss: (report: AdminReportRow, notes: string) => void;
+  onApply: (report: AdminReportRow, notes: string) => void;
+  onOpenSpot: (report: AdminReportRow) => void;
+}) {
+  const [evidenceOpen, setEvidenceOpen] = useState(true);
+  const [adminNotes, setAdminNotes] = useState('');
+  const isSuggestion = report.source === 'spot_edit_suggestion';
+  const hasPinEvidence = Boolean(report.currentCoordinate && report.suggestedCoordinate);
+  const evidenceMarkers = hasPinEvidence
+    ? [
+        {
+          id: 'current-pin',
+          latitude: report.currentCoordinate!.latitude,
+          longitude: report.currentCoordinate!.longitude,
+          label: 'Current',
+          color: adminPalette.outline,
+          variant: 'circle' as const,
+          selected: false,
+        },
+        {
+          id: 'suggested-pin',
+          latitude: report.suggestedCoordinate!.latitude,
+          longitude: report.suggestedCoordinate!.longitude,
+          label: 'Suggested',
+          color: adminPalette.primary,
+          variant: 'pin' as const,
+          selected: true,
+        },
+      ]
+    : [];
+  const evidenceCenter = report.suggestedCoordinate ?? report.currentCoordinate;
+  const canApply = isSuggestion;
+
   return (
     <View style={styles.expandedReport}>
-      <Text style={styles.reportQuote}>
-        "This review seems completely fabricated. The user mentions dishes that are not even on the menu, and the uploaded
-        photo looks unrelated. I was there yesterday and the experience was totally different."
-      </Text>
-      <View style={styles.expandedReportBody}>
-        <View>
-          <Text style={styles.microHeading}>Attached Evidence</Text>
-          <Image
-            source={{
-              uri: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=240',
-            }}
-            style={styles.evidenceImage}
-          />
-        </View>
+      <View style={styles.expandedReportTop}>
         <View style={styles.notesColumn}>
-          <Text style={styles.microHeading}>Admin Notes</Text>
-          <TextInput
-            multiline
-            placeholder="Enter resolution notes..."
-            placeholderTextColor={adminPalette.outline}
-            style={styles.notesInput}
-          />
+          <Text style={styles.microHeading}>Detailed Report</Text>
+          <Text style={styles.reportQuote}>{report.description}</Text>
+          {report.note && <Text style={styles.reportDetailLine}>Reporter note: {report.note}</Text>}
         </View>
-      </View>
-      <View style={styles.expandedActions}>
-        <Pressable style={styles.ghostButton}>
-          <Text style={styles.ghostButtonText}>Dismiss Report</Text>
+        <Pressable style={styles.spotDetailsButton} onPress={() => onOpenSpot(report)}>
+          <MapPin size={15} color={adminPalette.primary} />
+          <Text style={styles.spotDetailsButtonText}>Spot Details</Text>
         </Pressable>
-        <Pressable style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Update Spot Details</Text>
+      </View>
+
+      <Pressable style={styles.evidenceToggle} onPress={() => setEvidenceOpen((value) => !value)}>
+        <Text style={styles.microHeading}>Attached Evidence</Text>
+        <ChevronUp
+          size={16}
+          color={adminPalette.outline}
+          style={{ transform: [{ rotate: evidenceOpen ? '0deg' : '180deg' }] }}
+        />
+      </Pressable>
+
+      {evidenceOpen && (
+        <View style={styles.expandedReportBody}>
+          {hasPinEvidence && evidenceCenter ? (
+            <View style={styles.pinEvidenceColumn}>
+              <View style={styles.pinEvidenceMap}>
+                <TileMap center={evidenceCenter} zoom={16} markers={evidenceMarkers} style={styles.pinEvidenceTileMap} />
+              </View>
+              <View style={styles.pinComparisonRow}>
+                <View style={styles.pinComparisonBox}>
+                  <Text style={styles.microHeading}>Before</Text>
+                  <Text style={styles.pinComparisonText}>{formatCoordinateLabel(report.currentCoordinate)}</Text>
+                </View>
+                <View style={styles.pinComparisonBox}>
+                  <Text style={styles.microHeading}>After</Text>
+                  <Text style={styles.pinComparisonText}>{formatCoordinateLabel(report.suggestedCoordinate)}</Text>
+                </View>
+              </View>
+            </View>
+          ) : report.reviewComment ? (
+            <View style={styles.reviewEvidenceBox}>
+              <Text style={styles.microHeading}>Flagged Review</Text>
+              <View style={styles.flaggedReviewHeader}>
+                <View style={styles.initialAvatarSmall}>
+                  <Text style={styles.initialAvatarText}>{(report.reviewAuthor ?? report.reporter ?? 'AN').slice(0, 2).toUpperCase()}</Text>
+                </View>
+                <View>
+                  <Text style={styles.tableStrong}>{report.reviewAuthor ?? 'CebSpot user'}</Text>
+                  <Text style={styles.tableMini}>
+                    {report.reviewRating ? `${report.reviewRating}/5 stars` : 'Rating unavailable'} - {report.reviewDate ?? report.date}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.reportQuote}>{report.reviewComment}</Text>
+              {!!report.reviewMediaUrls?.length && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reviewEvidenceMedia}>
+                  {report.reviewMediaUrls.map((uri) => (
+                    <Image key={uri} source={{ uri }} style={styles.evidenceImage} />
+                  ))}
+                </ScrollView>
+              )}
+              {!!report.reviewThread?.length && (
+                <View style={styles.commentThreadBox}>
+                  <Text style={styles.microHeading}>Comment Section</Text>
+                  {report.reviewThread.map((review) => (
+                    <View key={review.id} style={[styles.commentThreadItem, review.flagged && styles.commentThreadFlagged]}>
+                      <View style={styles.commentThreadMeta}>
+                        <Text style={styles.tableStrong}>{review.author}</Text>
+                        <Text style={styles.tableMini}>
+                          {review.rating ? `${review.rating}/5` : 'No rating'} - {review.date}
+                        </Text>
+                      </View>
+                      <Text style={styles.tableMuted}>{review.comment || 'No written comment.'}</Text>
+                      {review.flagged && <Text style={styles.flaggedLabel}>Reported review</Text>}
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={styles.reviewEvidenceBox}>
+              <Text style={styles.tableMuted}>No media was attached. Use the report details and spot context to decide.</Text>
+            </View>
+          )}
+          <View style={styles.notesColumn}>
+            <Text style={styles.microHeading}>Admin Notes</Text>
+            <TextInput
+              multiline
+              value={adminNotes}
+              onChangeText={setAdminNotes}
+              placeholder="Enter resolution notes..."
+              placeholderTextColor={adminPalette.outline}
+              style={styles.notesInput}
+            />
+          </View>
+        </View>
+      )}
+
+      <View style={styles.expandedActions}>
+        <Pressable style={[styles.ghostButton, busy && styles.tableIconButtonDisabled]} onPress={() => onDismiss(report, adminNotes)} disabled={busy}>
+          <Text style={styles.ghostButtonText}>{busy ? 'Working...' : 'Dismiss Report'}</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.primaryButton, busy && styles.tableIconButtonDisabled]}
+          onPress={() => (canApply ? onApply(report, adminNotes) : onDismiss(report, adminNotes || 'Review handled by admin.'))}
+          disabled={busy}
+        >
+          <Text style={styles.primaryButtonText}>
+            {canApply ? 'Update Spot Details' : 'Tag Review Handled'}
+          </Text>
         </Pressable>
       </View>
     </View>
   );
 }
 
-function UsersSection() {
+function UsersSection({ dashboard, query }: { dashboard: AdminDashboardData; query: string }) {
+  const visibleUsers = filterUsers(dashboard.users, query);
+  const ownerCount = dashboard.users.filter((user) => user.role.toLowerCase() === 'owner').length;
+  const spotterCount = dashboard.users.filter((user) => user.role.toLowerCase() === 'user').length;
   return (
     <View>
       <PageIntro
@@ -768,8 +1314,8 @@ function UsersSection() {
           ))}
         </View>
         <Text style={styles.filterSummary}>
-          <Text style={styles.filterSummaryStrong}>42</Text> shown - <Text style={styles.filterSummaryPrimary}>35</Text> spotters -{' '}
-          <Text style={styles.filterSummaryPrimary}>7</Text> owners
+          <Text style={styles.filterSummaryStrong}>{visibleUsers.length}</Text> shown - <Text style={styles.filterSummaryPrimary}>{spotterCount}</Text> spotters -{' '}
+          <Text style={styles.filterSummaryPrimary}>{ownerCount}</Text> owners
         </Text>
       </View>
 
@@ -787,7 +1333,7 @@ function UsersSection() {
                   </View>
                   <View>
                     <Text style={styles.tableStrong}>{item.name}</Text>
-                    <Text style={styles.tableMini}>UID: {item.id}</Text>
+                    <Text style={styles.tableMini}>{item.email}</Text>
                   </View>
                 </View>
               ),
@@ -799,7 +1345,7 @@ function UsersSection() {
               flex: 1.5,
               render: (item) => (
                 <View style={styles.locationCell}>
-                  <MapPin size={14} color={adminPalette.primary} />
+                  <MapPin size={12} color={adminPalette.primary} />
                   <Text style={styles.tableMuted}>{item.location}</Text>
                 </View>
               ),
@@ -821,15 +1367,17 @@ function UsersSection() {
               ),
             },
           ]}
-          data={users}
+          data={visibleUsers}
+          emptyCopy="No users match this search."
         />
-        <Pagination copy="Showing 8 of 42 users" />
+        <Pagination copy={`Showing ${visibleUsers.length} of ${dashboard.users.length} users`} />
       </DataPanel>
     </View>
   );
 }
 
-function OwnerRequestsSection() {
+function OwnerRequestsSection({ dashboard, query }: { dashboard: AdminDashboardData; query: string }) {
+  const visibleRequests = filterOwnerRequests(dashboard.ownerRequests, query);
   return (
     <View>
       <PageIntro
@@ -845,7 +1393,7 @@ function OwnerRequestsSection() {
               <Text style={[styles.requestPillText, item === 'All' && styles.requestPillTextActive]}>{item}</Text>
               {item === 'Pending' && (
                 <View style={styles.pendingCount}>
-                  <Text style={styles.pendingCountText}>12</Text>
+                  <Text style={styles.pendingCountText}>{dashboard.metrics.pendingOwnerRequests}</Text>
                 </View>
               )}
             </Pressable>
@@ -865,7 +1413,7 @@ function OwnerRequestsSection() {
             </Text>
           ))}
         </View>
-        {ownerRequests.map((request) => (
+        {visibleRequests.map((request) => (
           <View key={request.id}>
             <View style={[styles.requestRow, request.expanded && styles.requestRowExpanded]}>
               <View style={styles.requestColumn}>
@@ -905,10 +1453,11 @@ function OwnerRequestsSection() {
                 )}
               </View>
             </View>
-            {request.expanded && <ExpandedOwnerRequest />}
+            {request.expanded && <ExpandedOwnerRequest request={request} />}
           </View>
         ))}
-        <Pagination copy="Showing 1 to 10 of 48 requests" numbered />
+        {!visibleRequests.length && <EmptyState title="No owner requests found" copy="There are no matching access requests." compact />}
+        <Pagination copy={`Showing ${visibleRequests.length} of ${dashboard.ownerRequests.length} requests`} numbered />
       </View>
 
       <View style={styles.bottomBento}>
@@ -919,12 +1468,12 @@ function OwnerRequestsSection() {
           </View>
           <Text style={styles.updateTitle}>Automated Verification is Live</Text>
           <Text style={styles.updateCopy}>
-            The document scanner has pre-verified 85% of today's applicants. Gold badges mark instant approval suggestions.
+            {dashboard.metrics.pendingOwnerRequests} pending applications need admin review before owners can manage reservations.
           </Text>
           <Pressable style={styles.updateButton}>
             <Text style={styles.updateButtonText}>Review Logs</Text>
           </Pressable>
-          <ShieldCheck size={150} color="#ff794118" style={styles.updateWatermark} />
+          <ShieldCheck size={150} color="#FA5F0018" style={styles.updateWatermark} />
         </View>
         <View style={styles.velocityCard}>
           <Text style={styles.microHeadingPrimary}>Request Velocity</Text>
@@ -944,15 +1493,14 @@ function OwnerRequestsSection() {
   );
 }
 
-function ExpandedOwnerRequest() {
+function ExpandedOwnerRequest({ request }: { request: AdminOwnerRequestRow }) {
   return (
     <View style={styles.expandedRequest}>
       <View style={styles.expandedRequestColumn}>
         <Text style={styles.microHeadingPrimary}>Application Message</Text>
         <View style={styles.messageCard}>
           <Text style={styles.messageText}>
-            "Good day CebSpot Team. We would like to register The Social Cebu as an official partner. We are looking to
-            integrate our existing reservation system with your platform to manage weekend peak hours more effectively."
+            {request.message || 'No application message was submitted.'}
           </Text>
         </View>
       </View>
@@ -976,6 +1524,7 @@ function ExpandedOwnerRequest() {
           placeholder="Add private notes about this applicant..."
           placeholderTextColor={adminPalette.outline}
           style={styles.ownerNotesInput}
+          defaultValue={request.adminNotes ?? ''}
         />
         <View style={styles.ownerActionRow}>
           <Pressable style={styles.rejectButton}>
@@ -990,7 +1539,9 @@ function ExpandedOwnerRequest() {
   );
 }
 
-function SystemSection() {
+function SystemSection({ dashboard }: { dashboard: AdminDashboardData }) {
+  const queuedJobs = dashboard.metrics.pendingOwnerRequests + dashboard.metrics.reportsFiled;
+  const securityAlerts = dashboard.errors.length;
   return (
     <View>
       <PageIntro
@@ -999,16 +1550,16 @@ function SystemSection() {
         subtitle="Console health, moderation queues, and operational safeguards."
       />
       <View style={styles.systemGrid}>
-        <StatCard label="API Health" value="99.98%" icon={Radio} tone="green" delta="Stable" />
-        <StatCard label="Queued Jobs" value="28" icon={FileText} tone="blue" delta="-9%" />
-        <StatCard label="Security Alerts" value="2" icon={TriangleAlert} tone="danger" delta="Review" />
+        <StatCard label="Data Source" value={dashboard.source === 'live' ? 'Live' : 'Sample'} icon={Radio} tone="green" delta="Active" />
+        <StatCard label="Queued Jobs" value={formatCompactNumber(queuedJobs)} icon={FileText} tone="blue" delta="Review" />
+        <StatCard label="Data Alerts" value={formatCompactNumber(securityAlerts)} icon={TriangleAlert} tone="danger" delta={securityAlerts ? 'Review' : 'Clear'} />
       </View>
       <DataPanel title="System Checklist">
         {[
           'Review pending owner verification documents',
           'Audit high-volume reservation refunds',
           'Refresh featured Cebu barangay leaderboards',
-          'Check map tile fallback availability',
+          `Confirm admin dashboard SQL is applied in Supabase`,
         ].map((item, index) => (
           <View key={item} style={styles.checklistRow}>
             <View style={[styles.checklistNumber, index < 2 && styles.checklistNumberActive]}>
@@ -1084,11 +1635,15 @@ function BarChart({
   activeIndex,
   labels,
   compact,
+  onBarPress,
+  barAccessibilityLabel,
 }: {
   values: number[];
   activeIndex?: number;
   labels?: string[];
   compact?: boolean;
+  onBarPress?: (index: number) => void;
+  barAccessibilityLabel?: (index: number) => string;
 }) {
   return (
     <View>
@@ -1099,15 +1654,22 @@ function BarChart({
           ))}
         </View>
         {values.map((value, index) => (
-          <View
+          <Pressable
             key={`${value}-${index}`}
-            style={[
-              styles.bar,
-              { height: `${value}%` },
-              activeIndex === index ? styles.barActive : styles.barMuted,
-              compact && styles.barCompact,
-            ]}
-          />
+            accessibilityRole={onBarPress ? 'button' : undefined}
+            accessibilityLabel={barAccessibilityLabel?.(index)}
+            onPress={() => onBarPress?.(index)}
+            style={({ pressed }) => [styles.barButton, compact && styles.barButtonCompact, pressed && styles.barButtonPressed]}
+          >
+            <View
+              style={[
+                styles.bar,
+                { height: `${value}%` },
+                activeIndex === index ? styles.barActive : styles.barMuted,
+                compact && styles.barCompact,
+              ]}
+            />
+          </Pressable>
         ))}
       </View>
       {!!labels?.length && (
@@ -1225,7 +1787,15 @@ function DataPanel({
   );
 }
 
-function DataTable<T extends { id: string }>({ columns, data }: { columns: TableColumn<T>[]; data: T[] }) {
+function DataTable<T extends { id: string }>({
+  columns,
+  data,
+  emptyCopy = 'No rows to show yet.',
+}: {
+  columns: TableColumn<T>[];
+  data: T[];
+  emptyCopy?: string;
+}) {
   return (
     <View>
       <View style={styles.tableHead}>
@@ -1250,6 +1820,7 @@ function DataTable<T extends { id: string }>({ columns, data }: { columns: Table
           ))}
         </View>
       ))}
+      {!data.length && <EmptyState title="Nothing here yet" copy={emptyCopy} compact />}
     </View>
   );
 }
@@ -1342,11 +1913,128 @@ function Pagination({ copy, numbered }: { copy: string; numbered?: boolean }) {
   );
 }
 
+function LoadingPanel() {
+  return (
+    <View style={styles.loadingPanel}>
+      <ActivityIndicator color={adminPalette.primary} />
+      <Text style={styles.loadingTitle}>Loading live admin data</Text>
+      <Text style={styles.loadingCopy}>Reading Supabase metrics, queues, and recent platform activity.</Text>
+    </View>
+  );
+}
+
+function InlineNotice({
+  title,
+  copy,
+  tone = 'error',
+}: {
+  title: string;
+  copy: string;
+  tone?: 'error' | 'success';
+}) {
+  const toneColor = tone === 'success' ? adminPalette.success : adminPalette.error;
+  const toneBackground = tone === 'success' ? adminPalette.successContainer + '66' : adminPalette.errorContainer + '12';
+  const toneBorder = tone === 'success' ? adminPalette.success + '33' : adminPalette.errorContainer + '55';
+  return (
+    <View style={[styles.inlineNotice, { borderColor: toneBorder, backgroundColor: toneBackground }]}>
+      {tone === 'success' ? <CheckCircle2 size={18} color={toneColor} /> : <TriangleAlert size={18} color={toneColor} />}
+      <View style={styles.inlineNoticeCopy}>
+        <Text style={[styles.inlineNoticeTitle, { color: toneColor }]}>{title}</Text>
+        <Text style={styles.inlineNoticeText}>{copy}</Text>
+      </View>
+    </View>
+  );
+}
+
+function EmptyState({ title, copy, compact }: { title: string; copy: string; compact?: boolean }) {
+  return (
+    <View style={[styles.emptyState, compact && styles.emptyStateCompact]}>
+      <Text style={styles.emptyStateTitle}>{title}</Text>
+      <Text style={styles.emptyStateCopy}>{copy}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     flexDirection: 'row',
     backgroundColor: adminPalette.background,
+  },
+  adminGateScreen: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: adminPalette.background,
+  },
+  adminGateCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 8,
+    padding: 28,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: adminPalette.outlineVariant + '66',
+    backgroundColor: adminPalette.surfaceLowest,
+    ...shadow.card,
+  },
+  adminGateIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: adminPalette.inverseSurface,
+  },
+  adminGateBrand: {
+    color: adminPalette.onSurface,
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  adminGateCopy: {
+    color: adminPalette.onSurfaceVariant,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  adminGateInput: {
+    minHeight: 50,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: adminPalette.outlineVariant,
+    paddingHorizontal: 14,
+    color: adminPalette.onSurface,
+    backgroundColor: adminPalette.surfaceBright,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  adminGateButton: {
+    minHeight: 50,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: adminPalette.primary,
+  },
+  adminGateButtonText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  adminGateNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: adminPalette.errorContainer + '18',
+  },
+  adminGateNoticeText: {
+    flex: 1,
+    color: adminPalette.error,
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
   },
   sidebar: {
     width: 250,
@@ -1393,7 +2081,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   navItemActive: {
-    backgroundColor: '#a338001a',
+    backgroundColor: '#FA5F001a',
     borderLeftColor: adminPalette.primaryFixed,
   },
   navText: {
@@ -1533,6 +2221,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     ...shadow.card,
+  },
+  sampleBadge: {
+    backgroundColor: adminPalette.outline,
   },
   liveBadgeText: {
     color: colors.white,
@@ -1819,6 +2510,16 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
   },
+  chartSelectedLabel: {
+    borderRadius: 999,
+    backgroundColor: adminPalette.primary + '12',
+    color: adminPalette.primary,
+    fontSize: 11,
+    fontWeight: '900',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    textTransform: 'uppercase',
+  },
   barChart: {
     height: 220,
     flexDirection: 'row',
@@ -1839,8 +2540,21 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: adminPalette.surfaceContainer,
   },
-  bar: {
+  barButton: {
     flex: 1,
+    height: '100%',
+    justifyContent: 'flex-end',
+    zIndex: 2,
+  },
+  barButtonCompact: {
+    minWidth: 8,
+  },
+  barButtonPressed: {
+    opacity: 0.78,
+  },
+  bar: {
+    width: '100%',
+    minHeight: 6,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
     zIndex: 2,
@@ -2120,6 +2834,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  tableIconButtonDisabled: {
+    opacity: 0.65,
+  },
+  approveSubmissionButton: {
+    minHeight: 34,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: adminPalette.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  approveSubmissionText: {
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
   floatingAdd: {
     position: 'absolute',
     right: 0,
@@ -2230,6 +2963,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
+  reviewButtonActive: {
+    backgroundColor: adminPalette.primary + '12',
+    borderColor: adminPalette.primary,
+  },
   reviewButtonText: {
     color: adminPalette.primary,
     fontSize: 10,
@@ -2246,11 +2983,50 @@ const styles = StyleSheet.create({
     padding: 24,
     ...shadow.card,
   },
+  expandedReportTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 20,
+  },
   reportQuote: {
     color: adminPalette.onSurface,
     fontSize: 13,
     lineHeight: 22,
-    fontStyle: 'italic',
+  },
+  reportDetailLine: {
+    color: adminPalette.onSurfaceVariant,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 8,
+    fontWeight: '700',
+  },
+  spotDetailsButton: {
+    minHeight: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: adminPalette.outlineVariant,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  spotDetailsButtonText: {
+    color: adminPalette.primary,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  evidenceToggle: {
+    minHeight: 42,
+    borderRadius: 10,
+    backgroundColor: adminPalette.surfaceLow,
+    paddingHorizontal: 14,
+    marginTop: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   expandedReportBody: {
     flexDirection: 'row',
@@ -2270,6 +3046,81 @@ const styles = StyleSheet.create({
     height: 92,
     borderRadius: 12,
     backgroundColor: adminPalette.surfaceContainer,
+  },
+  pinEvidenceColumn: {
+    width: 340,
+    gap: 12,
+  },
+  pinEvidenceMap: {
+    height: 220,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: adminPalette.outlineVariant + '55',
+  },
+  pinEvidenceTileMap: {
+    width: '100%',
+    height: '100%',
+  },
+  pinComparisonRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  pinComparisonBox: {
+    flex: 1,
+    borderRadius: 12,
+    backgroundColor: adminPalette.surfaceLow,
+    padding: 12,
+  },
+  pinComparisonText: {
+    color: adminPalette.onSurface,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  reviewEvidenceBox: {
+    width: 340,
+    borderRadius: 14,
+    backgroundColor: adminPalette.surfaceLow,
+    padding: 14,
+    gap: 12,
+  },
+  flaggedReviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  reviewEvidenceMedia: {
+    gap: 10,
+    paddingRight: 10,
+  },
+  commentThreadBox: {
+    gap: 10,
+    marginTop: 4,
+  },
+  commentThreadItem: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: adminPalette.outlineVariant + '44',
+    backgroundColor: adminPalette.surfaceLowest,
+    padding: 10,
+    gap: 6,
+  },
+  commentThreadFlagged: {
+    borderColor: adminPalette.error,
+    backgroundColor: '#fff4f4',
+  },
+  commentThreadMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  flaggedLabel: {
+    alignSelf: 'flex-start',
+    color: adminPalette.error,
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   notesColumn: {
     flex: 1,
@@ -2584,7 +3435,6 @@ const styles = StyleSheet.create({
     color: adminPalette.onSurfaceVariant,
     fontSize: 13,
     lineHeight: 22,
-    fontStyle: 'italic',
     fontWeight: '600',
   },
   documentImage: {
@@ -2807,6 +3657,79 @@ const styles = StyleSheet.create({
     color: adminPalette.onSurface,
     fontSize: 11,
     fontWeight: '900',
+  },
+  loadingPanel: {
+    minHeight: 280,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: adminPalette.outlineVariant + '75',
+    backgroundColor: adminPalette.surfaceLowest,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 28,
+    gap: 10,
+    ...shadow.card,
+  },
+  loadingTitle: {
+    color: adminPalette.onSurface,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  loadingCopy: {
+    color: adminPalette.onSurfaceVariant,
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  inlineNotice: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: adminPalette.errorContainer + '55',
+    backgroundColor: adminPalette.errorContainer + '12',
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginBottom: 16,
+  },
+  inlineNoticeCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  inlineNoticeTitle: {
+    color: adminPalette.error,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  inlineNoticeText: {
+    color: adminPalette.onSurfaceVariant,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  emptyState: {
+    minHeight: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 28,
+  },
+  emptyStateCompact: {
+    minHeight: 118,
+    borderBottomWidth: 1,
+    borderBottomColor: adminPalette.surfaceContainer,
+  },
+  emptyStateTitle: {
+    color: adminPalette.onSurface,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  emptyStateCopy: {
+    color: adminPalette.onSurfaceVariant,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 4,
   },
   systemGrid: {
     flexDirection: 'row',

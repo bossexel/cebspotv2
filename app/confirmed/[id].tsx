@@ -1,22 +1,58 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import QRCode from 'react-native-qrcode-svg';
-import { ArrowRight, Calendar, CheckCircle2, Download, Share2, Users } from 'lucide-react-native';
+import { ArrowRight, BellRing, Calendar, CheckCircle2, Users } from 'lucide-react-native';
 import { AppButton } from '../../src/components/AppButton';
 import { ReservationTermsCard } from '../../src/components/ReservationTermsCard';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
 import { colors } from '../../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../../src/constants/design';
+import { useAuth } from '../../src/hooks/useAuth';
 import { useTheme } from '../../src/hooks/useTheme';
 import { reservationService } from '../../src/services/reservationService';
 import type { Reservation } from '../../src/types';
-import { getPaymentStatusLabel, getReservationStatusLabel, getReservationTypeLabel } from '../../src/utils/reservations';
+import {
+  formatGuestCount,
+  formatReservationDateTime,
+  getPaymentStatusLabel,
+  getReservationBookingId,
+  getReservationStatusLabel,
+  getReservationTypeLabel,
+  getReservationUniqueId,
+} from '../../src/utils/reservations';
+
+function formatAccountName(name?: string | null, email?: string | null) {
+  const value = name?.trim() || email?.split('@')[0] || 'Not provided';
+  return value === 'Not provided' ? value : value.toUpperCase();
+}
+
+function DetailRow({
+  label,
+  value,
+  icon,
+  accent,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+  accent?: boolean;
+}) {
+  return (
+    <View style={styles.detail}>
+      <View style={styles.detailLabelRow}>
+        {icon}
+        <Text style={styles.detailLabel}>{label}</Text>
+      </View>
+      <Text style={[styles.detailValue, accent && styles.amount]}>{value}</Text>
+    </View>
+  );
+}
 
 export default function BookingConfirmedScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id: string; paymentReturn?: string }>();
   const router = useRouter();
   const { appColors } = useTheme();
+  const { profile } = useAuth();
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState(true);
   const [showTerms, setShowTerms] = useState(true);
@@ -37,6 +73,23 @@ export default function BookingConfirmedScreen() {
     load();
   }, [id]);
 
+  useEffect(() => {
+    const shouldRefreshPayment =
+      id && reservation?.payment_method === 'paymongo_gcash' && reservation.payment_status === 'pending';
+    if (!shouldRefreshPayment) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const latest = await reservationService.getReservationById(id);
+        if (latest) setReservation(latest);
+      } catch (error) {
+        console.error('Unable to refresh reservation payment:', error);
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [id, reservation?.payment_method, reservation?.payment_status]);
+
   if (loading || !reservation) {
     return (
       <ScreenContainer appColors={appColors}>
@@ -55,10 +108,35 @@ export default function BookingConfirmedScreen() {
   }
 
   const requiresPayment = reservation.payment_required || reservation.reservation_type === 'paid';
-  const title = requiresPayment ? 'Reservation Pending Payment' : 'Reservation Confirmed';
+  const isPaid = reservation.payment_status === 'paid';
+  const isPaymongoGcash = reservation.payment_method === 'paymongo_gcash';
+  const hasSubmittedPayment = Boolean(reservation.payment_reference || reservation.payment_proof_url || isPaymongoGcash);
+  const customerName = formatAccountName(profile?.display_name, profile?.email);
+  const customerEmail = profile?.email || 'Not provided';
+  const customerPhone = reservation.payer_gcash_number || 'Not provided';
+  const tableNumber = reservation.table_id || 'Not provided';
+  const bookingId = getReservationBookingId(reservation);
+  const uniqueId = getReservationUniqueId(reservation);
+  const guestCount = formatGuestCount(reservation.guest_count ?? reservation.guests);
+  const dateTime = formatReservationDateTime(reservation);
+  const title = requiresPayment
+    ? isPaid
+      ? 'Reservation Confirmed'
+      : isPaymongoGcash
+      ? 'Payment Processing'
+      : hasSubmittedPayment
+      ? 'Payment Under Review'
+      : 'Reservation Pending Payment'
+    : 'Reservation Confirmed';
   const subtitle = requiresPayment
-    ? 'Your reservation has been created. Please complete the reservation fee payment to secure your booking.'
-    : 'Your CebSpot pass is ready. Show this when you arrive.';
+    ? isPaid
+      ? 'Your payment was confirmed. Your reservation details are ready.'
+      : isPaymongoGcash
+      ? 'Finish the GCash checkout. This page will update once PayMongo confirms the payment.'
+      : hasSubmittedPayment
+      ? 'Your GCash details were submitted. The spot owner will confirm the payment before final approval.'
+      : 'Your reservation has been created. Please complete the reservation fee payment to secure your booking.'
+    : 'Your booking is confirmed. Keep these reservation details for your visit.';
 
   return (
     <ScreenContainer appColors={confirmationColors} scroll padded>
@@ -71,58 +149,41 @@ export default function BookingConfirmedScreen() {
       </View>
 
       <View style={styles.ticket}>
-        <View style={styles.qrWrap}>
-          <QRCode value={reservation.qr_code} size={132} color={colors.primary} backgroundColor={colors.white} />
-        </View>
-        <Text style={styles.passLabel}>Pass ID</Text>
-        <Text style={styles.passId}>{reservation.qr_code}</Text>
-
-        <View style={styles.dash} />
-
         <View style={styles.detailGrid}>
-          <View style={styles.detail}>
-            <Text style={styles.detailLabel}>Spot</Text>
-            <Text style={styles.detailValue}>{reservation.spot_name}</Text>
-          </View>
-          <View style={styles.detail}>
-            <Text style={styles.detailLabel}>Status</Text>
-            <Text style={styles.detailValue}>{getReservationStatusLabel(reservation.status)}</Text>
-          </View>
-          <View style={styles.detail}>
-            <Calendar size={14} color={colors.primary} />
-            <Text style={styles.detailLabel}>Schedule</Text>
-            <Text style={styles.detailValue}>
-              {reservation.reservation_date}, {reservation.reservation_time}
-            </Text>
-          </View>
-          <View style={styles.detail}>
-            <Users size={14} color={colors.primary} />
-            <Text style={styles.detailLabel}>Party</Text>
-            <Text style={styles.detailValue}>{reservation.guest_count ?? reservation.guests} guests</Text>
-          </View>
-          <View style={styles.detail}>
-            <Text style={styles.detailLabel}>Reservation Type</Text>
-            <Text style={[styles.detailValue, styles.amount]}>{getReservationTypeLabel(reservation)}</Text>
-          </View>
-          {requiresPayment && (
-            <View style={styles.detail}>
-              <Text style={styles.detailLabel}>Payment</Text>
-              <Text style={[styles.detailValue, styles.amount]}>{getPaymentStatusLabel(reservation.payment_status)}</Text>
-            </View>
-          )}
+          <DetailRow label="Spot" value={reservation.spot_name} />
+          <DetailRow label="Status" value={getReservationStatusLabel(reservation.status)} />
+
+          <View style={styles.sectionDivider} />
+          <Text style={styles.sectionTitle}>Personal Details</Text>
+          <DetailRow label="Name" value={customerName} />
+          <DetailRow label="E-mail" value={customerEmail} />
+          <DetailRow label="Phone" value={customerPhone} />
+
+          <View style={styles.sectionDivider} />
+          <Text style={styles.sectionTitle}>Booking Details</Text>
+          <DetailRow label="Date & Time" value={dateTime} icon={<Calendar size={14} color={colors.primary} />} />
+          <DetailRow label="Table" value={tableNumber} />
+          <DetailRow label="Party" value={guestCount} icon={<Users size={14} color={colors.primary} />} />
+          <DetailRow label="Booking ID" value={bookingId} />
+          <DetailRow label="Unique ID" value={uniqueId} />
+
+          <View style={styles.sectionDivider} />
+          <DetailRow label="Reservation Type" value={getReservationTypeLabel(reservation)} accent />
+          <DetailRow label="Payment" value={getPaymentStatusLabel(reservation.payment_status)} accent={requiresPayment} />
           {requiresPayment && (
             <View style={styles.paymentNotice}>
               <Text style={styles.paymentNoticeText}>
-                Please pay the reservation fee directly to the spot owner or cashier. Your reservation will remain pending until confirmed.
+                {isPaid
+                  ? 'Payment confirmed. Your reservation is ready for verification at the venue.'
+                  : isPaymongoGcash
+                  ? 'Complete the PayMongo GCash checkout. CebSpot will confirm this reservation automatically after PayMongo reports the payment as paid.'
+                  : hasSubmittedPayment
+                  ? 'Payment proof submitted. Your reservation will remain pending until the owner verifies the GCash transfer.'
+                  : 'Please pay the reservation fee directly to the spot owner or cashier. Your reservation will remain pending until confirmed.'}
               </Text>
             </View>
           )}
         </View>
-
-        <Pressable style={styles.walletButton}>
-          <Download size={15} color={colors.primary} />
-          <Text style={styles.walletText}>Save to Wallet</Text>
-        </Pressable>
       </View>
 
       {showTerms && (
@@ -131,10 +192,10 @@ export default function BookingConfirmedScreen() {
 
       <View style={styles.actions}>
         <AppButton
-          label="Activity"
+          label="Reservations"
           variant="secondary"
-          onPress={() => router.replace('/activity')}
-          icon={<Share2 size={16} color={colors.primary} />}
+          onPress={() => router.replace('/reservations')}
+          icon={<BellRing size={16} color={colors.primary} />}
           style={styles.actionButton}
         />
         <AppButton
@@ -144,6 +205,7 @@ export default function BookingConfirmedScreen() {
           style={styles.actionButton}
         />
       </View>
+
     </ScreenContainer>
   );
 }
@@ -178,7 +240,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: fontSize.display,
     fontWeight: '900',
-    fontStyle: 'italic',
     textTransform: 'uppercase',
     textAlign: 'center',
   },
@@ -199,39 +260,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     ...shadow.lifted,
   },
-  qrWrap: {
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    borderRadius: radius.xl,
-    marginBottom: spacing.md,
-  },
-  passLabel: {
-    color: colors.onSurfaceVariant,
-    fontSize: fontSize.xs,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  passId: {
-    color: colors.primary,
-    fontSize: fontSize.md,
-    fontWeight: '900',
-    marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  dash: {
-    width: '100%',
-    borderTopWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.outlineVariant,
-    marginVertical: spacing.xl,
-  },
   detailGrid: {
     width: '100%',
     gap: spacing.md,
   },
   detail: {
     gap: 3,
+  },
+  detailLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   detailLabel: {
     color: colors.onSurfaceVariant,
@@ -248,6 +287,19 @@ const styles = StyleSheet.create({
   amount: {
     color: colors.primary,
   },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: colors.outlineVariant + '66',
+    marginVertical: spacing.xs,
+  },
+  sectionTitle: {
+    color: colors.primary,
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginTop: spacing.xs,
+  },
   paymentNotice: {
     borderRadius: radius.lg,
     padding: spacing.md,
@@ -259,28 +311,11 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: '800',
   },
-  walletButton: {
-    marginTop: spacing.xl,
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'center',
-    backgroundColor: colors.primary + '10',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-  },
-  walletText: {
-    color: colors.primary,
-    fontSize: fontSize.xs,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
   actions: {
     flexDirection: 'row',
     gap: spacing.md,
     marginTop: spacing.xl,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
   },
   actionButton: {
     flex: 1,

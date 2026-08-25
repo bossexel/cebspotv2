@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -26,7 +26,9 @@ import { categories, fontSize, radius, shadow, spacing } from '../src/constants/
 import { useAuth } from '../src/hooks/useAuth';
 import { useLocation } from '../src/hooks/useLocation';
 import { useTheme } from '../src/hooks/useTheme';
-import { spotSubmissionService } from '../src/services/spotSubmissionService';
+import { imageAnonymizationService } from '../src/services/imageAnonymization';
+import { spotSubmissionNotificationService } from '../src/services/spotSubmissionNotificationService';
+import { spotSubmissionQueueService } from '../src/services/spotSubmissionQueueService';
 
 function getCategoryIcon(category = '') {
   const lower = category.toLowerCase();
@@ -75,7 +77,7 @@ export default function SubmitSpotScreen() {
 
   async function selectImage() {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsMultipleSelection: true,
       quality: 0.8,
     });
@@ -109,7 +111,38 @@ export default function SubmitSpotScreen() {
 
     try {
       setSubmitting(true);
-      await spotSubmissionService.createSubmission(
+
+      if (images.length > 0) {
+        await imageAnonymizationService.checkAvailability();
+      }
+
+      const notificationStatus = await spotSubmissionNotificationService.prepare();
+      if (Platform.OS === 'android' && notificationStatus.supported && !notificationStatus.authorized) {
+        const continueWithoutNotifications = await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'Notifications are off',
+            `${notificationStatus.detail ?? 'CebSpot cannot show Android progress notifications.'} You can still track this submission inside CebSpot, but keep the app open while photos are processed.`,
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+              {
+                text: 'Settings',
+                onPress: () => {
+                  void spotSubmissionNotificationService.openSettings();
+                  resolve(false);
+                },
+              },
+              { text: 'Continue', onPress: () => resolve(true) },
+            ],
+            { cancelable: false }
+          );
+        });
+        if (!continueWithoutNotifications) {
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      await spotSubmissionQueueService.enqueue(
         {
           name: name.trim(),
           description: description.trim() || null,
@@ -127,13 +160,10 @@ export default function SubmitSpotScreen() {
         },
         profile.display_name || 'Explorer'
       );
-      Alert.alert('Spot submitted', 'Thanks for expanding the CebSpot network.', [
-        { text: 'View Activity', onPress: () => router.replace('/activity') },
-      ]);
+      router.replace('/');
     } catch (error: any) {
       console.error('Submit spot error:', error);
       Alert.alert('Submission failed', error.message ?? 'Please try again.');
-    } finally {
       setSubmitting(false);
     }
   }
@@ -297,7 +327,7 @@ export default function SubmitSpotScreen() {
         </View>
       </View>
 
-      <AppButton label="Submit Spot" loading={submitting} onPress={submit} />
+      <AppButton label={submitting ? 'Starting submission...' : 'Submit Spot'} loading={submitting} onPress={submit} />
     </ScreenContainer>
   );
 }
@@ -320,7 +350,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: fontSize.xxl,
     fontWeight: '900',
-    fontStyle: 'italic',
   },
   headerSpacer: {
     width: 42,
@@ -332,7 +361,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: '900',
-    fontStyle: 'italic',
     textTransform: 'uppercase',
     textAlign: 'center',
     lineHeight: 31,

@@ -10,6 +10,7 @@ interface ScreenContainerProps {
   children: React.ReactNode;
   scroll?: boolean;
   scrollRef?: React.RefObject<ScrollView>;
+  scrollEnabled?: boolean;
   showBottomNav?: boolean;
   padded?: boolean;
 }
@@ -19,6 +20,7 @@ export function ScreenContainer({
   children,
   scroll,
   scrollRef,
+  scrollEnabled = true,
   showBottomNav,
   padded = true,
 }: ScreenContainerProps) {
@@ -34,6 +36,7 @@ export function ScreenContainer({
           ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={contentStyle}
+          scrollEnabled={scrollEnabled}
           showsVerticalScrollIndicator={false}
         >
           {children}

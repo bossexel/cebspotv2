@@ -43,24 +43,29 @@ export function useLocation() {
       setLocation(nextLocation);
       return nextLocation;
     } catch (locationError) {
-      console.warn('Location unavailable, checking last known location:', locationError);
-      const lastKnown = await Location.getLastKnownPositionAsync();
-      if (lastKnown) {
-        const nextLocation: LocationData = {
-          latitude: lastKnown.coords.latitude,
-          longitude: lastKnown.coords.longitude,
-          accuracy: lastKnown.coords.accuracy ?? undefined,
-          timestamp: lastKnown.timestamp,
-        };
-        setLocation(nextLocation);
-        setError(null);
-        return nextLocation;
+      try {
+        const lastKnown = await Location.getLastKnownPositionAsync();
+        if (lastKnown) {
+          const nextLocation: LocationData = {
+            latitude: lastKnown.coords.latitude,
+            longitude: lastKnown.coords.longitude,
+            accuracy: lastKnown.coords.accuracy ?? undefined,
+            timestamp: lastKnown.timestamp,
+          };
+          setLocation(nextLocation);
+          setError(null);
+          return nextLocation;
+        }
+      } catch (lastKnownError) {
+        console.warn('Unable to load location or last known location:', lastKnownError);
       }
+
       if (__DEV__) {
         setLocation(devFallbackLocation);
         setError(null);
         return devFallbackLocation;
       }
+      console.warn('Unable to load current location:', locationError);
       setError('Unable to get your current location.');
       return null;
     } finally {

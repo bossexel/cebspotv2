@@ -22,6 +22,7 @@ import {
   Camera,
   CheckCircle,
   Clock,
+  Edit3,
   ExternalLink,
   Globe2,
   Heart,
@@ -48,13 +49,16 @@ import { sampleSpots } from '../../src/constants/sampleData';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useLocation } from '../../src/hooks/useLocation';
 import { useTheme } from '../../src/hooks/useTheme';
+import { gamificationService } from '../../src/services/gamificationService';
 import { reviewService } from '../../src/services/reviewService';
+import { spotEditSuggestionService } from '../../src/services/spotEditSuggestionService';
 import { spotService } from '../../src/services/spotService';
 import type { Review, Spot } from '../../src/types';
 import { calculateReservationFee, getReservationTypeLabel, getSpotReservationType, isPaymentRequired } from '../../src/utils/reservations';
 
 const fallbackImage =
   'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=900';
+const testCebspotSpotId = '66666666-6666-4666-8666-666666666666';
 
 const reportReasons = [
   'Inaccurate or misleading review',
@@ -66,6 +70,17 @@ const reportReasons = [
   'Illegal activities and regulated goods',
   'Others',
   'Child or minor safety',
+];
+
+const editSuggestionFields = [
+  'Location / map pin',
+  'Address',
+  'Opening hours',
+  'Website',
+  'Contact number',
+  'Description',
+  'Category',
+  'Other',
 ];
 
 type MapCoordinate = {
@@ -108,13 +123,13 @@ async function fetchRoute(origin: MapCoordinate, destination: MapCoordinate) {
 
     const response = await fetch(url);
     if (!response.ok) {
-      console.warn(`Urban Transit route request failed with status ${response.status}`);
+      console.warn(`Route line request failed with status ${response.status}`);
       return [];
     }
 
     const data = await response.json();
     if (!data.routes || data.routes.length === 0) {
-      console.warn('No Urban Transit route found');
+      console.warn('No route line found');
       return [];
     }
 
@@ -123,7 +138,7 @@ async function fetchRoute(origin: MapCoordinate, destination: MapCoordinate) {
       longitude,
     }));
   } catch (error) {
-    console.error('Failed to fetch Urban Transit route:', error);
+    console.error('Failed to fetch route line:', error);
     return [];
   }
 }
@@ -149,26 +164,48 @@ export default function SpotDetailsScreen() {
   const [selectedReportReason, setSelectedReportReason] = useState('');
   const [reportDetails, setReportDetails] = useState('');
   const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [submittingReport, setSubmittingReport] = useState(false);
+  const [checkingIn, setCheckingIn] = useState(false);
+  const [editSuggestionOpen, setEditSuggestionOpen] = useState(false);
+  const [editSuggestionField, setEditSuggestionField] = useState(editSuggestionFields[0]);
+  const [editSuggestionValue, setEditSuggestionValue] = useState('');
+  const [editSuggestionCoordinate, setEditSuggestionCoordinate] = useState<MapCoordinate | null>(null);
+  const [editSuggestionNote, setEditSuggestionNote] = useState('');
+  const [editSuggestionSubmitted, setEditSuggestionSubmitted] = useState(false);
+  const [submittingEditSuggestion, setSubmittingEditSuggestion] = useState(false);
   const [websitePreviewUrl, setWebsitePreviewUrl] = useState<string | null>(null);
   const [websitePreviewLoading, setWebsitePreviewLoading] = useState(false);
   const [websitePreviewError, setWebsitePreviewError] = useState(false);
   const [routeCoordinates, setRouteCoordinates] = useState<MapCoordinate[]>([]);
 
   useEffect(() => {
+    let active = true;
+    const shouldSubscribeToLiveSettings = Boolean(id);
+    const unsubscribe = shouldSubscribeToLiveSettings
+      ? spotService.subscribeToSpotById(id, (nextSpot) => {
+          if (active && nextSpot) setSpot(nextSpot);
+        })
+      : undefined;
+
     async function loadSpot() {
       if (!id) return;
       try {
         const nextSpot = await spotService.getSpotById(id);
-        setSpot(nextSpot);
+        if (active) setSpot(nextSpot);
       } catch (error) {
         console.error('Unable to load spot:', error);
-        setSpot(sampleSpots.find((sample) => sample.id === id) ?? null);
+        if (active) setSpot(sampleSpots.find((sample) => sample.id === id) ?? null);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
 
     loadSpot();
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
   }, [id]);
 
   useEffect(() => {
@@ -263,6 +300,7 @@ export default function SpotDetailsScreen() {
             category: 'current location',
             label: 'You',
             variant: 'circle' as const,
+            size: 'small' as const,
             showIcon: false,
           },
         ]
@@ -307,7 +345,7 @@ export default function SpotDetailsScreen() {
 
   async function attachReviewMedia() {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ['images', 'videos'],
       allowsMultipleSelection: true,
       quality: 0.8,
     });
@@ -377,12 +415,58 @@ export default function SpotDetailsScreen() {
     }
   }
 
-  function likeReview(reviewId: string) {
-    setReviews((current) =>
-      current.map((review) =>
-        review.id === reviewId ? { ...review, likes_count: (review.likes_count ?? 0) + 1 } : review
-      )
-    );
+  async function likeReview(reviewId: string) {
+    if (!profile) {
+      Alert.alert('Sign in required', 'Please sign in before marking a review helpful.');
+      return;
+    }
+
+    try {
+      const result = await gamificationService.markReviewHelpful(reviewId);
+      if (result.awarded) {
+        setReviews((current) =>
+          current.map((review) =>
+            review.id === reviewId ? { ...review, likes_count: (review.likes_count ?? 0) + 1 } : review
+          )
+        );
+      }
+    } catch (error: any) {
+      Alert.alert('Unable to mark helpful', error.message ?? 'Please try again.');
+    }
+  }
+
+  async function verifyVisit() {
+    if (!profile) {
+      Alert.alert('Sign in required', 'Please sign in before verifying your visit.');
+      return;
+    }
+    if (!spot || checkingIn) return;
+
+    try {
+      setCheckingIn(true);
+      const currentLocation = await getCurrentLocation();
+      if (!currentLocation) {
+        Alert.alert('Location unavailable', 'Turn on location access and try again near the spot.');
+        return;
+      }
+
+      const visit = await gamificationService.recordSpotVisit({
+        spotId: spot.id,
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        accuracy: currentLocation.accuracy,
+      });
+
+      if (visit?.verified) {
+        Alert.alert('Visit verified', 'You earned visit XP for checking in at this spot.');
+      } else {
+        Alert.alert('Visit recorded', 'You are too far from the spot for verified visit XP right now.');
+      }
+    } catch (error: any) {
+      Alert.alert('Check-in failed', error.message ?? 'Please try again.');
+    } finally {
+      setCheckingIn(false);
+    }
   }
 
   function limitReportDetails(text: string) {
@@ -399,6 +483,7 @@ export default function SpotDetailsScreen() {
     setSelectedReportReason('');
     setReportDetails('');
     setReportSubmitted(false);
+    setSubmittingReport(false);
   }
 
   function openReportForm(review: Review) {
@@ -412,6 +497,53 @@ export default function SpotDetailsScreen() {
     setWebsitePreviewUrl(normalizeWebsiteUrl(url));
     setWebsitePreviewLoading(true);
     setWebsitePreviewError(false);
+  }
+
+  function getCurrentSpotValue(field: string) {
+    if (!spot) return null;
+    switch (field) {
+      case 'Location / map pin':
+        return `${spot.latitude}, ${spot.longitude}`;
+      case 'Address':
+        return spot.address;
+      case 'Opening hours':
+        return spot.opening_hours ?? null;
+      case 'Website':
+        return spot.website_url ?? null;
+      case 'Contact number':
+        return spot.contact_number ?? null;
+      case 'Description':
+        return spot.description ?? null;
+      case 'Category':
+        return [spot.category, ...(spot.categories ?? [])].filter(Boolean).join(', ');
+      default:
+        return null;
+    }
+  }
+
+  function openEditSuggestionForm(field = 'Location / map pin') {
+    setEditSuggestionField(field);
+    setEditSuggestionValue('');
+    setEditSuggestionCoordinate(spot ? { latitude: spot.latitude, longitude: spot.longitude } : null);
+    setEditSuggestionNote('');
+    setEditSuggestionSubmitted(false);
+    setEditSuggestionOpen(true);
+  }
+
+  function selectEditSuggestionField(field: string) {
+    setEditSuggestionField(field);
+    setEditSuggestionValue('');
+    setEditSuggestionCoordinate(spot ? { latitude: spot.latitude, longitude: spot.longitude } : null);
+  }
+
+  function closeEditSuggestionForm() {
+    setEditSuggestionOpen(false);
+    setEditSuggestionField(editSuggestionFields[0]);
+    setEditSuggestionValue('');
+    setEditSuggestionCoordinate(null);
+    setEditSuggestionNote('');
+    setEditSuggestionSubmitted(false);
+    setSubmittingEditSuggestion(false);
   }
 
   function showGalleryImage(index: number) {
@@ -434,16 +566,91 @@ export default function SpotDetailsScreen() {
     }
 
     try {
+      setSubmittingReport(true);
       await reviewService.reportReview(
         reportingReview.id,
         profile.id,
         details.trim() ? `${reason}: ${details.trim()}` : reason
       );
+      setReportSubmitted(true);
     } catch (error: any) {
       console.error('Report review error:', error);
+      Alert.alert('Report failed', error?.message ?? 'Please try again.');
+    } finally {
+      setSubmittingReport(false);
     }
-    setReportSubmitted(true);
   }
+
+  async function submitEditSuggestion() {
+    if (!spot) return;
+    if (!profile) {
+      Alert.alert('Sign in required', 'Please sign in before suggesting an edit.');
+      return;
+    }
+    const isLocationSuggestion = editSuggestionField === 'Location / map pin';
+    if (isLocationSuggestion && !editSuggestionCoordinate) {
+      Alert.alert('Pin needed', 'Choose the corrected map pin before submitting.');
+      return;
+    }
+    if (!isLocationSuggestion && !editSuggestionValue.trim()) {
+      Alert.alert('Correction needed', 'Enter the corrected detail before submitting.');
+      return;
+    }
+
+    try {
+      setSubmittingEditSuggestion(true);
+      const currentValue = isLocationSuggestion
+        ? JSON.stringify({ latitude: spot.latitude, longitude: spot.longitude })
+        : getCurrentSpotValue(editSuggestionField);
+      const suggestedValue = isLocationSuggestion && editSuggestionCoordinate
+        ? JSON.stringify({
+            latitude: Number(editSuggestionCoordinate.latitude.toFixed(7)),
+            longitude: Number(editSuggestionCoordinate.longitude.toFixed(7)),
+          })
+        : editSuggestionValue;
+
+      await spotEditSuggestionService.createSuggestion({
+        spot_id: spot.id,
+        user_id: profile.id,
+        field: editSuggestionField,
+        current_value: currentValue,
+        suggested_value: suggestedValue,
+        note: editSuggestionNote,
+      });
+      setEditSuggestionSubmitted(true);
+    } catch (error: any) {
+      Alert.alert('Suggestion failed', error?.message ?? 'Please try again.');
+    } finally {
+      setSubmittingEditSuggestion(false);
+    }
+  }
+
+  const editSuggestionIsLocation = editSuggestionField === 'Location / map pin';
+  const editSuggestionMapCenter = editSuggestionCoordinate ?? (spot ? { latitude: spot.latitude, longitude: spot.longitude } : null);
+  const editSuggestionMarkers = spot && editSuggestionCoordinate
+    ? [
+        {
+          id: 'original-location',
+          latitude: spot.latitude,
+          longitude: spot.longitude,
+          label: 'Current pin',
+          category: spot.category,
+          color: appColors.onSurfaceVariant,
+          variant: 'circle' as const,
+          size: 'small' as const,
+        },
+        {
+          id: 'suggested-location',
+          latitude: editSuggestionCoordinate.latitude,
+          longitude: editSuggestionCoordinate.longitude,
+          label: 'Suggested pin',
+          category: spot.category,
+          color: colors.primary,
+          selected: true,
+          variant: 'pin' as const,
+        },
+      ]
+    : [];
 
   return (
     <ScreenContainer appColors={appColors} scroll padded={false}>
@@ -536,6 +743,29 @@ export default function SpotDetailsScreen() {
             <Text style={[styles.statLabel, { color: appColors.onSurfaceVariant }]}>Volume</Text>
             <Text style={[styles.statValue, { color: appColors.onSurface }]}>Medium</Text>
           </View>
+        </View>
+
+        <View style={[styles.visitCard, { backgroundColor: appColors.surfaceLow }]}>
+          <View style={styles.visitCopy}>
+            <Text style={[styles.cardTitle, { color: appColors.onSurface }]}>Verify your visit</Text>
+            <Text style={[styles.cardSub, { color: appColors.onSurfaceVariant }]}>
+              Check in near this spot to earn verified visit XP.
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Verify visit at this spot"
+            disabled={checkingIn}
+            style={[styles.visitButton, checkingIn && styles.disabledButton]}
+            onPress={verifyVisit}
+          >
+            {checkingIn ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <CheckCircle size={18} color={colors.white} />
+            )}
+            <Text style={styles.visitButtonText}>Check in</Text>
+          </Pressable>
         </View>
 
         <View style={styles.section}>
@@ -742,14 +972,23 @@ export default function SpotDetailsScreen() {
               );
             })}
           </View>
+          <Pressable style={[styles.suggestEditButton, { backgroundColor: appColors.white }]} onPress={() => openEditSuggestionForm()}>
+            <View style={styles.suggestEditIcon}>
+              <Edit3 size={17} color={colors.primary} />
+            </View>
+            <View style={styles.detailCopy}>
+              <Text style={[styles.detailLabel, { color: appColors.onSurfaceVariant }]}>Found incorrect details?</Text>
+              <Text style={[styles.detailValue, { color: appColors.onSurface }]}>Suggest an edit</Text>
+            </View>
+          </Pressable>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: appColors.onSurfaceVariant }]}>Urban Transit</Text>
+            <Text style={[styles.sectionTitle, { color: appColors.onSurfaceVariant }]}>Route Line</Text>
             <View style={styles.routeBadge}>
               <Navigation size={13} color={colors.primary} />
-              <Text style={styles.routeBadgeText}>Map</Text>
+              <Text style={styles.routeBadgeText}>Route Line</Text>
             </View>
           </View>
           <View style={styles.mapCard}>
@@ -818,6 +1057,7 @@ export default function SpotDetailsScreen() {
                       key={reason}
                       style={[
                         styles.reportReasonButton,
+                        submittingReport && styles.disabledButton,
                         {
                           backgroundColor: selectedReportReason === reason ? colors.primary + '14' : appColors.surfaceLow,
                           borderColor: selectedReportReason === reason ? colors.primary : appColors.outlineVariant + '55',
@@ -829,15 +1069,20 @@ export default function SpotDetailsScreen() {
                           reportReview(reason);
                         }
                       }}
+                      disabled={submittingReport}
                     >
-                      <Text
-                        style={[
-                          styles.reportReasonText,
-                          { color: selectedReportReason === reason ? colors.primary : appColors.onSurface },
-                        ]}
-                      >
-                        {reason}
-                      </Text>
+                      {submittingReport && selectedReportReason === reason ? (
+                        <ActivityIndicator color={colors.primary} />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.reportReasonText,
+                            { color: selectedReportReason === reason ? colors.primary : appColors.onSurface },
+                          ]}
+                        >
+                          {reason}
+                        </Text>
+                      )}
                     </Pressable>
                   ))}
 
@@ -857,12 +1102,133 @@ export default function SpotDetailsScreen() {
                       <Text style={[styles.wordCount, { color: appColors.onSurfaceVariant }]}>
                         {reportDetails.trim().split(/\s+/).filter(Boolean).length}/200 words
                       </Text>
-                      <Pressable style={styles.submitReportButton} onPress={() => reportReview('Others', reportDetails)}>
-                        <Text style={styles.submitReportText}>Submit Report</Text>
+                      <Pressable
+                        style={[styles.submitReportButton, submittingReport && styles.disabledButton]}
+                        onPress={() => reportReview('Others', reportDetails)}
+                        disabled={submittingReport}
+                      >
+                        {submittingReport ? (
+                          <ActivityIndicator color={colors.white} />
+                        ) : (
+                          <Text style={styles.submitReportText}>Submit Report</Text>
+                        )}
                       </Pressable>
                     </View>
                   )}
                 </ScrollView>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={editSuggestionOpen} transparent animationType="fade" onRequestClose={closeEditSuggestionForm}>
+        <Pressable style={styles.reportBackdrop} onPress={closeEditSuggestionForm}>
+          <Pressable style={[styles.reportSheet, { backgroundColor: appColors.surface }]} onPress={(event) => event.stopPropagation()}>
+            {editSuggestionSubmitted ? (
+              <View style={styles.reportSuccess}>
+                <View style={styles.reportSuccessIcon}>
+                  <CheckCircle size={76} color={colors.white} />
+                </View>
+                <Text style={[styles.reportSuccessTitle, { color: appColors.onSurface }]}>Edit suggested</Text>
+                <Text style={[styles.reportSuccessText, { color: appColors.onSurfaceVariant }]}>
+                  Thanks for helping keep CebSpot accurate. An admin will review your suggested change.
+                </Text>
+                <Pressable style={styles.reportDoneButton} onPress={closeEditSuggestionForm}>
+                  <Text style={styles.reportDoneText}>Done</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <>
+                <View style={styles.reportHeader}>
+                  <Text style={[styles.reportTitle, { color: appColors.onSurface }]}>Suggest an Edit</Text>
+                  <Pressable style={[styles.reportClose, { backgroundColor: appColors.surfaceLow }]} onPress={closeEditSuggestionForm}>
+                    <X size={18} color={appColors.onSurface} />
+                  </Pressable>
+                </View>
+
+                <Text style={[styles.reportSubtitle, { color: appColors.onSurfaceVariant }]}>What should be corrected?</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.editFieldList}>
+                  {editSuggestionFields.map((field) => (
+                    <Pressable
+                      key={field}
+                      style={[
+                        styles.editFieldChip,
+                        {
+                          backgroundColor: editSuggestionField === field ? colors.primary : appColors.surfaceLow,
+                          borderColor: editSuggestionField === field ? colors.primary : appColors.outlineVariant + '55',
+                        },
+                      ]}
+                      onPress={() => selectEditSuggestionField(field)}
+                    >
+                      <Text
+                        style={[
+                          styles.editFieldText,
+                          { color: editSuggestionField === field ? colors.white : appColors.onSurface },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {field}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+
+                {editSuggestionIsLocation && editSuggestionMapCenter ? (
+                  <View style={styles.editLocationPicker}>
+                    <View style={[styles.editLocationMap, { borderColor: appColors.outlineVariant + '55' }]}>
+                      <TileMap
+                        style={styles.map}
+                        center={editSuggestionMapCenter}
+                        zoom={16}
+                        markers={editSuggestionMarkers}
+                        onCenterChange={setEditSuggestionCoordinate}
+                        onPressCoordinate={setEditSuggestionCoordinate}
+                      />
+                    </View>
+                    <View style={[styles.editLocationHint, { backgroundColor: appColors.surfaceLow }]}>
+                      <MapPin size={16} color={colors.primary} />
+                      <Text style={[styles.editLocationHintText, { color: appColors.onSurface }]}>
+                        Place the pin where this spot should appear on the map.
+                      </Text>
+                    </View>
+                  </View>
+                ) : (
+                  <TextInput
+                    value={editSuggestionValue}
+                    onChangeText={setEditSuggestionValue}
+                    placeholder="Enter the corrected detail..."
+                    placeholderTextColor={appColors.onSurfaceVariant}
+                    multiline
+                    style={[
+                      styles.reportDetailsInput,
+                      { color: appColors.onSurface, backgroundColor: appColors.white },
+                    ]}
+                  />
+                )}
+
+                <TextInput
+                  value={editSuggestionNote}
+                  onChangeText={setEditSuggestionNote}
+                  placeholder="Optional note for admins..."
+                  placeholderTextColor={appColors.onSurfaceVariant}
+                  multiline
+                  style={[
+                    styles.editNoteInput,
+                    { color: appColors.onSurface, backgroundColor: appColors.white },
+                  ]}
+                />
+                <Pressable
+                  style={[styles.submitReportButton, submittingEditSuggestion && styles.disabledButton]}
+                  onPress={submitEditSuggestion}
+                  disabled={submittingEditSuggestion}
+                >
+                  {submittingEditSuggestion ? (
+                    <ActivityIndicator color={colors.white} />
+                  ) : (
+                    <Text style={styles.submitReportText}>Submit Suggestion</Text>
+                  )}
+                </Pressable>
               </>
             )}
           </Pressable>
@@ -1016,7 +1382,6 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 34,
     fontWeight: '900',
-    fontStyle: 'italic',
     textTransform: 'uppercase',
     marginTop: spacing.sm,
     lineHeight: 36,
@@ -1071,7 +1436,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: fontSize.xl,
     fontWeight: '900',
-    fontStyle: 'italic',
     textTransform: 'uppercase',
   },
   cardSub: {
@@ -1099,6 +1463,38 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: fontSize.sm,
     fontWeight: '900',
+  },
+  visitCard: {
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary + '18',
+  },
+  visitCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  visitButton: {
+    minHeight: 46,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    ...shadow.card,
+  },
+  visitButtonText: {
+    color: colors.white,
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   section: {
     gap: spacing.md,
@@ -1400,6 +1796,25 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontWeight: '800',
   },
+  suggestEditButton: {
+    minHeight: 62,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.primary + '28',
+  },
+  suggestEditIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary + '12',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   routeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1464,7 +1879,6 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: fontSize.xl,
     fontWeight: '900',
-    fontStyle: 'italic',
   },
   footerButton: {
     flex: 1,
@@ -1552,7 +1966,6 @@ const styles = StyleSheet.create({
   reportTitle: {
     fontSize: fontSize.xl,
     fontWeight: '900',
-    fontStyle: 'italic',
     textTransform: 'uppercase',
   },
   reportClose: {
@@ -1583,6 +1996,64 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: '900',
   },
+  editFieldList: {
+    gap: spacing.sm,
+    paddingRight: spacing.lg,
+  },
+  editFieldChip: {
+    minHeight: 42,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  editFieldText: {
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  editLocationPicker: {
+    gap: spacing.sm,
+  },
+  editLocationMap: {
+    height: 260,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  editLocationHint: {
+    minHeight: 44,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  editLocationHintText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+    fontWeight: '800',
+  },
+  currentValueBox: {
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    gap: 3,
+  },
+  currentValueLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  currentValueText: {
+    fontSize: fontSize.sm,
+    lineHeight: 19,
+    fontWeight: '800',
+  },
   otherReportBox: {
     gap: spacing.sm,
     paddingTop: spacing.sm,
@@ -1598,6 +2069,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlignVertical: 'top',
   },
+  editNoteInput: {
+    minHeight: 82,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant + '55',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    textAlignVertical: 'top',
+  },
   wordCount: {
     alignSelf: 'flex-end',
     fontSize: fontSize.xs,
@@ -1610,6 +2092,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...shadow.card,
+  },
+  disabledButton: {
+    opacity: 0.72,
   },
   submitReportText: {
     color: colors.white,
@@ -1635,7 +2120,6 @@ const styles = StyleSheet.create({
   reportSuccessTitle: {
     fontSize: fontSize.xxl,
     fontWeight: '900',
-    fontStyle: 'italic',
     textTransform: 'uppercase',
     textAlign: 'center',
   },

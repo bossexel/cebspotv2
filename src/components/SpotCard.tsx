@@ -96,7 +96,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: fontSize.lg,
     fontWeight: '900',
-    fontStyle: 'italic',
     textTransform: 'uppercase',
     lineHeight: 19,
   },
@@ -140,6 +139,5 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: fontSize.sm,
     fontWeight: '900',
-    fontStyle: 'italic',
   },
 });

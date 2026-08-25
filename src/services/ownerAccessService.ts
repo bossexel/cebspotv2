@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import type { NewOwnerAccessRequest, OwnerAccessRequest } from '../types';
 import { activityService } from './activityService';
@@ -30,6 +31,17 @@ function normalizeOwnerAccessRequest(row: any): OwnerAccessRequest {
 }
 
 export const ownerAccessService = {
+  async claimTestCebspotOwnerAccess(client: SupabaseClient = supabase): Promise<boolean> {
+    if (!hasSupabaseConfig) return true;
+
+    const { error } = await client.rpc('claim_test_cebspot_owner_access');
+    if (error) {
+      console.warn('Unable to claim Test Cebspot owner access:', error.message);
+      return false;
+    }
+    return true;
+  },
+
   async createRequest(request: NewOwnerAccessRequest, userName: string): Promise<OwnerAccessRequest> {
     if (!hasSupabaseConfig) {
       const created: OwnerAccessRequest = {

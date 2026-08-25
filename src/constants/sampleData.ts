@@ -2,11 +2,11 @@ import type { Activity, Circle, Reservation, Review, Spot } from '../types';
 
 const featuredSpots: Spot[] = [
   {
-    id: 'cebspot-cafe',
-    name: 'CebSpot Cafe',
-    description: 'A warm Cebu cafe test spot for validating venue details, reservations, and contact information.',
-    category: 'Cafe',
-    categories: ['Cafe', 'Specialty Coffee'],
+    id: '66666666-6666-4666-8666-666666666666',
+    name: 'Test Cebspot Restaurant',
+    description: 'A warm Cebu restaurant test spot for validating venue details, reservations, owner approvals, and GCash payments.',
+    category: 'Restaurant',
+    categories: ['Restaurant', 'Reservations'],
     address: 'Barangay Apas, Cebu City',
     latitude: 10.3306,
     longitude: 123.9062,
@@ -23,6 +23,10 @@ const featuredSpots: Spot[] = [
     reservation_type: 'paid',
     reservation_fee: 150,
     payment_required: true,
+    gcash_wallet_number: '0917 555 0198',
+    gcash_wallet_name: 'Test Cebspot Restaurant',
+    gcash_qr_url: 'https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=GCash%20Test%20Cebspot%20Restaurant%2009175550198%20150',
+    gcash_amount: 150,
     opening_hours: '7:00 AM - 10:00 PM',
     website_url: 'https://example.com/cebspot-cafe',
     contact_number: '+63 917 555 0198',
@@ -143,6 +147,10 @@ const mockSpotImages: Record<string, string[]> = {
     'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&q=80&w=900',
     'https://images.unsplash.com/photo-1543007630-9710e4a00a20?auto=format&fit=crop&q=80&w=900',
   ],
+  Club: [
+    'https://images.unsplash.com/photo-1571266028243-d220c9c3a1c8?auto=format&fit=crop&q=80&w=900',
+    'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=900',
+  ],
   'Social Hub': [
     'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&q=80&w=900',
     'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&q=80&w=900',
@@ -209,6 +217,11 @@ const cebuMockSpotSeeds = [
   ['mock-cebu-053', 'Busay View Deck Cafe', 'Outdoor', ['Outdoor', 'Cafe'], 'Barangay Busay, Cebu City', 10.3692, 123.8825, 4.7, 133, true, '7:00 AM - 11:00 PM'],
   ['mock-cebu-054', 'Beverly Hills Tea Garden', 'Outdoor', ['Outdoor', 'Cafe'], 'Barangay Lahug, Cebu City', 10.3426, 123.8896, 4.6, 86, true, '8:00 AM - 10:00 PM'],
   ['mock-cebu-055', 'Sirao Road Snack View', 'Outdoor', ['Outdoor', 'Street Food'], 'Barangay Sirao, Cebu City', 10.4102, 123.8786, 4.4, 74, false, '8:00 AM - 8:00 PM'],
+  ['mock-cebu-056', 'Liv Superclub Cebu', 'Club', ['Club', 'High Pulse'], 'Barangay Apas, Cebu City', 10.3304, 123.9089, 4.7, 214, true, '8:00 PM - 4:00 AM'],
+  ['mock-cebu-057', 'Icon Night Lounge', 'Club', ['Club', 'Nightlife'], 'Barangay Kamputhaw, Cebu City', 10.3129, 123.8998, 4.5, 168, true, '7:00 PM - 3:00 AM'],
+  ['mock-cebu-058', 'Mango Avenue Clubhouse', 'Club', ['Club', 'High Pulse'], 'Barangay Kamputhaw, Cebu City', 10.3103, 123.8989, 4.4, 192, true, '8:00 PM - 4:00 AM'],
+  ['mock-cebu-059', 'Crossroads Disco Room', 'Club', ['Club', 'Dance Floor'], 'Barangay Banilad, Cebu City', 10.3372, 123.9107, 4.5, 139, true, '7:00 PM - 2:30 AM'],
+  ['mock-cebu-060', 'IT Park Glow Club', 'Club', ['Club', 'Live DJ'], 'Barangay Apas, Cebu City', 10.3328, 123.9071, 4.6, 181, true, '8:00 PM - 3:00 AM'],
 ] as const;
 
 export const sampleSpots: Spot[] = [

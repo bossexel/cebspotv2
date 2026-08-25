@@ -1,0 +1,730 @@
+﻿CebSpot: A Mobile Application for Discovery and Leisure in Cebu City
+A Capstone Presented to the Faculty of the Graduate School, University of Southern Philippines Foundation
+Salinas Drive, Lahug, Cebu City
+Requirements for the
+Degree of Bachelor of Science in
+Information Technology
+Clyde Hans Sadudaquil
+Jithrix Exiel Bolambao
+2026
+ACKNOWLEDGEMENT
+This research would not have been possible without the people who stood by us every step of the way. To God Almighty, thank you for the strength, clarity, and grace that carried this research from start to finish. Your guidance was the foundation of everything we accomplished.
+To our research adviser, Ms. Cyrille Shane A. Pador, thank you for your patience, honest feedback, and genuine dedication to this study. Your guidance and encouragement pushed us to do better at every turn and made all the difference in bringing this research to its final form.
+To the University of Southern Philippines Foundation, thank you for providing the academic environment and resources that made this research possible. To our respondents, thank you for your time and for trusting us with your insights. This study would not be complete without your participation.
+To our families, thank you for the unwavering support, quiet sacrifices, and endless belief in us throughout this entire journey. Your love and encouragement were the fuel behind every page of this paper. To our friends and batchmates, thank you for keeping us grounded, sharing in the struggles, and reminding us to keep going when it felt difficult.
+This research is a reflection of everyone who believed in it.
+DEDICATION
+TABLE OF CONTENTS
+TABLE OF CONTENTSi
+LIST OF FIGURESiii
+LIST OF TABLESiv
+CHAPTER 11
+1.1 Background of the Study2
+1.2 Statement of the Problem2
+1.3 Objectives of the Study2
+1.4 Significance of the Study3
+1.5 Scope and Limitations4
+1.5.2 Limitations6
+1.6 Definition of Terms10
+CHAPTER 212
+2.1 Related Literature12
+2.1.1 Location-Based Services and Mobile Applications12
+2.1.2 Location-Based Social Networks13
+2.1.3 Point-of-Interest Recommendation Systems14
+2.1.4 Online Reviews, User Trust, and Recommendation Platforms15
+2.1.5 Location Privacy and Data Security16
+2.1.6 Mobile Application Adoption and Use in the Philippine Context16
+2.2 Related Studies19
+2.2.1 Community-Driven Review Platforms and Consumer Decision-Making19
+2.2.2 Fake Review Detection and Platform Integrity in Location-Based Applications20
+2.2.5 Hyperlocal Venue Discovery and Mobile-First Platforms in Emerging Markets22
+2.3 Synthesis of the Reviewed Literature and Studies23
+2.4 Research Gap24
+CHAPTER 326
+3.1 Conceptual Framework26
+3.1.1 Explanation of Conceptual Framework28
+3.2 Research Design28
+3.3 Data Gathering Procedures29
+3.3.1 Ethical Considerations30
+3.4 System Development Methodology31
+Phase 1: Product Backlog31
+1.1 User Requirements Specification (URS)32
+1.2 Functional Specification33
+1.3 Non-Functional Requirements34
+Phase 2: Sprint Planning34
+Phase 3: System Design & UI/UX Prototyping35
+3.5 Planning Phase35
+3.6 Analysis Phase37
+3.6.1 User Requirements Specification (URS)37
+3.6.2 Functional Requirements38
+3.6.3 Use Case Diagram and Description40
+3.6.4 Data Flow Diagram (DFD)43
+3.6.5 Class Diagram46
+3.6.6 Non-Functional Requirements47
+3.7 Design Phase51
+3.7.1 Interface Design (Main Modules)51
+3.7.2 Database Design58
+3.8 System Architecture61
+3.8.1 Architectural Design62
+3.9 Development Phase62
+3.9.1 Technology Stack (Tools and Technologies Used)65
+3.10 Implementation and Testing Phase69
+3.10.1 Test Plan70
+REFERENCES73
+APPENDICES80
+Appendix A: Approval and Consultation80
+Appendix B: Requirements Gathering Documents82
+Appendix C: Design and Development90
+Appendix D: Research Ethics95
+Appendix E: Grammarly Results96
+APPENDIX F - CURRICULUM VITAE97
+LIST OF FIGURES
+Figure 3.1 Input-Process-Output (IPO) Model
+Figure 3.2 Agile Software Development Model (Scrum Framework)
+Figure 3.3 — Spotter (Primary User) Use Case Diagram
+Figure 3.4 — Store Owner (Secondary User) Use Case Diagram
+Figure 3.5 — Administrator Use Case Diagram
+Figure 3.6 CebSpot Data Flow Diagram — Level 0 (Context Diagram)
+Figure 3.7 CebSpot Data Flow Diagram—Level 1
+Figure 3.8 Class Diagram
+Figure 3.9 Explore Screen (Map View)
+Figure 3.10 Circle Screen
+Figure 3.11 Spot Details
+Figure 3.12 Booking Screen
+Figure 3.13 Booking Screen
+Figure 3.14 Activity Screen
+Figure 3.15 Database Design of Cebspot
+Figure 3.16 Architecture Design
+LIST OF TABLES
+TABLE1: User Requirements Specification (URS)
+TABLE 2: Functional Requirements
+TABLE 3: Non-Functional Requirements
+TABLE 4: Development Phase
+TABLE 5: Frontend Technologies
+TABLE 6: Backend Technologies
+TABLE 7: Third-Party & Integration Technologies
+TABLE 8: Development Tools
+TABLE 9: Test Plan
+CHAPTER 1
+INTRODUCTION
+1.1 Background of the Study
+Cebu's social life is evolving as people seek not only prominent attractions but also secret or lesser-known locations (often called "spots") where friends can rest, interact, and unwind [1]. Numerous clubs, bars, cafés, stores, restaurants, and hangout areas exist in cities such as Cebu, yet many of these locations, particularly lesser-known ones, go unnoticed by the general public. More and more tourists are exploring local sights and looking for quick, entertaining, and pleasurable vacation options close to home.
+Most people use social media and influencers to find venues to hang out [2, 36, 37, 43]. These sources are somewhat useful, although they often lack structure, reliability, and up-to-date information. Additionally, some of these sources won't live up to users' expectations once they arrive in the area, where they're not what they seem. Online content is sometimes curated and scripted by the influencers and earners [44].
+On the other hand, making reservations in high-end clubs, bars, and restaurants is often inconvenient due to manual booking processes and limited digital platforms [3, 39, 40, 45].
+To address these challenges, this concept paper proposes developing CebSpot, an application that showcases both popular and hidden or low-key hangout spots. The application will allow users to discover places, rate and recommend venues, and reserve tables or time slots at selected high-end locations, such as clubs, bars, and restaurants.
+1.2 Statement of the Problem
+Despite the availability of many social and hangout locations, the following problems are observed:
+1. How can users effectively discover hidden or low-key hangout spots that are not widely promoted on mainstream platforms?
+2. How can information about social venues be consolidated into a single, reliable, and centralized platform?
+3. How can the reservation process in high-end clubs, bars, and restaurants be made more efficient and less time-consuming through digital means?
+4. How can a platform provide users with a trusted, centralized space to rate, review, and recommend hangout spots while addressing the issue of scripted or fake content?
+1.3 Objectives of the Study
+The general objective of this study is to develop CebSpot. This mobile application enables users to discover popular and hidden spots, rate and recommend venues, and reserve tables in selected high-end locations.
+Specific Objectives
+To design a user-friendly mobile application for spot discovery.
+To implement a table reservation system for high-end clubs and venues.
+To integrate a map feature that displays nearby, trending, and suggested spots.
+To provide venue owners with a platform to promote their establishments.
+To integrate a secure payment system that allows users to process reservations and transactions within the application.
+1.4 Significance of the Study
+The proposed system will benefit the following:
+Users / Customers: The application will make it easier to locate, reserve tables, and arrange events.
+Owners: Businesses may boost their visibility, manage reservations more easily, and attract more customers.
+Tourists: Visitors can easily find alternatives in unfamiliar regions.
+Tourism agencies: The system can be used as a supplement to promote local and social venues, allowing agencies to showcase locations better, support tourism campaigns, and give travelers accurate, up-to-date information about local hangouts.
+Students and Researchers: The work may be used as a reference for future research on mobile reservations and location-based systems.
+1.5 Scope and Limitations
+1.5.1 Scope
+This research focuses on the development of CebSpot, a smartphone application designed to address the fragmented nature of venue discovery and leisure planning in Cebu City. The scope includes the research, design, development, and evaluation of a digital platform that integrates location-based services, peer-verified ratings, and booking capabilities to improve the way customers discover and access attractions in Cebu. The application is designed for the Android platform, ensuring that it is accessible to a wide range of mobile device users.
+Geographic Coverage:
+The study is limited to venues in Cebu City and its immediate vicinity, including key social districts, entertainment areas, and emerging recreational spots that the target group typically visits. This also covers the better-known giants and some lesser-known or hidden flags that are sometimes ignored in media coverage.
+Target Establishments:
+CebSpot will include nightclubs, bars, cafés, restaurants, stalls, and other social gathering spots. The platform prioritizes establishments that provide leisure and entertainment over critical services, emphasizing areas where individuals can socialize, rest, and unwind.
+Core Functionalities:
+With the application's GPS-based venue-finding feature, users can locate nearby venues from their current position. The review system includes trust verification tools to address the acknowledged issue of scripted and fraudulent content from influencers [36, 44]. Users can search, filter by preferences such as category, price, distance, and rating, and browse detailed venue information. The booking feature will allow digital reservations at participating locations [39, 40, 45].
+Target User Groups:
+The study focuses on Cebu locals who actively pursue leisure and social activities, tourists and visitors interested in what the city offers, and local venue owners seeking a digital presence. The platform caters to both Cebu locals looking to explore new spots and outsiders seeking solid recommendations.
+Research Components:
+The descriptive aspect will involve surveys to understand user needs and preferences, interviews with venue owners to identify operational requirements, and analysis of current venue discovery methods in Cebu. The developmental aspect covers system design, feature implementation, usability testing, and performance evaluation. Data collection will examine user behavior patterns, platform effectiveness, and satisfaction metrics.
+Technical Implementation:
+The study includes mobile application development for Android, database design for venue information and user data, implementation of GPS and mapping technologies, development of the recommendation algorithm, creation of the trust verification system for reviews, and integration with external APIs for navigation and payment processing, where applicable.
+Community Engagement:
+The platform will feature community upvoting and public forums where citizens can post and share additional context or notes regarding their experiences.
+1.5.2 Limitations
+This study's scope limitations include data accuracy issues, selective venue coverage, limited personalized recommendations, language constraints, internet accessibility requirements, challenges in maintaining real-time updates, reliance on user participation for community engagement, reliance on venue operator cooperation for booking features, and limitations in map accuracy and coverage.
+Data Accuracy: The platform's venue data will be sourced from available sources, such as business listings, user submissions, and public information, which may not always be up to date or entirely accurate. Operating hours, contact information, and menu options may change without an immediate update to the platform.
+Spot Selection: The study will focus on chosen venues based on user recommendations, popularity data, and accessibility, rather than covering every establishment in Cebu City. Some lesser-known or recently opened venues may not be included in the first database.
+User-Specific Recommendations: While the software will make recommendations based on location, category, and rating, highly tailored suggestions that account for individual dietary restrictions, unique accessibility requirements, or personal taste preferences may be limited. The system will provide recommendations based on general popularity and user input patterns.
+Language Accessibility: The platform's initial version will primarily focus on English and Filipino languages, which may limit accessibility for non-English/non-Filipino speakers or overseas travelers who speak other languages.
+Internet Availability: The platform's effectiveness will be defined by its internet connectivity. Most capabilities, including GPS tracking, map loading, real-time updates, and booking services, require an active internet connection. Users in places with inadequate internet connectivity may have limited functionality.
+Real-Time Information Updates: Since the study relies on manual updates and user reporting, it may not provide real-time information on venue availability, current crowd numbers, or sudden closures.
+Booking Functionality Limitations: The booking feature's effectiveness depends on venue operators' participation and willingness to integrate with the platform. Not all venues may handle digital reservations, and booking confirmations may require manual verification from institution owners rather than immediate automatic confirmation.
+Community Engagement: The success of the review system, social features, and community- building aspects will depend heavily on active user participation, which is beyond direct control. The quality and quantity of user-generated content will influence the overall value of the application.
+Payment Processing Scope: The platform will handle reservation deposit payments where applicable, but full payment processing for meals, services, or complete transactions is outside the scope. Users must settle full payments directly with the venue upon arrival.
+Geographic Coverage Constraints: During the development and testing stages, the platform will concentrate on the Cebu metropolitan area. Expansion into other Philippine cities or regions is anticipated in future phases but is not included in the scope of this initial study.
+1.6 Definition of Terms
+Agile development is an iterative software development technique that emphasizes continuous improvement, frequent testing, and incremental feature delivery.
+Discovery (Tourism Context): The process of selecting and exploring new, emerging, or lesser-known areas for leisure and recreation purposes.
+Hangout Spots: Cafés, bars, restaurants, and recreational areas are designated gathering places for people and groups to socialize.
+High-End Establishments: Premium venues are distinguished by their luxury services, ambiance, and offerings, which often require advance bookings.
+Hidden or Lowkey Spots: Locations that are not well-known or frequently promoted but offer unique or valuable experiences to tourists.
+Mobile Application: A software application designed to run on mobile devices like smartphones and tablets, allowing users to access services and perform certain tasks.
+Reliability of Information: Refers to the degree to which information is accurate, consistent, and dependable for user decision-making.
+Reservation System: A digital tool that allows people to arrange and secure reservations for services or spaces in businesses like restaurants, pubs, and clubs.
+Social Media Influence: The impact of preferences and decision-making habits. Content distributed via social media platforms affects people's perceptions.
+Spot: A modern term denoting a distinct site or venue noted for its social, recreational, or leisure value, which can range from well-known establishments to less-known spots that provide unique experiences for individuals or groups.
+User-Generated Content: Digital content, such as ratings, reviews, and recommendations, created and shared by users on a platform.
+CHAPTER 2
+REVIEW OF RELATED LITERATURE AND STUDIES
+This chapter presents a collection of literature and studies that are relevant to the major concepts explored in CebSpot: A Mobile Application for Discovery and Leisure in Cebu City. The materials gathered and analyzed from existing theses, public articles, and scholarly works aim to provide a deeper understanding of the study's foundational elements. The review is organized into six thematic areas: Location-Based Services and Mobile Applications; Social and Location-Based Networking; Point-of-Interest Recommendation Systems; Online Reviews and User Trust; Location Privacy and Data Security; and Mobile Application Adoption in the Philippine Context.
+2.1 Related Literatures
+2.1.1 Location-Based Services and Mobile Applications
+Location-Based Services (LBS) have become a cornerstone of current mobile application development, allowing users to perform a variety of functions based on their geographic location. Akinleye et al. [1] demonstrated the importance of location-based services (LBS) applications in smartphones by combining GPS technology with web services to provide users with real-time spatial information. Their study underscored the practical utility of LBS for everyday navigation and discovery tasks, serving as the technical backbone of applications such as CebSpot.
+Building on this, Yin, Ding, and Wang [2] suggested a mobile marketing recommendation method that uses user location data to deliver individualized recommendations. Their findings are pertinent to CebSpot's recommendation engine, demonstrating how location data can improve the relevance and timeliness of venue suggestions for users seeking hangout spots in Cebu City.
+The integration of GPS and digital mapping into mobile platforms has also greatly reduced the barrier to consumers exploring unknown locations. By embedding an interactive map within CebSpot, users can visibly discover nearby venues, eliminating the reliance on word-of-mouth or social media influencers—which, while popular, are sometimes unreliable and inconsistently updated.
+2.1.2 Location-Based Social Networks
+Location-Based Social Networks (LBSNs) are an evolution of traditional social networking, in which geographic context is incorporated into social interactions and content exchange. Cheng, Yang, and Xia [3] presented iZone, a mobile social networking system that links users based on physical proximity and common destinations. Their work demonstrates how spatial data can enhance social experiences, enabling communities to form around shared locations—a premise that underpins CebSpot's community review and rating capabilities.
+Zhang et al. [4] expanded on this concept with Hoodsquare, a system that models and suggests communities based on data acquired from location-based social networks. Their findings showed that collective check-in behavior and spatial patterns might be used to describe local locations and yield neighborhood-level insights. For CebSpot, this means aggregated user activity data from Cebu City hangout spots can be used to identify trending locales and emerging social hubs.
+By bridging the gap between digital and physical places, LBSNs enable the coordination of daily social life, according to Saker's [7] analysis of locative media and sociability. According to his research, platforms that combine social features with location awareness promote more frequent and significant offline encounters. These results are consistent with CebSpot's design philosophy, which seeks to serve as a catalyst for genuine social interactions among Cebu users and as a discovery tool.
+A location recommendation paradigm for LBSNs was proposed by Ye et al. [8], combining social correlation and spatial influence to produce relevant venue recommendations. Their method verifies CebSpot's multi-layered recommendation mechanism, which accounts for community involvement, user preferences, and proximity. Similarly, Chorley et al. [9] investigated the relationship between user personality and LBSN engagement and concluded that personal characteristics influence how users engage with location-based features—a factor pertinent to CebSpot's user profile and preference system.
+2.1.3 Point-of-Interest Recommendation Systems
+Point-of-Interest (POI) recommendation is an important research topic within the broader field of location-aware computing. Kim, Kim, and Chung [5] created a successor POI recommendation system that incorporates local differential privacy to protect user data while still providing accurate location suggestions. Their work is essential for CebSpot because it demonstrates that effective recommendation methods do not have to compromise user privacy—a balance the program must strike as it manages sensitive location and behavioral data.
+Lim et al. [6] proposed an origin-aware next-destination recommendation system with individualized preference attention to predict where users will travel next based on their starting location and historical preferences. This study has clear implications for CebSpot's recommendation module, notably by proposing contextually relevant venues based on the user's current location and previous behavior in Cebu City.
+These tests confirm the technical viability of intelligent POI recommendation in mobile applications, supporting the architectural rationale for CebSpot's venue-finding and suggestion functionalities. By incorporating collaborative filtering and contextual cues, CebSpot can go beyond generic listings to provide recommendations that are truly useful and particularly relevant to each user.
+2.1.4 Online Reviews, User Trust, and Recommendation Platforms
+The role of user-generated reviews in shaping consumer decisions has been extensively studied in the context of digital platforms. Martínez-Navalón, Gelashvili, and Gómez-Ortega [10] evaluated user satisfaction and trust in review platforms, with a focus on TripAdvisor. Their research found that privacy perceptions and electronic word-of-mouth (eWOM) significantly influence trust and continued usage of review platforms. For CebSpot, this underscores the importance of building a transparent and credible review ecosystem where users feel confident that the ratings they see reflect genuine experiences. Research has further confirmed that user-generated content, including reviews, ratings, and comments, serves as external stimuli that shape consumer impressions and build online trust [41]. Studies have also shown that users' trust in recommender systems and mobile applications is significantly influenced by the perceived reliability and relevance of the content presented to them [42].
+Singh and Kumar [11] conducted a thorough evaluation of the reliability of online reviews. They identified significant criteria such as reviewer competence, review depth, and platform design as predictors of perceived trustworthiness. Their findings indicate that CebSpot's rating and review system should include design elements that enhance credibility, such as verified user identities, thorough review prompts, and systems to detect deceptive content. This is especially important given that the original motive for launching CebSpot was to address inaccuracies in social media- and influencer-driven venue recommendations.
+CebSpot can provide users with a more reliable alternative to carefully curated influencer content by incorporating an organized, community-driven review mechanism. The platform's venues will be assessed based on the real-world experiences of guests, giving potential customers an accurate, nuanced picture of what to expect.
+2.1.5 Location Privacy and Data Security
+As mobile applications become more reliant on constant location data, user privacy issues have developed in tandem. Shaham et al. [12] investigated the significance of location privacy for users of location-based applications, discovering that many users are unaware of the extent to which their location data is gathered and potentially disclosed. Their study calls for greater transparency and user control in LBS applications—principles that CebSpot must embed in its data-handling practices.
+Primault et al. [13] provided a detailed study of computational location privacy, documenting the history of privacy-preserving approaches and highlighting outstanding issues. Their work gives a technical path for developers who want to add strong privacy safeguards without sacrificing service quality. For CebSpot, this entails implementing anonymization and aggregation approaches that allow the platform to profit from user location data while limiting individual exposure.
+Taken together, these investigations highlight CebSpot's duty to protect user data. The application's development must follow privacy-by-design principles, which require that data collection be minimal, intentional, and explicitly expressed to users via accessible privacy policies and in-app disclosures.
+2.1.6 Mobile Application Adoption and Use in the Philippine Context
+The Philippine environment provides a rich backdrop for analyzing mobile application adoption habits and problems. Gonzales et al. [14] used the Mobile App Rating Scale (MARS) to conduct a comprehensive search and quality assessment of mobile applications in the Philippines during the COVID-19 epidemic. Their findings emphasized the expanding role of mobile platforms in meeting everyday demands in the Philippines, as well as the importance of usability and design quality in determining application effectiveness.
+According to DataReportal's Digital 2023 study on the Philippines [15], the country has one of Southeast Asia's highest rates of mobile internet usage, with a sizable segment of the population accessing the web mostly via smartphones. This data significantly supports CebSpot's viability as a mobile-first platform, given the prevalence of smartphone use among the target demographic in Cebu City.
+Several studies have also investigated the adoption of specific mobile applications in the Philippine setting. Gumasing et al. [16] assessed the usability of transport network vehicle service applications, notably Grab, Angkas, and JoyRide, during the pandemic, highlighting usability factors that were important to user satisfaction. Prasetyo and Vallespin [17] used an expanded UTAUT framework to investigate factors influencing Grab Philippines' acceptability, focusing on the roles of performance expectancy, effort expectancy, and social impact in driving adoption.
+Napalang and Regidor [18] investigated the rise of ride-hailing services in Metro Manila. At the same time, Semblante, Rabago, and Penuela [19] conducted a scoping analysis of food delivery service applications in densely populated Philippine cities. Both studies highlight the increasing integration of location-based mobile services into urban Filipinos' everyday routines, offering significant insights into user behavior patterns relevant to CebSpot's target demographic.
+Maravilla and Gantalao [20] investigated e-tourism adoption among travel firms in Cebu City, concluding that digital platforms play an increasingly important role in enabling tourism-related transactions in the region. Their findings are directly applicable to CebSpot's aim of promoting local leisure areas and improving Cebu City's tourism landscape. Furthermore, Aguirre, Patricio, and Dela Cruz [21] investigated the adoption of the Waze mobile application among Generation Z in the Philippines, discovering that ease of use and perceived usefulness are the strongest predictors of continued application use, findings that inform CebSpot's user interface and experience design.
+Finally, Zubiate, Calongos, and Andrade-Arenas [22] detailed the development of a mobile application for a metropolitan transportation system, focusing on the operational issues and user feedback loops required to sustain a mobile platform in an urban context. Their experience emphasizes the necessity of iterative development and community engagement to keep CebSpot responsive to its consumers' evolving demands in Cebu City.
+2.2 Related Studies
+2.2.1 Community-Driven Review Platforms and Consumer Decision-Making
+Several studies have looked into how user-generated review systems affect customer behavior and trustworthiness. Research has found that review valence, reviewer profile, and platform familiarity all influence the perceived credibility of online reviews, with users interpreting profile cues in combination when assessing whether a reviewer can be trusted [23]. Furthermore, studies have demonstrated that online ratings carry measurable economic weight, with a one-star increase in a venue's rating correlated with a notable rise in revenues, particularly for independent establishments [24]. However, the integrity of review systems remains a persistent concern, as research has highlighted the dynamic and inconsistent nature of review filtering systems, noting that reviews can routinely shift between visible and filtered classifications, calling into question the reliability of platform-assigned labels as stable ground truth [25]. These findings are directly relevant to CebSpot, as they highlight both the power and the potential pitfalls of community-driven review ecosystems—informing the design of the platform's rating mechanisms and content moderation features.
+2.2.2 Fake Review Detection and Platform Integrity in Location-Based Applications
+As location-based platforms increasingly rely on user-generated content, the authenticity of that content has become a critical concern. A case study on fake review detection in a major mapping platform found that fabricated reviews are vulnerable to manipulation, with fake accounts predominantly awarding the maximum five-star rating, making detection more complex and raising concerns about the trustworthiness of aggregated scores [26].
+The scale of the problem is significant, as research has documented that major platforms have had to block or remove tens of millions of policy-violating reviews and fake business profiles within a single year [26]. These findings underscore the importance of building strong community moderation tools and verification mechanisms into CebSpot from the ground up, particularly as the platform scales its venue listings across Cebu City and user-contributed content grows in volume.
+2.2.3 Gamification and User Engagement in Location-Based Social Networks
+Gamification has been extensively researched as a means of maintaining user engagement and improving platform statistics. Research examining the effectiveness of gamification mechanisms in location-based social networks found that user scores, an aggregate measure based on recent check-in activities, reflect a snapshot of users' temporal and spatial orders and behaviors, and that such social gaming elements help keep users actively engaged on the platform [29]. A related study found that location-based social media apps provide both hedonic and utilitarian benefits through gratification factors, including gamification, socialization, and self-purpose, with hedonic benefit fully mediating the relationship between these gratification factors and users' continued intention to use the platform [27]. Additionally, qualitative research has shown that gamification elements in location-based platforms can add a playful layer to physical spaces, drawing from concepts of hybrid space and spatial legibility to explain how game mechanics can shape users' real-world mobility decisions [28]. For CebSpot, these findings validate the potential of engagement features such as contribution milestones and activity streaks to sustain community participation and keep the platform's venue information current and reliable.
+2.2.4 Electronic Word-of-Mouth, User Trust, and Satisfaction in Review Platforms
+The role of electronic word-of-mouth (eWOM) in shaping user trust and satisfaction on review sites has been extensively studied in the tourism and hospitality industries. Research on a major travel review platform discovered a direct and positive association between users' privacy views and their contentment with the platform, as well as a direct and positive relationship between eWOM and user trust [30]. Furthermore, an analysis of a large corpus of travel reviews revealed that the diversity and sentiment polarity of textual reviews are associated with higher overall customer satisfaction scores, implying that a balanced and varied review ecosystem contributes more meaningfully to user experience than uniformly positive feedback [31]. For CebSpot, these findings reinforce the importance of building a transparent and privacy-respecting review environment where diverse, genuine user experiences are surfaced—rather than curated or filtered toward uniformly favorable impressions.
+2.2.5 Hyperlocal Venue Discovery and Mobile-First Platforms in Emerging Markets
+Studies on venue discovery platforms operating in emerging market contexts offer particularly relevant insights for CebSpot. Research on hyperlocal food and venue discovery platforms has shown that a strong foundation in search, discovery, and user-generated content can serve as a springboard for broader service expansion, even in highly competitive markets [32]. Academic case analyses further highlight how the success of venue discovery platforms among young urban users is built on providing comprehensive information—including images, costs, menus, and community reviews—alongside forums where users can share firsthand experiences [32].
+The experience of platforms that have operated in the Philippine market specifically also illustrates that while international venue discovery services have attempted to establish a presence in the country, many have eventually scaled back or exited local markets, leaving a gap for locally focused alternatives [32]. This gap is precisely what CebSpot aims to fill—offering a hyperlocal, community-driven discovery platform tailored to the specific social and geographic context of Cebu City.
+2.3 Synthesis of the Reviewed Literature and Studies
+The studied literature provides a solid theoretical and empirical foundation for CebSpot. The combination of location-based services, social networking elements, sophisticated recommendation systems, and community-driven evaluations creates a well-validated design paradigm for mobile discovery applications. Studies on location privacy and data security provide further context for the development team's ethical duties.
+In the Philippines, widespread mobile internet penetration and the demonstrated success of location-based platforms like Grab, Waze, and food delivery apps demonstrate the local market's readiness for a venue-finding tool like CebSpot. The highlighted gaps in the literature, specifically the lack of a centralized, dependable, and locally oriented platform for locating hangout and leisure areas in Cebu City, confirm the suggested application's novelty and necessity.
+By combining insights from these various yet interconnected bodies of knowledge, CebSpot is positioned to meet genuine, documented consumer demands in Cebu City while contributing to the growing ecosystem of mobile applications adapted to the Filipino context.
+2.4 Research Gap
+Despite the growing body of literature surrounding location-based services, point-of-interest recommendation systems, community-driven review platforms, and mobile application adoption in the Philippine context, several critical gaps remain that CebSpot directly seeks to address.
+First, while studies on location-based social networks and venue discovery platforms are abundant globally, research focused specifically on hyperlocal hangout spot discovery in Philippine cities — particularly Cebu City — is largely absent. Most social information systems in developing countries are adopted from the developed world and often fail to account for local socio-geographical settings and cultural complexities, resulting in continued reliance on word-of-mouth [33]. Internationally developed platforms dominate the Philippine digital landscape yet fall short of addressing the hyperlocal discovery needs of local communities.
+Second, the Philippine-specific literature reviewed remains heavily concentrated on ride-hailing services, food delivery applications, and transportation systems [16, 17, 18, 19, 22], with none addressing the domain of leisure and hangout spot discovery. Despite the country's high mobile internet usage [15], no study has examined how young urban Filipinos discover recreational venues through dedicated mobile platforms.
+Third, while Maravilla and Gantalao [20] examined e-tourism adoption in Cebu City, their work focused on the supply side of tourism rather than community-driven discovery of local leisure venues. No study has been identified that evaluates how ordinary residents discover and evaluate hangout spots in Cebu City through digital means.
+Fourth, the literature on review platform integrity [23, 26, 30, 31] has been conducted almost exclusively on large, globally operating platforms. The specific issues of sustaining review authenticity inside a small-scale, geographically bounded platform servicing a single city have received little attention, a gap that is especially pertinent to CebSpot as it grows its local reviewer community from a tiny user base.
+Finally, and most importantly, no current dedicated platform offers a community-driven, mobile-first solution for finding hangout locations in Cebu City. Research has noted that hyperlocal information in developing countries is valued but often dispersed, constantly evolving, and poorly accessible through existing digital tools [33]. The continued reliance by many Cebu residents on social media influencers and unverified content for venue discovery underscores the absence of a trusted, locally focused alternative — a gap that CebSpot has set out to fill directly.
+CHAPTER 3
+METHODOLOGY
+This chapter presents the methods, procedures, and development processes used in creating CebSpot: A Mobile Application for Discovery and Leisure in Cebu City. It discusses the research design, data-gathering procedures, system development methodology, system analysis, design, architecture, and development phases applied throughout the study. The methodology served as the framework that guided the researchers in ensuring that the application was systematically planned, designed, developed, and evaluated to meet the needs of its intended users.
+The study adopted a developmental research approach supported by descriptive research methods to gather user insights and evaluate system requirements. Furthermore, the researchers utilized the Agile Scrum framework to support iterative software development, allowing continuous testing, refinement, and improvement of system features. Through this methodology, the study aimed to develop a reliable, user-centered, and technically functional mobile platform for discovering hangout spots in Cebu City.
+3.1 Conceptual Framework
+The study's conceptual framework employs the Input–Process–Output (IPO) model to illustrate the operational flow of CebSpot. The IPO model illustrates how the system gathers required inputs, processes the collected data, and produces outputs that support the application's core functionalities. Through this model, the interaction between user information, system operations, and generated results is clearly represented within the CebSpot platform.
+Figure 1: IPO Model
+3.1.1 Explanation of Conceptual Framework
+Input: A phase captures the essential data that enters the system. This includes the user's location, determined by GPS coordinates or a manually entered address; search queries that include keywords, venue names, or categories; user preferences such as distance, price, and venue-type filters; and the venue database, which contains business information, operating hours, and contact information. These parameters define the user's search criteria and location.
+Process: The phases indicate the internal mechanisms the system uses to handle and transform inputs into meaningful results. Data validation filters and verifies user inputs to ensure accuracy before processing. GPS services then calculate the distance and proximity to nearby venues. A database query compares the user's search parameters with the available venue data. Finally, trust verification confirms the legitimacy of user-submitted reviews, ensuring that the platform's content remains credible and reliable.
+Output: phase delivers the final results to the user. These include a sorted list of venue results with ratings, an interactive map with a visual pin overlay, detailed venue information such as photos, reviews, and other relevant details, a booking confirmation with reservation details, and a route line for navigation in the area.
+3.2 Research Design
+This study used a developmental research design that centered on the methodical design, development, and evaluation of CebSpot: A Mobile Application for Discovery and Leisure in Cebu City. The Agile Software Development approach was used to guide the development process, enabling the research team to iteratively refine features and resolve issues across successive development cycles through continuous testing and user feedback.
+To supplement the developmental approach, descriptive research methodologies were used. A survey was administered to target users in Cebu City to collect information on their venue discovery behaviors, preferences, and pain points with existing platforms. The findings had a direct impact on CebSpot's design and feature decisions throughout its development. These two approaches ensured that the program was both technically sound and truly responsive to the needs of its target users.
+3.3 Data Gathering Procedures
+The study utilized both primary and secondary data collection methods to support the development and evaluation of CebSpot.
+Secondary Data Collection: Prior to development, a thorough analysis of relevant research and literature was carried out. On location-based services, point-of-interest recommendation systems, community-driven review platforms, and mobile application uptake in the Philippine context, scholarly journals, conference papers, and published reports were analyzed. The findings from this review directly informed the conceptual framework and design decisions of CebSpot.
+Primary Data Collection: A structured survey questionnaire was distributed to target users in Cebu City to collect information on their current venue discovery behaviors, degree of satisfaction with existing platforms, preferred application features, and willingness to contribute reviews to a dedicated local platform. The survey was delivered online using social media sites and messaging programs popular among the target population.
+Expert Evaluation: Selected technical experts and application evaluators provided feedback on CebSpot's functionality, usability, and design. Their feedback was used to improve the application before its final deployment.
+Usability Testing: A usability testing phase was carried out with a subset of target users who interacted with the CebSpot application. The observations and feedback gathered during this phase were used to identify and remedy usability concerns, creating a seamless user experience.
+3.3.1 Ethical Considerations
+This study was conducted in accordance with ethical standards, ensuring that all participants' rights, privacy, and well-being were protected throughout the research process.
+Informed Consent: Before participating, all respondents were told about the study's nature, goal, and scope. Participants were informed that their participation was fully voluntary and that they might withdraw at any time without consequence. Before conducting the survey and usability testing, all participants provided informed consent.
+Confidentiality and Anonymity: All data collected from responders were kept strictly confidential. Personal information provided by participants was used strictly for this study and was not released to any third parties. Responses were anonymized so that individual participants could not be recognized in the research findings or published outputs.
+Data Privacy: The study followed the Data Privacy Act of 2012 (Republic Act No. 10173) of the Philippines, which governs the collection, management, and protection of personal information. All collected data were securely stored and available only to members of the research team.
+Respect for Participants: The research team made certain that all participants were treated with respect and dignity throughout the study. Throughout the data collection process, no participant was subjected to any type of pressure, manipulation, or harm.
+Responsible Use of Data: All collected data were utilized solely for scholarly reasons. The study's conclusions were reported honestly and accurately, with no misrepresentation or falsification of data.
+3.4 System Development Methodology
+The development of CebSpot adopted the agile software development methodology as the guiding approach for designing, building, and refining the application. Among the various Agile approaches, the Scrum framework was used to manage the development process. Agile was selected because it emphasizes iterative development, continuous feedback, and adaptability, which are important for developing a locally focused, community-driven mobile application. Through Scrum, the development process was organized into short, time-boxed cycles known as sprints, with each sprint delivering a functional and testable increment of the system.
+Figure 2: Agile Model (Scrum Framework)
+3.4.1 Phase 1: Product Backlog
+CebSpot's interactive map, venue listings, community review system, user authentication, and recommendation engine were all part of the initial design. This served as the primary reference throughout development.
+During this initial phase, the overall concept of CebSpot was defined and organized into system requirements. The researchers identified the needs of the target users to establish the application's core features.
+3.4.1.1 User Requirements Specification (URS)
+The system is intended to be used by three main types of users:
+Spotters (Primary Users): Spotters can take a photo of the spot through the app. Then they will provide the details, reviews, and route; you can reserve a spot if the place has one available.
+Store Owners (Secondary Users): Owners can list and promote their spot, view their reviews, and view reservations directly if they register for the reservation system.
+Admins (Managers): Admins manage user accounts, grant store owners access to the reservation system (if they register), and moderate user-submitted reports.
+3.4.1.2 Functional Specification
+User Authentication: The system allows users, store owners, and administrators to register and log in securely, with role-based access.
+Spot Discovery: The system allows users to search, browse, and discover popular, nearby, trending, and hidden spots in Cebu City.
+Map and Location Services: The system uses GPS and map features to show nearby venues, distance, navigation routes, and location-based recommendations.
+Venue Management: The system allows store owners to create, update, and manage their venue listings, including photos, descriptions, operating hours, contact details, and reservation availability.
+Review and Rating: The system allows users to rate venues, write reviews, and share experiences to help other users make better decisions.
+Admin Management: The system allows administrators to manage users, approve venue listings, moderate reviews, and maintain platform content.
+3.4.1.3 Non-Functional Requirements
+Performance: The system should load venue listings, maps, search results, and reservation pages within a reasonable response time to provide a smooth user experience.
+Usability: The application should have a simple, user-friendly interface that allows users, store owners, and administrators to navigate and use the system easily.
+Security: The system should protect user accounts, passwords, reservation details, and payment-related information from unauthorized access.
+Reliability: The system should be available and functional most of the time, especially when users are searching for venues, making reservations, or processing deposit payments.
+Data Privacy: The system should protect users' personal information and location data by only collecting necessary data and requesting permission before accessing GPS services.
+Compatibility: The application should run properly on supported Android devices and should work with required services such as GPS, maps, notifications, and payment integration.
+3.4.2 Phase 2: Sprint Planning
+In this phase, the researchers selected high-priority features from the system requirements for development within short development cycles (2–4 weeks). This ensures continuous progress and allows improvements based on feedback.
+Task Breakdown: User requirements were divided into smaller technical tasks
+Resource Allocation: The development tools include Visual Studio Code (VS Code) for coding, React Native for mobile development, and Supabase for backend services and database management.
+AI-Assisted Planning: Artificial intelligence tools such as ChatGPT Codex and Claude were used to refine system features, generate ideas, and support documentation.
+3.4.3 Phase 3: System Design & UI/UX Prototyping
+In this phase, system requirements are transformed into technical designs and visual prototypes prior to development. This part explains how the system will work and how users will use the application.
+3.5 Planning Phase
+The planning phase serves as the foundation for the structured development of CebSpot. During this phase, the research team established the project's overall direction, defined the scope of work, and organized the resources and tools necessary to carry out each stage of development. This phase ensured that all team members shared a clear understanding of the system's goals, priorities, and constraints before any actual development began.
+The team began by revisiting the user requirements gathered during the product backlog phase and translating them into a concrete development plan. Features were categorized by priority, complexity, and dependencies, ensuring that core functionalities such as user authentication, spot discovery, and map integration were developed first before moving on to more advanced features like the reservation system and the community review mechanism.
+A timeline was established using the Scrum framework, with development divided into two- to four-week sprint cycles. Each sprint was assigned specific features and tasks, with clear deliverables expected at the end of every cycle. This iterative structure allowed the team to monitor progress, address emerging issues early, and make incremental improvements based on feedback received after each sprint.
+Resource allocation was also finalized during this phase. The team confirmed the use of Visual Studio Code as the primary coding environment, React Native for cross-platform mobile development, and Supabase for backend and database management. AI-assisted tools such as ChatGPT, Codex, and Claude were incorporated to support code generation, feature refinement, and documentation tasks throughout the development process.
+Risk assessment was conducted to identify potential challenges that could affect the project timeline or quality. Key risks identified included delays in venue data collection, difficulties integrating third-party APIs for mapping and payment services, and a potential low level of initial user participation in the review system. Contingency measures were outlined for each identified risk to minimize disruption during development.
+By the end of the planning phase, the team had a well-defined sprint roadmap, a clear assignment of roles and responsibilities, and a shared understanding of the technical and functional targets for CebSpot. This structured preparation ensured a smooth transition into the subsequent phases of system design, prototyping, and development.
+3.6 Analysis Phase
+3.6.1 User Requirements Specification (URS)
+Table 3.1 presents the User Requirements Specification (URS) of CebSpot. It outlines the functional and non-functional requirements based on the needs of its three primary user roles: Spotters, Store Owners, and Administrators. These requirements were identified through analysis of survey results, related literature, and the system's overall objectives. Understanding the distinct needs and responsibilities of each user type was essential in ensuring that CebSpot is designed to be practical, inclusive, and responsive to the real demands of its target users in Cebu City.
+Requirements
+Description
+Spotters (Primary Users)
+The everyday user who discovers, explores, and engages with hangout spots in Cebu City
+Store Owner (Secondary User)
+Businesses and establishments that wish to be listed and promoted on the platform
+Administrator (Platform Manager)
+Responsible for maintaining the overall quality, security, and integrity of the platform
+General System
+Overall system behavior applicable to all user types
+TABLE 1: User Requirements Specification (URS)
+3.6.2 Functional Requirements
+Table 3.2 presents the functional requirements of CebSpot. These requirements define the specific features and capabilities that the system must provide to meet the needs of its three user roles. They describe what the system should do and how it should behave in response to user interactions. Each functional requirement was identified based on the findings of the analysis phase and directly corresponds to the application's core objectives.
+Functional Requirement
+Description
+User Role
+User Authentication
+Secure registration and login with role-based access.
+All Users
+Spot Discovery
+Search and discover nearby, trending, and hidden hangout spots.
+Spotter
+Map and Navigation
+GPS-powered map with navigation routes and location recommendations.
+Spotter
+Venue Details Viewing
+View complete venue info, including photos, hours, and contact details.
+Spotter
+Review and Rating
+Rate venues and write reviews to help other users.
+Spotter
+Table Reservation
+Make advance reservations and receive booking confirmations.
+Spotter
+n.
+Venue Listing Management
+Create and manage spot listings with complete venue information.
+Store Owner
+Reservation Management
+View and manage customer reservations.
+Store Owner
+Review Monitoring
+Monitor customer reviews and ratings for their venue.
+Store Owner
+User Account Management
+Manage all Spotter and Store Owner accounts.
+Administrator
+Spot Listing Approval
+Approve or reject spot listings before going live.
+Administrator
+Content Moderation
+Moderate and remove reviews that violate platform guidelines.
+Administrator
+Reports and Analytics
+Access reports, analytics, and leaderboards.
+Administrator
+TABLE 2 Functional Requirements
+3.6.3 Use Case Diagram and Description
+The diagram illustrates all interactions available to a Spotter within the CebSpot system. Before accessing any feature, the Spotter must first register or log in to the platform. Once authenticated, the Spotter can search and discover nearby, trending, or hidden hangout spots; view detailed venue information such as photos, hours, and contact details; and navigate to a chosen venue using the integrated map feature. The Spotter may also rate venues, write reviews to contribute to the community, and make advance table reservations at participating establishments. Upon completing a reservation, the system automatically issues a booking confirmation, modeled as an included use case.
+Figure 3.3 — Spotter (Primary User) Use Case Diagram
+The diagram outlines the capabilities of a store owner within the CebSpot system. After registering and logging in, the store owner can create a spot listing to make their establishment discoverable on the platform. Each newly submitted listing is subject to administrator approval before it goes live, represented as an extended use case. The store owner may also manage and update their spot details, handle incoming reservations from spotters, and monitor customer reviews and ratings associated with their venue.
+Figure 3.4 — Store Owner (Secondary User) Use Case Diagram
+The diagram defines the administrative functions performed by the platform manager. After logging in, the administrator is responsible for managing all Spotter and Store Owner accounts, approving or rejecting spot listings submitted by owners, moderating user-generated reviews that violate platform guidelines, monitoring reservation activity across all registered venues, and accessing platform-wide reports and analytics. The administrator serves as the system's integrity layer, ensuring that all content, users, and transactions conform to CebSpot's operational standards.
+Figure 3.5 — Administrator Use Case Diagram
+3.6.4 Data Flow Diagram (DFD)
+A Data Flow Diagram (DFD) is a graphical representation that illustrates how data moves through a system, showing the inputs, outputs, processes, and data stores involved in the application's operations. For CebSpot, the DFD was constructed in two levels to provide both a high-level overview and a detailed breakdown of the system's internal processes.
+Level 0 (Context Diagram)
+The Level 0 Data Flow Diagram presents the overall context of the CebSpot system, showing how data flows between the three external entities and the application. The spotter sends search queries, filters, reviews, and booking requests and receives spot results, map views, and booking confirmations in return. The store owner submits venue listing details and updates and receives reservation alerts and review summaries. The administrator sends moderation actions and approvals and receives platform reports and analytics in response.
+Figure 3.6 Cebspot Data Flow Diagram — Level 0 (Context Diagram)
+Level 1 Diagram
+The Level 1 DFD expands the CebSpot system into six internal processes, each representing a core functional area of the application. P1 (User Authentication) handles credential input from all user roles and interacts with the User Database (DS1) to verify and store account information. P2 (Spot Discovery & Search) receives location-based queries and preference filters from the Spotter, queries the Venue Database (DS2), and returns a ranked list of relevant spots alongside an interactive map view. P3 (Venue Management) processes listing information submitted by the store owner, saves and retrieves venue data from DS2, and routes newly submitted listings through the administrator approval workflow before they are made publicly visible. P4 (Review & Rating) accepts ratings and review content from the Spotter, stores them in the Review Database (DS3), and retrieves existing reviews for display on venue detail pages. P5 (Reservation System) handles booking requests from the Spotter, records confirmed reservations in the Reservation Database (DS4), and issues real-time reservation alerts to the respective Store Owner. P6 (Admin & Moderation) receives approval commands and moderation actions from the administrator, applies updates to venue listings in DS2 and user-generated reviews in DS3 accordingly, and returns aggregated platform reports and analytics to the administrator for oversight purposes.
+Figure 3.7 CebSpot Data Flow Diagram—Level 1
+3.6.5 Class Diagram
+The class diagram in Figure 3.8 illustrates the object-oriented structure of the CebSpot system, defining the six core classes, their attributes and methods, and the relationships among them.
+The User class represents all registered Spotters on the platform. It holds attributes for identification, authentication, and profile information such as user ID, name, email, password, role, profile photo, and location. It exposes methods for registration, login, profile management, and logout. The Spot class represents a venue or hangout location listed on CebSpot. It stores essential venue information, including the spot's name, category, description, address, GPS coordinates, photos, operating hours, and approval status, and provides methods for creating, updating, and deleting listings.
+The review class captures user-generated feedback submitted for a spot. It includes a rating field, a comment body, a posting date, and a verification flag to support the platform's trust and authenticity mechanism and exposes methods for submitting, editing, and deleting reviews. The Reservation class handles table or slot bookings made by spotters at participating venues. It records the date, time, party size, reservation status, and any special notes submitted by the user and provides methods for creating, confirming, and canceling reservations.
+The Admin class represents the platform manager role. It stores access-level credentials and exposes methods to approve or reject spot listings, moderate user-generated reviews, manage user accounts, view analytics, and generate platform reports. The Payment class handles deposit transactions associated with reservations. It stores the payment method, transaction amount, date, and status, and provides methods to process payments, issue refunds, and retrieve payment status.
+In terms of relationships, a user writes zero or more reviews and makes zero or more reservations. A spot can accept zero or more reservations and have zero or more reviews associated with it. Each reservation is linked to exactly one payment record. The Admin class maintains a dependency relationship with the User class for account management purposes and with the Review class for content moderation, reflecting the administrator's oversight role across the platform.
+Figure 3.8 Class Diagram
+3.6.6 Non-Functional Requirements
+Non-functional requirements describe how well the system performs rather than what it does. These requirements ensure that CebSpot is reliable, secure, usable, and accessible to its target users in Cebu City. Table 3.3 presents the system's non-functional requirements, organized by category.
+Requirement
+Category
+Description
+Response Time
+Performance
+The system must load venue listings, map views, search results, and reservation pages within a reasonable response time under normal network conditions.
+Concurrent Users
+Performance
+The application must handle multiple simultaneous user sessions without significant degradation in speed or responsiveness.
+Intuitive Interface
+Usability
+CebSpot must provide a simple and visually consistent interface that allows all three user roles to navigate the system with a minimal learning curve.
+Mobile UX Standards
+Usability
+The design must follow mobile user experience best practices with clearly labeled controls, readable typography, and logical information hierarchy.
+Access Control
+Security
+Role-based access control must be strictly enforced so that spotters, store owners, and administrators can only access features and data relevant to their respective roles.
+Data Protection
+Security
+All user accounts, authentication credentials, reservation details, and payment-related information must be protected from unauthorized access during transmission and storage.
+System Availability
+Reliability
+CebSpot must remain available and fully operational during peak usage periods, especially when users are searching for venues, submitting reservations, or processing payments.
+Error Handling
+Reliability
+The system must handle errors gracefully and provide meaningful feedback to users in the event of failed operations or connectivity issues.
+Data Minimization
+Data Privacy
+The system must only collect necessary data and request user permission before accessing GPS or other device services.
+Legal Compliance
+Data Privacy
+The platform must comply with the Data Privacy Act of 2012 (Republic Act No. 10173) of the Philippines in all aspects of personal data handling and storage.
+Device Compatibility
+Compatibility
+The application must run properly on supported Android devices across a range of Android versions and device specifications commonly used within the target demographic in Cebu City.
+API Integration
+Compatibility
+The system must integrate correctly with required external services, including GPS, mapping APIs, push notifications, and payment gateways where applicable.
+TABLE 3: Non-Functional Requirements
+3.7 Design Phase
+3.7.1 Interface Design (Main Modules)
+The interface design of CebSpot is divided into three modules based on user roles. The Spotter module covers onboarding, spot discovery, map navigation, review submission, and reservation booking. The Store Owner module handles listing management, reservation handling, and customer review monitoring. The Administrator module provides tools for spot approval, user management, review moderation, and platform analytics. Each module was designed to align with the specific tasks and workflows of its respective user role.
+Explore Screen (Map View)
+The Explore Screen is CebSpot's main landing screen, featuring an interactive map that displays the user's current location and nearby hangout spots as pins. Selecting a pin opens a preview card at the bottom that shows the venue's name, address, category tags, and a Go to Spot button. A search bar and filter icon at the top allow users to look up venues by keyword or preference. The bottom navigation bar provides quick access to the Explore, Circle, Activity, and Profile sections of the application.
+Figure 3.9 Explore Screen (Map View)
+Circle Screen
+The Circle Screen adds a social layer to CebSpot, allowing Spotters to track and connect with friends on the platform. It features a live map showing the real-time locations of active friends, alongside a list displaying each connection's name, status, distance, and last known location. Users can also code via My Code for instant profile sharing or create a private friend group through New Circle. An "Invite" button at the top allows spotters to bring new friends into their circle.
+Figure 3.10 Circle Screen
+Spot Details
+The Spot Details Screen provides Spotters with a comprehensive view of a selected venue, displaying the cover photo, venue name, location, star rating, and category tags. A reservation access card informs users of the required fixed deposit fee for premium spots before proceeding with a booking. The screen also shows the venue's rating score, crowd volume level, overview description, photo gallery, and a community reviews section where spotters can read and submit feedback. This screen serves as the primary information hub for a venue, giving users everything they need to decide whether to visit or make a reservation.
+Figure 3.11 Spot Details
+Booking Screen
+The booking screen enables spotters to make reservations by entering booking details such as preferred date, available time slot, group size, and special requests. It provides availability indicators for time slots and allows users to customize reservation information before submission.
+Figure 3.12 Booking Screen
+Checkout Screen
+The checkout screen finalizes the reservation by presenting the order summary and payment instructions. The user is informed that the reservation fee must be paid directly at the venue and that the booking remains pending until confirmed by the owner or cashier. The order summary displays the venue name, reservation fee, scheduled date and time, and guest count. An option to add a voucher or reward code is also available, and a Create Reservation button at the bottom submits the booking.
+Figure 3.13 Checkout screen
+Activity Screen
+The Activity Screen serves as the hub for notifications and community updates on CebSpot. A notifications card at the top informs Spotters of reservation updates, circle activity, and spot-related alerts. The Local Updates section displays a real-time community feed where users can share posts about nearby hangout spots, including photos, descriptions, and location tags, with engagement metrics such as spot upvotes and comment counts.
+Figure 3.14 Activity Screen
+3.7.2 Database Design
+Figure 3.15 Database Design of Cebspot
+The CebSpot database was designed and implemented using Supabase, an open-source backend platform built on PostgreSQL. The schema comprises eight interrelated tables, each representing a core entity of the system. Figure 3.17 illustrates the complete database structure and the relationships between tables.
+The AUTH_USERS table serves as the system's authentication layer, storing each user's unique identifier, email address, encrypted password, and account creation timestamp. This table is managed directly by Supabase's built-in authentication service and acts as the root reference for all user-related data in the system.
+The PROFILES table extends the authentication record by storing additional user information, including full name, email, avatar URL, role, and account creation date. It is linked to the AUTH_USERS table via a foreign key on user_id, ensuring that each profile corresponds to a verified, authenticated account.
+The SPOTS table holds all venue listings on the platform. It stores the spot's unique identifier, owner reference, name, description, category, address, GPS coordinates (latitude and longitude), image URL, opening hours, reservability flag, approval status, and creation timestamp. Each spot is linked to its owner through the owner_id foreign key referencing the PROFILES table.
+The OWNER_REQUESTS table manages Store Owner registration requests submitted to the platform. It captures the applicant's user reference, business name, business permit URL, contact number, current request status, and the administrator who reviewed the request. This table facilitates the verification workflow before a user is granted Store Owner privileges.
+The REVIEWS table records all user-generated ratings and feedback for a venue. It stores the reviewer's user reference, the spot reference, a numerical rating, a written comment, an optional image URL, and the date the review was posted. It is linked to both the PROFILES and SPOTS tables through foreign keys.
+The SPOT_TABLES table defines the physical tables or slots available for reservation at a given venue. Each record stores a reference to its parent spot, a table name, seating capacity, current availability status, and creation timestamp. This table enables fine-grained reservation management at the table level.
+The RESERVATIONS table manages all booking transactions made by Spotters. It references the user, spot, and specific table being reserved and stores the reservation date and time, group size, special requests, reservation status, payment status, total amount, and creation timestamp. This table serves as the central transaction record linking Spotters, venues, and payments together.
+The PAYMENTS table handles all deposit transactions associated with reservations. It stores the linked reservation reference, user reference, payment amount, payment method, payment status, checkout session identifier, payment transaction identifier, payment confirmation timestamp, and record creation timestamp. Payment records are created upon reservation submission and updated once the venue owner confirms receipt.
+The ACTIVITIES table logs all significant user actions performed within the platform. It records the user reference, the type of action performed, the target entity type, the target entity identifier, and the timestamp of the activity. This table supports the platform's audit trail and feeds into the administrator's analytics dashboard.
+3.8 System Architecture
+3.8.1 Architectural Design
+The system architecture of CebSpot follows a client-server model organized into four distinct layers, as illustrated in Figure 3.16. The presentation layer serves as the frontend of the system, developed using React Native, and provides the user interface through which spotters, store owners, and administrators interact with the application. All user inputs and actions originate from this layer and are transmitted to the server for processing. The application layer contains the core business logic of CebSpot, responsible for processing all requests received from the mobile application, including user authentication, search queries, location requests, spot recommendations, map-based discovery, reservation processing, review management, and administrator controls, before returning the appropriate responses to the presentation layer. The Service Integration Layer connects the system to external third-party services necessary for full functionality, including GPS and map services for location data and navigation routes, payment gateways for secure reservation deposit processing, and notification services for sending booking confirmations and system alerts to users in real time. Finally, the data layer serves as the backend database of the system built on Supabase and PostgreSQL, storing and managing all platform data, including user accounts, venue listings, reservation records, reviews, ratings, favorites, payment records, and administrator-managed data, ensuring that all information is securely stored and accurately retrieved whenever needed by the application layer.
+Figure 3.16 Architecture Design
+3.9 Development Phase
+Table 3.4 presents the activities and processes involved in the development phase of CebSpot. This phase focused on translating the planned design and system architecture into a fully functional mobile application. The frontend was built using React Native for cross-platform Android development, while the backend was powered by Supabase, which provided the PostgreSQL database, authentication, real-time synchronization, and row-level security. External services, including GPS and mapping, notifications, and payment processing, were also integrated during this phase. Development followed an iterative approach, in which core features were built and tested incrementally: starting with user authentication and spot discovery, then the reservation and payment system, and concluding with the administrator panel and community features.
+Category
+Tools
+Description
+Frontend Development
+React Native
+Built all user interface components, navigation flows, and screen layouts for Spotters, Store Owners, and Administrators on Android using a single cross-platform codebase.
+Backend Development
+Supabase, PostgreSQL
+Configured the relational database, user authentication, real-time data synchronization, and row-level security policies to support the platform's multi-role user structure.
+Map & Location Integration
+OpenStreetMap, GPS API
+Integrated GPS and mapping services to support location-based spot discovery, interactive map views, and venue navigation for spotters.
+Payment Integration
+Payment Gateway
+Set up reservation deposit processing to handle payment transactions between Spotters and venue owners, including payment status tracking and confirmation.
+Notification Service
+Push Notifications
+Configured real-time push notifications to deliver booking confirmations, reservation updates, and system alerts to all user roles.
+Iteration 1 — Core Features
+React Native, Supabase
+Supabasedeveloped and tested user authentication, registration, spot discovery, search and filter, and map view functionalities.
+Iteration 2 — Transactions
+React Native, Supabase
+Built and tested the reservation system, booking flow, checkout process, and payment deposit handling between Spotters and Store Owners.
+Iteration 3 — Admin & Community
+React Native, Supabase
+Implemented the administrator panel for spot approval, user management, and review moderation, alongside community features including the Circle and Activity screens.
+TABLE 4: Development Phase
+3.9.1 Technology Stack (Tools and Technologies Used)
+Table 3.5 presents the frontend technologies used in the development of CebSpot. The development of the system utilized a carefully selected set of tools and technologies to build a reliable, scalable, and user-friendly mobile application. Each technology was chosen based on its suitability for the project requirements, the development team’s familiarity with the tool, and its compatibility with the overall system architecture.
+Technology/Tool
+Purpose
+React Native
+Cross-platform mobile development framework for building the user interface for Android devices from a single codebase.
+Javascript/Typescript
+Primary programming languages used for writing UI components, application logic, and API integrations.
+Expo
+A development platform built on React Native streamlines the process of building, testing, and deploying the mobile application.
+React Navigation
+The library is used to manage screen navigation, stack flows, and tab-based routing throughout the application.
+Stitch
+Used to design and prototype all user interface screens and navigation flows before implementation.
+TABLE: 5 Frontend Technologies
+Table 3.6 presents the backend technologies used in the development of CebSpot. The frontend of the application was built using React Native, a cross-platform mobile development framework that allows the system to run on Android devices from a single codebase. JavaScript and TypeScript were used as the primary programming languages for writing UI components and application logic. Expo was used to streamline development, testing, and deployment, while React Navigation handled all screen routing and navigation flows throughout the application. Stitch by Google was also used during the design phase to prototype all interface screens before implementation.
+Technology/Tool
+Purpose
+Supabase
+An open-source backend platform providing a PostgreSQL database, user authentication, real-time data sync, and row-level security policies.
+PostgreSQL
+A relational database system is used to store and manage all platform data, including user accounts, venue listings, reservations, reviews, and payments.
+Supabase Auth
+Built-in authentication service used to manage user registration, login, session handling, and role-based access control.
+Supabase Realtime
+Enables real-time data synchronization between the database and the mobile application for live updates on reservations and notifications.
+Row-Level Security
+PostgreSQL security feature configured to restrict data access based on the authenticated user's role, ensuring data privacy across all user types.
+TABLE: 6 Backend Technologies
+Table 3.7 presents the third-party technologies used in the development of CebSpot. The system's backend was powered by Supabase, an open-source platform built on PostgreSQL that provided the necessary server-side infrastructure. Supabase Auth managed user registration, login, and session handling, while Supabase Realtime enabled live data synchronization between the database and the mobile application. Row-level security policies were configured to restrict data access based on each user’s authenticated role, ensuring data privacy and security across all user types.
+Technology/Tool
+Purpose
+OpenStreetMap/Leaflet
+Open-source mapping library used to render interactive maps, display venue locations, and provide navigation support within the application.
+Device GPS API
+Retrieves the user's real-time location for proximity-based spot discovery and map centering on the Explore screen.
+Payment Gateway
+Handles secure reservation deposit transactions between Spotters and venue owners, including payment status tracking and confirmation.
+Push Notification Service
+Delivers real-time alerts and booking confirmations to users, including reservation updates, approval notifications, and system messages.
+TABLE: 7 Third-Party & Integration Technologies
+Table 3.8 presents the development tools used in the CebSpot system. CebSpot integrated several external services to extend the application's core functionality. OpenStreetMap and Leaflet provided the open-source mapping engine used to render interactive maps and display venue locations. The device’s GPS API retrieved the user’s real-time location for proximity-based spot discovery. A payment gateway was integrated to handle secure reservation deposit transactions between spotters and venue owners, and a push notification service was configured to deliver real-time booking confirmations and system alerts to all user roles.
+Technology/Tool
+Purpose
+Visual Studio Code
+Primary code editor used for writing, debugging, and managing the application's source code throughout the development lifecycle.
+Github
+Used for source code versioning, collaborative development, and tracking changes throughout the project.
+Npm/Yarn
+Package managers are used to install third-party libraries, manage project dependencies, and run development and build scripts.
+Android Emulator
+Used to test and debug the application on a virtual Android device during development before deploying to a physical device.
+TABLE: 8 Development Tools
+The development team used a standard set of tools to support coding, testing, and collaboration throughout the project. Visual Studio Code served as the primary code editor, while Git and GitHub were used for version control and collaborative development. npm and Yarn were used to manage project dependencies and run build scripts, and the Android Emulator was used to test and debug the application on a virtual device before deploying to physical devices.
+3.10 Implementation and Testing Phase
+The implementation and testing phase marks the stage where the fully developed CebSpot application was deployed for actual use and subjected to a series of structured tests to verify that all features functioned correctly, reliably, and in accordance with the system's requirements. This phase ensured that the application was ready for release to its intended users in Cebu City.
+3.10.1 Test Plan
+The test plan outlines the testing strategy, scope, and procedures for evaluating the functionality, usability, and reliability of the CebSpot application. Table 3.9 presents the overall test plan used in the system development. The goal of the test plan is to ensure that all system features perform correctly across all three user roles and that the application meets the requirements defined during the planning and design phases.
+Test Cases
+Objectives
+Expected Outcomes
+1.
+Verify that users can register and log in using valid credentials and that invalid login attempts are rejected.
+Valid users are authenticated and granted access; invalid credentials are rejected with an error message.
+2.
+Verify that Spotters can search for venues using keywords, filters, and the interactive map view.
+Relevant spot listings and map pins are displayed based on the search query and applied filters.
+3.
+Verify that tapping a spot listing loads the complete venue information correctly.
+The Spot Details screen displays the venue name, photos, description, rating, hours, and contact information.
+4.
+Verify that a spotter can select a date, experience slot, and group size to book a venue.
+A reservation is created with a pending status, and a booking confirmation is displayed to the user.
+5.
+Verify that the checkout process correctly submits the reservation and processes the required deposit fee.
+The payment record is created, and the reservation status is updated to pending payment confirmation.
+6.
+Verify that a store owner can submit a complete spot listing for administrator review and approval.
+The listing is saved with a pending approval status and forwarded to the administrator.
+7.
+Verify that an administrator can approve or reject spot listings and remove reviews that violate platform guidelines.
+Approved spots become visible to spotters; rejected listings and flagged reviews are removed from the platform.
+8.
+Verify that the complete reservation and payment process functions correctly from booking creation to payment confirmation by the venue owner.
+Reservation and payment statuses are correctly updated across all related database tables in real time.
+9.
+Verify that each user role is restricted from accessing features and data designated for other roles.
+The system correctly enforces access restrictions and allows each role to perform only its designated functions.
+10.
+Verify that push notifications are correctly triggered and delivered to users following key booking and system events.
+Notifications are delivered to the correct user's device with accurate and relevant booking information.
+11.
+Evaluate whether participants from all three user roles can navigate the application and complete their tasks without difficulty.
+Users complete all assigned tasks with minimal difficulty and rate the interface as intuitive and consistent.
+12.
+Evaluate whether participants can complete the full booking process from spot discovery to reservation confirmation.
+All steps of the booking flow are completed successfully without errors or system interruptions.
+TABLE: 9 Test Plan
+REFERENCES
+1] A. O. Akinleye, S. A. Jamiu, G. O. Olakunle, and B. Abdulsamad, "Significance of Location-Based Service Applications in Smartphones Using GPS and Web Service," Int. J. Intell. Inf. Syst., vol. 8, no. 6, pp. 97–101, 2020.
+[2] C. Yin, S. Ding, and J. Wang, "Mobile Marketing Recommendation Method Based on User Location Feedback," Hum. Cent. Comput. Inf. Sci., vol. 9, art. no. 14, May 2019.
+[3] R. Cheng, Z. Yang, and F. Xia, "iZone: A Location-Based Mobile Social Networking System," arXiv:1011.3099, 2010.
+[4] X. Zhang, A. Noulas, S. Scellato, and C. Mascolo, "Hoodsquare: Modeling and Recommending Neighborhoods in Location-Based Social Networks," arXiv:1308.3657, 2013.
+[5] J. S. Kim, J. W. Kim, and Y. D. Chung, "Successive Point-of-Interest Recommendation with Local Differential Privacy," arXiv:1908.09485, 2019.
+[6] N. Lim et al., "Origin-Aware Next Destination Recommendation with Personalized Preference Attention," arXiv:2012.01915, 2020.
+[7] M. Saker, "Locative Media and Sociability: Using Location-Based Social Networks to Coordinate Everyday Life," Architecture_MPS, vol. 13, no. 1, pp. 1–19, Sep. 2018.
+[8] M. Ye, P. Yin, W.-C. Lee, and D.-L. Lee, "Location Recommendation for Location-Based Social Networks," in Proc. 18th SIGSPATIAL Int. Conf. Advances in Geographic Inf. Syst., San Jose, CA, USA, 2010, pp. 458–461.
+[9] M. J. Chorley, G. B. Colombo, S. M. Allen, and R. M. Whitaker, "Personality and Location-Based Social Networks," Computers in Human Behavior, vol. 46, pp. 45–56, May 2015.
+[10] J. G. Martínez-Navalón, V. Gelashvili, and A. Gómez-Ortega, "Evaluation of User Satisfaction and Trust of Review Platforms: Analysis of the Impact of Privacy and E-WOM in the Case of TripAdvisor," Frontiers in Psychology, vol. 12, art. 750527, Aug. 2021.
+[11] R. Singh and A. Kumar, "What Makes an Online Review Credible? A Systematic Review of the Literature and Future Research Directions," Management Review Quarterly, vol. 73, pp. 1977–2015, Dec. 2022.
+[12] S. Shaham, S. Rafieian, M. Ding, M. Shirvanimoghaddam, and Z. Lin, "On the Importance of Location Privacy for Users of Location-Based Applications," arXiv:1911.01633, 2019.
+[13] V. Primault, A. Boutet, S. Ben M. Mokhtar, and L. Brunie, "The Long Road to Computational Location Privacy: A Survey," IEEE Commun. Surveys Tuts., vol. 21, no. 3, pp. 2939–2973, Third Quarter 2019.
+[14] M. C. Gonzales, R. Custodio, M. C. Lapitan, and M. A. Ladia, "Mobile Applications in the Philippines During the COVID-19 Pandemic: Systematic Search, Use Case Mapping, and Quality Assessment Using the Mobile App Rating Scale (MARS)," BMC Digit: health, vol. 1, art. 8, 2023.
+[15] "Digital 2023: The Philippines," DataReportal, Feb. 2023. [Online]. Available:https://datareportal.com. [Accessed: May 2026].
+[16] M. A. Gumasing, E. C. C. Deinla, A. K. P. Espaldon, and N. C. Mercado, "The Usability of Transport Network Vehicle Service Apps Amidst the Pandemic in the Philippines: A Comparison of the Convenient Usage of Grab, Angkas, and JoyRide," in Proc. 5th Int. Conf. Management Sci. Industrial Eng., Singapore, 2023, pp. 198–204.
+[17] A. Prasetyo and D. Vallespin, "Factors Affecting the Acceptance of Grab Philippines: An Extended UTAUT Approach," Review of Integrative Business and Economics Research, vol. 14, no. 1, pp. 142–156, 2025.
+[18] J. S. Napalang and M. V. C. Regidor, "An Exploratory Study on Uber, GrabCar, and Conventional Taxis in Metro Manila," Asian Transport Studies, vol. 4, no. 4, pp. 763–777, 2017.
+[19] G. Semblante, R. L. Rabago, and S. R. Penuela, "Food Delivery Service Applications in Highly Urbanized Cities: A Scoping Review," Int. J. Comput. Digit. Sys., vol. 15, no. 1, pp. 1–10, 2024.
+[20] V. S. Maravilla and C. S. Gantalao, "E-Tourism Adoption of the Travel Agencies in Cebu City, Philippines," Journal of Economics and Business, vol. 2, no. 3, July 2019.
+[21] N. D. Aguirre, R. D. Patricio, and D. P. Dela Cruz, "Antecedents of Waze Mobile Application Usage as a Solution for Sustainable Traffic Management among Gen Z," Sustainability, vol. 15, no. 13, art. 10186, 2023.
+[22] J. A. Zubiate, J. I. Calongos, and L. Andrade-Arenas, "Implementation of a Mobile App: A Study in the Metropolitan Transportation System," Int. J. Eng. Trends Technol., vol. 71, no. 1, pp. 1–10, 2023.
+[23] E. Litt, "Evaluating the Wisdom of Strangers: The Perceived Credibility of Online Consumer Reviews on Yelp," J. Comput.-Mediated Commun., vol. 20, no. 1, pp. 67–81, 2015.
+[24] M. Luca, "Reviews, Reputation, and Revenue: The Case of Yelp.com," Harvard Business School, Boston, MA, USA, Working Paper No. 12-016, 2011.
+[25] R. Amos, R. Maio, and P. Mittal, "Reviews in Motion: A Large-Scale, Longitudinal Study of Review Recommendations on Yelp," arXiv:2202.09005, 2022.
+[26] A. Janicki, "Detecting Fake Reviews in Google Maps — A Case Study," Appl. Sci., vol. 13, no. 10, art. 6331, 2023.
+[27] O. Koçak et al., "Gamification, Socialization, or Self-Purpose? Who is Using the Swarm App and Why?" ResearchGate, 2025. [Online]. Available:https://www.researchgate.net. [Accessed: May 2026].
+[28] J. Frith, "Turning Life into a Game: Foursquare, Gamification, and Personal Mobility," Mobile Media Commun., vol. 1, no. 2, pp. 248–262, 2013.
+[29] K. Nam et al., "Towards Understanding the Gamification upon Users' Scores in a Location-Based Social Network," Multimedia Tools Appl., vol. 74, pp. 8810–8826, 2014.
+[30] R. Filieri, "Why Do Travelers Trust TripAdvisor? Antecedents of Trust towards Consumer-Generated Media and its Influence on Recommendation Adoption and Word of Mouth," Tourism Manage., vol. 51, pp. 174–185, 2015.
+[31] P. Soni et al., "A Case Study on Zomato," Int. Res. J. Modernization Eng. Technol. Sci., vol. 4, no. 9, 2022.
+[32] S. K. Agarwal et al., "Conceptualizing Hyperlocal Information Systems for Developing Countries," Proc. ACM Hum.-Comput. Interact., vol. 5, no. CSCW2, art. 388, Oct. 2021.
+[33] S. Mitra et al., "Empowering Filipino Youth Through Technology and Community," in Empowering Learners with Mobile Open-Access Learning Initiatives, Springer, Singapore, 2020, pp. 341–352.
+[34] A. Cho et al., "Enhancing Multidimensional Health Benefits Through the Use of Mobile Leisure Application," NCBI, 2025. [Online]. Available:https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12840650/. [Accessed: May 2026].
+[35] C. Lou, S. Tan, and X. Chen, "Investigating Consumer Engagement with Influencer- vs. Brand-Promoted Ads: The Roles of Source and Disclosure," J. Interact. Advert., vol. 19, no. 3, pp. 169–186, 2019.
+[36] E. Ismagilova, Y. K. Dwivedi, E. Slade, and M. Williams, Electronic Word of Mouth (eWOM) in the Marketing Context: A State of the Art Analysis and Future Directions. Springer International Publishing, 2017.
+[37] M. Al-Otaibi and M. Ykhlef, "A Survey of Mobile Reservation Systems: Challenges and Future Directions," Int. J. Comput. Appl., vol. 975, no. 8887, pp. 1–8, 2020.
+[38] L. W. Jun, J. Iqbal, and K. Subaramaniam, "Mobile-Application Easybook — Online Restaurant Reservation System," AIP Conf. Proc., vol. 2756, art. 040008, June 2023.
+[39] Z. S. A. Said Al-Housni, A. Agarwal, V. Rao Naidu, and L. Reales, "Reserve Your Table: A Mobile Application for Reservations in a Restaurant," J. Student Res., 2022.
+[40] B. T. Khoa et al., "User-Generated Content, Online Trust, and Purchase Intention: An Empirical Study of Social Commerce Platforms," J. The Messenger, vol. 17, no. 1, 2025.
+[41] S. Simhadri and S. Vhaduri, "Understanding User Trust in Different Recommenders and Smartphone Applications," in Wireless Mobile Communication and Healthcare, Springer, Cham, 2023, pp. 484–495.
+[42] K. Yamagishi et al., "User-Generated Content on Gen Z Tourist Visit Intention: A Stimulus-Organism-Response Approach," J. Hosp. Tourism Insights, vol. 7, no. 4, pp. 1949–1973, 2024.
+[43] F. Debasa, V. Gelashvili, J. G. Martínez-Navalón, and J. R. Saura, "Do Stress and Anxiety Influence Users' Intention to Make Restaurant Reservations Through Mobile Apps?" Eur. Res. Manag. Bus. Econ., vol. 29, no. 1, art. 100205, 2023.
+[44] R. Gavalas, C. Konstantopoulos, K. Mastakas, and G. Pantziou, "Mobile Recommender Systems in Tourism," J. Netw. Comput. Appl., vol. 39, pp. 319–333, Mar. 2014.
+[45] A. Majid, L. Chen, G. Chen, H. T. Mirza, I. Hussain, and J. Woodward, "A Context-Aware Personalized Travel Recommendation System Based on Geotagged Social Media Data Mining," Int. J. Geogr. Inf. Sci., vol. 27, no. 4, pp. 662–684, 2013.
+[46] S. Tiwari, S. Kaur, and P. Kaur, "A Review on Location-Based Services and Applications for Smart Cities," Int. J. Comput. Sci. Mob. Comput., vol. 10, no. 5, pp. 47–55, May 2021.
+[47] J. L. Fernandez and M. A. Santos, "Exploring the Role of Mobile Applications in Enhancing Tourist Experience: Evidence from Southeast Asia," J. Hosp. Tourism Technol., vol. 13, no. 2, pp. 215–230, 2022.
+Media Data Mining," Int. J. Geogr. Inf. Sci., vol. 27, no. 4, pp. 662–684, 2013.
+[48] A. B. Alsmadi, "The Impact of Mobile Application Quality on User Satisfaction and Continuance Intention: A Study on Location-Based Services," Int. J. Inf. Manag., vol. 58, art. 102303, 2021.
+[49] D. H. McKnight, V. Choudhury, and C. Kacmar, "Developing and Validating Trust Measures for e-Commerce: An Integrative Typology," Inf. Syst. Res., vol. 13, no. 3, pp. 334–359, Sept. 2002.
+[50] J. Park, S. Han, H. Kim, H. Cho, and W. Park, "Developing Elements of User Experience for Mobile Phones and Services: Survey, Interview, and Observation Approaches," Hum. Factors Manuf., vol. 23, no. 4, pp. 279–293, 2013.
+APPENDICES
+Appendix A: Approval and Consultation
+Appendix B: Requirements Gathering Documents
+Dear Respondents,
+Good day!
+We would like to express our sincere gratitude for taking the time to participate in this survey. Your valuable input is highly appreciated as this survey is conducted as part of an academic study aimed at developing CebSpot, a mobile application designed for discovering hangout spots in Cebu City.
+Please be assured that all responses will be kept strictly confidential and will be used solely for research purposes. We kindly ask for your honesty in answering all questions, as your feedback is essential to the success of this study.
+Thank you very much for your cooperation and support.
+User Survey Questionnaire
+PART I: Demographic Information
+Email:
+Name:
+Course & Year:
+What is your occupation?
+How often do you use a smartphone daily?
+PART II: Venue Discovery Behavior
+Please check the answer that best describes you.
+Questions
+Daily
+Weekly
+Montly
+Rarely
+How often do you look for hangout spots or leisure venues in Cebu City?
+Questions
+Social Media
+Recommendations
+Online Review Platforms
+Other
+How do you usually discover hangout spots in Cebu City?
+Questions
+Very reliable
+Somewhat reliable
+Unreliable
+Very unreliable
+How reliable do you find social media influencers as a source of venue recommendations?
+PART III: Satisfaction with Existing Platforms
+Please rate your level of agreement with each statement using the following scale:
+5 — Strongly Agree | 4 — Agree | 3 — Neutral | 2 — Disagree | 1 — Strongly Disagree
+Questions
+1
+2
+3
+4
+5
+Existing platforms provide accurate and up-to-date information about venues in Cebu City.
+Questions
+1
+2
+3
+4
+5
+I find it difficult to discover hidden or lesser-known hangout spots through existing platforms.
+The reservation process in high-end clubs, bars, and restaurants is inconvenient using current platforms.
+I have experienced visiting a venue that did not match its online description or influencer promotion.
+Existing platforms lack a centralized and reliable source for Cebu City venue discovery.
+Part IV: Preferred Application Features
+Please rate your level of agreement with each statement using the following scale:
+5 — Strongly Agree | 4 — Agree | 3 — Neutral | 2 — Disagree | 1 — Strongly Disagree
+Questions
+1
+2
+3
+4
+5
+I would find it useful to have an interactive map showing nearby hangout spots in Cebu City.
+I would use a venue discovery app that allows me to filter spots by category, price, distance, and ratings.
+I would find it helpful to have a digital table reservation feature integrated into a venue discovery app.
+Navigation integration with services like Grab or Waze within a venue discovery app would be useful to me.
+Part V: Willingness to Use CebSpot
+Please rate your level of agreement with each statement using the following scale:
+5 — Strongly Agree | 4 — Agree | 3 — Neutral | 2 — Disagree | 1 — Strongly Disagree
+Questions
+1
+2
+3
+4
+5
+I would use a dedicated mobile application for discovering hangout spots in Cebu City.
+I would trust community-generated reviews and ratings on a local venue discovery platform more than influencer-driven content.
+I'm happy to submit reviews and ratings for venues I have visited on CebSpot.
+CebSpot is a useful and reliable alternative to existing platforms for discovering venues in Cebu City.
+I would recommend CebSpot to my friends and family for discovering hangout spots in Cebu City.
+Appendix C: Design and Development
+Explore Screen (Map View) Circle Screen
+Spot Details
+Booking Screen
+Checkout Screen
+Activity Screen
+Appendix D: Research Ethics
+Appendix E: Grammarly Results
+APPENDIX F - CURRICULUM VITAE

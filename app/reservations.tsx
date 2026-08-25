@@ -104,7 +104,13 @@ export default function ReservationsScreen() {
 
   async function confirmReschedule() {
     if (!rescheduleTarget) return;
-    const available = await checkReservationAvailability();
+    const available = await checkReservationAvailability({
+      spotId: rescheduleTarget.spot_id,
+      reservationDate: selectedRescheduleDate,
+      slotId: rescheduleTarget.slot_id,
+      tableId: rescheduleTarget.table_id,
+      excludeReservationId: rescheduleTarget.id,
+    });
     if (!available) {
       Alert.alert('Unavailable', 'This slot is no longer available. Please choose another schedule.');
       return;
@@ -198,7 +204,7 @@ export default function ReservationsScreen() {
                   </View>
                 )}
                 <Pressable style={styles.viewButton} onPress={() => router.push(`/confirmed/${reservation.id}`)}>
-                  <Text style={styles.viewText}>View Pass</Text>
+                  <Text style={styles.viewText}>View Details</Text>
                 </Pressable>
               </View>
             );
@@ -317,7 +323,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: fontSize.display,
     fontWeight: '900',
-    fontStyle: 'italic',
     textTransform: 'uppercase',
   },
   subtitle: {
@@ -473,7 +478,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: fontSize.xl,
     fontWeight: '900',
-    fontStyle: 'italic',
     textTransform: 'uppercase',
   },
   modalCopy: {

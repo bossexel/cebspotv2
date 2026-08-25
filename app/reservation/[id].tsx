@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { addDays, format } from 'date-fns';
@@ -35,6 +35,10 @@ import {
   getSpotReservationType,
   isPaymentRequired,
 } from '../../src/utils/reservations';
+import { defaultTableInventory, normalizeTableInventory } from '../../src/utils/tableInventory';
+
+const testCebspotSpotId = '66666666-6666-4666-8666-666666666666';
+const tableHoldDurationSeconds = 5 * 60;
 
 const slots = [
   {
@@ -127,23 +131,7 @@ function getCalendarDates(monthDate: Date) {
   return dates;
 }
 
-const tableInventory: TableInventory = {
-  sunset: [
-    { tableId: 's1', capacity: 2, isReserved: false },
-    { tableId: 's2', capacity: 2, isReserved: false },
-    { tableId: 's3', capacity: 4, isReserved: false },
-    { tableId: 's4', capacity: 6, isReserved: false },
-  ],
-  prime: [
-    { tableId: 'p1', capacity: 2, isReserved: true },
-    { tableId: 'p2', capacity: 2, isReserved: false },
-    { tableId: 'p3', capacity: 4, isReserved: true },
-  ],
-  late: [
-    { tableId: 'l1', capacity: 2, isReserved: false },
-    { tableId: 'l2', capacity: 6, isReserved: false },
-  ],
-};
+const tableInventory = defaultTableInventory as TableInventory;
 
 function getGroupSizeLabel(groupSizeId: GroupSizeId) {
   return groupSizes.find((group) => group.id === groupSizeId)?.label ?? 'selected group size';
@@ -178,8 +166,8 @@ function reserveTables(inventory: TableInventory, slotId: SlotId, tableIds: stri
   );
 }
 
-function getTableInventoryForDate(date: string): TableInventory {
-  const inventory = cloneInventory(tableInventory);
+function getTableInventoryForDate(date: string, baseInventory = tableInventory): TableInventory {
+  const inventory = cloneInventory(baseInventory);
   const dayNumber = Number(format(toLocalDate(date), 'd'));
 
   if (dayNumber % 5 === 0) {
@@ -203,20 +191,33 @@ function getTableInventoryForDate(date: string): TableInventory {
   return inventory;
 }
 
-function getAvailableTablesForSlot(slotId: SlotId, groupSizeId: GroupSizeId, date: string) {
+function getAvailableTablesForSlot(
+  slotId: SlotId,
+  groupSizeId: GroupSizeId,
+  date: string,
+  baseInventory = tableInventory,
+) {
   const requiredCapacity = getRequiredCapacity(groupSizeId);
-  const inventory = getTableInventoryForDate(date);
+  const inventory = getTableInventoryForDate(date, baseInventory);
 
   return inventory[slotId].filter((table) => !table.isReserved && table.capacity >= requiredCapacity);
 }
 
-function isSlotAvailable(slotId: SlotId, groupSizeId: GroupSizeId, date: string) {
-  return getAvailableTablesForSlot(slotId, groupSizeId, date).length > 0;
+function formatHoldTime(seconds: number) {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
-function getAvailabilityLabel(slotId: SlotId, groupSizeId: GroupSizeId, date: string) {
-  const inventory = getTableInventoryForDate(date);
-  const availableTables = getAvailableTablesForSlot(slotId, groupSizeId, date);
+function isSlotAvailable(slotId: SlotId, groupSizeId: GroupSizeId, date: string, baseInventory = tableInventory) {
+  return getAvailableTablesForSlot(slotId, groupSizeId, date, baseInventory).length > 0;
+}
+
+function getAvailabilityLabel(slotId: SlotId, groupSizeId: GroupSizeId, date: string, baseInventory = tableInventory) {
+  const inventory = getTableInventoryForDate(date, baseInventory);
+  const availableTables = getAvailableTablesForSlot(slotId, groupSizeId, date, baseInventory);
   const openTables = inventory[slotId].filter((table) => !table.isReserved);
   const count = availableTables.length;
 
@@ -227,12 +228,17 @@ function getAvailabilityLabel(slotId: SlotId, groupSizeId: GroupSizeId, date: st
   return `${count} tables available`;
 }
 
-function getSlotAvailability(slotId: SlotId, groupSizeId: GroupSizeId, date: string): SlotAvailability {
-  const availableTables = getAvailableTablesForSlot(slotId, groupSizeId, date);
+function getSlotAvailability(
+  slotId: SlotId,
+  groupSizeId: GroupSizeId,
+  date: string,
+  baseInventory = tableInventory,
+): SlotAvailability {
+  const availableTables = getAvailableTablesForSlot(slotId, groupSizeId, date, baseInventory);
   return {
     availableTables,
-    isAvailable: isSlotAvailable(slotId, groupSizeId, date),
-    label: getAvailabilityLabel(slotId, groupSizeId, date),
+    isAvailable: isSlotAvailable(slotId, groupSizeId, date, baseInventory),
+    label: getAvailabilityLabel(slotId, groupSizeId, date, baseInventory),
   };
 }
 
@@ -735,6 +741,45 @@ function ReservationSummaryBar({
   );
 }
 
+function TableHoldTimer({
+  secondsRemaining,
+  expired,
+  hasTable,
+  onRefreshHold,
+}: {
+  secondsRemaining: number;
+  expired: boolean;
+  hasTable: boolean;
+  onRefreshHold: () => void;
+}) {
+  if (!hasTable) return null;
+
+  return (
+    <View style={[styles.holdTimerCard, expired && styles.holdTimerExpired]}>
+      <View style={styles.holdTimerIcon}>
+        <Clock3 size={19} color={expired ? colors.danger : colors.primary} />
+      </View>
+      <View style={styles.holdTimerCopy}>
+        <Text style={styles.holdTimerLabel}>TABLE HOLD</Text>
+        <Text style={[styles.holdTimerValue, expired && styles.holdTimerExpiredText]}>
+          {expired ? 'Expired' : formatHoldTime(secondsRemaining)}
+        </Text>
+        <Text style={styles.holdTimerNote}>
+          {expired
+            ? 'Refresh the hold before confirming this reservation.'
+            : 'Complete this reservation within 5 minutes to keep this table selection.'}
+        </Text>
+      </View>
+      {expired && (
+        <Pressable accessibilityRole="button" style={styles.holdRefreshButton} onPress={onRefreshHold}>
+          <RefreshCw size={14} color={colors.white} />
+          <Text style={styles.holdRefreshText}>Refresh</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
 function ConfirmBookingButton({
   loading,
   unavailable,
@@ -777,25 +822,35 @@ export default function ReservationScreen() {
   const [bookingStatus] = useState<ReservationStatus>('pending');
   const [availabilityNotice, setAvailabilityNotice] = useState('');
   const [adjustmentAcknowledged, setAdjustmentAcknowledged] = useState(false);
+  const [holdSecondsRemaining, setHoldSecondsRemaining] = useState(tableHoldDurationSeconds);
+  const [holdExpired, setHoldExpired] = useState(false);
   const [sectionOffsets, setSectionOffsets] = useState<Partial<Record<BookingSectionKey, number>>>({});
   const [bookingFormOffset, setBookingFormOffset] = useState(0);
 
   const dates = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(new Date(), index)), []);
+  const liveTableInventory = useMemo(
+    () => (spot?.table_inventory ? (normalizeTableInventory(spot.table_inventory) as TableInventory) : tableInventory),
+    [spot?.table_inventory],
+  );
   const slotAvailability = useMemo(
     () =>
       slots.reduce(
         (availability, slot) => ({
           ...availability,
-          [slot.id]: getSlotAvailability(slot.id, selectedGroupId, selectedDate),
+          [slot.id]: getSlotAvailability(slot.id, selectedGroupId, selectedDate, liveTableInventory),
         }),
         {} as Record<SlotId, SlotAvailability>
       ),
-    [selectedDate, selectedGroupId]
+    [liveTableInventory, selectedDate, selectedGroupId]
   );
   const selectedSlot = selectedSlotId ? slots.find((slot) => slot.id === selectedSlotId) ?? null : null;
   const selectedGroup = groupSizes.find((group) => group.id === selectedGroupId) ?? groupSizes[1];
   const selectedSlotAvailability = selectedSlotId ? slotAvailability[selectedSlotId] : null;
   const selectedTable = selectedSlotAvailability?.availableTables[0] ?? null;
+  const resetTableHold = useCallback(() => {
+    setHoldSecondsRemaining(tableHoldDurationSeconds);
+    setHoldExpired(false);
+  }, []);
   const canConfirm =
     Boolean(
       selectedDate &&
@@ -803,7 +858,9 @@ export default function ReservationScreen() {
         selectedGroup &&
         selectedSlotAvailability?.isAvailable &&
         selectedTable &&
-        adjustmentAcknowledged
+        adjustmentAcknowledged &&
+        !holdExpired &&
+        holdSecondsRemaining > 0
     ) &&
     !submitting;
   const selectedSummary =
@@ -812,18 +869,31 @@ export default function ReservationScreen() {
       : `${selectedGroup.label} - Choose an available time`;
 
   useEffect(() => {
+    let active = true;
+    const unsubscribe = id
+      ? spotService.subscribeToSpotById(id, (nextSpot) => {
+          if (active && nextSpot) setSpot(nextSpot);
+        })
+      : undefined;
+
     async function load() {
       if (!id) return;
       try {
-        setSpot(await spotService.getSpotById(id));
+        const nextSpot = await spotService.getSpotById(id);
+        if (active) setSpot(nextSpot);
       } catch (error) {
         console.error('Unable to load reservation spot:', error);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
 
     load();
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
   }, [id]);
 
   useEffect(() => {
@@ -841,6 +911,28 @@ export default function ReservationScreen() {
       setSelectedSlotId(firstAvailableSlot);
     }
   }, [selectedDate, selectedGroupId, selectedSlotId, slotAvailability]);
+
+  useEffect(() => {
+    if (!selectedTable) return;
+    resetTableHold();
+  }, [resetTableHold, selectedDate, selectedGroupId, selectedSlotId, selectedTable?.tableId]);
+
+  useEffect(() => {
+    if (!selectedTable || submitting || holdExpired) return;
+
+    const interval = setInterval(() => {
+      setHoldSecondsRemaining((current) => {
+        if (current <= 1) {
+          setHoldExpired(true);
+          return 0;
+        }
+
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [holdExpired, selectedTable, submitting]);
 
   if (loading || !spot) {
     return (
@@ -907,7 +999,19 @@ export default function ReservationScreen() {
       return;
     }
 
-    const available = await checkReservationAvailability();
+    if (holdExpired || holdSecondsRemaining <= 0) {
+      Alert.alert('Reservation timer expired', 'Your 5-minute table hold expired. Refresh the hold before confirming.', [
+        { text: 'Refresh hold', onPress: resetTableHold },
+      ]);
+      return;
+    }
+
+    const available = await checkReservationAvailability({
+      spotId: spot.id,
+      reservationDate: selectedDate,
+      slotId: selectedSlot.id,
+      tableId: selectedTable.tableId,
+    });
     if (!available) {
       Alert.alert('Unavailable', 'This slot is no longer available. Please choose another schedule.');
       return;
@@ -921,7 +1025,7 @@ export default function ReservationScreen() {
 
       try {
         setSubmitting(true);
-        const qrCode = `CEBSPOT-${spot.id}-${Date.now()}`;
+        const reservationCode = `CEBSPOT-${Date.now()}`;
         const acknowledgedAt = new Date().toISOString();
         const reservation = await reservationService.createReservation({
           user_id: profile.id,
@@ -949,7 +1053,7 @@ export default function ReservationScreen() {
           refund_status: 'not_applicable',
           adjustment_acknowledged: true,
           adjustment_acknowledged_at: acknowledgedAt,
-          qr_code: qrCode,
+          qr_code: reservationCode,
         });
         router.replace({ pathname: '/confirmed/[id]', params: { id: reservation.id } });
       } catch (error: any) {
@@ -979,6 +1083,7 @@ export default function ReservationScreen() {
         fee: String(reservationFee),
         reservationType,
         paymentRequired: String(paymentRequired),
+        holdExpiresAt: String(Date.now() + holdSecondsRemaining * 1000),
       },
     });
   }
@@ -1037,6 +1142,12 @@ export default function ReservationScreen() {
         />
       </View>
 
+      <TableHoldTimer
+        secondsRemaining={holdSecondsRemaining}
+        expired={holdExpired}
+        hasTable={Boolean(selectedTable)}
+        onRefreshHold={resetTableHold}
+      />
       <ReservationSummaryBar
         paymentRequired={paymentRequired}
         reservationFee={reservationFee}
@@ -1076,7 +1187,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: fontSize.xxl,
     fontWeight: '900',
-    fontStyle: 'italic',
     textTransform: 'uppercase',
   },
   headerSub: {
@@ -1426,8 +1536,74 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: '800',
   },
-  summaryArea: {
+  holdTimerCard: {
+    borderRadius: radius.xl,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.primary + '24',
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     marginTop: spacing.xxl,
+    ...shadow.card,
+  },
+  holdTimerExpired: {
+    borderColor: colors.danger + '40',
+    backgroundColor: colors.dangerContainer,
+  },
+  holdTimerIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary + '12',
+  },
+  holdTimerCopy: {
+    flex: 1,
+  },
+  holdTimerLabel: {
+    color: colors.onSurfaceVariant,
+    fontSize: 8,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  holdTimerValue: {
+    color: colors.primary,
+    fontSize: fontSize.xl,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  holdTimerExpiredText: {
+    color: colors.danger,
+  },
+  holdTimerNote: {
+    color: colors.onSurfaceVariant,
+    fontSize: fontSize.xs,
+    fontWeight: '800',
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  holdRefreshButton: {
+    minHeight: 38,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: spacing.xs,
+    backgroundColor: colors.danger,
+  },
+  holdRefreshText: {
+    color: colors.white,
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  summaryArea: {
+    marginTop: spacing.md,
     marginBottom: spacing.md,
     gap: spacing.sm,
   },

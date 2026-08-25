@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { getPrototypeRoleForEmail } from '../constants/authRoles';
 import type { UserProfile } from '../types';
 
 interface EnsureProfileInput {
@@ -17,11 +18,23 @@ export const profileService = {
 
   async ensureProfile(input: EnsureProfileInput): Promise<UserProfile> {
     const existing = await this.getProfile(input.id);
-    if (existing) return existing;
+    const role = getPrototypeRoleForEmail(input.email);
+    if (existing) {
+      if (existing.role === role) return existing;
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ role, updated_at: new Date().toISOString() })
+        .eq('id', input.id)
+        .select('*')
+        .single();
+      if (error) throw error;
+      return data as UserProfile;
+    }
 
     const profile = {
       id: input.id,
       email: input.email,
+      role,
       display_name: input.display_name,
       photo_url: input.photo_url,
       level: 1,
@@ -35,9 +48,10 @@ export const profileService = {
   },
 
   async updateProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
+    const { role: _ignoredRole, ...profileUpdates } = updates;
     const { data, error } = await supabase
       .from('profiles')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...profileUpdates, updated_at: new Date().toISOString() })
       .eq('id', userId)
       .select('*')
       .single();

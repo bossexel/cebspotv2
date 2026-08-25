@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: cebspot-face-anonymizer
+    runtime: docker
+    rootDir: face-blur-service
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: FACE_BLUR_ALLOWED_ORIGINS
+        sync: false
+      - key: FACE_BLUR_MAX_IMAGE_BYTES
+        value: "10485760"
+      - key: FACE_BLUR_JOB_TTL_SECONDS
+        value: "900"
+      - key: FACE_DETECTION_MIN_CONFIDENCE
+        value: "0.5"
+      - key: FACE_PADDING_RATIO
+        value: "0.25"
+      - key: LOG_LEVEL
+        value: INFO

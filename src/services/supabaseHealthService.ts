@@ -1,4 +1,5 @@
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type SupabaseHealthScope = 'admin' | 'owner';
 
@@ -18,8 +19,13 @@ export interface SupabaseHealthResult {
   message: string;
 }
 
-async function countTable(label: string, table: string, filter?: { column: string; value: string }) {
-  let query = supabase.from(table).select('id', { count: 'exact', head: true });
+async function countTable(
+  client: SupabaseClient,
+  label: string,
+  table: string,
+  filter?: { column: string; value: string },
+) {
+  let query = client.from(table).select('id', { count: 'exact', head: true });
   if (filter) {
     query = query.eq(filter.column, filter.value);
   }
@@ -42,7 +48,11 @@ async function countTable(label: string, table: string, filter?: { column: strin
   };
 }
 
-export async function checkSupabaseHealth(scope: SupabaseHealthScope, userId?: string): Promise<SupabaseHealthResult> {
+export async function checkSupabaseHealth(
+  scope: SupabaseHealthScope,
+  userId?: string,
+  client: SupabaseClient = supabase,
+): Promise<SupabaseHealthResult> {
   const startedAt = Date.now();
   const checkedAt = new Date().toISOString();
 
@@ -57,20 +67,20 @@ export async function checkSupabaseHealth(scope: SupabaseHealthScope, userId?: s
     };
   }
 
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const { data: sessionData, error: sessionError } = await client.auth.getSession();
   const signedIn = Boolean(sessionData.session?.user);
 
   const checks: SupabaseTableCheck[] = [
-    await countTable('Public spots', 'spots'),
+    await countTable(client, 'Public spots', 'spots'),
   ];
 
   if (scope === 'admin') {
-    checks.push(await countTable('Reservations', 'reservations'));
-    checks.push(await countTable('Owner access requests', 'owner_access_requests'));
+    checks.push(await countTable(client, 'Reservations', 'reservations'));
+    checks.push(await countTable(client, 'Owner access requests', 'owner_access_requests'));
   } else {
     if (userId) {
-      checks.push(await countTable('My owned spots', 'spots', { column: 'owner_id', value: userId }));
-      checks.push(await countTable('My owner requests', 'owner_access_requests', { column: 'requester_id', value: userId }));
+      checks.push(await countTable(client, 'My owned spots', 'spots', { column: 'owner_id', value: userId }));
+      checks.push(await countTable(client, 'My owner requests', 'owner_access_requests', { column: 'requester_id', value: userId }));
     } else {
       checks.push({
         label: 'Owner session',

@@ -16,11 +16,15 @@ export type PaymentStatus =
   | 'refunded'
   | 'non_refundable';
 export type RefundStatus = 'not_applicable' | 'pending_review' | 'approved' | 'rejected' | 'completed';
+export type AppRole = 'admin' | 'owner' | 'user';
 
 export interface UserProfile {
   id: string;
+  first_name?: string | null;
+  last_name?: string | null;
   display_name: string | null;
   email: string;
+  role: AppRole;
   photo_url: string | null;
   location?: {
     lat: number;
@@ -30,6 +34,8 @@ export interface UserProfile {
   last_location_update?: string | null;
   level: number;
   points: number;
+  total_xp?: number;
+  current_level?: number;
   friends: string[];
   created_at?: string;
   updated_at?: string;
@@ -40,8 +46,24 @@ export interface Circle {
   name: string;
   owner_id: string;
   members: string[];
+  invite_code?: string | null;
+  invite_expires_at?: string | null;
   created_at: string;
   updated_at?: string;
+}
+
+export interface CircleMember {
+  id: string;
+  display_name: string | null;
+  photo_url: string | null;
+  location: { lat?: number; lng?: number } | null;
+  last_location_update: string | null;
+  is_owner: boolean;
+}
+
+export interface CircleInvite {
+  code: string;
+  expires_at: string;
 }
 
 export interface Spot {
@@ -59,6 +81,11 @@ export interface Spot {
   reservation_type?: ReservationType;
   reservation_fee: number;
   payment_required?: boolean;
+  gcash_wallet_number?: string | null;
+  gcash_wallet_name?: string | null;
+  gcash_qr_url?: string | null;
+  gcash_amount?: number | null;
+  table_inventory?: Record<string, Array<{ tableId: string; capacity: number; isReserved?: boolean }>> | null;
   opening_hours?: string | null;
   website_url?: string | null;
   contact_number?: string | null;
@@ -93,6 +120,7 @@ export interface Reservation {
   payment_method?: string | null;
   payment_reference?: string | null;
   payment_proof_url?: string | null;
+  payer_gcash_number?: string | null;
   refund_status?: RefundStatus;
   cancellation_reason?: string | null;
   cancelled_at?: string | null;
@@ -132,12 +160,29 @@ export interface LocalUpdate {
   latitude?: number | null;
   longitude?: number | null;
   image_url?: string | null;
+  media_urls?: string[] | null;
   spot_count: number;
   comments_count: number;
   source_type: LocalUpdateSourceType;
   source_id?: string | null;
   created_at: string;
   updated_at?: string;
+}
+
+export interface LocalUpdateComment {
+  id: string;
+  local_update_id: string;
+  user_id: string;
+  user_name: string;
+  user_photo_url?: string | null;
+  body: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface SpotVoteResult {
+  vote_count: number;
+  voted: boolean;
 }
 
 export interface SpotSubmission {
@@ -153,6 +198,10 @@ export interface SpotSubmission {
   reservation_type?: ReservationType;
   reservation_fee: number;
   payment_required?: boolean;
+  gcash_wallet_number?: string | null;
+  gcash_wallet_name?: string | null;
+  gcash_qr_url?: string | null;
+  gcash_amount?: number | null;
   is_reservable?: boolean;
   submitter_id: string;
   status: 'pending' | 'approved' | 'rejected';
@@ -196,7 +245,88 @@ export interface Review {
   updated_at?: string;
 }
 
+export type SpotEditSuggestionStatus = 'pending' | 'approved' | 'rejected';
+
+export interface SpotEditSuggestion {
+  id: string;
+  spot_id: string;
+  user_id: string;
+  field: string;
+  current_value?: string | null;
+  suggested_value: string;
+  note?: string | null;
+  status: SpotEditSuggestionStatus;
+  admin_notes?: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface PointTransaction {
+  id: string;
+  user_id?: string;
+  activity_type: string;
+  points: number;
+  reference_id?: string | null;
+  reference_type?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface GamificationAchievement {
+  id?: string;
+  achievementId?: string;
+  code: string;
+  name: string;
+  description: string;
+  iconName?: string | null;
+  requirementType: string;
+  requirementValue: number;
+  xpReward: number;
+  progress: number;
+  completed: boolean;
+  unlockedAt?: string | null;
+}
+
+export interface GamificationSummary {
+  totalXp: number;
+  currentLevel: number;
+  nextLevelXp: number;
+  achievements: GamificationAchievement[];
+  recentTransactions: PointTransaction[];
+}
+
+export interface GamificationLeaderboardEntry {
+  rank: number;
+  userId: string;
+  displayName: string;
+  avatar: string;
+  totalXp: number;
+  currentLevel: number;
+  achievementsUnlocked: number;
+}
+
+export interface GamificationLeaderboard {
+  leaders: GamificationLeaderboardEntry[];
+  myRank?: GamificationLeaderboardEntry | null;
+}
+
+export interface SpotVisit {
+  id: string;
+  user_id: string;
+  spot_id: string;
+  latitude: number;
+  longitude: number;
+  distance_from_spot?: number | null;
+  location_accuracy?: number | null;
+  verified: boolean;
+  visited_at: string;
+}
+
 export type NewReview = Omit<Review, 'id' | 'created_at' | 'updated_at' | 'likes_count' | 'reports_count'>;
+export type NewSpotEditSuggestion = Omit<
+  SpotEditSuggestion,
+  'id' | 'status' | 'admin_notes' | 'created_at' | 'updated_at'
+>;
 
 export interface LocationData {
   latitude: number;

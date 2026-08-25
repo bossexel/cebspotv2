@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { CheckCircle2, RefreshCw, Wifi, XCircle } from 'lucide-react-native';
 import { colors, type AppColors } from '../constants/colors';
 import { fontSize, radius, shadow, spacing } from '../constants/design';
@@ -13,6 +14,7 @@ interface SupabaseConnectionPanelProps {
   appColors?: AppColors;
   scope: SupabaseHealthScope;
   userId?: string;
+  client?: SupabaseClient;
   title?: string;
   subtitle?: string;
 }
@@ -26,6 +28,7 @@ export function SupabaseConnectionPanel({
   appColors = colors,
   scope,
   userId,
+  client,
   title = 'Live Supabase Check',
   subtitle = 'Reads real tables using the configured project URL and anon key.',
 }: SupabaseConnectionPanelProps) {
@@ -35,7 +38,7 @@ export function SupabaseConnectionPanel({
   const runCheck = useCallback(async () => {
     try {
       setLoading(true);
-      setResult(await checkSupabaseHealth(scope, userId));
+      setResult(await checkSupabaseHealth(scope, userId, client));
     } catch (error: any) {
       setResult({
         connected: false,
@@ -55,7 +58,7 @@ export function SupabaseConnectionPanel({
     } finally {
       setLoading(false);
     }
-  }, [scope, userId]);
+  }, [client, scope, userId]);
 
   useEffect(() => {
     runCheck();

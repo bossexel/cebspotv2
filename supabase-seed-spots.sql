@@ -6,7 +6,11 @@
 
 alter table public.spots
   add column if not exists website_url text,
-  add column if not exists contact_number text;
+  add column if not exists contact_number text,
+  add column if not exists gcash_wallet_number text,
+  add column if not exists gcash_wallet_name text,
+  add column if not exists gcash_qr_url text,
+  add column if not exists gcash_amount numeric(10, 2);
 
 alter table if exists public.reviews
   add column if not exists user_name text,
@@ -53,10 +57,10 @@ insert into public.spots (
 ) values
 (
   '66666666-6666-4666-8666-666666666666',
-  'CebSpot Cafe',
-  'A warm Cebu cafe test spot for validating venue details, reservations, and contact information.',
-  'Cafe',
-  array['Cafe', 'Specialty Coffee'],
+  'Test Cebspot Restaurant',
+  'A warm Cebu restaurant test spot for validating venue details, reservations, owner approvals, and GCash payments.',
+  'Restaurant',
+  array['Restaurant', 'Reservations'],
   'Barangay Apas, Cebu City',
   10.3306,
   123.9062,
@@ -217,6 +221,17 @@ on conflict (id) do update set
   is_reservable = excluded.is_reservable,
   updated_at = now();
 
+update public.spots
+set
+  gcash_wallet_number = '0917 555 0198',
+  gcash_wallet_name = 'Test Cebspot Restaurant',
+  gcash_qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=GCash%20Test%20Cebspot%20Restaurant%2009175550198',
+  gcash_amount = reservation_fee,
+  payment_required = true,
+  reservation_type = 'paid'
+where id = '66666666-6666-4666-8666-666666666666'
+   or lower(name) = 'test cebspot restaurant';
+
 -- Extra Cebu City mock spots for map density and discovery testing.
 insert into public.spots (
   id,
@@ -254,6 +269,7 @@ select
     when 'Street Food' then array['https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&q=80&w=900']
     when 'Outdoor' then array['https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&q=80&w=900']
     when 'Bar' then array['https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&q=80&w=900']
+    when 'Club' then array['https://images.unsplash.com/photo-1571266028243-d220c9c3a1c8?auto=format&fit=crop&q=80&w=900', 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=900']
     else array['https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&q=80&w=900']
   end,
   rating,
@@ -320,7 +336,12 @@ from (values
   (52, 'Apas Pocket Diner', 'Restaurant', 'Local', 'Barangay Apas, Cebu City', 10.3374, 123.9036, 4.1, 58, true, '10:00 AM - 10:00 PM'),
   (53, 'Busay View Deck Cafe', 'Outdoor', 'Cafe', 'Barangay Busay, Cebu City', 10.3692, 123.8825, 4.7, 133, true, '7:00 AM - 11:00 PM'),
   (54, 'Beverly Hills Tea Garden', 'Outdoor', 'Cafe', 'Barangay Lahug, Cebu City', 10.3426, 123.8896, 4.6, 86, true, '8:00 AM - 10:00 PM'),
-  (55, 'Sirao Road Snack View', 'Outdoor', 'Street Food', 'Barangay Sirao, Cebu City', 10.4102, 123.8786, 4.4, 74, false, '8:00 AM - 8:00 PM')
+  (55, 'Sirao Road Snack View', 'Outdoor', 'Street Food', 'Barangay Sirao, Cebu City', 10.4102, 123.8786, 4.4, 74, false, '8:00 AM - 8:00 PM'),
+  (56, 'Liv Superclub Cebu', 'Club', 'High Pulse', 'Barangay Apas, Cebu City', 10.3304, 123.9089, 4.7, 214, true, '8:00 PM - 4:00 AM'),
+  (57, 'Icon Night Lounge', 'Club', 'Nightlife', 'Barangay Kamputhaw, Cebu City', 10.3129, 123.8998, 4.5, 168, true, '7:00 PM - 3:00 AM'),
+  (58, 'Mango Avenue Clubhouse', 'Club', 'High Pulse', 'Barangay Kamputhaw, Cebu City', 10.3103, 123.8989, 4.4, 192, true, '8:00 PM - 4:00 AM'),
+  (59, 'Crossroads Disco Room', 'Club', 'Dance Floor', 'Barangay Banilad, Cebu City', 10.3372, 123.9107, 4.5, 139, true, '7:00 PM - 2:30 AM'),
+  (60, 'IT Park Glow Club', 'Club', 'Live DJ', 'Barangay Apas, Cebu City', 10.3328, 123.9071, 4.6, 181, true, '8:00 PM - 3:00 AM')
 ) as mock(seq, name, category, extra_category, address, latitude, longitude, rating, review_count, is_reservable, opening_hours)
 on conflict (id) do update set
   name = excluded.name,

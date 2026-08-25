@@ -53,6 +53,7 @@ export const categories = [
   'Restaurant',
   'Co-working',
   'Cafe',
+  'Club',
   'Bar',
 ];
 

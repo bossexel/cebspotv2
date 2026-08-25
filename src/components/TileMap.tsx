@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Easing,
   GestureResponderEvent,
   Image,
   LayoutChangeEvent,
@@ -11,7 +12,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { Coffee, Martini, Music2, Trees, Utensils } from 'lucide-react-native';
+import { Coffee, Disc3, Martini, Trees, UserRound, Utensils } from 'lucide-react-native';
 import { colors } from '../constants/colors';
 import { radius, spacing } from '../constants/design';
 import { fallbackStaticMapTileUrl, staticMapAttribution, staticMapTileUrl } from '../constants/mapTiles';
@@ -19,7 +20,16 @@ import { fallbackStaticMapTileUrl, staticMapAttribution, staticMapTileUrl } from
 const tileSize = 256;
 const minZoom = 11;
 const maxZoom = 18;
-const focusAnimationMs = 900;
+const minGestureDistance = 2;
+
+// --- Transition tuning ---------------------------------------------------
+// The "zoom out / swap / zoom in" punch. Total duration should roughly
+// match what you had before (~620ms) but is now split into two native-
+// driven legs instead of ~40 JS-driven setState calls.
+const PUNCH_OUT_DURATION = 240;
+const PUNCH_IN_DURATION = 360;
+const PUNCH_MIN_SCALE = 0.62; // how far it "zooms out" before swapping content
+// ---------------------------------------------------------------------
 
 export interface TileMapMarker {
   id: string;
@@ -31,6 +41,7 @@ export interface TileMapMarker {
   category?: string;
   imageUrl?: string;
   variant?: 'bubble' | 'circle' | 'pin';
+  size?: 'normal' | 'small';
   showIcon?: boolean;
 }
 
@@ -46,6 +57,9 @@ interface TileMapProps {
   onPressCoordinate?: (coordinate: { latitude: number; longitude: number }) => void;
   onCenterChange?: (coordinate: { latitude: number; longitude: number }) => void;
   onZoomChange?: (zoom: number) => void;
+  onInteractionStart?: () => void;
+  onInteractionEnd?: () => void;
+  transitionKey?: string | number;
   routeLine?: Array<{ latitude: number; longitude: number }>;
   showAttribution?: boolean;
 }
@@ -91,7 +105,19 @@ function buildTileUrl(template: string, x: number, y: number, zoom: number) {
     .replace('{y}', String(clampedY));
 }
 
-function TileImage({ x, y, zoom, left, top }: { x: number; y: number; zoom: number; left: number; top: number }) {
+const TileImage = React.memo(function TileImage({
+  x,
+  y,
+  zoom,
+  left,
+  top,
+}: {
+  x: number;
+  y: number;
+  zoom: number;
+  left: number;
+  top: number;
+}) {
   const [useFallback, setUseFallback] = useState(false);
   const template = useFallback ? fallbackStaticMapTileUrl : staticMapTileUrl;
 
@@ -102,16 +128,20 @@ function TileImage({ x, y, zoom, left, top }: { x: number; y: number; zoom: numb
       style={[styles.tile, { left, top }]}
     />
   );
-}
+});
 
 function getMarkerCategoryInfo(category = '') {
   const lower = category.toLowerCase();
+
+  if (lower.includes('friend') || lower.includes('person') || lower.includes('user')) {
+    return { color: colors.primary, Icon: UserRound };
+  }
 
   if (lower.includes('coffee') || lower.includes('cafe')) {
     return { color: '#D4A373', Icon: Coffee };
   }
   if (lower.includes('club') || lower.includes('pulse') || lower.includes('night')) {
-    return { color: '#EC4899', Icon: Music2 };
+    return { color: '#EC4899', Icon: Disc3 };
   }
   if (lower.includes('bar') || lower.includes('chill')) {
     return { color: '#3B82F6', Icon: Martini };
@@ -123,7 +153,7 @@ function getMarkerCategoryInfo(category = '') {
   return { color: '#10B981', Icon: Utensils };
 }
 
-function MapMarkerBubble({
+const MapMarkerBubble = React.memo(function MapMarkerBubble({
   marker,
   left,
   top,
@@ -137,11 +167,17 @@ function MapMarkerBubble({
   const categoryInfo = getMarkerCategoryInfo(marker.category ?? marker.label);
   const Icon = categoryInfo.Icon;
   const markerColor = marker.color ?? categoryInfo.color;
-  const hasImage = Boolean(marker.imageUrl);
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasImage = Boolean(marker.imageUrl && !imageFailed);
   const variant = marker.variant ?? 'bubble';
+  const isSmall = marker.size === 'small';
   const showIcon = marker.showIcon ?? variant !== 'circle';
   const selectedAnim = useRef(new Animated.Value(marker.selected ? 1 : 0)).current;
   const pulseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [marker.imageUrl]);
 
   useEffect(() => {
     Animated.spring(selectedAnim, {
@@ -176,11 +212,11 @@ function MapMarkerBubble({
 
   const markerScale = selectedAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [1, 1.45],
+    outputRange: [1, isSmall ? 1.18 : 1.45],
   });
   const haloScale = pulseAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.85, 1.8],
+    outputRange: [0.85, isSmall ? 1.45 : 1.8],
   });
   const haloOpacity = pulseAnim.interpolate({
     inputRange: [0, 1],
@@ -203,6 +239,7 @@ function MapMarkerBubble({
           pointerEvents="none"
           style={[
             styles.markerHalo,
+            isSmall && styles.smallMarkerHalo,
             {
               backgroundColor: markerColor,
               opacity: haloOpacity,
@@ -213,23 +250,31 @@ function MapMarkerBubble({
       )}
       {variant === 'pin' ? (
         <Animated.View style={[styles.pinMarker, { transform: [{ scale: markerScale }] }]}>
-          <View style={[styles.pinHead, { backgroundColor: markerColor }]}>
-            {showIcon && <Icon size={15} color={colors.secondary} strokeWidth={2.8} />}
+          <View style={[styles.pinHead, { backgroundColor: hasImage ? colors.surfaceLow : markerColor }]}>
+            {hasImage ? (
+              <Image
+                source={{ uri: marker.imageUrl! }}
+                style={styles.pinMarkerImage}
+                onError={() => setImageFailed(true)}
+              />
+            ) : showIcon ? (
+              <Icon size={15} color={colors.secondary} strokeWidth={2.8} />
+            ) : null}
           </View>
           <View style={[styles.pinTip, { backgroundColor: markerColor }]} />
         </Animated.View>
       ) : (
         <Animated.View
           style={[
-            hasImage ? styles.imageMarker : variant === 'circle' ? styles.circleMarker : styles.marker,
+            hasImage ? styles.imageMarker : variant === 'circle' ? [styles.circleMarker, isSmall && styles.smallCircleMarker] : styles.marker,
             {
               backgroundColor: hasImage ? colors.surfaceLow : markerColor,
               transform: [{ scale: markerScale }],
             },
           ]}
         >
-          {marker.imageUrl ? (
-            <Image source={{ uri: marker.imageUrl }} style={styles.markerImage} />
+          {hasImage ? (
+            <Image source={{ uri: marker.imageUrl! }} style={styles.markerImage} onError={() => setImageFailed(true)} />
           ) : showIcon ? (
             <Icon size={15} color={colors.secondary} strokeWidth={2.8} />
           ) : null}
@@ -237,7 +282,7 @@ function MapMarkerBubble({
       )}
     </Pressable>
   );
-}
+});
 
 export function TileMap({
   center,
@@ -248,6 +293,9 @@ export function TileMap({
   onPressCoordinate,
   onCenterChange,
   onZoomChange,
+  onInteractionStart,
+  onInteractionEnd,
+  transitionKey,
   routeLine = [],
   showAttribution = true,
 }: TileMapProps) {
@@ -255,49 +303,89 @@ export function TileMap({
   const [displayCenter, setDisplayCenter] = useState(center);
   const [displayZoom, setDisplayZoom] = useState(clampZoom(Math.round(zoom)));
   const dragTranslate = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const pinchScale = useRef(new Animated.Value(1)).current;
+
+  // NEW: single native-driven value that "punches" the whole tile+marker
+  // layer down then back up during a transition. This replaces the old
+  // per-frame setState/requestAnimationFrame loop entirely.
+  const punchScale = useRef(new Animated.Value(1)).current;
+  const combinedScale = useRef(Animated.multiply(pinchScale, punchScale)).current;
+
   const dragStartCenter = useRef(displayCenter);
   const movedRef = useRef(false);
   const pinchStartDistance = useRef(0);
   const pinchStartZoom = useRef(displayZoom);
+  const pinchLatestZoom = useRef(displayZoom);
   const isPinching = useRef(false);
-  const animationFrame = useRef<number | null>(null);
+  const lastTransitionKey = useRef<string | number | undefined>(transitionKey);
+  const activePunch = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     const nextZoom = clampZoom(Math.round(zoom));
-    const startCenter = displayCenter;
-    const startZoom = displayZoom;
-    const startTime = Date.now();
+    const isNewTransition =
+      transitionKey !== undefined && transitionKey !== lastTransitionKey.current && layout.width && layout.height;
 
-    if (animationFrame.current !== null) {
-      cancelAnimationFrame(animationFrame.current);
+    lastTransitionKey.current = transitionKey;
+
+    // Cancel any transition currently in flight so rapid swipes don't queue up.
+    activePunch.current?.stop();
+
+    if (!isNewTransition) {
+      // No animated transition requested (e.g. first mount, or a plain prop
+      // sync) — just snap directly, no animation needed.
+      setDisplayCenter(center);
+      setDisplayZoom(nextZoom);
+      dragStartCenter.current = center;
+      pinchLatestZoom.current = nextZoom;
+      dragTranslate.setValue({ x: 0, y: 0 });
+      pinchScale.setValue(1);
+      punchScale.setValue(1);
+      return;
     }
 
-    function step() {
-      const progress = Math.min(1, (Date.now() - startTime) / focusAnimationMs);
-      const eased = 1 - (1 - progress) ** 3;
-      const nextCenter = {
-        latitude: startCenter.latitude + (center.latitude - startCenter.latitude) * eased,
-        longitude: startCenter.longitude + (center.longitude - startCenter.longitude) * eased,
-      };
-      const nextDisplayZoom = Math.round(startZoom + (nextZoom - startZoom) * eased);
+    // --- Punch-zoom transition -------------------------------------
+    // 1. Scale the CURRENT tile/marker layer down (native thread, no
+    //    React re-render happening here at all).
+    // 2. The instant it bottoms out, swap the actual center/zoom state
+    //    (one single setState) — this is fully hidden by the small scale,
+    //    so the tile/image swap underneath is imperceptible.
+    // 3. Scale back up to reveal the new spot already in place.
+    dragTranslate.setValue({ x: 0, y: 0 });
 
-      setDisplayCenter(nextCenter);
-      setDisplayZoom(clampZoom(nextDisplayZoom));
-      dragStartCenter.current = nextCenter;
+    activePunch.current = Animated.sequence([
+      Animated.timing(punchScale, {
+        toValue: PUNCH_MIN_SCALE,
+        duration: PUNCH_OUT_DURATION,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]);
 
-      if (progress < 1) {
-        animationFrame.current = requestAnimationFrame(step);
-      }
-    }
+    activePunch.current.start(({ finished }) => {
+      if (!finished) return;
 
-    animationFrame.current = requestAnimationFrame(step);
+      setDisplayCenter(center);
+      setDisplayZoom(nextZoom);
+      dragStartCenter.current = center;
+      pinchLatestZoom.current = nextZoom;
 
-    return () => {
-      if (animationFrame.current !== null) {
-        cancelAnimationFrame(animationFrame.current);
-      }
-    };
-  }, [center.latitude, center.longitude, zoom]);
+      activePunch.current = Animated.timing(punchScale, {
+        toValue: 1,
+        duration: PUNCH_IN_DURATION,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      });
+      activePunch.current.start();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [center.latitude, center.longitude, zoom, transitionKey, layout.height, layout.width]);
+
+  useEffect(
+    () => () => {
+      activePunch.current?.stop();
+    },
+    [],
+  );
 
   function handleLayout(event: LayoutChangeEvent) {
     const { width, height } = event.nativeEvent.layout;
@@ -404,16 +492,21 @@ export function TileMap({
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => Boolean(onPressCoordinate),
+        onStartShouldSetPanResponderCapture: (event) => event.nativeEvent.touches.length >= 2,
         onMoveShouldSetPanResponderCapture: (event, gestureState) =>
           event.nativeEvent.touches.length >= 2 ||
-          Math.abs(gestureState.dx) > 3 ||
-          Math.abs(gestureState.dy) > 3,
+          Math.abs(gestureState.dx) > minGestureDistance ||
+          Math.abs(gestureState.dy) > minGestureDistance,
         onMoveShouldSetPanResponder: (_, gestureState) =>
-          Math.abs(gestureState.dx) > 3 || Math.abs(gestureState.dy) > 3,
+          Math.abs(gestureState.dx) > minGestureDistance || Math.abs(gestureState.dy) > minGestureDistance,
+        onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (event) => {
+          onInteractionStart?.();
           dragStartCenter.current = displayCenter;
           pinchStartDistance.current = touchDistance(event.nativeEvent.touches);
           pinchStartZoom.current = displayZoom;
+          pinchLatestZoom.current = displayZoom;
+          pinchScale.setValue(1);
           movedRef.current = false;
         },
         onPanResponderMove: (event, gestureState) => {
@@ -423,23 +516,30 @@ export function TileMap({
             if (pinchStartDistance.current > 0 && distance > 0) {
               const scale = distance / pinchStartDistance.current;
               const nextZoom = clampZoom(Math.round(pinchStartZoom.current + Math.log2(scale) * 1.8));
-              if (nextZoom !== displayZoom) {
-                setDisplayZoom(nextZoom);
-                onZoomChange?.(nextZoom);
-              }
+              pinchLatestZoom.current = nextZoom;
+              pinchScale.setValue(Math.max(0.72, Math.min(1.38, scale)));
             }
             movedRef.current = true;
             dragTranslate.setValue({ x: 0, y: 0 });
             return;
           }
 
-          if (Math.abs(gestureState.dx) > 3 || Math.abs(gestureState.dy) > 3) {
+          if (
+            Math.abs(gestureState.dx) > minGestureDistance ||
+            Math.abs(gestureState.dy) > minGestureDistance
+          ) {
             movedRef.current = true;
             dragTranslate.setValue({ x: gestureState.dx, y: gestureState.dy });
           }
         },
         onPanResponderRelease: (event, gestureState) => {
           if (isPinching.current) {
+            const nextZoom = pinchLatestZoom.current;
+            if (nextZoom !== displayZoom) {
+              setDisplayZoom(nextZoom);
+              onZoomChange?.(nextZoom);
+            }
+            pinchScale.setValue(1);
             dragTranslate.setValue({ x: 0, y: 0 });
           } else if (movedRef.current) {
             const nextCenter = centerFromDrag(gestureState.dx, gestureState.dy);
@@ -452,6 +552,7 @@ export function TileMap({
           }
           pinchStartDistance.current = 0;
           isPinching.current = false;
+          onInteractionEnd?.();
           setTimeout(() => {
             movedRef.current = false;
           }, 0);
@@ -463,10 +564,12 @@ export function TileMap({
             dragStartCenter.current = nextCenter;
             onCenterChange?.(nextCenter);
           }
+          pinchScale.setValue(1);
           setTimeout(() => dragTranslate.setValue({ x: 0, y: 0 }), 0);
           pinchStartDistance.current = 0;
           isPinching.current = false;
           movedRef.current = false;
+          onInteractionEnd?.();
         },
       }),
     [
@@ -477,9 +580,12 @@ export function TileMap({
       layout.height,
       layout.width,
       onCenterChange,
+      onInteractionEnd,
+      onInteractionStart,
       onPressCoordinate,
       onZoomChange,
       dragTranslate,
+      pinchScale,
     ],
   );
 
@@ -487,6 +593,9 @@ export function TileMap({
     <View
       style={[styles.container, style]}
       onLayout={handleLayout}
+      onTouchStart={onInteractionStart}
+      onTouchEnd={onInteractionEnd}
+      onTouchCancel={onInteractionEnd}
       {...panResponder.panHandlers}
     >
       <Animated.View
@@ -496,6 +605,7 @@ export function TileMap({
             transform: [
               { translateX: dragTranslate.x },
               { translateY: dragTranslate.y },
+              { scale: combinedScale },
             ],
           },
         ]}
@@ -571,6 +681,11 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: 17,
   },
+  smallMarkerHalo: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+  },
   marker: {
     width: 22,
     height: 22,
@@ -596,6 +711,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.22,
     shadowRadius: 8,
     elevation: 5,
+  },
+  smallCircleMarker: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
   },
   pinMarker: {
     width: 34,
@@ -630,6 +751,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 6,
     elevation: 4,
+  },
+  pinMarkerImage: {
+    width: 27,
+    height: 27,
+    borderRadius: 14,
   },
   imageMarker: {
     width: 34,
