@@ -11,6 +11,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 from fastapi import UploadFile
+from PIL import Image, UnidentifiedImageError
 
 logger = logging.getLogger("cebspot-face-anonymizer")
 
@@ -30,6 +31,8 @@ class FaceBlurSettings:
     full_model_path: Path
     temp_dir: Path
     max_image_bytes: int
+    max_image_dimension: int
+    max_source_pixels: int
     min_detection_confidence: float
     min_suppression_threshold: float
     tile_size: int
@@ -55,6 +58,8 @@ class FaceBlurSettings:
             ).resolve(),
             temp_dir=Path(os.getenv("FACE_BLUR_TEMP_DIR", "./temp")).resolve(),
             max_image_bytes=int(os.getenv("FACE_BLUR_MAX_IMAGE_BYTES", str(10 * 1024 * 1024))),
+            max_image_dimension=int(os.getenv("FACE_BLUR_MAX_IMAGE_DIMENSION", "3072")),
+            max_source_pixels=int(os.getenv("FACE_BLUR_MAX_SOURCE_PIXELS", "80000000")),
             min_detection_confidence=float(os.getenv("FACE_DETECTION_MIN_CONFIDENCE", "0.5")),
             min_suppression_threshold=float(os.getenv("FACE_DETECTION_MIN_SUPPRESSION", "0.5")),
             tile_size=int(os.getenv("FACE_DETECTION_TILE_SIZE", "768")),
@@ -125,6 +130,10 @@ class FaceBlurService:
             raise RuntimeError("FACE_DETECTION_DUPLICATE_IOU must be between 0 and 1.")
         if not 0 <= self.settings.face_padding_ratio <= 1:
             raise RuntimeError("FACE_PADDING_RATIO must be between 0 and 1.")
+        if not 1024 <= self.settings.max_image_dimension <= 8192:
+            raise RuntimeError("FACE_BLUR_MAX_IMAGE_DIMENSION must be between 1024 and 8192 pixels.")
+        if self.settings.max_source_pixels < self.settings.max_image_dimension**2:
+            raise RuntimeError("FACE_BLUR_MAX_SOURCE_PIXELS is too small for the configured image dimension.")
 
         self.settings.temp_dir.mkdir(parents=True, exist_ok=True)
         try:
@@ -281,10 +290,22 @@ class FaceBlurService:
         return False
 
     def _blur_file(self, source_path: Path, output_path: Path, media_type: str) -> int:
+        source_width, source_height = self._read_image_dimensions(source_path)
+        decode_flag = self._decode_flag(source_width, source_height)
         encoded_source = np.fromfile(str(source_path), dtype=np.uint8)
-        image_bgr = cv2.imdecode(encoded_source, cv2.IMREAD_COLOR)
+        image_bgr = cv2.imdecode(encoded_source, decode_flag)
+        del encoded_source
         if image_bgr is None or image_bgr.size == 0:
             raise ValueError("Image could not be decoded.")
+
+        image_bgr = self._bound_image_dimensions(image_bgr)
+        logger.info(
+            "image dimensions prepared: %sx%s -> %sx%s",
+            source_width,
+            source_height,
+            image_bgr.shape[1],
+            image_bgr.shape[0],
+        )
 
         image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
         detections = self._detect_faces(image_rgb)
@@ -314,6 +335,42 @@ class FaceBlurService:
 
         self._write_output(image_bgr, output_path, media_type)
         return blurred_faces
+
+    def _read_image_dimensions(self, source_path: Path) -> tuple[int, int]:
+        try:
+            with Image.open(source_path) as image:
+                width, height = image.size
+        except (Image.DecompressionBombError, UnidentifiedImageError, OSError, ValueError) as error:
+            raise ValueError("Image could not be decoded.") from error
+
+        if width <= 0 or height <= 0:
+            raise ValueError("Image dimensions are invalid.")
+        if width * height > self.settings.max_source_pixels:
+            raise ValueError("Image dimensions are too large.")
+        return width, height
+
+    def _decode_flag(self, width: int, height: int) -> int:
+        longest_side = max(width, height)
+        reduction = 1
+        while reduction < 8 and longest_side / reduction > self.settings.max_image_dimension:
+            reduction *= 2
+
+        return {
+            2: cv2.IMREAD_REDUCED_COLOR_2,
+            4: cv2.IMREAD_REDUCED_COLOR_4,
+            8: cv2.IMREAD_REDUCED_COLOR_8,
+        }.get(reduction, cv2.IMREAD_COLOR)
+
+    def _bound_image_dimensions(self, image_bgr: np.ndarray) -> np.ndarray:
+        height, width = image_bgr.shape[:2]
+        longest_side = max(width, height)
+        if longest_side <= self.settings.max_image_dimension:
+            return image_bgr
+
+        scale = self.settings.max_image_dimension / longest_side
+        resized_width = max(1, int(round(width * scale)))
+        resized_height = max(1, int(round(height * scale)))
+        return cv2.resize(image_bgr, (resized_width, resized_height), interpolation=cv2.INTER_AREA)
 
     def _detect_faces(self, image_rgb: np.ndarray) -> list[FaceBox]:
         image_height, image_width = image_rgb.shape[:2]

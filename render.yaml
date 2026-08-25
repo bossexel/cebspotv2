@@ -11,6 +11,10 @@ services:
         sync: false
       - key: FACE_BLUR_MAX_IMAGE_BYTES
         value: "10485760"
+      - key: FACE_BLUR_MAX_IMAGE_DIMENSION
+        value: "3072"
+      - key: FACE_BLUR_MAX_SOURCE_PIXELS
+        value: "80000000"
       - key: FACE_BLUR_JOB_TTL_SECONDS
         value: "900"
       - key: FACE_DETECTION_MIN_CONFIDENCE

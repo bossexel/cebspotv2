@@ -87,6 +87,7 @@ def health() -> dict[str, str | float | int]:
         "min_detection_confidence": settings.min_detection_confidence,
         "tile_size": settings.tile_size,
         "max_tiles": settings.max_tiles,
+        "max_image_dimension": settings.max_image_dimension,
     }
 
 

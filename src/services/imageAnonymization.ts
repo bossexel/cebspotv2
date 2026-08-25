@@ -7,10 +7,14 @@ const healthRequestTimeoutMs = 15_000;
 const healthRetryDelayMs = 2_000;
 const jobPollIntervalMs = 1_000;
 const jobTimeoutMs = 5 * 60_000;
-const maxConsecutivePollFailures = 5;
+const jobRequestTimeoutMs = 20_000;
+const jobCreateAttempts = 3;
+const jobRecoveryAttempts = 2;
+const transientRetryDelayMs = 2_000;
 let lastHealthyCheckAt = 0;
 
 const supportedExtensions = new Set(['jpg', 'jpeg', 'png']);
+const transientHttpStatuses = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 function assertProductionApiUrlIsSafe() {
   if (__DEV__ || !configuredFaceBlurApiUrl) return;
@@ -33,9 +37,14 @@ type AnonymizationJob = {
   job_id?: string;
   status?: 'queued' | 'processing' | 'complete' | 'delivering' | 'failed';
   detail?: string;
+  error?: string;
+  message?: string;
   faces_detected?: number;
   processing_time_ms?: number;
 };
+
+class RecoverableJobError extends Error {}
+class PermanentUploadError extends Error {}
 
 function isLocalFileUri(uri: string) {
   return uri.startsWith('file:') || uri.startsWith('content:') || uri.startsWith('ph:');
@@ -176,53 +185,85 @@ function parseJobResponse(body: string): AnonymizationJob {
 async function responseErrorMessage(response: Response) {
   try {
     const body = (await response.json()) as AnonymizationJob;
-    if (body.detail) return body.detail;
+    const detail = body.detail || body.error || body.message;
+    if (detail) return `${detail} (HTTP ${response.status})`;
   } catch {
     // Fall through to a safe generic message.
   }
-  return 'The face anonymizer rejected this image.';
+  return `The face anonymizer returned HTTP ${response.status} without an explanation.`;
 }
 
-function uploadErrorMessage(body: string) {
-  const parsed = parseJobResponse(body);
-  return parsed.detail || 'The face anonymizer rejected this image.';
+function uploadErrorMessage(body: string, status: number) {
+  try {
+    const parsed = parseJobResponse(body);
+    return `${parsed.detail || parsed.error || parsed.message || 'The face anonymizer rejected the request.'} (HTTP ${status})`;
+  } catch {
+    return `The face anonymizer returned HTTP ${status} without a readable explanation.`;
+  }
 }
 
 async function createAnonymizationJob(preparedUri: string, contentType: string) {
-  const upload = await FileSystem.uploadAsync(`${configuredFaceBlurApiUrl}/api/anonymize-jobs`, preparedUri, {
-    fieldName: 'image',
-    httpMethod: 'POST',
-    mimeType: contentType,
-    uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-  });
+  let lastError: unknown = new Error('The face anonymizer did not accept the upload.');
 
-  if (upload.status < 200 || upload.status >= 300) {
-    throw new Error(uploadErrorMessage(upload.body));
+  for (let attempt = 1; attempt <= jobCreateAttempts; attempt += 1) {
+    try {
+      const upload = await FileSystem.uploadAsync(`${configuredFaceBlurApiUrl}/api/anonymize-jobs`, preparedUri, {
+        fieldName: 'image',
+        httpMethod: 'POST',
+        mimeType: contentType,
+        uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+      });
+
+      if (upload.status >= 200 && upload.status < 300) {
+        const job = parseJobResponse(upload.body);
+        if (!job.job_id) throw new Error('The face anonymizer did not return a processing job.');
+        return job.job_id;
+      }
+
+      lastError = new Error(uploadErrorMessage(upload.body, upload.status));
+      console.warn('Face anonymization upload returned an error', {
+        status: upload.status,
+        attempt,
+      });
+      if (!transientHttpStatuses.has(upload.status)) throw new PermanentUploadError(getErrorMessage(lastError));
+    } catch (error) {
+      if (error instanceof PermanentUploadError) throw error;
+      lastError = error;
+      if (attempt >= jobCreateAttempts) break;
+    }
+
+    await wait(transientRetryDelayMs * attempt);
   }
 
-  const job = parseJobResponse(upload.body);
-  if (!job.job_id) throw new Error('The face anonymizer did not return a processing job.');
-  return job.job_id;
+  throw lastError;
 }
 
 async function waitForAnonymizationJob(jobId: string) {
   const deadline = Date.now() + jobTimeoutMs;
-  let consecutiveFailures = 0;
+  let lastTemporaryError = '';
 
   while (Date.now() < deadline) {
     let response: Response;
     try {
-      response = await fetchWithTimeout(`${configuredFaceBlurApiUrl}/api/anonymize-jobs/${jobId}`);
-      consecutiveFailures = 0;
+      response = await fetchWithTimeout(
+        `${configuredFaceBlurApiUrl}/api/anonymize-jobs/${jobId}`,
+        { method: 'GET' },
+        jobRequestTimeoutMs
+      );
     } catch (error) {
-      consecutiveFailures += 1;
-      if (consecutiveFailures >= maxConsecutivePollFailures) {
-        throw new Error(`Lost connection to the privacy service: ${getErrorMessage(error)}`);
-      }
+      lastTemporaryError = getErrorMessage(error);
       await wait(jobPollIntervalMs);
       continue;
     }
 
+    if (response.status === 404 || response.status === 410) {
+      throw new RecoverableJobError(await responseErrorMessage(response));
+    }
+    if (transientHttpStatuses.has(response.status)) {
+      lastTemporaryError = await responseErrorMessage(response);
+      await wait(transientRetryDelayMs);
+      continue;
+    }
     if (!response.ok) throw new Error(await responseErrorMessage(response));
 
     const job = (await response.json()) as AnonymizationJob;
@@ -234,25 +275,60 @@ async function waitForAnonymizationJob(jobId: string) {
     await wait(jobPollIntervalMs);
   }
 
-  throw new Error('Privacy processing took longer than five minutes. The original photo was not uploaded.');
+  throw new Error(
+    `Privacy processing took longer than five minutes${lastTemporaryError ? `: ${lastTemporaryError}` : '.'} The original photo was not uploaded.`
+  );
 }
 
 async function downloadAnonymizedImage(jobId: string, extension: string) {
   const outputUri = cacheFileUri('cebspot-anonymized', extension);
+  let lastError: unknown = new Error('Unable to download the privacy-protected photo.');
 
-  try {
-    const result = await FileSystem.downloadAsync(
-      `${configuredFaceBlurApiUrl}/api/anonymize-jobs/${jobId}/result`,
-      outputUri
-    );
-    if (result.status < 200 || result.status >= 300) {
-      throw new Error(`Unable to download the privacy-protected photo (HTTP ${result.status}).`);
+  for (let attempt = 1; attempt <= jobCreateAttempts; attempt += 1) {
+    try {
+      const result = await FileSystem.downloadAsync(
+        `${configuredFaceBlurApiUrl}/api/anonymize-jobs/${jobId}/result`,
+        outputUri
+      );
+      if (result.status >= 200 && result.status < 300) return outputUri;
+      if (result.status === 404 || result.status === 410) {
+        throw new RecoverableJobError(`The anonymization job result expired (HTTP ${result.status}).`);
+      }
+
+      lastError = new Error(`Unable to download the privacy-protected photo (HTTP ${result.status}).`);
+      if (!transientHttpStatuses.has(result.status)) throw lastError;
+    } catch (error) {
+      if (error instanceof RecoverableJobError) throw error;
+      lastError = error;
+      if (attempt >= jobCreateAttempts) break;
     }
-    return outputUri;
-  } catch (error) {
+
     await FileSystem.deleteAsync(outputUri, { idempotent: true }).catch(() => undefined);
-    throw error;
+    await wait(transientRetryDelayMs * attempt);
   }
+
+  await FileSystem.deleteAsync(outputUri, { idempotent: true }).catch(() => undefined);
+  throw lastError;
+}
+
+async function processPreparedImage(preparedUri: string, extension: string) {
+  let lastError: unknown = new Error('The face anonymizer could not process this image.');
+
+  for (let attempt = 1; attempt <= jobRecoveryAttempts; attempt += 1) {
+    try {
+      const jobId = await createAnonymizationJob(preparedUri, getContentType(extension));
+      const completedJob = await waitForAnonymizationJob(jobId);
+      const outputUri = await downloadAnonymizedImage(jobId, extension);
+      return { completedJob, outputUri };
+    } catch (error) {
+      lastError = error;
+      if (!(error instanceof RecoverableJobError) || attempt >= jobRecoveryAttempts) throw error;
+      console.warn('Face anonymization job was lost; recreating it', { attempt });
+      await wait(transientRetryDelayMs * attempt);
+    }
+  }
+
+  throw lastError;
 }
 
 export const imageAnonymizationService = {
@@ -273,9 +349,7 @@ export const imageAnonymizationService = {
 
     try {
       await assertFaceBlurServiceReachable();
-      const jobId = await createAnonymizationJob(preparedUri, getContentType(extension));
-      const completedJob = await waitForAnonymizationJob(jobId);
-      const outputUri = await downloadAnonymizedImage(jobId, extension);
+      const { completedJob, outputUri } = await processPreparedImage(preparedUri, extension);
 
       console.info('Photo privacy processing complete', {
         facesDetected: Number(completedJob.faces_detected ?? 0),

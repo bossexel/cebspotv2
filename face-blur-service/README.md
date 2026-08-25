@@ -163,7 +163,7 @@ curl http://localhost:8000/health
 Expected:
 
 ```json
-{"status":"ok","service":"cebspot-face-anonymizer","face_detector":"mediapipe-dual-range","min_detection_confidence":0.5,"tile_size":768,"max_tiles":64}
+{"status":"ok","service":"cebspot-face-anonymizer","face_detector":"mediapipe-dual-range","min_detection_confidence":0.5,"tile_size":768,"max_tiles":64,"max_image_dimension":3072}
 ```
 
 ## Upload Test
@@ -213,6 +213,8 @@ The older `/api/anonymize-upload` and `/api/anonymize-base64` endpoints remain a
 
 - Accepts JPEG/JPG/PNG only.
 - Rejects oversized files using `FACE_BLUR_MAX_IMAGE_BYTES`, default 10 MB.
+- Rejects unreasonable decoded dimensions using `FACE_BLUR_MAX_SOURCE_PIXELS`, default 80 megapixels.
+- Memory-safely decodes oversized phone photos to at most `FACE_BLUR_MAX_IMAGE_DIMENSION`, default 3072 pixels on the longest edge.
 - Checks MIME type and image signature.
 - Uses UUID-based temporary filenames.
 - Saves files under `FACE_BLUR_TEMP_DIR`.
