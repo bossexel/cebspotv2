@@ -64,7 +64,6 @@ function clampProgress(percent: number) {
 
 function progressNotification(
   jobId: string,
-  spotName: string,
   progress: SpotSubmissionProgress,
   asForegroundService: boolean
 ) {
@@ -72,8 +71,8 @@ function progressNotification(
 
   return {
     id: jobId,
-    title: `Submitting ${spotName}`,
-    body: `${progress.message} - ${percent}%`,
+    title: 'Spot uploading...',
+    body: `${percent}%`,
     android: {
       channelId,
       asForegroundService,
@@ -101,14 +100,14 @@ async function safelyNotify(action: (module: NotifyKitModule) => Promise<void>) 
   }
 }
 
-async function displayProgressNotification(jobId: string, spotName: string, progress: SpotSubmissionProgress) {
+async function displayProgressNotification(jobId: string, progress: SpotSubmissionProgress) {
   await safelyNotify(async (module) => {
     try {
-      await module.default.displayNotification(progressNotification(jobId, spotName, progress, true));
+      await module.default.displayNotification(progressNotification(jobId, progress, true));
     } catch (foregroundError) {
       console.warn('Foreground progress notification failed; using a regular notification:', foregroundError);
       await module.default.stopForegroundService().catch(() => undefined);
-      await module.default.displayNotification(progressNotification(jobId, spotName, progress, false));
+      await module.default.displayNotification(progressNotification(jobId, progress, false));
     }
   });
 }
@@ -153,16 +152,15 @@ export const spotSubmissionNotificationService = {
     await module?.default.openNotificationSettings();
   },
 
-  async begin(jobId: string, spotName: string) {
+  async begin(jobId: string, _spotName: string) {
     await displayProgressNotification(
       jobId,
-      spotName,
-      { percent: 1, message: 'Starting privacy protection' }
+      { percent: 1, message: 'Spot uploading...' }
     );
   },
 
-  async update(jobId: string, spotName: string, progress: SpotSubmissionProgress) {
-    await displayProgressNotification(jobId, spotName, progress);
+  async update(jobId: string, _spotName: string, progress: SpotSubmissionProgress) {
+    await displayProgressNotification(jobId, progress);
   },
 
   async complete(jobId: string, spotName: string) {

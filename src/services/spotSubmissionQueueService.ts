@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { NewSpotSubmission } from '../types';
+import type { NewSpotSubmissionUpload } from '../types';
+import { imageAnonymizationService } from './imageAnonymization';
+import { spotSubmissionDraftService } from './spotSubmissionDraftService';
 import { spotSubmissionNotificationService } from './spotSubmissionNotificationService';
 import { spotSubmissionService } from './spotSubmissionService';
 
@@ -91,21 +93,25 @@ function submissionFailureMessage(error: unknown) {
   return message || 'Please open CebSpot and try again.';
 }
 
-async function processSubmission(jobId: string, submission: NewSpotSubmission, userName: string) {
+async function processSubmission(jobId: string, submission: NewSpotSubmissionUpload, userName: string) {
   await updateJob(jobId, {
     status: 'processing',
     percent: 1,
-    message: 'Starting privacy protection',
+    message: 'Spot uploading...',
   });
   await spotSubmissionNotificationService.begin(jobId, submission.name);
 
   try {
+    if (submission.media?.some((asset) => asset.type === 'image') || submission.images?.length) {
+      await imageAnonymizationService.checkAvailability();
+    }
+
     await spotSubmissionService.createSubmission(submission, userName, {
       onProgress: async (progress) => {
         await updateJob(jobId, {
           status: 'processing',
           percent: progress.percent,
-          message: progress.message,
+          message: 'Spot uploading...',
         });
         await spotSubmissionNotificationService.update(jobId, submission.name, progress);
       },
@@ -116,6 +122,11 @@ async function processSubmission(jobId: string, submission: NewSpotSubmission, u
       message: 'Spot submitted for admin review',
     });
     await spotSubmissionNotificationService.complete(jobId, submission.name);
+    if (submission.draftId) {
+      await spotSubmissionDraftService
+        .clearIfMatches(submission.submitter_id, submission.draftId)
+        .catch((error) => console.warn('Unable to clear submitted spot draft:', error));
+    }
   } catch (error) {
     console.error('Queued spot submission failed:', error);
     const failureMessage = submissionFailureMessage(error);
@@ -133,7 +144,7 @@ async function processSubmission(jobId: string, submission: NewSpotSubmission, u
 }
 
 export const spotSubmissionQueueService = {
-  async enqueue(submission: NewSpotSubmission, userName: string) {
+  async enqueue(submission: NewSpotSubmissionUpload, userName: string) {
     await initializeJobs();
     const jobId = createJobId();
     const now = new Date().toISOString();
@@ -141,6 +152,7 @@ export const spotSubmissionQueueService = {
       ...submission,
       images: [...(submission.images ?? [])],
       categories: [...(submission.categories ?? [])],
+      media: submission.media?.map((asset) => ({ ...asset })),
     };
 
     await upsertJob({
@@ -148,7 +160,7 @@ export const spotSubmissionQueueService = {
       spotName: submission.name,
       status: 'queued',
       percent: 0,
-      message: 'Waiting to start',
+      message: 'Spot uploading...',
       createdAt: now,
       updatedAt: now,
     });

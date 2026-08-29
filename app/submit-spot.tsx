@@ -1,6 +1,17 @@
-import React, { useState } from 'react';
-import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Alert,
+  BackHandler,
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
   ArrowLeft,
@@ -11,14 +22,17 @@ import {
   Martini,
   MapPin,
   Music2,
+  Play,
   ShieldCheck,
   Sparkles,
   Trees,
   Utensils,
+  Video,
   X,
 } from 'lucide-react-native';
 import { AppButton } from '../src/components/AppButton';
 import { CategoryChip } from '../src/components/CategoryChip';
+import { ConfirmationModal } from '../src/components/ConfirmationModal';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { TileMap } from '../src/components/TileMap';
 import { colors } from '../src/constants/colors';
@@ -26,9 +40,23 @@ import { categories, fontSize, radius, shadow, spacing } from '../src/constants/
 import { useAuth } from '../src/hooks/useAuth';
 import { useLocation } from '../src/hooks/useLocation';
 import { useTheme } from '../src/hooks/useTheme';
-import { imageAnonymizationService } from '../src/services/imageAnonymization';
-import { spotSubmissionNotificationService } from '../src/services/spotSubmissionNotificationService';
+import { spotSubmissionDraftService } from '../src/services/spotSubmissionDraftService';
 import { spotSubmissionQueueService } from '../src/services/spotSubmissionQueueService';
+import type { SpotSubmissionDraft, SpotSubmissionMediaAsset } from '../src/types';
+
+const maxMediaItems = 5;
+const maxVideoDurationMs = 15_000;
+const maxVideoFileSize = 25 * 1024 * 1024;
+
+function createLocalId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function formatDuration(durationMs?: number | null) {
+  if (!durationMs) return 'Video';
+  const seconds = Math.max(1, Math.round(durationMs / 1000));
+  return `0:${seconds.toString().padStart(2, '0')}`;
+}
 
 function getCategoryIcon(category = '') {
   const lower = category.toLowerCase();
@@ -62,12 +90,52 @@ export default function SubmitSpotScreen() {
   const [address, setAddress] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [acceptsReservations, setAcceptsReservations] = useState<boolean | null>(null);
-  const [images, setImages] = useState<string[]>([]);
+  const [media, setMedia] = useState<SpotSubmissionMediaAsset[]>([]);
   const [latitude, setLatitude] = useState(10.3157);
   const [longitude, setLongitude] = useState(123.8854);
   const [showMap, setShowMap] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
   const primaryCategory = selectedCategories[0] ?? null;
+  const hasFormContent = useMemo(
+    () =>
+      Boolean(
+        name.trim() ||
+          description.trim() ||
+          address.trim() ||
+          selectedCategories.length ||
+          acceptsReservations !== null ||
+          media.length
+      ),
+    [acceptsReservations, address, description, media.length, name, selectedCategories.length]
+  );
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    let active = true;
+
+    spotSubmissionDraftService
+      .get(profile.id)
+      .then((draft) => {
+        if (!active || !draft) return;
+        setDraftId(draft.id);
+        setName(draft.name);
+        setDescription(draft.description);
+        setAddress(draft.address);
+        setSelectedCategories(draft.selectedCategories);
+        setAcceptsReservations(draft.acceptsReservations);
+        setLatitude(draft.latitude);
+        setLongitude(draft.longitude);
+        setMedia(draft.media);
+      })
+      .catch((error) => console.warn('Unable to restore spot draft:', error));
+
+    return () => {
+      active = false;
+    };
+  }, [profile?.id]);
 
   function toggleCategory(item: string) {
     setSelectedCategories((current) =>
@@ -75,16 +143,62 @@ export default function SubmitSpotScreen() {
     );
   }
 
-  async function selectImage() {
+  async function selectMedia(mediaType: 'images' | 'videos') {
+    const remainingSlots = maxMediaItems - media.length;
+    if (remainingSlots <= 0) {
+      Alert.alert('Media limit reached', `You can attach up to ${maxMediaItems} photos and videos.`);
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: [mediaType],
       allowsMultipleSelection: true,
+      selectionLimit: remainingSlots,
+      orderedSelection: true,
       quality: 0.8,
+      videoMaxDuration: 15,
     });
 
     if (!result.canceled) {
-      setImages((current) => [...current, ...result.assets.map((asset) => asset.uri)]);
+      const rejected: string[] = [];
+      const accepted = result.assets.flatMap<SpotSubmissionMediaAsset>((asset, index) => {
+        const type = asset.type === 'video' || asset.mimeType?.startsWith('video/') ? 'video' : 'image';
+        if (type === 'video' && (!asset.duration || asset.duration > maxVideoDurationMs)) {
+          rejected.push(asset.duration ? 'Videos must be 15 seconds or shorter.' : 'A video length could not be verified.');
+          return [];
+        }
+        if (type === 'video' && asset.fileSize && asset.fileSize > maxVideoFileSize) {
+          rejected.push('Videos must be 25 MB or smaller.');
+          return [];
+        }
+        return [{
+          id: createLocalId(`${type}-${index}`),
+          uri: asset.uri,
+          type,
+          mimeType: asset.mimeType ?? null,
+          durationMs: asset.duration ?? null,
+          fileName: asset.fileName ?? null,
+          fileSize: asset.fileSize ?? null,
+        }];
+      });
+
+      setMedia((current) => {
+        const knownUris = new Set(current.map((asset) => asset.uri));
+        const next = [...current, ...accepted.filter((asset) => !knownUris.has(asset.uri))].slice(0, maxMediaItems);
+        return [
+          ...next.filter((asset) => asset.type === 'image'),
+          ...next.filter((asset) => asset.type === 'video'),
+        ];
+      });
+
+      if (rejected.length) {
+        Alert.alert('Some media was not added', [...new Set(rejected)].join('\n'));
+      }
     }
+  }
+
+  function removeMedia(assetId: string) {
+    setMedia((current) => current.filter((asset) => asset.id !== assetId));
   }
 
   async function useCurrentLocation() {
@@ -93,6 +207,69 @@ export default function SubmitSpotScreen() {
     setLatitude(current.latitude);
     setLongitude(current.longitude);
     setShowMap(true);
+  }
+
+  const requestExit = useCallback(() => {
+    if (submitting || savingDraft) return;
+    if (!hasFormContent) {
+      router.back();
+      return;
+    }
+    setExitConfirmationOpen(true);
+  }, [hasFormContent, router, savingDraft, submitting]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'android') return undefined;
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        requestExit();
+        return true;
+      });
+      return () => subscription.remove();
+    }, [requestExit])
+  );
+
+  function buildDraft(id: string): SpotSubmissionDraft {
+    return {
+      id,
+      name,
+      description,
+      address,
+      selectedCategories,
+      acceptsReservations,
+      latitude,
+      longitude,
+      media,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  async function saveDraftAndExit() {
+    if (!profile?.id || savingDraft) return;
+    try {
+      setSavingDraft(true);
+      const saved = await spotSubmissionDraftService.save(
+        profile.id,
+        buildDraft(draftId ?? createLocalId('draft'))
+      );
+      setDraftId(saved.id);
+      setExitConfirmationOpen(false);
+      router.back();
+    } catch (error: any) {
+      Alert.alert('Draft not saved', error.message ?? 'Please try again.');
+    } finally {
+      setSavingDraft(false);
+    }
+  }
+
+  async function exitWithoutSaving() {
+    if (profile?.id) {
+      await spotSubmissionDraftService.clear(profile.id).catch((error) => {
+        console.warn('Unable to clear spot draft:', error);
+      });
+    }
+    setExitConfirmationOpen(false);
+    router.back();
   }
 
   async function submit() {
@@ -108,39 +285,13 @@ export default function SubmitSpotScreen() {
       Alert.alert('Missing reservation info', 'Please choose whether this spot accepts reservations.');
       return;
     }
+    if (!media.some((asset) => asset.type === 'image')) {
+      Alert.alert('Cover photo required', 'Add at least one photo before submitting this spot.');
+      return;
+    }
 
     try {
       setSubmitting(true);
-
-      if (images.length > 0) {
-        await imageAnonymizationService.checkAvailability();
-      }
-
-      const notificationStatus = await spotSubmissionNotificationService.prepare();
-      if (Platform.OS === 'android' && notificationStatus.supported && !notificationStatus.authorized) {
-        const continueWithoutNotifications = await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            'Notifications are off',
-            `${notificationStatus.detail ?? 'CebSpot cannot show Android progress notifications.'} You can still track this submission inside CebSpot, but keep the app open while photos are processed.`,
-            [
-              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-              {
-                text: 'Settings',
-                onPress: () => {
-                  void spotSubmissionNotificationService.openSettings();
-                  resolve(false);
-                },
-              },
-              { text: 'Continue', onPress: () => resolve(true) },
-            ],
-            { cancelable: false }
-          );
-        });
-        if (!continueWithoutNotifications) {
-          setSubmitting(false);
-          return;
-        }
-      }
 
       await spotSubmissionQueueService.enqueue(
         {
@@ -151,7 +302,9 @@ export default function SubmitSpotScreen() {
           categories: selectedCategories,
           latitude,
           longitude,
-          images,
+          images: media.map((asset) => asset.uri),
+          media,
+          draftId: draftId ?? undefined,
           reservation_fee: 0,
           reservation_type: 'free',
           payment_required: false,
@@ -171,10 +324,19 @@ export default function SubmitSpotScreen() {
   return (
     <ScreenContainer appColors={appColors} scroll>
       <View style={styles.header}>
-        <Pressable style={[styles.backButton, { backgroundColor: appColors.white }]} onPress={() => router.back()}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Leave spot submission"
+          style={[styles.backButton, { backgroundColor: appColors.surfaceRaised }]}
+          onPress={requestExit}
+        >
           <ArrowLeft size={20} color={appColors.onSurface} />
         </Pressable>
-        
+        {draftId ? (
+          <View style={[styles.draftBadge, { backgroundColor: appColors.surfaceContainer }]}>
+            <Text style={[styles.draftBadgeText, { color: appColors.onSurfaceVariant }]}>Draft restored</Text>
+          </View>
+        ) : null}
         <View style={styles.headerSpacer} />
       </View>
 
@@ -186,18 +348,103 @@ export default function SubmitSpotScreen() {
       </View>
 
       <View style={[styles.form, { backgroundColor: appColors.surfaceLow }]}>
-        <Pressable style={[styles.upload, { backgroundColor: appColors.white }]} onPress={selectImage}>
-          {images[0] ? (
-            <Image source={{ uri: images[0] }} style={styles.uploadImage} />
+        <View style={styles.field}>
+          <View style={styles.mediaHeader}>
+            <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Media</Text>
+            <Text style={[styles.mediaCount, { color: appColors.onSurfaceVariant }]}>
+              {media.length}/{maxMediaItems}
+            </Text>
+          </View>
+
+          {media.length ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.mediaRail}
+            >
+              {media.map((asset, index) => (
+                <View
+                  key={asset.id}
+                  style={[
+                    styles.mediaTile,
+                    { backgroundColor: appColors.surfaceRaised, borderColor: appColors.outlineVariant },
+                  ]}
+                >
+                  {asset.type === 'image' ? (
+                    <Image source={{ uri: asset.uri }} style={styles.mediaPreview} />
+                  ) : (
+                    <View style={[styles.videoPreview, { backgroundColor: appColors.surfaceHighest }]}>
+                      <Play size={28} color={colors.primary} fill={colors.primary} />
+                      <Text style={[styles.videoDuration, { color: appColors.onSurface }]}>
+                        {formatDuration(asset.durationMs)}
+                      </Text>
+                    </View>
+                  )}
+                  {index === 0 && asset.type === 'image' ? (
+                    <View style={styles.coverBadge}>
+                      <Text style={styles.coverBadgeText}>Cover</Text>
+                    </View>
+                  ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove ${asset.type}`}
+                    hitSlop={6}
+                    style={styles.removeMediaButton}
+                    onPress={() => removeMedia(asset.id)}
+                  >
+                    <X size={15} color={colors.white} strokeWidth={3} />
+                  </Pressable>
+                </View>
+              ))}
+            </ScrollView>
           ) : (
-            <>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Add spot photos"
+              style={[
+                styles.emptyMedia,
+                { backgroundColor: appColors.inputSurface, borderColor: appColors.inputBorder },
+              ]}
+              onPress={() => selectMedia('images')}
+            >
               <View style={styles.uploadIcon}>
                 <Camera size={24} color={colors.primary} />
               </View>
-              <Text style={[styles.uploadText, { color: appColors.onSurfaceVariant }]}>Add Visual Proof</Text>
-            </>
+              <Text style={[styles.uploadText, { color: appColors.onSurfaceVariant }]}>Add Spot Media</Text>
+            </Pressable>
           )}
-        </Pressable>
+
+          <View style={styles.mediaActions}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={media.length >= maxMediaItems || submitting || savingDraft}
+              onPress={() => selectMedia('images')}
+              style={({ pressed }) => [
+                styles.mediaAction,
+                { backgroundColor: appColors.surfaceRaised, borderColor: appColors.outlineVariant },
+                media.length >= maxMediaItems && styles.disabled,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Camera size={18} color={colors.primary} />
+              <Text style={[styles.mediaActionText, { color: appColors.onSurface }]}>Photos</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={media.length >= maxMediaItems || submitting || savingDraft}
+              onPress={() => selectMedia('videos')}
+              style={({ pressed }) => [
+                styles.mediaAction,
+                { backgroundColor: appColors.surfaceRaised, borderColor: appColors.outlineVariant },
+                media.length >= maxMediaItems && styles.disabled,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Video size={18} color={colors.primary} />
+              <Text style={[styles.mediaActionText, { color: appColors.onSurface }]}>Video 15s</Text>
+            </Pressable>
+          </View>
+        </View>
 
         <View style={styles.field}>
           <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Spot Name</Text>
@@ -206,7 +453,15 @@ export default function SubmitSpotScreen() {
             onChangeText={setName}
             placeholder="e.g. Neon Brew Terminal"
             placeholderTextColor={appColors.onSurfaceVariant}
-            style={[styles.input, { backgroundColor: appColors.white, color: appColors.onSurface }]}
+            selectionColor={appColors.primary}
+            style={[
+              styles.input,
+              {
+                backgroundColor: appColors.inputSurface,
+                borderColor: appColors.inputBorder,
+                color: appColors.onSurface,
+              },
+            ]}
           />
         </View>
 
@@ -218,7 +473,16 @@ export default function SubmitSpotScreen() {
             placeholder="What makes this spot worth finding?"
             placeholderTextColor={appColors.onSurfaceVariant}
             multiline
-            style={[styles.input, styles.textArea, { backgroundColor: appColors.white, color: appColors.onSurface }]}
+            selectionColor={appColors.primary}
+            style={[
+              styles.input,
+              styles.textArea,
+              {
+                backgroundColor: appColors.inputSurface,
+                borderColor: appColors.inputBorder,
+                color: appColors.onSurface,
+              },
+            ]}
           />
         </View>
 
@@ -239,12 +503,18 @@ export default function SubmitSpotScreen() {
 
         <View style={styles.field}>
           <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Address</Text>
-          <View style={[styles.addressRow, { backgroundColor: appColors.white }]}>
+          <View
+            style={[
+              styles.addressRow,
+              { backgroundColor: appColors.inputSurface, borderColor: appColors.inputBorder },
+            ]}
+          >
             <TextInput
               value={address}
               onChangeText={setAddress}
               placeholder="Street, Barangay, City"
               placeholderTextColor={appColors.onSurfaceVariant}
+              selectionColor={appColors.primary}
               style={[styles.addressInput, { color: appColors.onSurface }]}
             />
             <Pressable style={styles.pinButton} onPress={useCurrentLocation}>
@@ -300,8 +570,8 @@ export default function SubmitSpotScreen() {
                   style={[
                     styles.reservationChoice,
                     {
-                      backgroundColor: selected ? colors.primary : appColors.white,
-                      borderColor: selected ? colors.primary : colors.outlineVariant + '55',
+                      backgroundColor: selected ? colors.primary : appColors.surfaceRaised,
+                      borderColor: selected ? colors.primary : appColors.outlineVariant,
                     },
                   ]}
                 >
@@ -327,7 +597,37 @@ export default function SubmitSpotScreen() {
         </View>
       </View>
 
-      <AppButton label={submitting ? 'Starting submission...' : 'Submit Spot'} loading={submitting} onPress={submit} />
+      <AppButton
+        label={submitting ? 'Spot uploading...' : 'Submit Spot'}
+        disabled={savingDraft}
+        loading={submitting}
+        onPress={submit}
+      />
+
+      <ConfirmationModal
+        visible={exitConfirmationOpen}
+        title="Leave this spot?"
+        message="Are you sure you want to exit without submitting?"
+        onRequestClose={() => setExitConfirmationOpen(false)}
+        actions={[
+          {
+            label: 'Keep Editing',
+            onPress: () => setExitConfirmationOpen(false),
+          },
+          {
+            label: savingDraft ? 'Saving Draft...' : 'Save as Draft',
+            variant: 'primary',
+            disabled: savingDraft,
+            onPress: () => void saveDraftAndExit(),
+          },
+          {
+            label: 'Exit Without Saving',
+            variant: 'destructive',
+            disabled: savingDraft,
+            onPress: () => void exitWithoutSaving(),
+          },
+        ]}
+      />
     </ScreenContainer>
   );
 }
@@ -354,6 +654,18 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 42,
   },
+  draftBadge: {
+    minHeight: 30,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  draftBadgeText: {
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
   intro: {
     alignItems: 'center',
     marginBottom: spacing.xl,
@@ -377,19 +689,75 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     marginBottom: spacing.xl,
   },
-  upload: {
-    height: 190,
+  mediaHeader: {
+    minHeight: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  mediaCount: {
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+  },
+  mediaRail: {
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  mediaTile: {
+    width: 112,
+    height: 150,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  mediaPreview: {
+    width: '100%',
+    height: '100%',
+  },
+  videoPreview: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  videoDuration: {
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+  },
+  coverBadge: {
+    position: 'absolute',
+    left: spacing.xs,
+    bottom: spacing.xs,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  coverBadgeText: {
+    color: colors.white,
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  removeMediaButton: {
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.black + 'AA',
+  },
+  emptyMedia: {
+    height: 150,
     borderRadius: radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 2,
+    borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: colors.outlineVariant,
-  },
-  uploadImage: {
-    width: '100%',
-    height: '100%',
   },
   uploadIcon: {
     width: 54,
@@ -405,6 +773,25 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 1.4,
+  },
+  mediaActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  mediaAction: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  mediaActionText: {
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   field: {
     gap: spacing.sm,
@@ -423,7 +810,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: '700',
     borderWidth: 1,
-    borderColor: colors.outlineVariant + '55',
   },
   textArea: {
     minHeight: 110,
@@ -439,7 +825,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.outlineVariant + '55',
   },
   addressInput: {
     flex: 1,
@@ -552,5 +937,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     lineHeight: 17,
     fontWeight: '700',
+  },
+  disabled: {
+    opacity: 0.45,
+  },
+  pressed: {
+    opacity: 0.72,
   },
 });

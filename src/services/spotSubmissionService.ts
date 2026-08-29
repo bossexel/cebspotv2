@@ -1,11 +1,17 @@
 import * as FileSystem from 'expo-file-system';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
-import type { NewSpotSubmission, SpotSubmission } from '../types';
+import type {
+  NewSpotSubmission,
+  NewSpotSubmissionUpload,
+  SpotSubmission,
+  SpotSubmissionMediaAsset,
+} from '../types';
 import { activityService } from './activityService';
 import { imageAnonymizationService } from './imageAnonymization';
 import { localUpdateService } from './localUpdateService';
 
 const spotImagesBucket = 'spot-images';
+const uploadProgressMessage = 'Spot uploading...';
 
 export type SpotSubmissionProgress = {
   percent: number;
@@ -49,14 +55,34 @@ function toLegacySubmission(submission: NewSpotSubmission) {
   return legacySubmission;
 }
 
+function toDatabaseSubmission(submission: NewSpotSubmissionUpload): NewSpotSubmission {
+  const { media: _media, draftId: _draftId, ...databaseSubmission } = submission;
+  return databaseSubmission;
+}
+
 function isLocalFileUri(uri: string) {
   return uri.startsWith('file:') || uri.startsWith('content:') || uri.startsWith('ph:');
 }
 
-function getImageExtension(uri: string) {
+function getMediaExtension(asset: SpotSubmissionMediaAsset, uri: string) {
+  const fileNameExtension = asset.fileName?.split('.').pop();
   const cleanUri = uri.split('?')[0] ?? '';
   const match = cleanUri.match(/\.([a-zA-Z0-9]+)$/);
-  return (match?.[1] || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+  const mimeExtension = asset.mimeType?.split('/').pop();
+  const fallback = asset.type === 'video' ? 'mp4' : 'jpg';
+  const rawExtension = fileNameExtension || match?.[1] || mimeExtension || fallback;
+  const extension = rawExtension.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (extension === 'jpeg') return 'jpg';
+  if (extension === 'quicktime') return 'mov';
+  return extension || fallback;
+}
+
+function getMediaContentType(asset: SpotSubmissionMediaAsset, extension: string) {
+  if (asset.mimeType) return asset.mimeType;
+  if (asset.type === 'image') return `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+  if (extension === 'mov') return 'video/quicktime';
+  if (extension === 'webm') return 'video/webm';
+  return 'video/mp4';
 }
 
 function base64ToArrayBuffer(base64: string) {
@@ -80,87 +106,102 @@ function base64ToArrayBuffer(base64: string) {
   return new Uint8Array(bytes).buffer;
 }
 
-async function uploadImage(
-  uri: string,
+async function uploadMedia(
+  asset: SpotSubmissionMediaAsset,
   submitterId: string,
   index: number,
-  totalImages: number,
+  totalMedia: number,
   onProgress?: SpotSubmissionProgressHandler
 ) {
-  const imageNumber = index + 1;
-  const progressAt = (fraction: number) => 5 + ((index + fraction) / totalImages) * 75;
+  const mediaLabel = asset.type === 'video' ? 'video' : 'photo';
+  const progressAt = (fraction: number) => 5 + ((index + fraction) / totalMedia) * 75;
 
-  if (!isLocalFileUri(uri)) {
-    await reportProgress(onProgress, progressAt(1), `Photo ${imageNumber} of ${totalImages} is ready`);
-    return uri;
+  if (!isLocalFileUri(asset.uri)) {
+    await reportProgress(onProgress, progressAt(1), uploadProgressMessage);
+    return asset.uri;
   }
 
-  await reportProgress(onProgress, progressAt(0), `Protecting privacy in photo ${imageNumber} of ${totalImages}`);
+  await reportProgress(onProgress, progressAt(0), uploadProgressMessage);
 
-  const anonymizedUri = await imageAnonymizationService.anonymizeImage(uri);
+  const processedUri = asset.type === 'image'
+    ? await imageAnonymizationService.anonymizeImage(asset.uri)
+    : asset.uri;
 
   try {
-    await reportProgress(onProgress, progressAt(0.65), `Uploading photo ${imageNumber} of ${totalImages}`);
-    const extension = getImageExtension(anonymizedUri);
-    const base64 = await FileSystem.readAsStringAsync(anonymizedUri, {
+    await reportProgress(onProgress, progressAt(0.65), uploadProgressMessage);
+    const extension = getMediaExtension(asset, processedUri);
+    const base64 = await FileSystem.readAsStringAsync(processedUri, {
       encoding: FileSystem.EncodingType.Base64,
     });
     const fileBody = base64ToArrayBuffer(base64);
     const path = `${submitterId}/${Date.now()}-${index}.${extension}`;
-    const contentType = `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+    const contentType = getMediaContentType(asset, extension);
     const { error } = await supabase.storage.from(spotImagesBucket).upload(path, fileBody, {
       contentType,
       upsert: false,
     });
     if (error) {
-      throw new Error(`Unable to upload selected image ${index + 1}: ${error.message}`);
+      throw new Error(`Unable to upload selected ${mediaLabel} ${index + 1}: ${error.message}`);
     }
 
     const { data } = supabase.storage.from(spotImagesBucket).getPublicUrl(path);
-    await reportProgress(onProgress, progressAt(1), `Uploaded photo ${imageNumber} of ${totalImages}`);
+    await reportProgress(onProgress, progressAt(1), uploadProgressMessage);
     return data.publicUrl;
   } finally {
-    if (anonymizedUri !== uri && anonymizedUri.startsWith('file:')) {
-      await FileSystem.deleteAsync(anonymizedUri, { idempotent: true }).catch(() => undefined);
+    if (processedUri !== asset.uri && processedUri.startsWith('file:')) {
+      await FileSystem.deleteAsync(processedUri, { idempotent: true }).catch(() => undefined);
     }
   }
 }
 
-async function uploadSubmissionImages(
-  submission: NewSpotSubmission,
+function submissionMedia(submission: NewSpotSubmissionUpload): SpotSubmissionMediaAsset[] {
+  if (submission.media?.length) return submission.media;
+  return (submission.images ?? []).map((uri, index) => ({
+    id: `legacy-image-${index}`,
+    uri,
+    type: 'image',
+  }));
+}
+
+async function uploadSubmissionMedia(
+  submission: NewSpotSubmissionUpload,
   onProgress?: SpotSubmissionProgressHandler
 ): Promise<NewSpotSubmission> {
-  if (!hasSupabaseConfig || !submission.images?.length) return submission;
+  const databaseSubmission = toDatabaseSubmission(submission);
+  const media = submissionMedia(submission);
+  if (!hasSupabaseConfig || !media.length) return databaseSubmission;
 
-  const uploadedImages: string[] = [];
-  for (const [index, imageUri] of submission.images.entries()) {
-    uploadedImages.push(
-      await uploadImage(imageUri, submission.submitter_id, index, submission.images.length, onProgress)
+  const uploadedMedia: string[] = [];
+  for (const [index, asset] of media.entries()) {
+    uploadedMedia.push(
+      await uploadMedia(asset, submission.submitter_id, index, media.length, onProgress)
     );
   }
 
   return {
-    ...submission,
-    images: uploadedImages,
+    ...databaseSubmission,
+    images: uploadedMedia,
   };
 }
 
 export const spotSubmissionService = {
   async createSubmission(
-    submission: NewSpotSubmission,
+    submission: NewSpotSubmissionUpload,
     userName: string,
     options: CreateSubmissionOptions = {}
   ): Promise<SpotSubmission> {
-    await reportProgress(options.onProgress, 2, 'Preparing your spot submission');
+    await reportProgress(options.onProgress, 2, uploadProgressMessage);
+
+    const databaseSubmission = toDatabaseSubmission(submission);
 
     if (!hasSupabaseConfig) {
-      await reportProgress(options.onProgress, 30, 'Saving the spot submission');
+      await reportProgress(options.onProgress, 30, uploadProgressMessage);
       const created: SpotSubmission = {
         id: `local-submission-${Date.now()}`,
         status: 'pending',
         rejection_reason: null,
         created_at: new Date().toISOString(),
-        ...submission,
+        ...databaseSubmission,
       };
       await activityService.logActivity({
         user_id: submission.submitter_id,
@@ -171,7 +212,7 @@ export const spotSubmissionService = {
         type: 'submission',
         spot_name: submission.name,
       });
-      await reportProgress(options.onProgress, 70, 'Publishing the community update');
+      await reportProgress(options.onProgress, 70, uploadProgressMessage);
       await localUpdateService.createLocalUpdate({
         user_id: submission.submitter_id,
         user_name: userName || 'Explorer',
@@ -191,12 +232,12 @@ export const spotSubmissionService = {
       return created;
     }
 
-    const submissionWithUploadedImages = await uploadSubmissionImages(submission, options.onProgress);
-    if (!submission.images?.length) {
-      await reportProgress(options.onProgress, 80, 'Photo processing complete');
+    const submissionWithUploadedImages = await uploadSubmissionMedia(submission, options.onProgress);
+    if (!submissionMedia(submission).length) {
+      await reportProgress(options.onProgress, 80, uploadProgressMessage);
     }
 
-    await reportProgress(options.onProgress, 84, 'Saving the spot submission');
+    await reportProgress(options.onProgress, 84, uploadProgressMessage);
     let { data, error } = await supabase
       .from('spot_submissions')
       .insert(submissionWithUploadedImages)
@@ -213,7 +254,7 @@ export const spotSubmissionService = {
     }
     if (error) throw error;
 
-    await reportProgress(options.onProgress, 91, 'Recording your submission');
+    await reportProgress(options.onProgress, 91, uploadProgressMessage);
     await activityService.logActivity({
       user_id: submission.submitter_id,
       user_name: userName || 'Explorer',
@@ -224,7 +265,7 @@ export const spotSubmissionService = {
       spot_name: submission.name,
     });
 
-    await reportProgress(options.onProgress, 96, 'Publishing the community update');
+    await reportProgress(options.onProgress, 96, uploadProgressMessage);
     try {
       await localUpdateService.createLocalUpdate({
         user_id: submissionWithUploadedImages.submitter_id,

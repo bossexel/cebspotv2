@@ -340,6 +340,35 @@ export type NewSpotSubmission = Omit<
   'id' | 'status' | 'created_at' | 'updated_at' | 'rejection_reason'
 >;
 
+export interface SpotSubmissionMediaAsset {
+  id: string;
+  uri: string;
+  type: 'image' | 'video';
+  mimeType?: string | null;
+  durationMs?: number | null;
+  fileName?: string | null;
+  fileSize?: number | null;
+  isDraftFile?: boolean;
+}
+
+export type NewSpotSubmissionUpload = NewSpotSubmission & {
+  media?: SpotSubmissionMediaAsset[];
+  draftId?: string;
+};
+
+export interface SpotSubmissionDraft {
+  id: string;
+  name: string;
+  description: string;
+  address: string;
+  selectedCategories: string[];
+  acceptsReservations: boolean | null;
+  latitude: number;
+  longitude: number;
+  media: SpotSubmissionMediaAsset[];
+  updatedAt: string;
+}
+
 export type NewOwnerAccessRequest = Omit<
   OwnerAccessRequest,
   'id' | 'status' | 'created_at' | 'updated_at' | 'admin_notes'

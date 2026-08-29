@@ -12,10 +12,6 @@
       "resizeMode": "contain",
       "backgroundColor": "#F8F7F3"
     },
-    "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.cebspot.app"
-    },
     "android": {
       "package": "com.cebspot.app",
       "usesCleartextTraffic": true,
@@ -82,15 +78,14 @@
     ],
     "scheme": "cebspot",
     "updates": {
-      "url": "https://u.expo.dev/94fc03ff-3971-4713-8744-638ec4925939"
+      "url": "https://u.expo.dev/94fc03ff-3971-4713-8744-638ec4925939",
+      "checkAutomatically": "NEVER"
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "platforms": [
-      "ios",
-      "android",
-      "web"
+      "android"
     ],
     "extra": {
       "router": {
