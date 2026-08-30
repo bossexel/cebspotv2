@@ -1,4 +1,5 @@
 import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 const configuredFaceBlurApiUrl = process.env.EXPO_PUBLIC_FACE_BLUR_API_URL?.replace(/\/+$/, '') ?? '';
 const healthCheckCacheMs = 30_000;
@@ -11,9 +12,10 @@ const jobRequestTimeoutMs = 20_000;
 const jobCreateAttempts = 3;
 const jobRecoveryAttempts = 2;
 const transientRetryDelayMs = 2_000;
+const maxPrivacyUploadDimension = 1800;
+const targetPrivacyUploadBytes = 4 * 1024 * 1024;
+const compressionLevels = [0.78, 0.64, 0.52];
 let lastHealthyCheckAt = 0;
-
-const supportedExtensions = new Set(['jpg', 'jpeg', 'png']);
 const transientHttpStatuses = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 function assertProductionApiUrlIsSafe() {
@@ -48,16 +50,6 @@ class PermanentUploadError extends Error {}
 
 function isLocalFileUri(uri: string) {
   return uri.startsWith('file:') || uri.startsWith('content:') || uri.startsWith('ph:');
-}
-
-function getImageExtension(uri: string) {
-  const cleanUri = uri.split('?')[0] ?? '';
-  const match = cleanUri.match(/\.([a-zA-Z0-9]+)$/);
-  const extension = (match?.[1] || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
-  if (!supportedExtensions.has(extension)) {
-    throw new Error('Only JPG, JPEG, and PNG photos can be anonymized.');
-  }
-  return extension === 'jpeg' ? 'jpg' : extension;
 }
 
 function getContentType(extension: string) {
@@ -147,30 +139,80 @@ async function assertFaceBlurServiceReachable() {
   );
 }
 
-async function prepareImageForUpload(uri: string, extension: string) {
-  const preparedUri = cacheFileUri('cebspot-privacy-source', extension);
+async function prepareImageForUpload(uri: string) {
+  const preparedUri = cacheFileUri('cebspot-privacy-source', 'jpg');
 
   try {
-    await FileSystem.copyAsync({ from: uri, to: preparedUri });
-    return preparedUri;
-  } catch (copyError) {
-    try {
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      await FileSystem.writeAsStringAsync(preparedUri, base64, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      return preparedUri;
-    } catch (readError) {
-      console.warn('Unable to prepare image for anonymization', {
-        uriScheme: uri.split(':')[0],
-        copyError: getErrorMessage(copyError),
-        readError: getErrorMessage(readError),
-      });
-      await FileSystem.deleteAsync(preparedUri, { idempotent: true }).catch(() => undefined);
-      throw new Error('Unable to prepare the selected photo for privacy processing.');
+    const compressedUri = await compressImageForPrivacyUpload(uri);
+    await FileSystem.copyAsync({ from: compressedUri, to: preparedUri });
+    if (compressedUri !== uri) {
+      await FileSystem.deleteAsync(compressedUri, { idempotent: true }).catch(() => undefined);
     }
+    return { preparedUri, extension: 'jpg' };
+  } catch (compressionError) {
+    console.warn('Unable to compress image for anonymization', {
+      uriScheme: uri.split(':')[0],
+      compressionError: getErrorMessage(compressionError),
+    });
+    await FileSystem.deleteAsync(preparedUri, { idempotent: true }).catch(() => undefined);
+    throw new Error('Unable to compress the selected photo for privacy processing.');
+  }
+}
+
+async function getFileSize(uri: string) {
+  const info = await FileSystem.getInfoAsync(uri, { size: true });
+  return info.exists && typeof info.size === 'number' ? info.size : null;
+}
+
+async function compressImageForPrivacyUpload(uri: string) {
+  let workingUri = uri;
+  let temporaryInput: string | null = null;
+
+  try {
+    const firstPass = await ImageManipulator.manipulateAsync(
+      uri,
+      [],
+      { compress: compressionLevels[0], format: ImageManipulator.SaveFormat.JPEG }
+    );
+    workingUri = firstPass.uri;
+    temporaryInput = firstPass.uri;
+
+    const longestSide = Math.max(firstPass.width, firstPass.height);
+    if (longestSide > maxPrivacyUploadDimension) {
+      const resize =
+        firstPass.width >= firstPass.height
+          ? { width: maxPrivacyUploadDimension }
+          : { height: maxPrivacyUploadDimension };
+      const resized = await ImageManipulator.manipulateAsync(
+        workingUri,
+        [{ resize }],
+        { compress: compressionLevels[0], format: ImageManipulator.SaveFormat.JPEG }
+      );
+      await FileSystem.deleteAsync(workingUri, { idempotent: true }).catch(() => undefined);
+      workingUri = resized.uri;
+      temporaryInput = resized.uri;
+    }
+
+    for (const compression of compressionLevels.slice(1)) {
+      const size = await getFileSize(workingUri);
+      if (size !== null && size <= targetPrivacyUploadBytes) break;
+
+      const recompressed = await ImageManipulator.manipulateAsync(
+        workingUri,
+        [],
+        { compress: compression, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      await FileSystem.deleteAsync(workingUri, { idempotent: true }).catch(() => undefined);
+      workingUri = recompressed.uri;
+      temporaryInput = recompressed.uri;
+    }
+
+    return workingUri;
+  } catch (error) {
+    if (temporaryInput) {
+      await FileSystem.deleteAsync(temporaryInput, { idempotent: true }).catch(() => undefined);
+    }
+    throw error;
   }
 }
 
@@ -344,12 +386,11 @@ export const imageAnonymizationService = {
       throw new Error('Face anonymization service is not configured. The original photo was not uploaded.');
     }
 
-    const extension = getImageExtension(uri);
-    const preparedUri = await prepareImageForUpload(uri, extension);
+    const { preparedUri, extension: preparedExtension } = await prepareImageForUpload(uri);
 
     try {
       await assertFaceBlurServiceReachable();
-      const { completedJob, outputUri } = await processPreparedImage(preparedUri, extension);
+      const { completedJob, outputUri } = await processPreparedImage(preparedUri, preparedExtension);
 
       console.info('Photo privacy processing complete', {
         facesDetected: Number(completedJob.faces_detected ?? 0),
