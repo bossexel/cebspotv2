@@ -85,7 +85,8 @@
       "policy": "appVersion"
     },
     "platforms": [
-      "android"
+      "android",
+      "web"
     ],
     "extra": {
       "router": {
