@@ -20,6 +20,9 @@ services:
       - key: EXPO_PUBLIC_CARTO_BASEMAPS_API_KEY
         sync: false
     routes:
+      - type: redirect
+        source: /
+        destination: /admin
       - type: rewrite
         source: /*
         destination: /index.html
