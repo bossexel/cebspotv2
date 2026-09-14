@@ -525,7 +525,10 @@ export default function AdminConsoleScreen() {
               item={item}
               active={activeSection === item.id}
               compact={compact}
-              onPress={() => setActiveSection(item.id)}
+              onPress={() => {
+                setActiveSection(item.id);
+                setQuery('');
+              }}
             />
           ))}
         </View>
@@ -620,7 +623,9 @@ export default function AdminConsoleScreen() {
                   onOpenSpot={openReportSpot}
                 />
               )}
-              {activeSection === 'users' && <UsersSection dashboard={dashboard} query={query} />}
+              {activeSection === 'users' && (
+                <UsersSection dashboard={dashboard} query={query} onClearQuery={() => setQuery('')} />
+              )}
               {activeSection === 'requests' && (
                 <OwnerRequestsSection
                   dashboard={dashboard}
@@ -1700,7 +1705,15 @@ type UserRoleFilter = (typeof userRoleFilters)[number];
 // 'Spotter' in the UI maps to the 'user' role value stored on the record.
 const userRoleFilterValue: Record<Exclude<UserRoleFilter, 'All'>, string> = { Spotter: 'user', Owner: 'owner' };
 
-function UsersSection({ dashboard, query }: { dashboard: AdminDashboardData; query: string }) {
+function UsersSection({
+  dashboard,
+  query,
+  onClearQuery,
+}: {
+  dashboard: AdminDashboardData;
+  query: string;
+  onClearQuery: () => void;
+}) {
   const [roleFilter, setRoleFilter] = useState<UserRoleFilter>('All');
   const visibleUsers = filterUsers(dashboard.users, query).filter(
     (user) => roleFilter === 'All' || user.role.toLowerCase() === userRoleFilterValue[roleFilter],
@@ -1729,7 +1742,12 @@ function UsersSection({ dashboard, query }: { dashboard: AdminDashboardData; que
           {userRoleFilters.map((item) => (
             <Pressable
               key={item}
-              onPress={() => setRoleFilter(item)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: item === roleFilter }}
+              onPress={() => {
+                setRoleFilter(item);
+                if (item === 'All') onClearQuery();
+              }}
               style={[styles.filterPill, item === roleFilter && styles.filterPillActive]}
             >
               <Text style={[styles.filterPillText, item === roleFilter && styles.filterPillTextActive]}>{item}</Text>

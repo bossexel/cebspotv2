@@ -534,18 +534,23 @@ function mapPulseFromActivity(activity: Activity): AdminPulseRow {
   };
 }
 
+function formatAdminUserLocation(location: unknown) {
+  if (typeof location === 'string' && location.trim()) return location.trim();
+  if (location && typeof location === 'object') {
+    const address = (location as { address?: unknown }).address;
+    if (typeof address === 'string' && address.trim()) return address.trim();
+  }
+  return 'Cebu City';
+}
+
 function mapUser(profile: UserProfile): AdminUserRow {
-  const location =
-    typeof profile.location === 'object' && profile.location?.address
-      ? profile.location.address
-      : 'Cebu City';
   const name = profile.display_name || profile.email?.split('@')[0] || 'CebSpot user';
   return {
     id: profile.id,
     name,
     email: profile.email,
     role: toStatusLabel(profile.role),
-    location,
+    location: formatAdminUserLocation(profile.location),
     joined: formatShortDate(profile.created_at),
     avatar: getInitials(name, profile.email),
     photoUrl: profile.photo_url ?? null,
@@ -558,7 +563,7 @@ function normalizeAdminUserRows(rows: any[] = []): AdminUserRow[] {
     name: row.name ?? row.display_name ?? row.email?.split('@')[0] ?? 'CebSpot user',
     email: row.email ?? 'No email linked',
     role: toStatusLabel(row.role ?? 'user'),
-    location: row.location?.address ?? row.location ?? 'Cebu City',
+    location: formatAdminUserLocation(row.location),
     joined: row.joined ?? formatShortDate(row.created_at),
     avatar: row.avatar ?? getInitials(row.name ?? row.display_name, row.email),
     photoUrl: row.photoUrl ?? row.photo_url ?? null,

@@ -69,11 +69,14 @@ test('admin dashboard routes operational actions through secured RPCs', () => {
 
 test('admin members are paged from the full profiles table instead of the 12-row dashboard preview', () => {
   const service = read('src/services/adminDashboardService.ts');
+  const screen = read('app/admin.tsx');
   const sql = read('supabase-admin-dashboard.sql');
 
   assert.match(service, /readAllAdminProfiles/);
   assert.match(service, /\.select\('id,email,display_name,role,location,created_at,photo_url', \{ count: 'exact' \}\)[\s\S]*\.range\(/);
   assert.match(service, /users: normalizeAdminUserRows\(allProfileRows/);
+  assert.match(service, /formatAdminUserLocation/);
+  assert.match(screen, /if \(item === 'All'\) onClearQuery\(\)/);
   assert.doesNotMatch(sql, /from public\.profiles[\s\S]{0,100}limit 12/i);
 });
 
