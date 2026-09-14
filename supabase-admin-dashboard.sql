@@ -496,7 +496,6 @@ begin
           ) as row_payload
         from public.profiles
         order by profiles.created_at desc
-        limit 12
       ) user_rows
     ),
     'ownerRequests', (

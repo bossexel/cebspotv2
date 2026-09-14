@@ -67,6 +67,16 @@ test('admin dashboard routes operational actions through secured RPCs', () => {
   assert.match(service, /rpc\('apply_spot_edit_suggestion'/);
 });
 
+test('admin members are paged from the full profiles table instead of the 12-row dashboard preview', () => {
+  const service = read('src/services/adminDashboardService.ts');
+  const sql = read('supabase-admin-dashboard.sql');
+
+  assert.match(service, /readAllAdminProfiles/);
+  assert.match(service, /\.select\('id,email,display_name,role,location,created_at,photo_url', \{ count: 'exact' \}\)[\s\S]*\.range\(/);
+  assert.match(service, /users: normalizeAdminUserRows\(allProfileRows/);
+  assert.doesNotMatch(sql, /from public\.profiles[\s\S]{0,100}limit 12/i);
+});
+
 test('admin screen exposes live moderation and owner-review handlers', () => {
   const screen = read('app/admin.tsx');
 

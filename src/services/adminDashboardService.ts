@@ -905,6 +905,31 @@ async function readTable<T>(label: string, task: PromiseLike<{ data: T[] | null;
   return data ?? [];
 }
 
+async function readAllAdminProfiles(client: SupabaseClient) {
+  const pageSize = 500;
+  const profiles: UserProfile[] = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error, count } = await client
+      .from('profiles')
+      .select('id,email,display_name,role,location,created_at,photo_url', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(offset, offset + pageSize - 1);
+
+    if (error) return { data: null, error };
+
+    const page = (data ?? []) as UserProfile[];
+    profiles.push(...page);
+    offset += page.length;
+
+    if (page.length === 0 || (count !== null && offset >= count) || (count === null && page.length < pageSize)) {
+      return { data: profiles, error: null };
+    }
+  }
+}
+
 export async function getAdminDashboardData(client: SupabaseClient = supabase): Promise<AdminDashboardData> {
   if (!hasSupabaseConfig) return sampleDashboard();
 
@@ -912,12 +937,17 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
   if (!rpcError && rpcData) {
     const rows = rpcData as any;
     const data = sampleDashboard();
-    const { data: detailedSubmissionRows } = await client
-      .from('pending_spot_submission_popularity')
-      .select('*')
-      .order('popularity_score', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(100);
+    const [submissionResult, profilesResult] = await Promise.all([
+      client
+        .from('pending_spot_submission_popularity')
+        .select('*')
+        .order('popularity_score', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(100),
+      readAllAdminProfiles(client),
+    ]);
+    const detailedSubmissionRows = submissionResult.data;
+    const allProfileRows = profilesResult.data;
     const pendingSubmissionRows = detailedSubmissionRows?.length ? detailedSubmissionRows : rows.pendingSubmissions;
     const pendingSubmitterIds = Array.from(
       new Set(
@@ -926,9 +956,11 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
           .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0),
       ),
     );
-    const { data: pendingSubmitters, error: pendingSubmittersError } = pendingSubmitterIds.length
-      ? await client.from('profiles').select('id,email,display_name,role,created_at').in('id', pendingSubmitterIds)
-      : { data: [], error: null };
+    const { data: pendingSubmitters, error: pendingSubmittersError } = allProfileRows
+      ? { data: allProfileRows, error: null }
+      : pendingSubmitterIds.length
+        ? await client.from('profiles').select('id,email,display_name,role,created_at').in('id', pendingSubmitterIds)
+        : { data: [], error: null };
     const dailyInsights = normalizeDailyInsights(rows.dailyInsights ?? rows.daily_insights ?? []);
     const reservationRows = rows.reservationsDaily ?? rows.reservations_daily ?? [];
     const spotRows = rows.newSpotsDaily ?? rows.new_spots_daily ?? [];
@@ -955,13 +987,16 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
       recentListings: rows.recentListings ?? data.recentListings,
       livePulse: rows.livePulse ?? data.livePulse,
       reports: normalizeAdminReportRows(rows.reports ?? data.reports),
-      users: normalizeAdminUserRows(rows.users ?? data.users),
+      users: normalizeAdminUserRows(allProfileRows ?? rows.users ?? data.users),
       ownerRequests: normalizeAdminOwnerRequestRows(rows.ownerRequests ?? data.ownerRequests),
       pendingSubmissions: normalizeAdminSpotSubmissionRows(
         pendingSubmissionRows ?? data.pendingSubmissions,
-        pendingSubmitters?.length ? pendingSubmitters : rows.users ?? data.users,
+        allProfileRows ?? (pendingSubmitters?.length ? pendingSubmitters : rows.users ?? data.users),
       ),
-      errors: pendingSubmittersError ? [`Submission senders: ${pendingSubmittersError.message}`] : [],
+      errors: [
+        ...(profilesResult.error ? [`Profiles: ${profilesResult.error.message}`] : []),
+        ...(pendingSubmittersError ? [`Submission senders: ${pendingSubmittersError.message}`] : []),
+      ],
     };
   }
 
@@ -999,7 +1034,7 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
       ),
       readTable<UserProfile>(
         'Profiles',
-        client.from('profiles').select('*').order('created_at', { ascending: false }).limit(200),
+        readAllAdminProfiles(client),
         errors,
       ),
       readTable<OwnerAccessRequest>(
