@@ -234,7 +234,7 @@ export default function GamificationScreen() {
               <EmptyCard
                 icon={<Star size={24} color={colors.primary} fill={colors.primary} />}
                 title="No XP yet"
-                copy="Write reviews, verify visits, upload media, and complete reservations to start earning."
+                copy="Write reviews, upload media, and complete reservations to start earning."
                 appColors={appColors}
               />
             )}

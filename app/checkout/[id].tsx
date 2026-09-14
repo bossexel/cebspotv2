@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, Image, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ExpoLinking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Camera, CheckCircle2, Clock3, ExternalLink, ShieldCheck, Upload, WalletCards } from 'lucide-react-native';
+import { ArrowLeft, Camera, Check, CheckCircle2, Clock3, ExternalLink, Upload, WalletCards } from 'lucide-react-native';
 import { AppButton } from '../../src/components/AppButton';
+import { ConfirmationModal } from '../../src/components/ConfirmationModal';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
+import { clubTableDisplayName } from '../../src/constants/clubFloorPlan';
 import { colors } from '../../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../../src/constants/design';
 import { useAuth } from '../../src/hooks/useAuth';
@@ -19,15 +21,20 @@ import { checkReservationAvailability } from '../../src/utils/reservations';
 
 const testCebspotPaymentDetails = {
   walletNumber: '0917 555 0198',
-  walletName: 'Test Cebspot Restaurant',
+  walletName: 'Test Cebspot Club',
   amount: 150,
 };
 
 const testCebspotSpotId = '66666666-6666-4666-8666-666666666666';
+const paymongoGcashEnabled = process.env.EXPO_PUBLIC_PAYMONGO_GCASH_ENABLED === 'true';
+const paymongoQrphEnabled = process.env.EXPO_PUBLIC_PAYMONGO_QRPH_ENABLED !== 'false';
+
+type PaymentMode = 'qrph' | 'gcash_direct' | 'manual_gcash';
+
+const depositTerms = 'By continuing with your booking, you agree and understand you must provide a 50%, non refundable down payment immediately after making a reservation to secure and guarantee booking. Guests not arriving at their assigned show up time will forfeit their table and deposit.';
 
 function isTestCebspotSpot(name: string) {
-  const normalized = name.toLowerCase();
-  return normalized.includes('test cebspot') || normalized.includes('test cebspot restaurant');
+  return name.toLowerCase().includes('test cebspot');
 }
 
 function formatPeso(amount: number) {
@@ -73,9 +80,15 @@ export default function CheckoutScreen() {
   const [spot, setSpot] = useState<Spot | null>(null);
   const [loadingSpot, setLoadingSpot] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<PaymentMode | null>(null);
+  const [guestPhone, setGuestPhone] = useState('');
+  const [paymentTermsAccepted, setPaymentTermsAccepted] = useState(false);
   const [payerGcashNumber, setPayerGcashNumber] = useState('');
   const [transactionReference, setTransactionReference] = useState('');
   const [paymentScreenshot, setPaymentScreenshot] = useState<string | null>(null);
+  const [paymentConfirmationOpen, setPaymentConfirmationOpen] = useState(false);
+  const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
+  const [termsModalOpen, setTermsModalOpen] = useState(false);
 
   const spotId = params.id;
   const spotName = params.spotName ?? spot?.name ?? 'CebSpot Venue';
@@ -84,6 +97,7 @@ export default function CheckoutScreen() {
   const timeEnd = params.timeEnd ?? null;
   const guests = Number(params.guests ?? 1);
   const tableId = params.tableId ?? null;
+  const tableDisplayName = tableId ? clubTableDisplayName(tableId) : 'Table not selected';
   const slotId = params.slotId ?? null;
   const groupSizeType = params.groupSizeType ?? null;
   const adjustmentAcknowledged = params.adjustmentAcknowledged === 'true';
@@ -92,11 +106,20 @@ export default function CheckoutScreen() {
   const reservationFee = Number.isFinite(parsedReservationFee) ? parsedReservationFee : 0;
   const note = params.note?.trim() || null;
   const usingTestDetails = isTestCebspotSpot(spotName);
-  const directGcashEnabled = usingTestDetails;
   const parsedHoldExpiresAt = Number(params.holdExpiresAt ?? 0);
   const holdExpiresAt = Number.isFinite(parsedHoldExpiresAt) ? parsedHoldExpiresAt : 0;
   const [holdSecondsRemaining, setHoldSecondsRemaining] = useState(() => getHoldSecondsRemaining(holdExpiresAt));
   const holdExpired = holdExpiresAt > 0 && holdSecondsRemaining <= 0;
+  const customerName = useMemo(() => {
+    const legalName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim();
+    return legalName || profile?.display_name?.trim() || profile?.email?.split('@')[0] || 'Profile name unavailable';
+  }, [profile?.display_name, profile?.email, profile?.first_name, profile?.last_name]);
+  const customerEmail = profile?.email?.trim() || 'Profile email unavailable';
+  const normalizedGuestPhone = guestPhone.replace(/[^0-9+]/g, '');
+  const contactDetailsComplete = Boolean(
+    profile && customerName !== 'Profile name unavailable' && customerEmail !== 'Profile email unavailable' && normalizedGuestPhone.replace(/\D/g, '').length >= 10,
+  );
+  const paymentAccessGranted = contactDetailsComplete && paymentTermsAccepted;
 
   const paymentDetails = useMemo(
     () => {
@@ -114,6 +137,14 @@ export default function CheckoutScreen() {
   );
   const total = paymentDetails.amount;
   const hasOwnerPaymentDetails = Boolean(paymentDetails.walletNumber && paymentDetails.walletName);
+  const qrphEnabled =
+    paymongoQrphEnabled &&
+    total >= 1 &&
+    (usingTestDetails || params.paymentRequired === 'true' || params.reservationType === 'paid');
+  const gcashDirectEnabled = paymongoGcashEnabled && usingTestDetails;
+  const isQrphPayment = paymentMode === 'qrph' && qrphEnabled;
+  const isGcashDirectPayment = paymentMode === 'gcash_direct' && gcashDirectEnabled;
+  const isAutomatedPayment = isQrphPayment || isGcashDirectPayment;
 
   useEffect(() => {
     let active = true;
@@ -157,6 +188,18 @@ export default function CheckoutScreen() {
     return () => clearInterval(interval);
   }, [holdExpiresAt]);
 
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (loading) return true;
+      setExitConfirmationOpen(true);
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [loading]);
+
   async function selectPaymentScreenshot() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
@@ -190,6 +233,21 @@ export default function CheckoutScreen() {
 
     if (!profile) {
       Alert.alert('Authentication required', 'Please sign in again to complete this reservation.');
+      return false;
+    }
+
+    if (!contactDetailsComplete) {
+      Alert.alert('Phone number required', 'Enter a valid phone number so the spot can verify and contact you about this booking.');
+      return false;
+    }
+
+    if (!paymentTermsAccepted) {
+      Alert.alert('Terms required', 'Read and accept the deposit and no-show terms before choosing a payment method.');
+      return false;
+    }
+
+    if (!paymentMode) {
+      Alert.alert('Payment method required', 'Choose how you want to pay the reservation deposit.');
       return false;
     }
 
@@ -240,12 +298,15 @@ export default function CheckoutScreen() {
       tableId,
     });
     if (!available) {
-      throw new Error('This table was just booked by someone else. Please choose another available slot.');
+      throw new Error('This table was just booked by someone else. Please return to the floor plan and choose another table.');
     }
 
     const reservationCode = `CEBSPOT-${Date.now()}`;
     return reservationService.createReservation({
       user_id: profile.id,
+      guest_name: customerName,
+      guest_email: customerEmail,
+      guest_phone: normalizedGuestPhone,
       spot_id: spotId,
       spot_name: spotName,
       reservation_date: date,
@@ -271,6 +332,8 @@ export default function CheckoutScreen() {
       refund_status: 'not_applicable',
       adjustment_acknowledged: true,
       adjustment_acknowledged_at: adjustmentAcknowledgedAt ?? new Date().toISOString(),
+      payment_terms_accepted: true,
+      payment_terms_accepted_at: new Date().toISOString(),
       qr_code: reservationCode,
     });
   }
@@ -278,6 +341,7 @@ export default function CheckoutScreen() {
   async function confirmDirectPayment() {
     if (!validateCheckoutBase() || !profile) return;
 
+    let createdReservationId: string | null = null;
     try {
       setLoading(true);
       const reservation = await createPaidReservation({
@@ -286,6 +350,7 @@ export default function CheckoutScreen() {
         payment_proof_url: null,
         payer_gcash_number: null,
       });
+      createdReservationId = reservation.id;
       const successUrl = ExpoLinking.createURL(`/confirmed/${reservation.id}`, {
         queryParams: { paymentReturn: 'success' },
       });
@@ -301,8 +366,57 @@ export default function CheckoutScreen() {
       await Linking.openURL(checkout.checkoutUrl);
       router.replace({ pathname: '/confirmed/[id]', params: { id: reservation.id, paymentReturn: 'pending' } });
     } catch (error: any) {
-      console.error('PayMongo checkout error:', error);
+      console.error('PayMongo GCash checkout error:', error);
+      if (createdReservationId) {
+        try {
+          await reservationService.voidUnpaidReservation(createdReservationId, 'PayMongo checkout was not completed.');
+        } catch (voidError) {
+          console.error('Unable to void failed GCash checkout reservation:', voidError);
+        }
+      }
       Alert.alert('GCash checkout failed', error.message ?? 'Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function confirmQrphPayment() {
+    if (!validateCheckoutBase() || !profile) return;
+
+    let createdReservationId: string | null = null;
+    try {
+      setLoading(true);
+      const reservation = await createPaidReservation({
+        payment_method: 'paymongo_qrph',
+        payment_reference: null,
+        payment_proof_url: null,
+        payer_gcash_number: null,
+      });
+      createdReservationId = reservation.id;
+      const successUrl = ExpoLinking.createURL(`/confirmed/${reservation.id}`, {
+        queryParams: { paymentReturn: 'success' },
+      });
+      const cancelUrl = ExpoLinking.createURL(`/confirmed/${reservation.id}`, {
+        queryParams: { paymentReturn: 'cancel' },
+      });
+      const checkout = await paymongoCheckoutService.createQrphCheckout({
+        reservationId: reservation.id,
+        successUrl,
+        cancelUrl,
+      });
+
+      await Linking.openURL(checkout.checkoutUrl);
+      router.replace({ pathname: '/confirmed/[id]', params: { id: reservation.id, paymentReturn: 'pending' } });
+    } catch (error: any) {
+      console.error('PayMongo checkout error:', error);
+      if (createdReservationId) {
+        try {
+          await reservationService.voidUnpaidReservation(createdReservationId, 'PayMongo checkout was not completed.');
+        } catch (voidError) {
+          console.error('Unable to void failed QR Ph checkout reservation:', voidError);
+        }
+      }
+      Alert.alert('QR Ph checkout failed', error.message ?? 'Please try again.');
     } finally {
       setLoading(false);
     }
@@ -331,12 +445,39 @@ export default function CheckoutScreen() {
   }
 
   function confirmPayment() {
-    if (directGcashEnabled) {
+    if (isGcashDirectPayment) {
       confirmDirectPayment();
       return;
     }
 
+    if (isQrphPayment) {
+      confirmQrphPayment();
+      return;
+    }
+
     confirmManualPayment();
+  }
+
+  function requestPaymentConfirmation() {
+    if (loading) return;
+
+    const valid = isAutomatedPayment ? validateCheckoutBase() : validatePaymentDetails();
+    if (valid) setPaymentConfirmationOpen(true);
+  }
+
+  function confirmPaymentFromModal() {
+    setPaymentConfirmationOpen(false);
+    confirmPayment();
+  }
+
+  function requestExit() {
+    if (loading) return;
+    setExitConfirmationOpen(true);
+  }
+
+  function exitCheckout() {
+    setExitConfirmationOpen(false);
+    router.back();
   }
 
   if (loadingSpot) {
@@ -350,13 +491,20 @@ export default function CheckoutScreen() {
   }
 
   return (
-    <ScreenContainer appColors={appColors} scroll>
+    <>
+      <ScreenContainer appColors={appColors} scroll>
       <View style={styles.header}>
-        <Pressable style={[styles.backButton, { backgroundColor: appColors.white }]} onPress={() => router.back()}>
+        <Pressable
+          accessibilityLabel="Exit checkout"
+          accessibilityRole="button"
+          disabled={loading}
+          style={[styles.backButton, { backgroundColor: appColors.surfaceRaised }, loading && styles.disabledButton]}
+          onPress={requestExit}
+        >
           <ArrowLeft size={20} color={appColors.onSurface} />
         </Pressable>
         <View style={styles.headerCopy}>
-          <Text style={[styles.headerTitle, { color: appColors.onSurface }]}>GCash Payment</Text>
+          <Text style={[styles.headerTitle, { color: appColors.onSurface }]}>Reservation Payment</Text>
           <Text style={[styles.headerSub, { color: appColors.onSurfaceVariant }]} numberOfLines={1}>
             {spotName}
           </Text>
@@ -365,14 +513,22 @@ export default function CheckoutScreen() {
       </View>
 
       {holdExpiresAt > 0 && (
-        <View style={[styles.holdTimerCard, holdExpired && styles.holdTimerExpired]}>
+        <View
+          style={[
+            styles.holdTimerCard,
+            {
+              backgroundColor: holdExpired ? appColors.dangerContainer : appColors.surfaceRaised,
+              borderColor: holdExpired ? appColors.danger + '66' : colors.primary + '24',
+            },
+          ]}
+        >
           <Clock3 size={20} color={holdExpired ? colors.danger : colors.primary} />
           <View style={styles.holdTimerCopy}>
-            <Text style={styles.holdTimerLabel}>TABLE HOLD</Text>
+            <Text style={[styles.holdTimerLabel, { color: appColors.onSurfaceVariant }]}>TABLE HOLD</Text>
             <Text style={[styles.holdTimerValue, holdExpired && styles.holdTimerExpiredText]}>
               {holdExpired ? 'Expired' : formatHoldTime(holdSecondsRemaining)}
             </Text>
-            <Text style={styles.holdTimerNote}>
+            <Text style={[styles.holdTimerNote, { color: appColors.onSurfaceVariant }]}>
               {holdExpired
                 ? 'Return to the reservation page to choose this table again.'
                 : 'Submit your payment details before this hold ends.'}
@@ -381,36 +537,173 @@ export default function CheckoutScreen() {
         </View>
       )}
 
-      <View style={[styles.heroCard, { backgroundColor: appColors.white }]}>
-        <View style={styles.heroIcon}>
-          <ShieldCheck size={30} color={colors.white} />
+      <View style={styles.checkoutDetailsStack}>
+        <View style={[styles.checkoutDetailsCard, { backgroundColor: appColors.surfaceRaised }]}>
+          <Text style={[styles.bookingReferenceLabel, { color: appColors.onSurfaceVariant }]}>PERSONAL INFORMATION</Text>
+          <View style={styles.checkoutDetailRow}>
+            <Text style={[styles.checkoutDetailLabel, { color: appColors.onSurfaceVariant }]}>Full name</Text>
+            <Text style={[styles.checkoutDetailValue, { color: appColors.onSurface }]}>{customerName}</Text>
+          </View>
+          <View style={styles.checkoutDetailRow}>
+            <Text style={[styles.checkoutDetailLabel, { color: appColors.onSurfaceVariant }]}>Email</Text>
+            <Text style={[styles.checkoutDetailValue, { color: appColors.onSurface }]}>{customerEmail}</Text>
+          </View>
+          <View style={styles.checkoutPhoneField}>
+            <Text style={[styles.checkoutDetailLabel, { color: appColors.onSurfaceVariant }]}>Phone</Text>
+            <TextInput
+              value={guestPhone}
+              onChangeText={setGuestPhone}
+              keyboardType="phone-pad"
+              textContentType="telephoneNumber"
+              autoComplete="tel"
+              maxLength={18}
+              placeholder="09XXXXXXXXX"
+              placeholderTextColor={appColors.onSurfaceVariant + '88'}
+              style={[
+                styles.input,
+                {
+                  borderColor: guestPhone && !contactDetailsComplete ? colors.danger : appColors.outlineVariant,
+                  color: appColors.onSurface,
+                  backgroundColor: appColors.surfaceLow,
+                },
+              ]}
+            />
+            <Text style={[styles.checkoutFieldHelp, { color: appColors.onSurfaceVariant }]}>Used by the spot to verify and contact you about this reservation.</Text>
+          </View>
         </View>
-        <Text style={[styles.heroTitle, { color: appColors.onSurface }]}>
-          {directGcashEnabled ? 'GCash Direct' : 'Secure Transfer'}
-        </Text>
-        <Text style={[styles.heroCopy, { color: appColors.onSurfaceVariant }]}>
-          {directGcashEnabled
-            ? 'Continue to the secure PayMongo checkout page and complete the payment with GCash.'
-            : 'Send the reservation payment to the owner GCash details below, then submit your proof for owner review.'}
-        </Text>
+
+        <View style={[styles.checkoutDetailsCard, { backgroundColor: appColors.surfaceRaised }]}>
+          <Text style={[styles.bookingReferenceLabel, { color: appColors.onSurfaceVariant }]}>BOOKING DETAILS</Text>
+          {[
+            ['Spot', spotName],
+            ['Date', date],
+            ['Show-up time', `${time}${timeEnd ? ` - ${timeEnd}` : ''}`],
+            ['Table', tableDisplayName],
+            ['Party size', `${guests} ${guests === 1 ? 'guest' : 'guests'}`],
+            ['Required deposit', formatPeso(total)],
+          ].map(([label, value]) => (
+            <View key={label} style={styles.checkoutDetailRow}>
+              <Text style={[styles.checkoutDetailLabel, { color: appColors.onSurfaceVariant }]}>{label}</Text>
+              <Text style={[styles.checkoutDetailValue, { color: appColors.onSurface }]}>{value}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
-      {directGcashEnabled ? (
+      <View style={[styles.termsAcceptanceCard, { backgroundColor: appColors.surfaceRaised }]}>
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityLabel="Accept reservation terms and conditions"
+          accessibilityState={{ checked: paymentTermsAccepted, disabled: !contactDetailsComplete }}
+          disabled={!contactDetailsComplete}
+          hitSlop={8}
+          onPress={() => setPaymentTermsAccepted((current) => !current)}
+          style={[
+            styles.termsCheckbox,
+            paymentTermsAccepted && styles.termsCheckboxChecked,
+            !contactDetailsComplete && styles.termsCheckboxDisabled,
+          ]}
+        >
+          {paymentTermsAccepted ? <Check size={16} color={colors.white} strokeWidth={3} /> : null}
+        </Pressable>
+        <View style={styles.termsAcceptanceCopy}>
+          <Text style={[styles.termsAcceptanceText, { color: appColors.onSurface }]}>I have read and accept reservation</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Read reservation terms and conditions" onPress={() => setTermsModalOpen(true)}>
+            <Text style={[styles.termsLink, { color: appColors.onSurfaceVariant }]}>Terms and Conditions</Text>
+          </Pressable>
+          {!contactDetailsComplete ? (
+            <Text style={styles.termsRequirement}>Enter your phone number before accepting.</Text>
+          ) : null}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Payment Method</Text>
+        {!paymentAccessGranted ? (
+          <Text style={[styles.paymentLockedText, { color: appColors.onSurfaceVariant }]}>Complete your information and accept the agreement to unlock payment methods.</Text>
+        ) : null}
+        <View style={styles.paymentMethodGrid}>
+          <Pressable
+            accessibilityLabel="Manual GCash payment"
+            accessibilityRole="button"
+            accessibilityState={{ selected: paymentMode === 'manual_gcash', disabled: !paymentAccessGranted }}
+            style={[
+              styles.paymentMethodCard,
+              !paymentAccessGranted && styles.paymentMethodCardDisabled,
+              { backgroundColor: appColors.surfaceRaised, borderColor: paymentMode === 'manual_gcash' ? colors.primary : appColors.outlineVariant },
+            ]}
+            onPress={() => paymentAccessGranted && setPaymentMode('manual_gcash')}
+            disabled={!paymentAccessGranted}
+          >
+            <Image source={require('../../assets/payments/gcash-logo.png')} style={styles.paymentMethodLogo} resizeMode="contain" />
+            <Text style={[styles.paymentMethodName, { color: appColors.onSurface }]}>GCash</Text>
+            <Text style={[styles.paymentMethodDescription, { color: appColors.onSurfaceVariant }]}>Manual</Text>
+          </Pressable>
+
+          {paymongoGcashEnabled ? (
+            <Pressable
+              accessibilityLabel="GCash Direct payment"
+              accessibilityRole="button"
+              accessibilityState={{ selected: paymentMode === 'gcash_direct', disabled: !paymentAccessGranted || !gcashDirectEnabled }}
+              style={[
+                styles.paymentMethodCard,
+                (!paymentAccessGranted || !gcashDirectEnabled) && styles.paymentMethodCardDisabled,
+                { backgroundColor: appColors.surfaceRaised, borderColor: paymentMode === 'gcash_direct' ? colors.primary : appColors.outlineVariant },
+              ]}
+              onPress={() => paymentAccessGranted && gcashDirectEnabled && setPaymentMode('gcash_direct')}
+              disabled={!paymentAccessGranted || !gcashDirectEnabled}
+            >
+              <Image source={require('../../assets/payments/gcash-direct.png')} style={styles.paymentMethodLogo} resizeMode="contain" />
+              <Text style={[styles.paymentMethodName, { color: appColors.onSurface }]}>GCash</Text>
+              <Text style={[styles.paymentMethodDescription, { color: appColors.onSurfaceVariant }]}>Direct</Text>
+            </Pressable>
+          ) : null}
+
+          <Pressable
+            accessibilityLabel="QR Ph payment"
+            accessibilityRole="button"
+            accessibilityState={{ selected: paymentMode === 'qrph', disabled: !paymentAccessGranted || !qrphEnabled }}
+            style={[
+              styles.paymentMethodCard,
+              (!paymentAccessGranted || !qrphEnabled) && styles.paymentMethodCardDisabled,
+              { backgroundColor: appColors.surfaceRaised, borderColor: paymentMode === 'qrph' ? colors.primary : appColors.outlineVariant },
+            ]}
+            onPress={() => paymentAccessGranted && qrphEnabled && setPaymentMode('qrph')}
+            disabled={!paymentAccessGranted || !qrphEnabled}
+          >
+            <Image source={require('../../assets/payments/qrph-logo.png')} style={styles.paymentMethodLogo} resizeMode="contain" />
+            <Text style={[styles.paymentMethodName, { color: appColors.onSurface }]}>QR Ph</Text>
+            <Text style={[styles.paymentMethodDescription, { color: appColors.onSurfaceVariant }]}>Scan to pay</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {!paymentAccessGranted || !paymentMode ? (
+        <View style={[styles.paymentWaitingCard, { backgroundColor: appColors.surfaceLow }]}>
+          <WalletCards size={24} color={appColors.onSurfaceVariant} />
+          <Text style={[styles.paymentWaitingText, { color: appColors.onSurfaceVariant }]}>
+            {paymentAccessGranted ? 'Choose a payment method to continue.' : 'Payment options will appear after the required acknowledgement.'}
+          </Text>
+        </View>
+      ) : isAutomatedPayment ? (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Payment Method</Text>
-          <View style={[styles.directCheckoutCard, { backgroundColor: appColors.white }]}>
+          <View style={[styles.directCheckoutCard, { backgroundColor: appColors.surfaceRaised }]}>
             <View style={styles.directCheckoutIcon}>
               <WalletCards size={28} color={colors.white} />
             </View>
             <View style={styles.directCheckoutCopy}>
-              <Text style={[styles.directCheckoutTitle, { color: appColors.onSurface }]}>PayMongo GCash Checkout</Text>
+              <Text style={[styles.directCheckoutTitle, { color: appColors.onSurface }]}>
+                {isQrphPayment ? 'PayMongo QR Ph Checkout' : 'PayMongo GCash Checkout'}
+              </Text>
               <Text style={[styles.directCheckoutText, { color: appColors.onSurfaceVariant }]}>
-                The amount is locked for this reservation. You will be redirected to GCash through PayMongo to finish the payment.
+                {isQrphPayment
+                  ? 'The amount is locked for this reservation. You will be redirected to PayMongo to scan the QR Ph code and finish the payment.'
+                  : 'The amount is locked for this reservation. You will be redirected to GCash through PayMongo to finish the payment.'}
               </Text>
             </View>
-            <View style={[styles.amountBox, { backgroundColor: colors.primary + '10' }]}>
-              <Text style={styles.amountLabel}>Amount</Text>
-              <Text style={styles.amountValue}>{formatPeso(total)}</Text>
+            <View style={[styles.amountBox, styles.directAmountBox, { backgroundColor: colors.primary + '10' }]}>
+              <Text style={styles.directAmountLabel}>Total</Text>
+              <Text style={styles.directAmountValue}>{formatPeso(total)}</Text>
             </View>
           </View>
         </View>
@@ -418,7 +711,7 @@ export default function CheckoutScreen() {
         <>
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Owner GCash Details</Text>
-            <View style={[styles.gcashCard, { backgroundColor: appColors.white }]}>
+            <View style={[styles.gcashCard, { backgroundColor: appColors.surfaceRaised }]}>
               <Text style={styles.gcashBrand}>GCash</Text>
 
               <View style={styles.noticeStack}>
@@ -454,7 +747,7 @@ export default function CheckoutScreen() {
 
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Your Payment Details</Text>
-            <View style={[styles.formCard, { backgroundColor: appColors.white }]}>
+            <View style={[styles.formCard, { backgroundColor: appColors.surfaceRaised }]}>
               <View style={styles.field}>
                 <Text style={[styles.fieldLabel, { color: appColors.onSurface }]}>Your GCash Account Number</Text>
                 <TextInput
@@ -537,20 +830,81 @@ export default function CheckoutScreen() {
         label={
           holdExpired
             ? 'Table Hold Expired'
+            : !contactDetailsComplete
+              ? 'Complete Personal Information'
+              : !paymentTermsAccepted
+                ? 'Accept Deposit Terms'
+                : !paymentMode
+                  ? 'Choose a Payment Method'
             : loading
-              ? directGcashEnabled
-                ? 'Opening GCash'
+              ? isAutomatedPayment
+                ? isQrphPayment ? 'Opening QR Ph' : 'Opening GCash'
                 : 'Submitting Payment'
-              : directGcashEnabled
-                ? 'Continue to GCash'
+              : isAutomatedPayment
+                ? isQrphPayment ? 'Continue to QR Ph' : 'Continue to GCash'
                 : 'Confirm Payment Details'
         }
         loading={loading}
-        disabled={holdExpired}
-        onPress={confirmPayment}
-        icon={!loading ? directGcashEnabled ? <ExternalLink size={16} color={colors.white} /> : <CheckCircle2 size={16} color={colors.white} /> : undefined}
+        disabled={holdExpired || !paymentAccessGranted || !paymentMode}
+        onPress={requestPaymentConfirmation}
+        icon={!loading && paymentMode ? isAutomatedPayment ? <ExternalLink size={16} color={colors.white} /> : <CheckCircle2 size={16} color={colors.white} /> : undefined}
       />
-    </ScreenContainer>
+      </ScreenContainer>
+
+      <ConfirmationModal
+        visible={termsModalOpen}
+        title="Reservation Terms and Conditions"
+        message={depositTerms}
+        onRequestClose={() => setTermsModalOpen(false)}
+        actions={[
+          {
+            label: 'Close',
+            variant: 'primary',
+            onPress: () => setTermsModalOpen(false),
+          },
+        ]}
+      />
+
+      <ConfirmationModal
+        visible={paymentConfirmationOpen}
+        title={isAutomatedPayment ? 'Continue to payment?' : 'Confirm booking and payment?'}
+        message={
+          isAutomatedPayment
+            ? `You are about to reserve ${spotName} for ${date} at ${time}. The table will be held while you complete the ${isQrphPayment ? 'QR Ph' : 'GCash'} payment.`
+            : `Your booking and payment details will be submitted to ${spotName} for manual verification. Please confirm that the information and payment proof are correct.`
+        }
+        onRequestClose={() => setPaymentConfirmationOpen(false)}
+        actions={[
+          {
+            label: 'Review again',
+            onPress: () => setPaymentConfirmationOpen(false),
+          },
+          {
+            label: isAutomatedPayment ? 'Continue to payment' : 'Confirm booking',
+            variant: 'primary',
+            onPress: confirmPaymentFromModal,
+          },
+        ]}
+      />
+
+      <ConfirmationModal
+        visible={exitConfirmationOpen}
+        title="Cancel this process?"
+        message="Are you sure you want to exit? Doing so will automatically cancel this process and release the table for people who are waiting or want to reserve it."
+        onRequestClose={() => setExitConfirmationOpen(false)}
+        actions={[
+          {
+            label: 'Stay here',
+            onPress: () => setExitConfirmationOpen(false),
+          },
+          {
+            label: 'Exit and cancel',
+            variant: 'destructive',
+            onPress: exitCheckout,
+          },
+        ]}
+      />
+    </>
   );
 }
 
@@ -596,8 +950,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.primary + '24',
-    backgroundColor: colors.white,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
@@ -605,14 +957,11 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   holdTimerExpired: {
-    borderColor: colors.danger + '40',
-    backgroundColor: colors.dangerContainer,
   },
   holdTimerCopy: {
     flex: 1,
   },
   holdTimerLabel: {
-    color: colors.onSurfaceVariant,
     fontSize: 8,
     fontWeight: '900',
     textTransform: 'uppercase',
@@ -628,39 +977,119 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
   holdTimerNote: {
-    color: colors.onSurfaceVariant,
     fontSize: fontSize.xs,
     fontWeight: '800',
     lineHeight: 17,
     marginTop: 2,
   },
-  heroCard: {
-    borderRadius: radius.xxl,
-    padding: spacing.xl,
-    alignItems: 'center',
+  checkoutDetailsStack: {
+    gap: spacing.md,
     marginBottom: spacing.xl,
+  },
+  checkoutDetailsCard: {
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    gap: spacing.md,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
     ...shadow.card,
   },
-  heroIcon: {
-    width: 70,
-    height: 70,
-    borderRadius: radius.xl,
+  bookingReferenceLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  checkoutDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.lg,
+  },
+  checkoutDetailLabel: {
+    flex: 0.42,
+    fontSize: fontSize.xs,
+    fontWeight: '800',
+  },
+  checkoutDetailValue: {
+    flex: 0.58,
+    fontSize: fontSize.sm,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+  checkoutPhoneField: {
+    gap: spacing.xs,
+  },
+  checkoutFieldHelp: {
+    fontSize: 10,
+    lineHeight: 15,
+    fontWeight: '700',
+  },
+  termsAcceptanceCard: {
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  termsCheckbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  termsCheckboxChecked: {
     backgroundColor: colors.primary,
-    marginBottom: spacing.md,
   },
-  heroTitle: {
-    fontSize: fontSize.xxl,
-    fontWeight: '900',
-    textTransform: 'uppercase',
+  termsCheckboxDisabled: {
+    opacity: 0.45,
   },
-  heroCopy: {
-    marginTop: spacing.sm,
-    textAlign: 'center',
+  termsAcceptanceCopy: {
+    flex: 1,
+  },
+  termsAcceptanceText: {
     fontSize: fontSize.sm,
     lineHeight: 20,
+    fontWeight: '600',
+  },
+  termsLink: {
+    alignSelf: 'flex-start',
+    fontSize: fontSize.sm,
+    lineHeight: 21,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  termsRequirement: {
+    color: colors.danger,
+    fontSize: 10,
+    lineHeight: 15,
     fontWeight: '700',
+    marginTop: spacing.xs,
+  },
+  paymentLockedText: {
+    fontSize: fontSize.xs,
+    lineHeight: 17,
+    fontWeight: '700',
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
+  },
+  paymentWaitingCard: {
+    minHeight: 100,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  paymentWaitingText: {
+    fontSize: fontSize.xs,
+    lineHeight: 17,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   section: {
     marginBottom: spacing.xl,
@@ -670,35 +1099,97 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginBottom: spacing.md,
   },
+  paymentMethodGrid: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  paymentMethodCard: {
+    flex: 1,
+    minHeight: 118,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    ...shadow.card,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  paymentMethodCardDisabled: {
+    opacity: 0.48,
+  },
+  paymentMethodLogo: {
+    width: 78,
+    height: 48,
+    borderRadius: radius.sm,
+    backgroundColor: colors.white,
+    marginBottom: spacing.xs,
+  },
+  paymentMethodName: {
+    fontSize: fontSize.sm,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  paymentMethodDescription: {
+    fontSize: fontSize.xs,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
   directCheckoutCard: {
-    borderRadius: radius.xxl,
-    padding: spacing.lg,
-    gap: spacing.lg,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    gap: spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
     ...shadow.card,
   },
   directCheckoutIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.xl,
+    width: 42,
+    height: 42,
+    borderRadius: radius.md,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   directCheckoutCopy: {
-    gap: spacing.sm,
-    alignItems: 'center',
+    flex: 1,
+    gap: 2,
+    alignItems: 'flex-start',
   },
   directCheckoutTitle: {
-    fontSize: fontSize.lg,
+    fontSize: fontSize.md,
     fontWeight: '900',
-    textAlign: 'center',
+    textAlign: 'left',
   },
   directCheckoutText: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs,
     fontWeight: '700',
-    lineHeight: 20,
-    textAlign: 'center',
+    lineHeight: 16,
+    textAlign: 'left',
+  },
+  directAmountBox: {
+    minWidth: 82,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+  },
+  directAmountLabel: {
+    color: colors.primary,
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  directAmountValue: {
+    color: colors.primary,
+    fontSize: fontSize.sm,
+    fontWeight: '900',
+    marginTop: 1,
   },
   gcashCard: {
     borderRadius: radius.xxl,

@@ -5,7 +5,6 @@ import type {
   GamificationLeaderboardEntry,
   GamificationSummary,
   PointTransaction,
-  SpotVisit,
 } from '../types';
 
 const emptySummary: GamificationSummary = {
@@ -124,25 +123,6 @@ export const gamificationService = {
     }
 
     return normalizeLeaderboard(data);
-  },
-
-  async recordSpotVisit(input: {
-    spotId: string;
-    latitude: number;
-    longitude: number;
-    accuracy?: number | null;
-  }): Promise<SpotVisit | null> {
-    if (!hasSupabaseConfig) return null;
-
-    const { data, error } = await supabase.rpc('record_spot_visit', {
-      target_spot_id: input.spotId,
-      visit_latitude: input.latitude,
-      visit_longitude: input.longitude,
-      location_accuracy: input.accuracy ?? null,
-    });
-
-    if (error) throw error;
-    return (Array.isArray(data) ? data[0] : data) as SpotVisit | null;
   },
 
   async markReviewHelpful(reviewId: string) {

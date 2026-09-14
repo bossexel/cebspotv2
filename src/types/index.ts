@@ -5,6 +5,7 @@ export type ReservationStatus =
   | 'confirmed'
   | 'cancelled'
   | 'rescheduled'
+  | 'checked_in'
   | 'completed'
   | 'no_show';
 export type PaymentStatus =
@@ -99,6 +100,9 @@ export interface Spot {
 export interface Reservation {
   id: string;
   user_id: string;
+  guest_name?: string | null;
+  guest_email?: string | null;
+  guest_phone?: string | null;
   spot_id: string;
   spot_name: string;
   table_id?: string | null;
@@ -126,6 +130,8 @@ export interface Reservation {
   cancelled_at?: string | null;
   adjustment_acknowledged?: boolean;
   adjustment_acknowledged_at?: string | null;
+  payment_terms_accepted?: boolean;
+  payment_terms_accepted_at?: string | null;
   qr_code: string;
   created_at: string;
   updated_at?: string;
@@ -172,6 +178,7 @@ export interface LocalUpdate {
 export interface LocalUpdateComment {
   id: string;
   local_update_id: string;
+  parent_comment_id?: string | null;
   user_id: string;
   user_name: string;
   user_photo_url?: string | null;
@@ -180,8 +187,13 @@ export interface LocalUpdateComment {
   updated_at?: string;
 }
 
+export type SpotVoteType = 'up' | 'down';
+
 export interface SpotVoteResult {
   vote_count: number;
+  up_count?: number;
+  down_count?: number;
+  vote_type?: SpotVoteType | null;
   voted: boolean;
 }
 
@@ -214,7 +226,8 @@ export type OwnerAccessRequestStatus = 'pending' | 'approved' | 'rejected';
 
 export interface OwnerAccessRequest {
   id: string;
-  requester_id: string;
+  requester_id?: string | null;
+  spot_id?: string | null;
   contact_name: string;
   contact_email: string;
   contact_phone?: string | null;
@@ -222,9 +235,12 @@ export interface OwnerAccessRequest {
   spot_address: string;
   category: string;
   access_needs: string[];
+  verification_documents?: string[] | null;
   message?: string | null;
   status: OwnerAccessRequestStatus;
   admin_notes?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
   created_at: string;
   updated_at?: string;
 }
@@ -241,6 +257,19 @@ export interface Review {
   media_types?: string[] | null;
   likes_count?: number;
   reports_count?: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ReviewReply {
+  id: string;
+  spot_id: string;
+  review_id: string;
+  parent_reply_id?: string | null;
+  user_id: string;
+  user_name?: string | null;
+  user_photo_url?: string | null;
+  body: string;
   created_at: string;
   updated_at?: string;
 }
@@ -310,19 +339,8 @@ export interface GamificationLeaderboard {
   myRank?: GamificationLeaderboardEntry | null;
 }
 
-export interface SpotVisit {
-  id: string;
-  user_id: string;
-  spot_id: string;
-  latitude: number;
-  longitude: number;
-  distance_from_spot?: number | null;
-  location_accuracy?: number | null;
-  verified: boolean;
-  visited_at: string;
-}
-
 export type NewReview = Omit<Review, 'id' | 'created_at' | 'updated_at' | 'likes_count' | 'reports_count'>;
+export type NewReviewReply = Omit<ReviewReply, 'id' | 'created_at' | 'updated_at'>;
 export type NewSpotEditSuggestion = Omit<
   SpotEditSuggestion,
   'id' | 'status' | 'admin_notes' | 'created_at' | 'updated_at'

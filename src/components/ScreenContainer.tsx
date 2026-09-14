@@ -12,6 +12,8 @@ interface ScreenContainerProps {
   scrollRef?: React.RefObject<ScrollView>;
   scrollEnabled?: boolean;
   showBottomNav?: boolean;
+  bottomNavOverlay?: boolean;
+  onBottomNavHeightChange?: (height: number) => void;
   padded?: boolean;
 }
 
@@ -22,29 +24,34 @@ export function ScreenContainer({
   scrollRef,
   scrollEnabled = true,
   showBottomNav,
+  bottomNavOverlay = false,
+  onBottomNavHeightChange,
   padded = true,
 }: ScreenContainerProps) {
   const contentStyle = [
     padded && styles.padded,
-    showBottomNav && { paddingBottom: tabBarHeight + spacing.xl },
+    showBottomNav && !bottomNavOverlay && { paddingBottom: tabBarHeight + spacing.xl },
   ];
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: appColors.surface }]}>
-      {scroll ? (
-        <ScrollView
-          ref={scrollRef}
-          style={styles.flex}
-          contentContainerStyle={contentStyle}
-          scrollEnabled={scrollEnabled}
-          showsVerticalScrollIndicator={false}
-        >
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={[styles.flex, contentStyle]}>{children}</View>
-      )}
-      {showBottomNav && <BottomNav appColors={appColors} />}
+    <SafeAreaView testID="screen-safe-area" style={[styles.safe, { backgroundColor: appColors.surface }]}>
+      <View style={styles.flex}>
+        {scroll ? (
+          <ScrollView
+            ref={scrollRef}
+            testID="screen-scroll-view"
+            style={styles.flex}
+            contentContainerStyle={contentStyle}
+            scrollEnabled={scrollEnabled}
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={[styles.flex, contentStyle]}>{children}</View>
+        )}
+        {showBottomNav && <BottomNav appColors={appColors} onHeightChange={onBottomNavHeightChange} />}
+      </View>
     </SafeAreaView>
   );
 }

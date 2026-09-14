@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -11,61 +12,103 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
 import {
   ArrowLeft,
-  Banknote,
-  CalendarDays,
   CheckCircle2,
-  CreditCard,
-  Grid3X3,
+  FileImage,
+  FileText,
   MessageSquareText,
-  Star,
   Store,
-  Table2,
+  Upload,
+  X,
 } from 'lucide-react-native';
 import { AppButton } from '../src/components/AppButton';
 import { colors } from '../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../src/constants/design';
-import { useAuth } from '../src/hooks/useAuth';
 import { useTheme } from '../src/hooks/useTheme';
 import { ownerAccessService } from '../src/services/ownerAccessService';
+import { ownerVerificationDocumentService, type VerificationDocument } from '../src/services/ownerVerificationDocumentService';
+import { isValidEmail, normalizeEmail } from '../src/utils/auth';
 
 const accessCategories = ['Restaurant', 'Cafe', 'Bar', 'Club', 'Lounge', 'Food Park'];
 const accessNeeds = ['Reservations', 'Down Payments', 'Guest Reviews', 'Tables & Pricing'];
 
-const portalCards = [
-  { label: "Tonight's Bookings", value: '8', tone: colors.primary },
-  { label: 'Down Payments', value: 'PHP 3,500', tone: colors.onSurface },
-  { label: 'Average Rating', value: '4.7', tone: colors.onSurface },
-];
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
 
 export default function OwnerAccessScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    spotId?: string | string[];
+    spotName?: string | string[];
+    spotAddress?: string | string[];
+    category?: string | string[];
+  }>();
   const { width } = useWindowDimensions();
   const { appColors } = useTheme();
-  const { profile } = useAuth();
   const wide = width >= 880;
+  const selectedSpotId = firstParam(params.spotId);
 
-  const [contactName, setContactName] = useState(profile?.display_name ?? '');
-  const [contactEmail, setContactEmail] = useState(profile?.email ?? '');
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [spotName, setSpotName] = useState('');
   const [spotAddress, setSpotAddress] = useState('');
   const [category, setCategory] = useState(accessCategories[0]);
   const [selectedNeeds, setSelectedNeeds] = useState<string[]>(['Reservations', 'Down Payments']);
   const [message, setMessage] = useState('');
+  const [documents, setDocuments] = useState<VerificationDocument[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [checkingOwnership, setCheckingOwnership] = useState(Boolean(selectedSpotId));
+  const [claimStatus, setClaimStatus] = useState<Awaited<ReturnType<typeof ownerAccessService.getSpotClaimStatus>> | null>(null);
+  const [claimStatusError, setClaimStatusError] = useState<string | null>(null);
+  const [requestingAccess, setRequestingAccess] = useState(false);
 
   useEffect(() => {
-    if (profile?.display_name && !contactName) setContactName(profile.display_name);
-    if (profile?.email && !contactEmail) setContactEmail(profile.email);
-  }, [contactEmail, contactName, profile?.display_name, profile?.email]);
+    const nextSpotName = firstParam(params.spotName);
+    const nextSpotAddress = firstParam(params.spotAddress);
+    const nextCategory = firstParam(params.category);
+    if (nextSpotName) setSpotName(nextSpotName);
+    if (nextSpotAddress) setSpotAddress(nextSpotAddress);
+    if (nextCategory && accessCategories.includes(nextCategory)) setCategory(nextCategory);
+  }, [params.category, params.spotAddress, params.spotName]);
+
+  useEffect(() => {
+    let active = true;
+    if (!selectedSpotId) {
+      setCheckingOwnership(false);
+      return () => undefined;
+    }
+
+    setCheckingOwnership(true);
+    setClaimStatusError(null);
+    ownerAccessService
+      .getSpotClaimStatus(selectedSpotId)
+      .then((status) => {
+        if (!active) return;
+        setClaimStatus(status);
+        setSpotName((current) => current || status.spotName);
+      })
+      .catch((error: any) => {
+        if (!active) return;
+        setClaimStatusError(error?.message ?? 'Unable to check the current owner.');
+      })
+      .finally(() => {
+        if (active) setCheckingOwnership(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedSpotId]);
 
   const completionCopy = useMemo(() => {
-    if (!submitted) return 'CebSpot verifies each venue before opening the owner portal.';
-    return 'Request received. Our team will contact the spot owner after verification.';
+    if (!submitted) return 'Submit your venue details. CebSpot will create a dedicated business account after verification.';
+    return 'Request received. If approved, the business email will receive a secure account setup invitation.';
   }, [submitted]);
 
   function toggleNeed(need: string) {
@@ -74,13 +117,38 @@ export default function OwnerAccessScreen() {
     );
   }
 
-  async function submitRequest() {
-    if (!profile?.id) {
-      Alert.alert('Sign in required', 'Please sign in again before requesting owner access.');
-      return;
+  async function pickVerificationDocuments() {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ['image/*', 'application/pdf'],
+      multiple: true,
+      copyToCacheDirectory: true,
+    });
+
+    if (!result.canceled) {
+      setDocuments((current) => [
+        ...current,
+        ...result.assets.map((asset) => ({
+          uri: asset.uri,
+          name: asset.name,
+          mimeType: asset.mimeType ?? undefined,
+          size: asset.size ?? undefined,
+        })),
+      ]);
     }
+  }
+
+  function documentLabel(document: VerificationDocument, index: number) {
+    return document.name || document.uri.split('/').pop()?.split('?')[0] || `Document ${index + 1}`;
+  }
+
+  async function submitRequest() {
     if (!contactName.trim() || !contactEmail.trim() || !spotName.trim() || !spotAddress.trim()) {
       Alert.alert('Missing details', 'Please complete your contact and spot details.');
+      return;
+    }
+    const businessEmail = normalizeEmail(contactEmail);
+    if (!isValidEmail(businessEmail)) {
+      Alert.alert('Invalid business email', 'Enter a valid, unregistered email for the dedicated owner account.');
       return;
     }
     if (!selectedNeeds.length) {
@@ -88,25 +156,54 @@ export default function OwnerAccessScreen() {
       return;
     }
 
+    let uploadedDocuments: string[] = [];
     try {
       setSubmitting(true);
+      const emailStatus = await ownerAccessService.getBusinessEmailStatus(businessEmail);
+      if (emailStatus === 'registered') {
+        Alert.alert(
+          'Email already registered',
+          'This email already belongs to a CebSpot user. Use a separate, unregistered business email for the owner account.',
+        );
+        return;
+      }
+      if (emailStatus === 'pending') {
+        Alert.alert(
+          'Request already pending',
+          'An owner access request for this business email is already awaiting CebSpot review.',
+        );
+        return;
+      }
+      if (emailStatus === 'invalid') {
+        Alert.alert('Invalid business email', 'Enter a valid, unregistered email for the dedicated owner account.');
+        return;
+      }
+
+      const requestKey = `owner-request-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      uploadedDocuments = await ownerVerificationDocumentService.upload(documents, requestKey);
       await ownerAccessService.createRequest(
         {
-          requester_id: profile.id,
+          requester_id: null,
+          spot_id: selectedSpotId ?? null,
           contact_name: contactName.trim(),
-          contact_email: contactEmail.trim(),
+          contact_email: businessEmail,
           contact_phone: contactPhone.trim() || null,
           spot_name: spotName.trim(),
           spot_address: spotAddress.trim(),
           category,
           access_needs: selectedNeeds,
+          verification_documents: uploadedDocuments,
           message: message.trim() || null,
         },
-        profile.display_name || contactName.trim() || 'Spot Owner',
+        contactName.trim() || 'Spot Owner',
       );
       setSubmitted(true);
-      Alert.alert('Request sent', 'CebSpot will contact the spot owner to verify access.');
+      Alert.alert(
+        'Request sent',
+        'CebSpot will review the documents. If approved, the unregistered business email will receive a secure account setup invitation.',
+      );
     } catch (error: any) {
+      await ownerVerificationDocumentService.remove(uploadedDocuments).catch(() => undefined);
       console.error('Owner access request failed:', error);
       Alert.alert('Request failed', error.message ?? 'Please try again.');
     } finally {
@@ -126,21 +223,65 @@ export default function OwnerAccessScreen() {
           </Pressable>
           <View style={styles.topbarCopy}>
             <Text style={[styles.kicker, { color: colors.primary }]}>Spot Owner Access</Text>
-            <Text style={[styles.pageTitle, { color: appColors.onSurface }]}>Contact CebSpot</Text>
+            <Text style={[styles.pageTitle, { color: appColors.onSurface }]}>Request Owner Access</Text>
           </View>
         </View>
 
-        <View style={[styles.content, wide && styles.contentWide]}>
-          <PortalPreview appColors={appColors} wide={wide} />
+        <View style={styles.content}>
+          {checkingOwnership && (
+            <View style={[styles.claimStatusPanel, { backgroundColor: appColors.surfaceLow }]}>
+              <ActivityIndicator color={colors.primary} />
+              <Text style={[styles.claimStatusLoading, { color: appColors.onSurfaceVariant }]}>Checking ownership...</Text>
+            </View>
+          )}
 
+          {!checkingOwnership && claimStatus?.managed && !requestingAccess && (
+            <View style={[styles.claimStatusPanel, { backgroundColor: appColors.surfaceLow }]}>
+              <View style={styles.claimStatusIcon}>
+                <Store size={24} color={colors.white} />
+              </View>
+              <Text style={[styles.claimStatusTitle, { color: appColors.onSurface }]}>This spot is already managed</Text>
+              <Text style={[styles.claimStatusMessage, { color: appColors.onSurfaceVariant }]}>
+                <Text style={[styles.claimStatusSpotName, { color: appColors.onSurface }]}>{claimStatus.spotName}</Text>
+                {' is owned by '}
+                <Text style={[styles.claimStatusOwner, { color: appColors.onSurface }]}>
+                  {claimStatus.ownerHint ?? 'another verified account'}
+                </Text>
+                .
+              </Text>
+              <Text style={[styles.claimStatusHelp, { color: appColors.onSurfaceVariant }]}>
+                {claimStatus.hasAccess
+                  ? 'Your account already has access to this spot.'
+                  : 'If you represent this business, submit an access request for manual verification.'}
+              </Text>
+              <View style={styles.claimStatusActions}>
+                <AppButton
+                  label={claimStatus.hasAccess ? 'Open Owner Dashboard' : 'Request Access'}
+                  onPress={() => {
+                    if (claimStatus.hasAccess) router.push('/owner-dashboard');
+                    else setRequestingAccess(true);
+                  }}
+                  style={styles.claimStatusButton}
+                />
+                <AppButton label="Go Back" variant="secondary" onPress={() => router.back()} style={styles.claimStatusButton} />
+              </View>
+            </View>
+          )}
+
+          {!checkingOwnership && claimStatusError && (
+            <Text style={[styles.claimStatusError, { color: appColors.onSurfaceVariant }]}>{claimStatusError}</Text>
+          )}
+
+          {!checkingOwnership && (!claimStatus?.managed || requestingAccess) && (
           <View style={[styles.formPanel, { backgroundColor: appColors.surfaceLow }]}>
             <View style={styles.formHeader}>
               <View style={styles.formIcon}>
                 <Store size={22} color={colors.white} />
               </View>
               <View style={styles.formHeaderCopy}>
-                <Text style={[styles.formTitle, { color: appColors.onSurface }]}>Request Reservation Access</Text>
+                <Text style={[styles.formTitle, { color: appColors.onSurface }]}>Contact CebSpot</Text>
                 <Text style={[styles.formSubtitle, { color: appColors.onSurfaceVariant }]}>{completionCopy}</Text>
+                <Text style={[styles.formHint, { color: appColors.onSurfaceVariant }]}>Use a dedicated business email that has never been registered as a CebSpot user. Existing user accounts cannot be converted into owner accounts.</Text>
               </View>
               {submitted && <CheckCircle2 size={24} color={colors.success} />}
             </View>
@@ -150,14 +291,12 @@ export default function OwnerAccessScreen() {
                 label="Contact Name"
                 value={contactName}
                 onChangeText={setContactName}
-                placeholder="Marco Reyes"
                 appColors={appColors}
               />
               <FormField
-                label="Business Email"
+                label="New Business Account Email"
                 value={contactEmail}
                 onChangeText={setContactEmail}
-                placeholder="owner@livsuperclub.ph"
                 keyboardType="email-address"
                 appColors={appColors}
               />
@@ -167,7 +306,7 @@ export default function OwnerAccessScreen() {
               label="Contact Number"
               value={contactPhone}
               onChangeText={setContactPhone}
-              placeholder="+63 917 000 0000"
+              placeholder="+639"
               keyboardType="phone-pad"
               appColors={appColors}
             />
@@ -177,7 +316,6 @@ export default function OwnerAccessScreen() {
                 label="Spot Name"
                 value={spotName}
                 onChangeText={setSpotName}
-                placeholder="Liv Superclub"
                 appColors={appColors}
               />
               <View style={styles.field}>
@@ -191,7 +329,7 @@ export default function OwnerAccessScreen() {
                         style={[
                           styles.choiceChip,
                           {
-                            backgroundColor: selected ? colors.primary : appColors.white,
+                            backgroundColor: selected ? colors.primary : appColors.surfaceRaised,
                           },
                         ]}
                         onPress={() => setCategory(item)}
@@ -210,7 +348,6 @@ export default function OwnerAccessScreen() {
               label="Spot Address"
               value={spotAddress}
               onChangeText={setSpotAddress}
-              placeholder="IT Park, Lahug, Cebu City"
               appColors={appColors}
             />
 
@@ -225,7 +362,7 @@ export default function OwnerAccessScreen() {
                       style={[
                         styles.needChip,
                         {
-                          backgroundColor: selected ? colors.primary + '16' : appColors.white,
+                          backgroundColor: selected ? colors.primary + '16' : appColors.surfaceRaised,
                         },
                       ]}
                       onPress={() => toggleNeed(need)}
@@ -241,17 +378,38 @@ export default function OwnerAccessScreen() {
             </View>
 
             <View style={styles.field}>
+              <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Verification Documents</Text>
+              <Text style={[styles.helperText, { color: appColors.onSurfaceVariant }]}>Attach IDs, business permits, proof of ownership, photos, or PDFs to help us verify your request faster. You may attach as many documents as needed.</Text>
+              <Pressable
+                disabled={submitted || submitting}
+                onPress={pickVerificationDocuments}
+                style={[styles.uploadButton, { backgroundColor: appColors.surfaceRaised, borderColor: appColors.outlineVariant }, (submitted || submitting) && styles.disabled]}
+              >
+                <Upload size={17} color={colors.primary} />
+                <Text style={styles.uploadButtonText}>Insert Documents</Text>
+              </Pressable>
+              {documents.map((document, index) => (
+                <View key={`${document.uri}-${index}`} style={[styles.documentRow, { backgroundColor: appColors.inputSurface }]}>
+                  {document.mimeType === 'application/pdf' ? <FileText size={17} color={colors.primary} /> : <FileImage size={17} color={colors.primary} />}
+                  <Text style={[styles.documentName, { color: appColors.onSurface }]} numberOfLines={1}>{documentLabel(document, index)}</Text>
+                  <Pressable disabled={submitted || submitting} onPress={() => setDocuments((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
+                    <X size={17} color={appColors.onSurfaceVariant} />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.field}>
               <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Message</Text>
               <TextInput
                 value={message}
                 onChangeText={setMessage}
-                placeholder="Tell us how your team handles bookings today."
                 placeholderTextColor={appColors.onSurfaceVariant + '88'}
                 multiline
                 style={[
                   styles.textArea,
                   {
-                    backgroundColor: appColors.white,
+                    backgroundColor: appColors.inputSurface,
                     color: appColors.onSurface,
                   },
                 ]}
@@ -266,6 +424,7 @@ export default function OwnerAccessScreen() {
               icon={!submitted ? <MessageSquareText size={18} color={colors.white} /> : undefined}
             />
           </View>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -283,7 +442,7 @@ function FormField({
   label: string;
   value: string;
   onChangeText: (value: string) => void;
-  placeholder: string;
+  placeholder?: string;
   keyboardType?: 'default' | 'email-address' | 'phone-pad';
   appColors: typeof colors;
 }) {
@@ -300,97 +459,11 @@ function FormField({
         style={[
           styles.input,
           {
-            backgroundColor: appColors.white,
+            backgroundColor: appColors.inputSurface,
             color: appColors.onSurface,
           },
         ]}
       />
-    </View>
-  );
-}
-
-function PortalPreview({ appColors, wide }: { appColors: typeof colors; wide: boolean }) {
-  return (
-    <View style={[styles.preview, wide && styles.previewWide]}>
-      <View style={styles.previewSidebar}>
-        <Text style={styles.previewBrand}>CebSpot</Text>
-        <View style={styles.previewSpot}>
-          <View style={styles.previewLogo}>
-            <Grid3X3 size={19} color={colors.white} />
-          </View>
-          <View>
-            <Text style={styles.previewSpotName}>Liv Superclub</Text>
-            <Text style={styles.previewSpotMeta}>Club - IT Park</Text>
-          </View>
-        </View>
-        <PreviewNav icon={CalendarDays} label="Reservations" active />
-        <PreviewNav icon={CreditCard} label="Payments" />
-        <PreviewNav icon={Star} label="Reviews" />
-        <PreviewNav icon={Table2} label="Tables" />
-      </View>
-
-      <View style={[styles.previewCanvas, { backgroundColor: appColors.surface }]}>
-        <View style={styles.previewHeader}>
-          <View>
-            <Text style={[styles.previewHello, { color: appColors.onSurface }]}>Good evening, boss!</Text>
-            <Text style={[styles.previewDate, { color: appColors.onSurfaceVariant }]}>Reservation console</Text>
-          </View>
-          <View style={styles.previewPill}>
-            <CalendarDays size={13} color={colors.primary} />
-            <Text style={styles.previewPillText}>8 tonight</Text>
-          </View>
-        </View>
-
-        <View style={styles.previewMetrics}>
-          {portalCards.map((card) => (
-            <View key={card.label} style={[styles.previewCard, { backgroundColor: appColors.white }]}>
-              <Text style={[styles.previewCardLabel, { color: appColors.onSurfaceVariant }]}>{card.label}</Text>
-              <Text style={[styles.previewCardValue, { color: card.tone }]}>{card.value}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={[styles.previewTable, { backgroundColor: appColors.white }]}>
-          <View style={styles.previewTableHeader}>
-            <Text style={[styles.previewTableTitle, { color: appColors.onSurface }]}>Tonight's Reservations</Text>
-            <Text style={styles.previewTableAction}>View Floor Plan</Text>
-          </View>
-          {[
-            ['JS', 'Kawhi Leonard', 'Table T-04 - 9:30 PM', 'Confirmed'],
-            ['AL', 'mistah lefty', 'VIP Table V-01 - 10:00 PM', 'Pending'],
-            ['RT', 'Wembanyama', 'Table T-12 - 8:45 PM', 'Rescheduled'],
-          ].map((item) => (
-            <View key={item[1]} style={styles.previewRow}>
-              <View style={styles.previewAvatar}>
-                <Text style={styles.previewAvatarText}>{item[0]}</Text>
-              </View>
-              <View style={styles.previewRowCopy}>
-                <Text style={[styles.previewRowName, { color: appColors.onSurface }]}>{item[1]}</Text>
-                <Text style={[styles.previewRowMeta, { color: appColors.onSurfaceVariant }]}>{item[2]}</Text>
-              </View>
-              <Text style={[styles.previewStatus, item[3] === 'Pending' && styles.previewStatusPending]}>
-                {item[3]}
-              </Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.previewFinance}>
-          <Banknote size={17} color={colors.success} />
-          <Text style={[styles.previewFinanceText, { color: appColors.onSurfaceVariant }]}>
-            Down payments and on-site balances stay visible to approved owners.
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function PreviewNav({ icon: Icon, label, active }: { icon: any; label: string; active?: boolean }) {
-  return (
-    <View style={[styles.previewNav, active && styles.previewNavActive]}>
-      <Icon size={15} color={active ? colors.white : '#A5A5A5'} />
-      <Text style={[styles.previewNavText, active && styles.previewNavTextActive]}>{label}</Text>
     </View>
   );
 }
@@ -437,221 +510,75 @@ const styles = StyleSheet.create({
   content: {
     gap: spacing.xl,
   },
-  contentWide: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-  preview: {
-    borderRadius: radius.xxl,
-    overflow: 'hidden',
-    minHeight: 560,
-    backgroundColor: colors.secondary,
-    ...shadow.lifted,
-  },
-  previewWide: {
-    flex: 1.05,
-    minWidth: 0,
-  },
-  previewSidebar: {
-    backgroundColor: '#0A0A0A',
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  previewBrand: {
-    color: colors.white,
-    fontSize: fontSize.xl,
-    fontWeight: '900',
-    marginBottom: spacing.sm,
-  },
-  previewSpot: {
-    borderRadius: radius.xl,
-    backgroundColor: '#151515',
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  previewLogo: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewSpotName: {
-    color: colors.white,
-    fontSize: fontSize.sm,
-    fontWeight: '900',
-  },
-  previewSpotMeta: {
-    color: '#A5A5A5',
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  previewNav: {
-    minHeight: 38,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  previewNavActive: {
-    backgroundColor: colors.primary,
-  },
-  previewNavText: {
-    color: '#A5A5A5',
-    fontSize: fontSize.xs,
-    fontWeight: '800',
-  },
-  previewNavTextActive: {
-    color: colors.white,
-    fontWeight: '900',
-  },
-  previewCanvas: {
-    flex: 1,
-    padding: spacing.lg,
-    gap: spacing.lg,
-  },
-  previewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    alignItems: 'center',
-  },
-  previewHello: {
-    fontSize: fontSize.xxl,
-    fontWeight: '900',
-    lineHeight: 28,
-  },
-  previewDate: {
-    fontSize: fontSize.xs,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  previewPill: {
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary + '16',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  previewPillText: {
-    color: colors.primary,
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  previewMetrics: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  previewCard: {
-    flex: 1,
-    minHeight: 106,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    justifyContent: 'space-between',
-  },
-  previewCardLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  previewCardValue: {
-    fontSize: 23,
-    fontWeight: '900',
-  },
-  previewTable: {
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  previewTableHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
-  previewTableTitle: {
-    flex: 1,
-    fontSize: fontSize.lg,
-    fontWeight: '900',
-  },
-  previewTableAction: {
-    color: colors.primary,
-    fontSize: fontSize.xs,
-    fontWeight: '900',
-  },
-  previewRow: {
-    minHeight: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  previewAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewAvatarText: {
-    color: colors.primary,
-    fontSize: fontSize.xs,
-    fontWeight: '900',
-  },
-  previewRowCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  previewRowName: {
-    fontSize: fontSize.sm,
-    fontWeight: '900',
-  },
-  previewRowMeta: {
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  previewStatus: {
-    borderRadius: radius.pill,
-    backgroundColor: colors.successContainer,
-    color: colors.success,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 5,
-    fontSize: 8,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  previewStatusPending: {
-    backgroundColor: colors.primary + '12',
-    color: colors.primary,
-  },
-  previewFinance: {
-    borderRadius: radius.xl,
-    backgroundColor: colors.successContainer,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  previewFinanceText: {
-    flex: 1,
-    fontSize: fontSize.xs,
-    lineHeight: 17,
-    fontWeight: '800',
-  },
   formPanel: {
     flex: 1,
     borderRadius: radius.xxl,
     padding: spacing.lg,
     gap: spacing.lg,
     ...shadow.card,
+  },
+  claimStatusPanel: {
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+    borderRadius: radius.xxl,
+    padding: spacing.xl,
+    alignItems: 'center',
+    gap: spacing.md,
+    ...shadow.card,
+  },
+  claimStatusIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.xl,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  claimStatusLoading: {
+    fontSize: fontSize.sm,
+    fontWeight: '800',
+  },
+  claimStatusTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  claimStatusMessage: {
+    maxWidth: 560,
+    fontSize: fontSize.md,
+    lineHeight: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  claimStatusSpotName: {
+    fontWeight: '900',
+  },
+  claimStatusOwner: {
+    fontWeight: '900',
+  },
+  claimStatusHelp: {
+    maxWidth: 520,
+    fontSize: fontSize.sm,
+    lineHeight: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  claimStatusActions: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  claimStatusButton: {
+    minWidth: 210,
+  },
+  claimStatusError: {
+    textAlign: 'center',
+    fontSize: fontSize.xs,
+    fontWeight: '700',
   },
   formHeader: {
     flexDirection: 'row',
@@ -678,6 +605,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 17,
     marginTop: 3,
+  },
+  formHint: {
+    fontSize: 10,
+    fontWeight: '700',
+    lineHeight: 15,
+    marginTop: spacing.xs,
   },
   fieldGrid: {
     gap: spacing.lg,
@@ -743,5 +676,41 @@ const styles = StyleSheet.create({
   needText: {
     fontSize: fontSize.xs,
     fontWeight: '900',
+  },
+  helperText: {
+    fontSize: fontSize.xs,
+    lineHeight: 17,
+    fontWeight: '600',
+  },
+  uploadButton: {
+    minHeight: 48,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  uploadButtonText: {
+    color: colors.primary,
+    fontSize: fontSize.sm,
+    fontWeight: '900',
+  },
+  documentRow: {
+    minHeight: 44,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  documentName: {
+    flex: 1,
+    fontSize: fontSize.xs,
+    fontWeight: '800',
+  },
+  disabled: {
+    opacity: 0.55,
   },
 });

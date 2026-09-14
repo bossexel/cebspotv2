@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowRight, BellRing, Calendar, CheckCircle2, Users } from 'lucide-react-native';
+import { ArrowRight, BellRing, Calendar, CheckCircle2, CircleX, Users } from 'lucide-react-native';
 import { AppButton } from '../../src/components/AppButton';
 import { ReservationTermsCard } from '../../src/components/ReservationTermsCard';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
+import { clubTableDisplayName } from '../../src/constants/clubFloorPlan';
 import { colors } from '../../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../../src/constants/design';
 import { useAuth } from '../../src/hooks/useAuth';
@@ -37,32 +38,48 @@ function DetailRow({
   icon?: React.ReactNode;
   accent?: boolean;
 }) {
+  const { appColors } = useTheme();
   return (
     <View style={styles.detail}>
       <View style={styles.detailLabelRow}>
         {icon}
-        <Text style={styles.detailLabel}>{label}</Text>
+        <Text style={[styles.detailLabel, { color: appColors.onSurfaceVariant }]}>{label}</Text>
       </View>
-      <Text style={[styles.detailValue, accent && styles.amount]}>{value}</Text>
+      <Text style={[styles.detailValue, { color: appColors.onSurface }, accent && styles.amount]}>{value}</Text>
     </View>
   );
 }
 
 export default function BookingConfirmedScreen() {
-  const { id } = useLocalSearchParams<{ id: string; paymentReturn?: string }>();
+  const { id, paymentReturn } = useLocalSearchParams<{ id: string; paymentReturn?: string }>();
   const router = useRouter();
   const { appColors } = useTheme();
   const { profile } = useAuth();
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [loading, setLoading] = useState(true);
   const [showTerms, setShowTerms] = useState(true);
+  const [voidingPayment, setVoidingPayment] = useState(false);
   const confirmationColors = { ...colors, surface: colors.primary };
 
   useEffect(() => {
     async function load() {
       if (!id) return;
       try {
-        setReservation(await reservationService.getReservationById(id));
+        let nextReservation = await reservationService.getReservationById(id);
+        if (
+          paymentReturn === 'cancel' &&
+          nextReservation &&
+          ['paymongo_gcash', 'paymongo_qrph'].includes(nextReservation.payment_method ?? '') &&
+          nextReservation.payment_status !== 'paid'
+        ) {
+          try {
+            await reservationService.voidUnpaidReservation(id, 'PayMongo checkout was cancelled or abandoned.');
+            nextReservation = await reservationService.getReservationById(id);
+          } catch (error) {
+            console.error('Unable to void cancelled PayMongo reservation:', error);
+          }
+        }
+        setReservation(nextReservation);
       } catch (error) {
         console.error('Unable to load reservation:', error);
       } finally {
@@ -71,11 +88,11 @@ export default function BookingConfirmedScreen() {
     }
 
     load();
-  }, [id]);
+  }, [id, paymentReturn]);
 
   useEffect(() => {
     const shouldRefreshPayment =
-      id && reservation?.payment_method === 'paymongo_gcash' && reservation.payment_status === 'pending';
+      Boolean(id && ['paymongo_gcash', 'paymongo_qrph'].includes(reservation?.payment_method ?? '') && reservation?.payment_status === 'pending');
     if (!shouldRefreshPayment) return;
 
     const interval = setInterval(async () => {
@@ -109,34 +126,66 @@ export default function BookingConfirmedScreen() {
 
   const requiresPayment = reservation.payment_required || reservation.reservation_type === 'paid';
   const isPaid = reservation.payment_status === 'paid';
-  const isPaymongoGcash = reservation.payment_method === 'paymongo_gcash';
-  const hasSubmittedPayment = Boolean(reservation.payment_reference || reservation.payment_proof_url || isPaymongoGcash);
-  const customerName = formatAccountName(profile?.display_name, profile?.email);
-  const customerEmail = profile?.email || 'Not provided';
-  const customerPhone = reservation.payer_gcash_number || 'Not provided';
-  const tableNumber = reservation.table_id || 'Not provided';
+  const isCancelled = reservation.status === 'cancelled';
+  const isCheckedIn = reservation.status === 'checked_in';
+  const isNoShow = reservation.status === 'no_show';
+  const isPaymongoCheckout = ['paymongo_gcash', 'paymongo_qrph'].includes(reservation.payment_method ?? '');
+  const isPaymongoQrph = reservation.payment_method === 'paymongo_qrph';
+  const hasSubmittedPayment = Boolean(reservation.payment_reference || reservation.payment_proof_url || isPaymongoCheckout);
+  const customerName = reservation.guest_name || formatAccountName(profile?.display_name, profile?.email);
+  const customerEmail = reservation.guest_email || profile?.email || 'Not provided';
+  const customerPhone = reservation.guest_phone || reservation.payer_gcash_number || 'Not provided';
+  const tableNumber = reservation.table_id ? clubTableDisplayName(reservation.table_id) : 'Not provided';
   const bookingId = getReservationBookingId(reservation);
   const uniqueId = getReservationUniqueId(reservation);
   const guestCount = formatGuestCount(reservation.guest_count ?? reservation.guests);
   const dateTime = formatReservationDateTime(reservation);
-  const title = requiresPayment
+  const title = isNoShow
+    ? 'Marked as No Show'
+    : isCheckedIn
+    ? 'Guest Arrived'
+    : isCancelled
+    ? 'Reservation Cancelled'
+    : requiresPayment
     ? isPaid
       ? 'Reservation Confirmed'
-      : isPaymongoGcash
+      : isPaymongoCheckout
       ? 'Payment Processing'
       : hasSubmittedPayment
       ? 'Payment Under Review'
       : 'Reservation Pending Payment'
     : 'Reservation Confirmed';
-  const subtitle = requiresPayment
+  const subtitle = isNoShow
+    ? `The spot marked this reservation as a no-show. The table has been released under the spot's reservation policy.`
+    : isCheckedIn
+    ? 'The spot confirmed your arrival. Your table remains assigned to this reservation.'
+    : isCancelled
+    ? 'Payment was not completed, so the reservation was voided and the table is available again.'
+    : requiresPayment
     ? isPaid
       ? 'Your payment was confirmed. Your reservation details are ready.'
-      : isPaymongoGcash
-      ? 'Finish the GCash checkout. This page will update once PayMongo confirms the payment.'
+      : isPaymongoCheckout
+      ? `Finish the PayMongo ${isPaymongoQrph ? 'QR Ph' : 'GCash'} checkout. This page will update once PayMongo confirms the payment.`
       : hasSubmittedPayment
       ? 'Your GCash details were submitted. The spot owner will confirm the payment before final approval.'
       : 'Your reservation has been created. Please complete the reservation fee payment to secure your booking.'
     : 'Your booking is confirmed. Keep these reservation details for your visit.';
+
+  async function cancelPaymentAndReleaseTable() {
+    if (!id || isCancelled || isPaid) return;
+
+    try {
+      setVoidingPayment(true);
+      await reservationService.voidUnpaidReservation(id, 'User cancelled the PayMongo checkout.');
+      const latest = await reservationService.getReservationById(id);
+      if (latest) setReservation(latest);
+    } catch (error: any) {
+      console.error('Unable to release unpaid reservation:', error);
+      Alert.alert('Unable to release table', error?.message ?? 'Please try again.');
+    } finally {
+      setVoidingPayment(false);
+    }
+  }
 
   return (
     <ScreenContainer appColors={confirmationColors} scroll padded>
@@ -148,18 +197,18 @@ export default function BookingConfirmedScreen() {
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
 
-      <View style={styles.ticket}>
+      <View style={[styles.ticket, { backgroundColor: appColors.surfaceRaised }]}>
         <View style={styles.detailGrid}>
           <DetailRow label="Spot" value={reservation.spot_name} />
           <DetailRow label="Status" value={getReservationStatusLabel(reservation.status)} />
 
-          <View style={styles.sectionDivider} />
+          <View style={[styles.sectionDivider, { backgroundColor: appColors.outlineVariant }]} />
           <Text style={styles.sectionTitle}>Personal Details</Text>
           <DetailRow label="Name" value={customerName} />
           <DetailRow label="E-mail" value={customerEmail} />
           <DetailRow label="Phone" value={customerPhone} />
 
-          <View style={styles.sectionDivider} />
+          <View style={[styles.sectionDivider, { backgroundColor: appColors.outlineVariant }]} />
           <Text style={styles.sectionTitle}>Booking Details</Text>
           <DetailRow label="Date & Time" value={dateTime} icon={<Calendar size={14} color={colors.primary} />} />
           <DetailRow label="Table" value={tableNumber} />
@@ -167,16 +216,20 @@ export default function BookingConfirmedScreen() {
           <DetailRow label="Booking ID" value={bookingId} />
           <DetailRow label="Unique ID" value={uniqueId} />
 
-          <View style={styles.sectionDivider} />
+          <View style={[styles.sectionDivider, { backgroundColor: appColors.outlineVariant }]} />
           <DetailRow label="Reservation Type" value={getReservationTypeLabel(reservation)} accent />
           <DetailRow label="Payment" value={getPaymentStatusLabel(reservation.payment_status)} accent={requiresPayment} />
           {requiresPayment && (
             <View style={styles.paymentNotice}>
-              <Text style={styles.paymentNoticeText}>
-                {isPaid
+              <Text style={[styles.paymentNoticeText, { color: appColors.onSurfaceVariant }]}>
+                {isNoShow
+                  ? 'The owner marked this reservation as a no-show. The deposit remains subject to the accepted reservation terms.'
+                  : isCancelled
+                  ? 'No payment was recorded. This reservation no longer holds the table.'
+                  : isPaid
                   ? 'Payment confirmed. Your reservation is ready for verification at the venue.'
-                  : isPaymongoGcash
-                  ? 'Complete the PayMongo GCash checkout. CebSpot will confirm this reservation automatically after PayMongo reports the payment as paid.'
+                  : isPaymongoCheckout
+                  ? `Complete the PayMongo ${isPaymongoQrph ? 'QR Ph' : 'GCash'} checkout. CebSpot will confirm this reservation automatically after PayMongo reports the payment as paid.`
                   : hasSubmittedPayment
                   ? 'Payment proof submitted. Your reservation will remain pending until the owner verifies the GCash transfer.'
                   : 'Please pay the reservation fee directly to the spot owner or cashier. Your reservation will remain pending until confirmed.'}
@@ -187,7 +240,18 @@ export default function BookingConfirmedScreen() {
       </View>
 
       {showTerms && (
-        <ReservationTermsCard appColors={appColors} onContinue={() => setShowTerms(false)} />
+        <ReservationTermsCard appColors={appColors} paymentRequired={requiresPayment} onContinue={() => setShowTerms(false)} />
+      )}
+
+      {isPaymongoCheckout && reservation.payment_status === 'pending' && !isCancelled && (
+        <AppButton
+          label="Cancel Payment & Release Table"
+          variant="secondary"
+          onPress={cancelPaymentAndReleaseTable}
+          loading={voidingPayment}
+          icon={<CircleX size={16} color={colors.primary} />}
+          style={styles.releaseButton}
+        />
       )}
 
       <View style={styles.actions}>
@@ -254,7 +318,6 @@ const styles = StyleSheet.create({
     maxWidth: 280,
   },
   ticket: {
-    backgroundColor: colors.white,
     borderRadius: 38,
     padding: spacing.xl,
     alignItems: 'center',
@@ -273,14 +336,12 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   detailLabel: {
-    color: colors.onSurfaceVariant,
     fontSize: fontSize.xs,
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 1.5,
   },
   detailValue: {
-    color: colors.onSurface,
     fontSize: fontSize.md,
     fontWeight: '900',
   },
@@ -289,7 +350,6 @@ const styles = StyleSheet.create({
   },
   sectionDivider: {
     height: 1,
-    backgroundColor: colors.outlineVariant + '66',
     marginVertical: spacing.xs,
   },
   sectionTitle: {
@@ -306,7 +366,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary + '10',
   },
   paymentNoticeText: {
-    color: colors.onSurfaceVariant,
     fontSize: fontSize.xs,
     lineHeight: 17,
     fontWeight: '800',
@@ -316,6 +375,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginTop: spacing.xl,
     marginBottom: spacing.md,
+  },
+  releaseButton: {
+    marginTop: spacing.md,
   },
   actionButton: {
     flex: 1,

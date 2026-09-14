@@ -14,6 +14,18 @@ export type SpotSubmissionNotificationStatus = {
   detail?: string;
 };
 
+function isNotifyKitUnavailable(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return /NotifeeApiModule|TurboModuleRegistry|getEnforcing|native binary|native module/i.test(message);
+}
+
+function disableNotifyKit(error: unknown, message: string) {
+  notifyKitModule = null;
+  if (!isNotifyKitUnavailable(error)) {
+    console.warn(message, error);
+  }
+}
+
 async function loadNotifyKit() {
   if (Platform.OS !== 'android') return null;
 
@@ -22,8 +34,7 @@ async function loadNotifyKit() {
   try {
     notifyKitModule = require('react-native-notify-kit') as NotifyKitModule;
   } catch (error) {
-    console.warn('Native spot submission notifications are unavailable in this build:', error);
-    notifyKitModule = null;
+    disableNotifyKit(error, 'Native spot submission notifications are unavailable in this build:');
   }
 
   return notifyKitModule;
@@ -32,28 +43,40 @@ async function loadNotifyKit() {
 function registerForegroundRunner(module: NotifyKitModule) {
   if (foregroundRunnerRegistered) return;
 
-  module.default.registerForegroundService(() => new Promise<void>(() => undefined));
-  foregroundRunnerRegistered = true;
+  try {
+    module.default.registerForegroundService(() => new Promise<void>(() => undefined));
+    foregroundRunnerRegistered = true;
+  } catch (error) {
+    disableNotifyKit(error, 'Unable to register spot submission foreground notifications:');
+  }
 }
 
 async function prepareNotifyKit() {
   const module = await loadNotifyKit();
   if (!module) return null;
 
-  registerForegroundRunner(module);
-  let settings = await module.default.getNotificationSettings();
-  if (settings.authorizationStatus <= module.AuthorizationStatus.NOT_DETERMINED) {
-    settings = await module.default.requestPermission();
+  try {
+    registerForegroundRunner(module);
+    let settings = await module.default.getNotificationSettings();
+    if (settings.authorizationStatus <= module.AuthorizationStatus.NOT_DETERMINED) {
+      settings = await module.default.requestPermission();
+    }
+    if (settings.authorizationStatus <= module.AuthorizationStatus.DENIED) {
+      throw new Error('Notifications are disabled for CebSpot in Android settings.');
+    }
+    await module.default.createChannel({
+      id: channelId,
+      name: 'Spot submissions',
+      description: 'Progress and results for submitted CebSpot locations',
+      importance: module.AndroidImportance.LOW,
+    });
+  } catch (error) {
+    if (isNotifyKitUnavailable(error)) {
+      disableNotifyKit(error, 'Native spot submission notifications are unavailable in this build:');
+      return null;
+    }
+    throw error;
   }
-  if (settings.authorizationStatus <= module.AuthorizationStatus.DENIED) {
-    throw new Error('Notifications are disabled for CebSpot in Android settings.');
-  }
-  await module.default.createChannel({
-    id: channelId,
-    name: 'Spot submissions',
-    description: 'Progress and results for submitted CebSpot locations',
-    importance: module.AndroidImportance.LOW,
-  });
 
   return module;
 }

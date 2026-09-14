@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import {
   Award,
   BadgeCheck,
@@ -18,12 +19,15 @@ import {
   Sun,
 } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { ConfirmationModal } from '../src/components/ConfirmationModal';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { colors } from '../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../src/constants/design';
 import { useAuth } from '../src/hooks/useAuth';
 import { useTheme } from '../src/hooks/useTheme';
 import { gamificationService } from '../src/services/gamificationService';
+import { profilePhotoService } from '../src/services/profilePhotoService';
+import { profileService } from '../src/services/profileService';
 import { reservationService } from '../src/services/reservationService';
 import { savedSpotService } from '../src/services/savedSpotService';
 import type { GamificationSummary } from '../src/types';
@@ -39,11 +43,14 @@ function formatActivityType(activityType: string) {
 export default function ProfileScreen() {
   const router = useRouter();
   const { appColors, isDarkMode, toggleDarkMode } = useTheme();
-  const { profile, logOut } = useAuth();
+  const { profile, logOut, refreshProfile } = useAuth();
   const [reservationCount, setReservationCount] = useState(0);
   const [savedSpotCount, setSavedSpotCount] = useState(0);
   const [gamificationSummary, setGamificationSummary] = useState<GamificationSummary | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [logoutConfirmationOpen, setLogoutConfirmationOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [uploadingProfilePhoto, setUploadingProfilePhoto] = useState(false);
 
   useEffect(() => {
     async function loadStats() {
@@ -92,11 +99,50 @@ export default function ProfileScreen() {
   );
 
   async function logout() {
+    if (loggingOut) return;
     try {
+      setLoggingOut(true);
       await logOut();
+      setLogoutConfirmationOpen(false);
       router.replace('/login');
     } catch (error: any) {
       Alert.alert('Logout failed', error.message ?? 'Please try again.');
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
+  async function changeProfilePhoto() {
+    if (!profile?.id || uploadingProfilePhoto) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Photo access needed', 'Allow photo access to choose a CebSpot profile picture.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.9,
+    });
+    if (result.canceled || !result.assets[0]) return;
+
+    try {
+      setUploadingProfilePhoto(true);
+      const asset = result.assets[0];
+      const photoUrl = await profilePhotoService.upload(profile.id, {
+        uri: asset.uri,
+        width: asset.width,
+        fileSize: asset.fileSize,
+      });
+      await profileService.updateProfile(profile.id, { photo_url: photoUrl });
+      await refreshProfile();
+    } catch (error: any) {
+      Alert.alert('Profile picture failed', error?.message ?? 'Please choose another image and try again.');
+    } finally {
+      setUploadingProfilePhoto(false);
     }
   }
 
@@ -116,12 +162,27 @@ export default function ProfileScreen() {
     <ScreenContainer appColors={appColors} showBottomNav scroll>
       <View style={styles.header}>
         <View style={styles.profileRow}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Change profile picture"
+            disabled={uploadingProfilePhoto}
+            onPress={changeProfilePhoto}
+            style={({ pressed }) => [styles.avatar, pressed && styles.avatarPressed]}
+          >
+            {profile?.photo_url ? (
+              <Image source={{ uri: profile.photo_url }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{initial}</Text>
+            )}
+            {uploadingProfilePhoto && (
+              <View style={styles.avatarLoading}>
+                <ActivityIndicator color={colors.white} />
+              </View>
+            )}
             <View style={styles.award}>
-              <Award size={15} color={colors.white} fill={colors.white} />
+              <Plus size={17} color={colors.white} />
             </View>
-          </View>
+          </Pressable>
           <View style={styles.nameBlock}>
             <Text style={[styles.name, { color: appColors.onSurface }]}>{name}</Text>
             <View style={styles.location}>
@@ -347,10 +408,30 @@ export default function ProfileScreen() {
         </Pressable>
       </View>
 
-      <Pressable style={styles.logout} onPress={logout}>
+      <Pressable style={styles.logout} onPress={() => setLogoutConfirmationOpen(true)}>
         <LogOut size={20} color={colors.white} />
         <Text style={styles.logoutText}>Logout</Text>
       </Pressable>
+
+      <ConfirmationModal
+        visible={logoutConfirmationOpen}
+        title="Log out of CebSpot?"
+        message="Are you sure you want to log out of this account?"
+        onRequestClose={() => setLogoutConfirmationOpen(false)}
+        actions={[
+          {
+            label: 'Cancel',
+            disabled: loggingOut,
+            onPress: () => setLogoutConfirmationOpen(false),
+          },
+          {
+            label: loggingOut ? 'Logging Out...' : 'Log Out',
+            variant: 'destructive',
+            disabled: loggingOut,
+            onPress: () => void logout(),
+          },
+        ]}
+      />
 
       <Modal visible={settingsOpen} transparent animationType="fade" onRequestClose={() => setSettingsOpen(false)}>
         <Pressable style={styles.modalScrim} onPress={() => setSettingsOpen(false)}>
@@ -369,22 +450,6 @@ export default function ProfileScreen() {
                 <Text style={[styles.sheetCloseText, { color: appColors.onSurface }]}>×</Text>
               </Pressable>
             </View>
-            <Pressable
-              style={[styles.listItem, { backgroundColor: appColors.surfaceLow }]}
-              onPress={() => {
-                setSettingsOpen(false);
-                router.push('/owner-dashboard');
-              }}
-            >
-              <View style={styles.settingIcon}>
-                <Store size={20} color={colors.primary} />
-              </View>
-              <View style={styles.listCopy}>
-                <Text style={[styles.listTitle, { color: appColors.onSurface }]}>Store Owner Dashboard</Text>
-                <Text style={[styles.listSub, { color: appColors.onSurfaceVariant }]}>Test live Supabase owner tools</Text>
-              </View>
-              <ChevronRight size={20} color={appColors.onSurfaceVariant} />
-            </Pressable>
             <Pressable
               style={[styles.listItem, { backgroundColor: appColors.surfaceLow }]}
               onPress={() => {
@@ -439,7 +504,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
+    overflow: 'visible',
     ...shadow.card,
+  },
+  avatarPressed: {
+    opacity: 0.82,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: radius.xl,
+  },
+  avatarLoading: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#00000066',
   },
   avatarText: {
     color: colors.white,

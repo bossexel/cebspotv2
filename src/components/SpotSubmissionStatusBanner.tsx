@@ -43,7 +43,7 @@ export function SpotSubmissionStatusBanner() {
           styles.banner,
           {
             bottom: Math.max(insets.bottom, spacing.sm) + 82,
-            backgroundColor: appColors.white,
+            backgroundColor: appColors.surfaceRaised,
             borderColor: accent + '38',
           },
         ]}

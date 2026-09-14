@@ -45,6 +45,13 @@ export const shadow = {
 
 export const tabBarHeight = 92;
 
+export const bottomNavLayout = {
+  minHeight: 74,
+  bottom: spacing.md,
+  raisedContent: spacing.sm,
+  carouselGap: spacing.sm,
+};
+
 export const categories = [
   'Specialty Coffee',
   'Outdoor',

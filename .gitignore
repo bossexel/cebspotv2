@@ -7,4 +7,12 @@ coverage/
 .env*
 !.env.example
 .chrome-debug-profile/
+.expo/
 .expo-web-check/
+.codex-tmp/
+.codex-*.png
+assets/test-cebspot-club/
+.idea/
+.vscode/
+*.code-workspace
+supabase/.temp/

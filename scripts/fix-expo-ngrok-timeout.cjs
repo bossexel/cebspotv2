@@ -19,10 +19,10 @@ const previousPatched =
   "const TUNNEL_TIMEOUT = Number(process.env.EXPO_NGROK_TUNNEL_TIMEOUT || 60 * 1000);";
 const patched =
   "const TUNNEL_TIMEOUT = Number(process.env.EXPO_NGROK_TUNNEL_TIMEOUT || 120 * 1000);";
-const connectionPropsPattern =
-  /    async _getConnectionPropsAsync\(\) \{\r?\n        const userDefinedSubdomain = _env\.env\.EXPO_TUNNEL_SUBDOMAIN;/;
-const connectionPropsPatched =
-  '    async _getConnectionPropsAsync() {\n        if (process.env.EXPO_TUNNEL_RANDOM_URL !== "0") {\n            debug("Using random ngrok URL");\n            return {};\n        }\n        const userDefinedSubdomain = _env.env.EXPO_TUNNEL_SUBDOMAIN;';
+// Expo's bundled credential is scoped to its tunnel domain. Requesting a
+// random ngrok.app hostname instead fails with ERR_NGROK_316.
+const legacyRandomUrlPattern =
+  /        if \(process\.env\.EXPO_TUNNEL_RANDOM_URL(?: !== "0")?\) \{\r?\n            debug\("Using random ngrok URL"\);\r?\n            return \{\};\r?\n        \}\r?\n/;
 const globalConfigOriginal =
   'const configPath = _path().join((0, _userSettings.getSettingsDirectory)(), "ngrok.yml");';
 const globalConfigPatched =
@@ -56,18 +56,8 @@ if (!source.includes(patched) && (source.includes(original) || source.includes(p
   console.warn("[expo-ngrok-timeout] Expected timeout line not found; skipping patch.");
 }
 
-if (!source.includes("EXPO_TUNNEL_RANDOM_URL") && connectionPropsPattern.test(source)) {
-  source = source.replace(connectionPropsPattern, connectionPropsPatched);
-  changed = true;
-} else if (!source.includes("EXPO_TUNNEL_RANDOM_URL")) {
-  console.warn("[expo-ngrok-timeout] Expected connection props block not found; skipping patch.");
-}
-
-if (source.includes("if (process.env.EXPO_TUNNEL_RANDOM_URL) {")) {
-  source = source.replace(
-    "if (process.env.EXPO_TUNNEL_RANDOM_URL) {",
-    'if (process.env.EXPO_TUNNEL_RANDOM_URL !== "0") {'
-  );
+if (legacyRandomUrlPattern.test(source)) {
+  source = source.replace(legacyRandomUrlPattern, "");
   changed = true;
 }
 

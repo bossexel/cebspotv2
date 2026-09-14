@@ -1,5 +1,5 @@
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
-import type { LocalUpdate, LocalUpdateComment, NewLocalUpdate, SpotVoteResult } from '../types';
+import type { LocalUpdate, LocalUpdateComment, NewLocalUpdate, SpotVoteResult, SpotVoteType } from '../types';
 
 const fallbackLocalUpdates: LocalUpdate[] = [
   {
@@ -40,7 +40,7 @@ const fallbackLocalUpdates: LocalUpdate[] = [
 
 const localUpdates: LocalUpdate[] = [...fallbackLocalUpdates];
 const localComments = new Map<string, LocalUpdateComment[]>();
-const localVotes = new Set<string>();
+const localVotes = new Map<string, SpotVoteType>();
 
 function isMissingMediaUrlsColumn(error: { message?: string } | null) {
   return /media_urls|schema cache|column/i.test(error?.message ?? '');
@@ -80,6 +80,7 @@ function createLocalFallback(update: NewLocalUpdate): LocalUpdate {
 function normalizeComment(row: any): LocalUpdateComment {
   return {
     ...row,
+    parent_comment_id: typeof row.parent_comment_id === 'string' ? row.parent_comment_id : null,
     user_photo_url: typeof row.user_photo_url === 'string' ? row.user_photo_url.trim() || null : null,
   } as LocalUpdateComment;
 }
@@ -100,6 +101,27 @@ export const localUpdateService = {
 
     const updates = (data ?? []).map(normalizeLocalUpdate);
     return updates.length ? updates : localUpdates.slice(0, limit);
+  },
+
+  async getLocalUpdateForSpotSubmission(submissionId: string): Promise<LocalUpdate | null> {
+    if (!hasSupabaseConfig) {
+      return localUpdates.find((item) => item.source_type === 'spot_submission' && item.source_id === submissionId) ?? null;
+    }
+
+    const { data, error } = await supabase
+      .from('local_updates')
+      .select('*')
+      .eq('source_type', 'spot_submission')
+      .eq('source_id', submissionId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      console.error('Unable to load spot submission post:', error);
+      return null;
+    }
+
+    return data ? normalizeLocalUpdate(data) : null;
   },
 
   async createLocalUpdate(update: NewLocalUpdate): Promise<LocalUpdate> {
@@ -137,6 +159,19 @@ export const localUpdateService = {
       return fallbackMedia;
     }
 
+    const groupedMedia = await supabase.rpc('get_spot_submission_group_media', {
+      target_submission_id: update.source_id,
+    });
+    if (!groupedMedia.error) {
+      const groupedRows = (groupedMedia.data ?? []) as Array<{ media_url?: unknown }>;
+      const mediaUrls = groupedRows
+        .map((row: { media_url?: unknown }) => (typeof row.media_url === 'string' ? row.media_url.trim() : ''))
+        .filter((url: string): url is string => Boolean(url));
+      if (mediaUrls.length) return [...new Set(mediaUrls)];
+    } else if (!/get_spot_submission_group_media|schema cache|function/i.test(groupedMedia.error.message ?? '')) {
+      console.error('Unable to load grouped spot media:', groupedMedia.error);
+    }
+
     const { data, error } = await supabase
       .from('spot_submissions')
       .select('images')
@@ -155,28 +190,92 @@ export const localUpdateService = {
     return submissionMedia.length ? [...new Set(submissionMedia)] : fallbackMedia;
   },
 
-  async toggleSpotSubmissionVote(submissionId: string): Promise<SpotVoteResult> {
+  async voteOnSpotSubmission(submissionId: string, voteType: SpotVoteType): Promise<SpotVoteResult> {
     if (!hasSupabaseConfig) {
       const update = localUpdates.find((item) => item.source_type === 'spot_submission' && item.source_id === submissionId);
-      if (!update) return { vote_count: 0, voted: false };
-      const voted = !localVotes.has(submissionId);
-      if (voted) localVotes.add(submissionId);
+      if (!update) return { vote_count: 0, vote_type: null, voted: false };
+      const previousVote = localVotes.get(submissionId) ?? null;
+      const nextVote = previousVote === voteType ? null : voteType;
+      const previousScore = previousVote === 'up' ? 1 : previousVote === 'down' ? -1 : 0;
+      const nextScore = nextVote === 'up' ? 1 : nextVote === 'down' ? -1 : 0;
+      update.spot_count += nextScore - previousScore;
+      if (nextVote) localVotes.set(submissionId, nextVote);
       else localVotes.delete(submissionId);
-      update.spot_count = Math.max(0, update.spot_count + (voted ? 1 : -1));
-      return { vote_count: update.spot_count, voted };
+      return {
+        vote_count: update.spot_count,
+        vote_type: nextVote,
+        voted: Boolean(nextVote),
+      };
     }
 
-    const { data, error } = await supabase.rpc('toggle_spot_submission_vote', {
+    const { data, error } = await supabase.rpc('vote_on_spot_submission', {
       target_submission_id: submissionId,
+      next_vote_type: voteType,
     });
-    if (error) throw error;
+    if (error) {
+      const missingVoteRpc = /vote_on_spot_submission|schema cache|function/i.test(error.message ?? '');
+      if (voteType === 'up' && missingVoteRpc) {
+        const fallback = await supabase.rpc('toggle_spot_submission_vote', {
+          target_submission_id: submissionId,
+        });
+        if (fallback.error) throw fallback.error;
+        const fallbackResult = (Array.isArray(fallback.data) ? fallback.data[0] : fallback.data) as SpotVoteResult | null;
+        if (!fallbackResult) throw new Error('Unable to update this vote.');
+        return {
+          vote_count: Number(fallbackResult.vote_count ?? 0),
+          vote_type: fallbackResult.voted ? 'up' : null,
+          voted: Boolean(fallbackResult.voted),
+        };
+      }
+      if (missingVoteRpc) {
+        throw new Error('Downvotes need the updated Supabase voting SQL before they can work.');
+      }
+      throw error;
+    }
     const result = (Array.isArray(data) ? data[0] : data) as SpotVoteResult | null;
     if (!result) throw new Error('Unable to update this vote.');
-    return { vote_count: Number(result.vote_count ?? 0), voted: Boolean(result.voted) };
+    const nextVoteType = result.vote_type === 'up' || result.vote_type === 'down' ? result.vote_type : null;
+    return {
+      vote_count: Number(result.vote_count ?? 0),
+      up_count: result.up_count == null ? undefined : Number(result.up_count),
+      down_count: result.down_count == null ? undefined : Number(result.down_count),
+      vote_type: nextVoteType,
+      voted: Boolean(result.voted ?? nextVoteType),
+    };
+  },
+
+  async toggleSpotSubmissionVote(submissionId: string): Promise<SpotVoteResult> {
+    return this.voteOnSpotSubmission(submissionId, 'up');
+  },
+
+  async getSubmissionVotes(userId: string): Promise<Record<string, SpotVoteType>> {
+    if (!hasSupabaseConfig) return Object.fromEntries(localVotes);
+
+    const { data, error } = await supabase
+      .from('spot_submission_votes')
+      .select('submission_id, vote_type')
+      .eq('user_id', userId);
+    if (error) {
+      console.error('Unable to load spot submission votes:', error);
+      return {};
+    }
+
+    return Object.fromEntries(
+      (data ?? [])
+        .map((row) => {
+          const voteType = row.vote_type === 'up' || row.vote_type === 'down' ? row.vote_type : null;
+          return typeof row.submission_id === 'string' && voteType ? [row.submission_id, voteType] : null;
+        })
+        .filter((entry): entry is [string, SpotVoteType] => Boolean(entry))
+    );
   },
 
   async getVotedSubmissionIds(userId: string): Promise<string[]> {
-    if (!hasSupabaseConfig) return Array.from(localVotes);
+    if (!hasSupabaseConfig) {
+      return Array.from(localVotes.entries())
+        .filter(([, voteType]) => voteType === 'up')
+        .map(([submissionId]) => submissionId);
+    }
 
     const { data, error } = await supabase
       .from('spot_submission_votes')
@@ -210,7 +309,8 @@ export const localUpdateService = {
   async addComment(
     localUpdateId: string,
     body: string,
-    fallbackAuthor: { id: string; name: string; photoUrl?: string | null }
+    fallbackAuthor: { id: string; name: string; photoUrl?: string | null },
+    parentCommentId?: string | null
   ): Promise<LocalUpdateComment> {
     const normalizedBody = body.trim();
     if (!normalizedBody) throw new Error('Write a comment before sending.');
@@ -220,6 +320,7 @@ export const localUpdateService = {
       const comment: LocalUpdateComment = {
         id: `local-comment-${Date.now()}`,
         local_update_id: localUpdateId,
+        parent_comment_id: parentCommentId ?? null,
         user_id: fallbackAuthor.id,
         user_name: fallbackAuthor.name,
         user_photo_url: fallbackAuthor.photoUrl ?? null,
@@ -236,8 +337,25 @@ export const localUpdateService = {
     const { data, error } = await supabase.rpc('add_local_update_comment', {
       target_local_update_id: localUpdateId,
       comment_body: normalizedBody,
+      parent_comment_id: parentCommentId ?? null,
     });
-    if (error) throw error;
+    if (error) {
+      const missingThreadedCommentRpc = /add_local_update_comment|schema cache|function|parent_comment_id/i.test(error.message ?? '');
+      if (!parentCommentId && missingThreadedCommentRpc) {
+        const fallback = await supabase.rpc('add_local_update_comment', {
+          target_local_update_id: localUpdateId,
+          comment_body: normalizedBody,
+        });
+        if (fallback.error) throw fallback.error;
+        const fallbackComment = (Array.isArray(fallback.data) ? fallback.data[0] : fallback.data) as LocalUpdateComment | null;
+        if (!fallbackComment) throw new Error('Unable to post this comment.');
+        return normalizeComment(fallbackComment);
+      }
+      if (missingThreadedCommentRpc) {
+        throw new Error('Replies need the updated Supabase comments SQL before they can work.');
+      }
+      throw error;
+    }
     const comment = (Array.isArray(data) ? data[0] : data) as LocalUpdateComment | null;
     if (!comment) throw new Error('Unable to post this comment.');
     return normalizeComment(comment);
@@ -285,7 +403,11 @@ export const localUpdateService = {
 
   subscribeToVotes(userId: string, callback: (submissionIds: string[]) => void) {
     if (!hasSupabaseConfig) {
-      callback(Array.from(localVotes));
+      callback(
+        Array.from(localVotes.entries())
+          .filter(([, voteType]) => voteType === 'up')
+          .map(([submissionId]) => submissionId)
+      );
       return () => undefined;
     }
 
@@ -296,6 +418,27 @@ export const localUpdateService = {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'spot_submission_votes', filter: `user_id=eq.${userId}` },
         async () => callback(await this.getVotedSubmissionIds(userId))
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  subscribeToSubmissionVotes(userId: string, callback: (votesBySubmissionId: Record<string, SpotVoteType>) => void) {
+    if (!hasSupabaseConfig) {
+      callback(Object.fromEntries(localVotes));
+      return () => undefined;
+    }
+
+    const channelName = `spot-vote-map-${userId}-${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'spot_submission_votes', filter: `user_id=eq.${userId}` },
+        async () => callback(await this.getSubmissionVotes(userId))
       )
       .subscribe();
 

@@ -24,7 +24,7 @@ export function SpotCard({ spot, onPress, appColors, compact }: SpotCardProps) {
       style={({ pressed }) => [
         styles.card,
         compact && styles.compactCard,
-        { backgroundColor: appColors.white },
+        { backgroundColor: appColors.surfaceRaised },
         pressed && styles.pressed,
       ]}
     >

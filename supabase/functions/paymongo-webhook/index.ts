@@ -2,11 +2,14 @@ import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import {
   findPaymentByIntent,
   findPaymentByCheckoutSession,
+  getErrorMessage,
   getRequiredEnv,
   makeServiceClient,
   type ReservationPaymentStatus,
   upsertReservationPayment,
 } from '../_shared/paymongo.ts';
+
+const webhookReplayToleranceSeconds = 5 * 60;
 
 function parseSignature(header: string) {
   return Object.fromEntries(
@@ -35,6 +38,17 @@ async function hmacSha256Hex(secret: string, payload: string) {
   return toHex(signature);
 }
 
+function constantTimeEqual(a: string, b: string) {
+  if (a.length !== b.length) return false;
+
+  let mismatch = 0;
+  for (let index = 0; index < a.length; index += 1) {
+    mismatch |= a.charCodeAt(index) ^ b.charCodeAt(index);
+  }
+
+  return mismatch === 0;
+}
+
 async function verifyPaymongoSignature(request: Request, rawBody: string, livemode: boolean) {
   const header = request.headers.get('paymongo-signature') ?? request.headers.get('x-paymongo-signature') ?? '';
   if (!header) throw new Error('Missing PayMongo signature.');
@@ -44,8 +58,14 @@ async function verifyPaymongoSignature(request: Request, rawBody: string, livemo
   const providedSignature = livemode ? parts.li : parts.te;
   if (!timestamp || !providedSignature) throw new Error('Invalid PayMongo signature.');
 
+  const timestampSeconds = Number(timestamp);
+  if (!Number.isFinite(timestampSeconds)) throw new Error('Invalid PayMongo signature timestamp.');
+
+  const ageSeconds = Math.abs(Date.now() / 1000 - timestampSeconds);
+  if (ageSeconds > webhookReplayToleranceSeconds) throw new Error('PayMongo signature timestamp is outside the replay window.');
+
   const expectedSignature = await hmacSha256Hex(getRequiredEnv('PAYMONGO_WEBHOOK_SECRET'), `${timestamp}.${rawBody}`);
-  if (expectedSignature !== providedSignature) throw new Error('PayMongo signature mismatch.');
+  if (!constantTimeEqual(expectedSignature, providedSignature)) throw new Error('PayMongo signature mismatch.');
 }
 
 function findNestedValue(value: unknown, keys: string[]): string | null {
@@ -78,7 +98,10 @@ function statusFromEvent(eventType: string): ReservationPaymentStatus {
     case 'payment.paid':
     case 'payment_intent.succeeded':
       return 'paid';
+    case 'checkout_session.payment.failed':
+    case 'checkout_session.expired':
     case 'payment.failed':
+    case 'qrph.expired':
       return 'failed';
     default:
       return 'pending';
@@ -130,6 +153,17 @@ Deno.serve(async (request) => {
       return jsonResponse({ received: true, ignored: true, reason: 'PayMongo payment is not tracked by CebSpot.' });
     }
 
+    const incomingStatus = statusFromEvent(eventType);
+    if (incomingStatus === 'pending') {
+      return jsonResponse({ received: true, ignored: true, reason: 'Event does not change payment status.' });
+    }
+    if (existingPayment.status === 'paid' && incomingStatus !== 'paid') {
+      return jsonResponse({ received: true, ignored: true, reason: 'A paid transaction cannot be downgraded.' });
+    }
+    if (existingPayment.status === 'expired' && incomingStatus !== 'paid') {
+      return jsonResponse({ received: true, ignored: true, reason: 'This payment attempt was already replaced or expired.' });
+    }
+
     await upsertReservationPayment(
       {
         reservationId: existingPayment.reservation_id,
@@ -139,11 +173,11 @@ Deno.serve(async (request) => {
         providerPaymentIntentId: paymentIntentId ?? existingPayment.provider_payment_intent_id,
         providerPaymentMethodId: existingPayment.provider_payment_method_id,
         providerPaymentId: findNestedValue(eventData, ['payment_id']) ?? getResourceId(eventData) ?? existingPayment.provider_payment_id,
-        paymentMethod: existingPayment.payment_method ?? 'gcash',
-        reservationPaymentMethod: 'paymongo_gcash',
+        paymentMethod: existingPayment.payment_method ?? 'qrph',
+        reservationPaymentMethod: existingPayment.payment_method === 'qrph' ? 'paymongo_qrph' : 'paymongo_gcash',
         checkoutUrl: existingPayment.checkout_url,
         amount: Number(existingPayment.amount),
-        status: statusFromEvent(eventType),
+        status: incomingStatus,
         qrImageUrl: existingPayment.qr_image_url,
         expiresAt: existingPayment.expires_at,
         rawPayload: event,
@@ -153,7 +187,7 @@ Deno.serve(async (request) => {
 
     return jsonResponse({ received: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to process PayMongo webhook.';
+    const message = getErrorMessage(error, 'Unable to process PayMongo webhook.');
     console.error('paymongo-webhook:', error);
     return jsonResponse({ error: message }, 400);
   }

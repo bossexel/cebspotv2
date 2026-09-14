@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,27 +20,73 @@ import {
 } from 'react-native';
 import {
   ArrowLeft,
-  ArrowUpCircle,
+  ArrowDown,
+  ArrowUp,
   Bell,
   CalendarCheck2,
+  Check,
+  Clock3,
+  Flame,
+  Heart,
+  ListFilter,
   MapPin,
   MessageCircle,
   MoreVertical,
+  Navigation,
   PlayCircle,
   Send,
   User,
   Users,
   X,
 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { colors } from '../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../src/constants/design';
 import { useAuth } from '../src/hooks/useAuth';
+import { useLocation } from '../src/hooks/useLocation';
 import { useTheme } from '../src/hooks/useTheme';
 import { activityService } from '../src/services/activityService';
 import { localUpdateService } from '../src/services/localUpdateService';
-import type { Activity, LocalUpdate, LocalUpdateComment } from '../src/types';
+import type { Activity, LocalUpdate, LocalUpdateComment, SpotVoteType } from '../src/types';
+import { calculateHaversineDistanceKm } from '../src/utils/distance';
+
+type LocalUpdateSort = 'nearest' | 'newest' | 'popular';
+
+const localUpdateSortOptions: Array<{
+  value: LocalUpdateSort;
+  label: string;
+  description: string;
+  icon: typeof Navigation;
+}> = [
+  {
+    value: 'nearest',
+    label: 'Nearest',
+    description: 'Updates closest to your location',
+    icon: Navigation,
+  },
+  {
+    value: 'newest',
+    label: 'Newest',
+    description: 'Most recently posted updates',
+    icon: Clock3,
+  },
+  {
+    value: 'popular',
+    label: 'Popular',
+    description: 'Most Spot votes and comments',
+    icon: Flame,
+  },
+];
+
+function timestamp(value: string) {
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function hasUpdateCoordinates(update: LocalUpdate) {
+  return Number.isFinite(update.latitude) && Number.isFinite(update.longitude);
+}
 
 function formatUpdateTime(createdAt: string) {
   const elapsedMs = Date.now() - new Date(createdAt).getTime();
@@ -67,6 +113,10 @@ function getReadStorageKey(userId?: string) {
 }
 
 function getNotificationTitle(item: Activity) {
+  if (item.type === 'spot_comment') return 'New comment';
+  if (item.type === 'spot_liked') return 'New like';
+  if (item.type === 'review_comment') return 'Review comment';
+  if (item.type === 'review_liked') return 'Review liked';
   if (item.type === 'reservation_approved') return 'Reservation approved';
   if (item.type.includes('reservation')) return 'Reservation update';
   if (item.type.includes('circle')) return 'Circle activity';
@@ -104,9 +154,16 @@ function getPreviewMedia(item?: LocalUpdate | null) {
   return media;
 }
 
+function formatSpotScore(score: number) {
+  if (score > 0) return `+${score}`;
+  return String(score);
+}
+
 function NotificationTypeIcon({ item, color }: { item: Activity; color: string }) {
   if (item.type.includes('reservation')) return <CalendarCheck2 size={21} color={color} />;
   if (item.type.includes('circle')) return <Users size={21} color={color} />;
+  if (item.type === 'review_liked') return <Heart size={21} color={color} />;
+  if (item.type === 'review_comment') return <MessageCircle size={21} color={color} />;
   if (item.spot_name || item.type.includes('spot') || item.type === 'discovery') {
     return <MapPin size={21} color={color} />;
   }
@@ -115,20 +172,27 @@ function NotificationTypeIcon({ item, color }: { item: Activity; color: string }
 
 export default function ActivityScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ openSubmissionId?: string | string[] }>();
   const { appColors } = useTheme();
   const { user, profile, isSignedIn } = useAuth();
+  const {
+    getCurrentLocation,
+    location: currentLocation,
+    loading: locating,
+  } = useLocation();
   const { width: viewportWidth } = useWindowDimensions();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [localUpdates, setLocalUpdates] = useState<LocalUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [failedImageIds, setFailedImageIds] = useState<string[]>([]);
   const [failedAvatarIds, setFailedAvatarIds] = useState<string[]>([]);
-  const [votedSubmissionIds, setVotedSubmissionIds] = useState<string[]>([]);
+  const [submissionVotes, setSubmissionVotes] = useState<Record<string, SpotVoteType>>({});
   const [votingUpdateIds, setVotingUpdateIds] = useState<string[]>([]);
   const [commentThreadUpdateId, setCommentThreadUpdateId] = useState<string | null>(null);
   const [comments, setComments] = useState<LocalUpdateComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentBody, setCommentBody] = useState('');
+  const [replyingToComment, setReplyingToComment] = useState<LocalUpdateComment | null>(null);
   const [sendingComment, setSendingComment] = useState(false);
   const [failedCommentAvatarIds, setFailedCommentAvatarIds] = useState<string[]>([]);
   const [postMediaUrls, setPostMediaUrls] = useState<string[]>([]);
@@ -136,8 +200,11 @@ export default function ActivityScreen() {
   const [activePostMediaIndex, setActivePostMediaIndex] = useState(0);
   const [failedPostMediaUrls, setFailedPostMediaUrls] = useState<string[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showSortOptions, setShowSortOptions] = useState(false);
+  const [localUpdateSort, setLocalUpdateSort] = useState<LocalUpdateSort>('newest');
   const [readActivityIds, setReadActivityIds] = useState<string[]>([]);
   const [readStateReady, setReadStateReady] = useState(false);
+  const openedSubmissionParamRef = useRef<string | null>(null);
   const postMediaWidth = Math.min(680, Math.max(260, viewportWidth - spacing.lg * 2));
 
   const unreadCount = useMemo(
@@ -148,7 +215,45 @@ export default function ActivityScreen() {
     () => localUpdates.find((item) => item.id === commentThreadUpdateId) ?? null,
     [commentThreadUpdateId, localUpdates]
   );
+  const sortedLocalUpdates = useMemo(() => {
+    const updates = [...localUpdates];
+    const newestFirst = (first: LocalUpdate, second: LocalUpdate) =>
+      timestamp(second.created_at) - timestamp(first.created_at) || first.id.localeCompare(second.id);
+
+    if (localUpdateSort === 'popular') {
+      return updates.sort((first, second) => {
+        const firstEngagement = Number(first.spot_count || 0) + Number(first.comments_count || 0);
+        const secondEngagement = Number(second.spot_count || 0) + Number(second.comments_count || 0);
+        return secondEngagement - firstEngagement || newestFirst(first, second);
+      });
+    }
+
+    if (localUpdateSort === 'nearest' && currentLocation) {
+      return updates.sort((first, second) => {
+        const firstDistance = hasUpdateCoordinates(first)
+          ? calculateHaversineDistanceKm(currentLocation, {
+              latitude: Number(first.latitude),
+              longitude: Number(first.longitude),
+            })
+          : Number.POSITIVE_INFINITY;
+        const secondDistance = hasUpdateCoordinates(second)
+          ? calculateHaversineDistanceKm(currentLocation, {
+              latitude: Number(second.latitude),
+              longitude: Number(second.longitude),
+            })
+          : Number.POSITIVE_INFINITY;
+        return firstDistance - secondDistance || newestFirst(first, second);
+      });
+    }
+
+    return updates.sort(newestFirst);
+  }, [currentLocation, localUpdateSort, localUpdates]);
+  const activeSortLabel = localUpdateSortOptions.find((option) => option.value === localUpdateSort)?.label ?? 'Newest';
   const visiblePostMedia = postMediaUrls.filter((url) => !failedPostMediaUrls.includes(url));
+  const parentComments = comments.filter((comment) => !comment.parent_comment_id);
+  const openSubmissionId = Array.isArray(params.openSubmissionId)
+    ? params.openSubmissionId[0]
+    : params.openSubmissionId;
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
@@ -225,14 +330,14 @@ export default function ActivityScreen() {
 
     async function loadVotes() {
       if (!user?.id) {
-        setVotedSubmissionIds([]);
+        setSubmissionVotes({});
         return;
       }
 
-      const votedIds = await localUpdateService.getVotedSubmissionIds(user.id);
-      if (mounted) setVotedSubmissionIds(votedIds);
-      unsubscribe = localUpdateService.subscribeToVotes(user.id, (nextVotedIds) => {
-        if (mounted) setVotedSubmissionIds(nextVotedIds);
+      const votesBySubmissionId = await localUpdateService.getSubmissionVotes(user.id);
+      if (mounted) setSubmissionVotes(votesBySubmissionId);
+      unsubscribe = localUpdateService.subscribeToSubmissionVotes(user.id, (nextVotesBySubmissionId) => {
+        if (mounted) setSubmissionVotes(nextVotesBySubmissionId);
       });
     }
 
@@ -246,6 +351,7 @@ export default function ActivityScreen() {
   useEffect(() => {
     if (!commentThreadUpdateId) {
       setComments([]);
+      setReplyingToComment(null);
       return;
     }
 
@@ -308,13 +414,39 @@ export default function ActivityScreen() {
     };
   }, [selectedCommentUpdate]);
 
-  async function voteForUpdate(item: LocalUpdate) {
+  useEffect(() => {
+    if (!openSubmissionId) return;
+    if (openedSubmissionParamRef.current === openSubmissionId) return;
+
+    const submissionId = openSubmissionId;
+    let cancelled = false;
+
+    async function openSubmissionPost() {
+      const existingPost = localUpdates.find(
+        (item) => item.source_type === 'spot_submission' && item.source_id === submissionId
+      );
+      const post = existingPost ?? await localUpdateService.getLocalUpdateForSpotSubmission(submissionId);
+      if (cancelled || !post) return;
+
+      openedSubmissionParamRef.current = submissionId;
+      setShowNotifications(false);
+      setLocalUpdates((current) => (current.some((item) => item.id === post.id) ? current : [post, ...current]));
+      openPost(post);
+    }
+
+    void openSubmissionPost();
+    return () => {
+      cancelled = true;
+    };
+  }, [localUpdates, openSubmissionId]);
+
+  async function voteForUpdate(item: LocalUpdate, voteType: SpotVoteType) {
     if (item.source_type !== 'spot_submission' || !item.source_id) {
       return;
     }
 
     if (!isSignedIn) {
-      Alert.alert('Sign in required', 'Please sign in to vote for new spots.');
+      Alert.alert('Sign in required', 'Please sign in to vote on new spots.');
       return;
     }
 
@@ -322,24 +454,46 @@ export default function ActivityScreen() {
 
     try {
       setVotingUpdateIds((current) => [...current, item.id]);
-      const result = await localUpdateService.toggleSpotSubmissionVote(item.source_id);
-      setVotedSubmissionIds((current) => {
-        if (result.voted) return current.includes(item.source_id!) ? current : [...current, item.source_id!];
-        return current.filter((id) => id !== item.source_id);
+      const result = await localUpdateService.voteOnSpotSubmission(item.source_id, voteType);
+      setSubmissionVotes((current) => {
+        const nextVotes = { ...current };
+        if (result.vote_type === 'up' || result.vote_type === 'down') {
+          nextVotes[item.source_id!] = result.vote_type;
+        } else {
+          delete nextVotes[item.source_id!];
+        }
+        return nextVotes;
       });
       setLocalUpdates((current) =>
         current.map((update) => (update.id === item.id ? { ...update, spot_count: result.vote_count } : update))
       );
     } catch (error: any) {
-      console.error('Unable to vote for spot submission:', error);
+      console.error('Unable to vote on spot submission:', error);
       Alert.alert('Vote failed', error.message ?? 'Please try again.');
     } finally {
       setVotingUpdateIds((current) => current.filter((id) => id !== item.id));
     }
   }
 
+  async function selectLocalUpdateSort(nextSort: LocalUpdateSort) {
+    if (nextSort === 'nearest' && !currentLocation) {
+      const nextLocation = await getCurrentLocation();
+      if (!nextLocation) {
+        Alert.alert(
+          'Location unavailable',
+          'Allow location access to sort local updates by distance.'
+        );
+        return;
+      }
+    }
+
+    setLocalUpdateSort(nextSort);
+    setShowSortOptions(false);
+  }
+
   function openPost(item: LocalUpdate) {
     setCommentBody('');
+    setReplyingToComment(null);
     setCommentThreadUpdateId(item.id);
   }
 
@@ -347,6 +501,7 @@ export default function ActivityScreen() {
     if (sendingComment) return;
     setCommentThreadUpdateId(null);
     setCommentBody('');
+    setReplyingToComment(null);
   }
 
   function handlePostMediaScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
@@ -377,7 +532,7 @@ export default function ActivityScreen() {
           profile?.photo_url ??
           (user.user_metadata?.avatar_url as string | undefined) ??
           null,
-      });
+      }, replyingToComment?.parent_comment_id ?? replyingToComment?.id ?? null);
       setComments((current) =>
         current.some((comment) => comment.id === createdComment.id) ? current : [...current, createdComment]
       );
@@ -389,6 +544,7 @@ export default function ActivityScreen() {
         )
       );
       setCommentBody('');
+      setReplyingToComment(null);
     } catch (error: any) {
       console.error('Unable to post local update comment:', error);
       Alert.alert('Comment failed', error.message ?? 'Please try again.');
@@ -414,6 +570,53 @@ export default function ActivityScreen() {
   function markAllNotificationsRead() {
     if (!unreadCount) return;
     saveReadActivityIds([...new Set([...readActivityIds, ...activities.map((item) => item.id)])]);
+  }
+
+  async function openNotification(item: Activity) {
+    markNotificationRead(item);
+
+    if (item.type === 'spot_comment' || item.type === 'spot_liked') {
+      const submissionId = item.target_id;
+      if (!submissionId) return;
+      const post =
+        localUpdates.find((update) => update.source_type === 'spot_submission' && update.source_id === submissionId) ??
+        await localUpdateService.getLocalUpdateForSpotSubmission(submissionId);
+      if (!post) {
+        Alert.alert('Post unavailable', 'This spot post is not available yet.');
+        return;
+      }
+      setShowNotifications(false);
+      setLocalUpdates((current) => (current.some((update) => update.id === post.id) ? current : [post, ...current]));
+      openPost(post);
+      return;
+    }
+
+    if (item.type === 'submission_approved' && item.spot_id) {
+      setShowNotifications(false);
+      router.push({
+        pathname: '/',
+        params: {
+          focusSpotId: item.spot_id,
+          openSpot: '1',
+        },
+      });
+      return;
+    }
+
+    if (item.type === 'reservation_reminder' && item.target_id) {
+      setShowNotifications(false);
+      router.push(`/confirmed/${item.target_id}`);
+      return;
+    }
+
+    if (item.spot_id) {
+      router.push(`/spot/${item.spot_id}`);
+      return;
+    }
+
+    if (item.type.includes('reservation')) {
+      router.push('/reservations');
+    }
   }
 
   if (showNotifications) {
@@ -484,8 +687,7 @@ export default function ActivityScreen() {
                     pressed && styles.pressedCard,
                   ]}
                   onPress={() => {
-                    markNotificationRead(item);
-                    if (isReservationNotification) router.push('/reservations');
+                    void openNotification(item);
                   }}
                 >
                   <View
@@ -567,17 +769,37 @@ export default function ActivityScreen() {
       </View>
 
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Local Updates</Text>
-        <View style={styles.liveDot} />
+        <View style={styles.sectionHeading}>
+          <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Local Updates</Text>
+          <View style={styles.liveDot} />
+        </View>
+        <Pressable
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={`Sort local updates. Current sort: ${activeSortLabel}`}
+          accessibilityHint="Opens feed sorting choices."
+          style={({ pressed }) => [
+            styles.sortButton,
+            {
+              backgroundColor: appColors.surfaceLow,
+              borderColor: appColors.outlineVariant + '66',
+            },
+            pressed && styles.pressedButton,
+          ]}
+          onPress={() => setShowSortOptions(true)}
+        >
+          <ListFilter size={17} color={colors.primary} />
+          <Text style={[styles.sortButtonText, { color: appColors.onSurface }]}>{activeSortLabel}</Text>
+        </Pressable>
       </View>
 
       {loading ? (
         <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
       ) : (
         <View style={styles.feed}>
-          {localUpdates.map((item) => {
+          {sortedLocalUpdates.map((item) => {
             const canVote = item.source_type === 'spot_submission' && !!item.source_id;
-            const voted = !!item.source_id && votedSubmissionIds.includes(item.source_id);
+            const currentVote = item.source_id ? submissionVotes[item.source_id] ?? null : null;
             const voting = votingUpdateIds.includes(item.id);
 
             return (
@@ -639,27 +861,53 @@ export default function ActivityScreen() {
               ) : null}
 
               <View style={styles.updateActions}>
-                <Pressable
-                  accessible
-                  accessibilityRole="button"
-                  accessibilityLabel={voted ? `Remove vote from ${item.title}` : `Vote for ${item.title}`}
-                  disabled={!canVote || voting}
-                  style={[styles.urgencyButton, !canVote && styles.disabledAction, voting && styles.disabledAction]}
-                  onPress={() => voteForUpdate(item)}
-                >
-                  {voting ? (
-                    <ActivityIndicator color={colors.primary} size="small" />
-                  ) : (
-                    <ArrowUpCircle
-                      size={25}
-                      color={canVote ? colors.primary : appColors.onSurfaceVariant}
-                      fill={voted ? colors.primary : 'transparent'}
+                <View style={[styles.voteCluster, !canVote && styles.disabledAction]}>
+                  <Pressable
+                    accessible
+                    accessibilityRole="button"
+                    accessibilityLabel={currentVote === 'up' ? `Remove upvote from ${item.title}` : `Upvote ${item.title}`}
+                    disabled={!canVote || voting}
+                    style={[
+                      styles.voteIconButton,
+                      currentVote === 'up' && styles.upvoteButtonActive,
+                      voting && styles.disabledAction,
+                    ]}
+                    onPress={() => voteForUpdate(item, 'up')}
+                  >
+                    <ArrowUp
+                      size={18}
+                      color={currentVote === 'up' ? colors.white : canVote ? colors.primary : appColors.onSurfaceVariant}
+                      strokeWidth={3}
                     />
-                  )}
-                  <Text style={[styles.actionText, { color: canVote ? appColors.onSurface : appColors.onSurfaceVariant }]}>
-                    +{item.spot_count} Spot
+                  </Pressable>
+                  {voting ? (
+                    <ActivityIndicator color={colors.primary} size="small" style={styles.voteSpinner} />
+                  ) : null}
+                  <Text style={[styles.voteScoreText, { color: canVote ? appColors.onSurface : appColors.onSurfaceVariant }]}>
+                    {formatSpotScore(item.spot_count)}
                   </Text>
-                </Pressable>
+                  <Pressable
+                    accessible
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      currentVote === 'down' ? `Remove downvote from ${item.title}` : `Downvote ${item.title}`
+                    }
+                    disabled={!canVote || voting}
+                    style={[
+                      styles.voteIconButton,
+                      currentVote === 'down' && styles.downvoteButtonActive,
+                      voting && styles.disabledAction,
+                    ]}
+                    onPress={() => voteForUpdate(item, 'down')}
+                  >
+                    <ArrowDown
+                      size={18}
+                      color={currentVote === 'down' ? colors.white : canVote ? colors.danger : appColors.onSurfaceVariant}
+                      strokeWidth={3}
+                    />
+                  </Pressable>
+                  <Text style={[styles.voteLabelText, { color: appColors.onSurfaceVariant }]}>Spot</Text>
+                </View>
                 <View style={styles.actionSpacer} />
                 <Pressable
                   accessible
@@ -679,6 +927,88 @@ export default function ActivityScreen() {
           })}
         </View>
       )}
+
+      <Modal
+        visible={showSortOptions}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSortOptions(false)}
+      >
+        <View style={styles.sortModalRoot}>
+          <Pressable
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel="Close sorting choices"
+            style={styles.sortBackdrop}
+            onPress={() => setShowSortOptions(false)}
+          />
+          <View style={[styles.sortSheet, { backgroundColor: appColors.surface }]}>
+            <View style={[styles.sortHandle, { backgroundColor: appColors.outlineVariant }]} />
+            <View style={styles.sortSheetHeader}>
+              <View>
+                <Text style={[styles.sortSheetTitle, { color: appColors.onSurface }]}>Sort local updates</Text>
+                <Text style={[styles.sortSheetSubtitle, { color: appColors.onSurfaceVariant }]}>Choose how posts appear in your feed</Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close sorting choices"
+                style={[styles.sortCloseButton, { backgroundColor: appColors.surfaceContainer }]}
+                onPress={() => setShowSortOptions(false)}
+              >
+                <X size={18} color={appColors.onSurfaceVariant} />
+              </Pressable>
+            </View>
+
+            <View style={styles.sortOptions}>
+              {localUpdateSortOptions.map((option) => {
+                const selected = option.value === localUpdateSort;
+                const SortIcon = option.icon;
+                const waitingForLocation = option.value === 'nearest' && locating;
+
+                return (
+                  <Pressable
+                    key={option.value}
+                    accessible
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected, disabled: waitingForLocation }}
+                    disabled={waitingForLocation}
+                    style={({ pressed }) => [
+                      styles.sortOption,
+                      {
+                        backgroundColor: selected ? colors.primary + '14' : appColors.surfaceLow,
+                        borderColor: selected ? colors.primary : appColors.outlineVariant + '55',
+                      },
+                      pressed && styles.pressedButton,
+                    ]}
+                    onPress={() => void selectLocalUpdateSort(option.value)}
+                  >
+                    <View style={[styles.sortOptionIcon, { backgroundColor: selected ? colors.primary : appColors.surfaceContainer }]}>
+                      {waitingForLocation ? (
+                        <ActivityIndicator size="small" color={colors.white} />
+                      ) : (
+                        <SortIcon size={20} color={selected ? colors.white : appColors.onSurfaceVariant} />
+                      )}
+                    </View>
+                    <View style={styles.sortOptionCopy}>
+                      <Text style={[styles.sortOptionLabel, { color: appColors.onSurface }]}>{option.label}</Text>
+                      <Text style={[styles.sortOptionDescription, { color: appColors.onSurfaceVariant }]}>{option.description}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.sortSelection,
+                        { borderColor: selected ? colors.primary : appColors.outlineVariant },
+                        selected && styles.sortSelectionActive,
+                      ]}
+                    >
+                      {selected ? <Check size={14} color={colors.white} strokeWidth={3} /> : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={Boolean(commentThreadUpdateId)}
@@ -822,7 +1152,7 @@ export default function ActivityScreen() {
 
                   <View style={[styles.postStatsRow, { borderTopColor: appColors.outlineVariant }]}>
                     <Text style={[styles.postStatText, { color: appColors.onSurfaceVariant }]}>
-                      +{selectedCommentUpdate.spot_count} Spot
+                      {formatSpotScore(selectedCommentUpdate.spot_count)} Spot
                     </Text>
                     <Text style={[styles.postStatText, { color: appColors.onSurfaceVariant }]}>
                       {comments.length || selectedCommentUpdate.comments_count} Comments
@@ -839,80 +1169,125 @@ export default function ActivityScreen() {
                 <View style={styles.commentLoadingState}>
                   <ActivityIndicator color={colors.primary} />
                 </View>
-              ) : comments.length === 0 ? (
+              ) : parentComments.length === 0 ? (
                 <View style={styles.commentEmptyState}>
                   <MessageCircle size={24} color={appColors.onSurfaceVariant} />
                   <Text style={[styles.commentEmptyTitle, { color: appColors.onSurface }]}>No comments yet</Text>
                   <Text style={[styles.commentEmptyText, { color: appColors.onSurfaceVariant }]}>Start the conversation.</Text>
                 </View>
               ) : (
-                comments.map((comment) => {
-                  const showAvatar = Boolean(
-                    comment.user_photo_url && !failedCommentAvatarIds.includes(comment.id)
-                  );
-                  return (
-                    <View key={comment.id} style={styles.commentRow}>
-                      {showAvatar ? (
-                        <Image
-                          source={{ uri: comment.user_photo_url! }}
-                          style={styles.commentAvatar}
-                          onError={() =>
-                            setFailedCommentAvatarIds((current) => [...new Set([...current, comment.id])])
-                          }
-                        />
-                      ) : (
-                        <View style={[styles.commentAvatarFallback, { backgroundColor: appColors.surfaceContainer }]}>
-                          <User size={17} color={appColors.onSurfaceVariant} />
-                        </View>
-                      )}
-                      <View style={styles.commentCopy}>
-                        <View style={styles.commentMetaRow}>
-                          <Text style={[styles.commentAuthor, { color: appColors.onSurface }]} numberOfLines={1}>
-                            {comment.user_name}
+                parentComments.map((comment) => {
+                  const replies = comments.filter((reply) => reply.parent_comment_id === comment.id);
+                  const threadComments = [comment, ...replies];
+                  return threadComments.map((threadComment) => {
+                    const isReply = threadComment.parent_comment_id === comment.id;
+                    const showAvatar = Boolean(
+                      threadComment.user_photo_url && !failedCommentAvatarIds.includes(threadComment.id)
+                    );
+                    return (
+                      <View
+                        key={threadComment.id}
+                        style={[styles.commentRow, isReply && styles.commentReplyRow]}
+                      >
+                        {showAvatar ? (
+                          <Image
+                            source={{ uri: threadComment.user_photo_url! }}
+                            style={isReply ? styles.commentReplyAvatar : styles.commentAvatar}
+                            onError={() =>
+                              setFailedCommentAvatarIds((current) => [...new Set([...current, threadComment.id])])
+                            }
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              isReply ? styles.commentReplyAvatarFallback : styles.commentAvatarFallback,
+                              { backgroundColor: appColors.surfaceContainer },
+                            ]}
+                          >
+                            <User size={isReply ? 14 : 17} color={appColors.onSurfaceVariant} />
+                          </View>
+                        )}
+                        <View style={styles.commentCopy}>
+                          <View style={styles.commentMetaRow}>
+                            <Text style={[styles.commentAuthor, { color: appColors.onSurface }]} numberOfLines={1}>
+                              {threadComment.user_name}
+                            </Text>
+                            <Text style={[styles.commentTime, { color: appColors.onSurfaceVariant }]}>
+                              {formatUpdateTime(threadComment.created_at)}
+                            </Text>
+                          </View>
+                          <Text style={[styles.commentBody, { color: appColors.onSurfaceVariant }]}>
+                            {threadComment.body}
                           </Text>
-                          <Text style={[styles.commentTime, { color: appColors.onSurfaceVariant }]}>
-                            {formatUpdateTime(comment.created_at)}
-                          </Text>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Reply to ${threadComment.user_name}`}
+                            style={styles.replyButton}
+                            onPress={() => setReplyingToComment(threadComment)}
+                          >
+                            <Text style={styles.replyButtonText}>Reply</Text>
+                          </Pressable>
                         </View>
-                        <Text style={[styles.commentBody, { color: appColors.onSurfaceVariant }]}>{comment.body}</Text>
                       </View>
-                    </View>
-                  );
+                    );
+                  });
                 })
               )}
             </ScrollView>
 
             <View style={[styles.commentComposer, { borderTopColor: appColors.outlineVariant }]}>
-              <TextInput
-                multiline
-                editable={isSignedIn && !sendingComment}
-                maxLength={500}
-                value={commentBody}
-                placeholder={isSignedIn ? 'Write a comment' : 'Sign in to comment'}
-                placeholderTextColor={appColors.onSurfaceVariant + '88'}
-                style={[
-                  styles.commentInput,
-                  {
-                    color: appColors.onSurface,
-                    backgroundColor: appColors.surfaceLow,
-                    borderColor: appColors.outlineVariant,
-                  },
-                ]}
-                onChangeText={setCommentBody}
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Send comment"
-                disabled={sendingComment || !commentBody.trim()}
-                style={[styles.sendCommentButton, (sendingComment || !commentBody.trim()) && styles.disabledAction]}
-                onPress={sendComment}
-              >
-                {sendingComment ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <Send size={18} color={colors.white} />
-                )}
-              </Pressable>
+              {replyingToComment ? (
+                <View style={[styles.replyingBanner, { backgroundColor: appColors.surfaceLow }]}>
+                  <Text style={[styles.replyingText, { color: appColors.onSurfaceVariant }]} numberOfLines={1}>
+                    Replying to {replyingToComment.user_name}
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel reply"
+                    onPress={() => setReplyingToComment(null)}
+                  >
+                    <X size={16} color={appColors.onSurfaceVariant} />
+                  </Pressable>
+                </View>
+              ) : null}
+              <View style={styles.commentComposerRow}>
+                <TextInput
+                  multiline
+                  editable={isSignedIn && !sendingComment}
+                  maxLength={500}
+                  value={commentBody}
+                  placeholder={
+                    isSignedIn
+                      ? replyingToComment
+                        ? `Reply to ${replyingToComment.user_name}`
+                        : 'Write a comment'
+                      : 'Sign in to comment'
+                  }
+                  placeholderTextColor={appColors.onSurfaceVariant + '88'}
+                  style={[
+                    styles.commentInput,
+                    {
+                      color: appColors.onSurface,
+                      backgroundColor: appColors.surfaceLow,
+                      borderColor: appColors.outlineVariant,
+                    },
+                  ]}
+                  onChangeText={setCommentBody}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Send comment"
+                  disabled={sendingComment || !commentBody.trim()}
+                  style={[styles.sendCommentButton, (sendingComment || !commentBody.trim()) && styles.disabledAction]}
+                  onPress={sendComment}
+                >
+                  {sendingComment ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <Send size={18} color={colors.white} />
+                  )}
+                </Pressable>
+              </View>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -1097,8 +1472,15 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    justifyContent: 'space-between',
+    gap: spacing.md,
     marginBottom: spacing.md,
+  },
+  sectionHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexShrink: 1,
   },
   sectionTitle: {
     fontSize: fontSize.xl,
@@ -1198,10 +1580,56 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.black + '10',
   },
-  urgencyButton: {
+  voteCluster: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+  },
+  voteIconButton: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.black + '14',
+    backgroundColor: colors.white + '00',
+  },
+  upvoteButtonActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+  },
+  sortButton: {
+    minHeight: 38,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.xs,
+  },
+  sortButtonText: {
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+  },
+  downvoteButtonActive: {
+    borderColor: colors.danger,
+    backgroundColor: colors.danger,
+  },
+  voteSpinner: {
+    width: 22,
+  },
+  voteScoreText: {
+    minWidth: 24,
+    textAlign: 'center',
+    fontSize: fontSize.sm,
+    fontWeight: '900',
+  },
+  voteLabelText: {
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   disabledAction: {
     opacity: 0.55,
@@ -1217,6 +1645,98 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: fontSize.sm,
     fontWeight: '900',
+  },
+  sortModalRoot: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  sortBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.black + '72',
+  },
+  sortSheet: {
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
+    ...shadow.lifted,
+  },
+  sortHandle: {
+    width: 42,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
+  },
+  sortSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  sortSheetTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: '900',
+  },
+  sortSheetSubtitle: {
+    marginTop: 2,
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+  },
+  sortCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sortOptions: {
+    gap: spacing.sm,
+  },
+  sortOption: {
+    minHeight: 76,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  sortOptionIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sortOptionCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sortOptionLabel: {
+    fontSize: fontSize.md,
+    fontWeight: '900',
+  },
+  sortOptionDescription: {
+    marginTop: 2,
+    fontSize: fontSize.xs,
+    lineHeight: 17,
+    fontWeight: '700',
+  },
+  sortSelection: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sortSelectionActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   commentModalRoot: {
     flex: 1,
@@ -1416,15 +1936,31 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: spacing.md,
   },
+  commentReplyRow: {
+    marginLeft: 46,
+    paddingTop: 0,
+  },
   commentAvatar: {
     width: 38,
     height: 38,
     borderRadius: 19,
   },
+  commentReplyAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
   commentAvatarFallback: {
     width: 38,
     height: 38,
     borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  commentReplyAvatarFallback: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1453,13 +1989,42 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '700',
   },
+  replyButton: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
+    minHeight: 28,
+    justifyContent: 'center',
+  },
+  replyButtonText: {
+    color: colors.primary,
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
   commentComposer: {
     minHeight: 78,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
     gap: spacing.sm,
     padding: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  commentComposerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  replyingBanner: {
+    minHeight: 34,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  replyingText: {
+    flex: 1,
+    fontSize: fontSize.xs,
+    fontWeight: '800',
   },
   commentInput: {
     flex: 1,

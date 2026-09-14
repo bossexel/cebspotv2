@@ -114,7 +114,7 @@ export function reservationUpdatesForPaymentStatus(status: ReservationPaymentSta
 
   if (status === 'failed' || status === 'expired') {
     return {
-      status: 'pending_payment',
+      status: 'cancelled',
       payment_status: 'failed',
       updated_at: new Date().toISOString(),
     };
@@ -188,7 +188,7 @@ export async function upsertReservationPayment(
     }
   }
 
-  const { error: reservationError } = await supabase
+  let reservationUpdate = supabase
     .from('reservations')
     .update({
       ...reservationUpdatesForPaymentStatus(payload.status),
@@ -196,6 +196,23 @@ export async function upsertReservationPayment(
       payment_reference: payload.providerPaymentIntentId ?? payload.providerCheckoutSessionId,
     })
     .eq('id', payload.reservationId);
+
+  // Preserve terminal reservation and payment states when PayMongo delivers
+  // duplicated or out-of-order events.
+  if (payload.status === 'paid') {
+    reservationUpdate = reservationUpdate
+      .neq('status', 'cancelled')
+      .neq('status', 'completed')
+      .neq('status', 'no_show');
+  } else if (payload.status === 'failed' || payload.status === 'expired') {
+    reservationUpdate = reservationUpdate
+      .neq('payment_status', 'paid')
+      .neq('status', 'cancelled')
+      .neq('status', 'completed')
+      .neq('status', 'no_show');
+  }
+
+  const { error: reservationError } = await reservationUpdate;
   if (reservationError) throw new Error(getErrorMessage(reservationError, 'Unable to update reservation payment status.'));
 }
 

@@ -1,4 +1,5 @@
 import type { Session, User } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -15,15 +16,23 @@ interface AuthContextValue {
   profile: UserProfile | null;
   loading: boolean;
   isSignedIn: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<UserProfile>;
   signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
+  resendVerification: (email: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
+  completePasswordRecovery: (password: string) => Promise<void>;
+  passwordRecoveryStatus: PasswordRecoveryStatus;
+  passwordRecoveryError: string | null;
   signOut: () => Promise<void>;
   logOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
+
+type PasswordRecoveryStatus = 'idle' | 'processing' | 'ready' | 'invalid';
+const passwordRecoveryMarkerKey = 'cebspot-password-recovery';
+const passwordRecoveryWindowMs = 30 * 60 * 1000;
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -54,6 +63,14 @@ function isEmailConfirmed(user: User) {
   return Boolean(user.email_confirmed_at || user.confirmed_at);
 }
 
+function getUserPhotoUrl(user: User) {
+  return (
+    (user.user_metadata?.avatar_url as string | undefined) ??
+    (user.user_metadata?.picture as string | undefined) ??
+    null
+  );
+}
+
 async function withTimeout<T>(task: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
@@ -77,7 +94,7 @@ function makeFallbackProfile(user: User): UserProfile {
       (user.user_metadata?.display_name as string | undefined) ??
       (user.user_metadata?.full_name as string | undefined) ??
       null,
-    photo_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+    photo_url: getUserPhotoUrl(user),
     level: 1,
     points: 0,
     friends: [],
@@ -94,7 +111,20 @@ function getSupabaseAuthParams(url: string) {
     refreshToken: String(queryParams.refresh_token ?? hashParams.refresh_token ?? ''),
     code: String(queryParams.code ?? hashParams.code ?? ''),
     type: String(queryParams.type ?? hashParams.type ?? ''),
+    errorCode: String(queryParams.error_code ?? hashParams.error_code ?? ''),
+    errorDescription: String(queryParams.error_description ?? hashParams.error_description ?? ''),
   };
+}
+
+function clearSensitiveAuthParamsFromBrowserUrl() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+  const currentUrl = new URL(window.location.href);
+  ['access_token', 'refresh_token', 'code', 'type', 'error', 'error_code', 'error_description'].forEach((key) => {
+    currentUrl.searchParams.delete(key);
+  });
+  currentUrl.hash = '';
+  window.history.replaceState({}, document.title, `${currentUrl.pathname}${currentUrl.search}`);
 }
 
 async function createSessionFromAuthUrl(url: string) {
@@ -115,11 +145,27 @@ async function createSessionFromAuthUrl(url: string) {
     return data.session;
   }
 
-  throw new Error('Google sign-in did not return a valid session.');
+  throw new Error('The authentication link did not return a valid session.');
 }
 
 async function clearAppSession() {
   await clearSupabaseAuthStorage([supabaseAuthStorageKeys.app, supabaseAuthStorageKeys.legacyDefault]);
+}
+
+async function setPasswordRecoveryMarker(active: boolean) {
+  if (active) {
+    await AsyncStorage.setItem(passwordRecoveryMarkerKey, new Date().toISOString());
+    return;
+  }
+  await AsyncStorage.removeItem(passwordRecoveryMarkerKey);
+}
+
+async function hasActivePasswordRecoveryMarker() {
+  const marker = await AsyncStorage.getItem(passwordRecoveryMarkerKey);
+  const startedAt = marker ? Date.parse(marker) : Number.NaN;
+  const markerIsActive = Number.isFinite(startedAt) && Date.now() - startedAt <= passwordRecoveryWindowMs;
+  if (!markerIsActive && marker) await setPasswordRecoveryMarker(false);
+  return markerIsActive;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -127,6 +173,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [demoUser, setDemoUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [passwordRecoveryStatus, setPasswordRecoveryStatus] = useState<PasswordRecoveryStatus>('idle');
+  const [passwordRecoveryError, setPasswordRecoveryError] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async (user: User) => {
     return profileService.ensureProfile({
@@ -136,7 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         (user.user_metadata?.display_name as string | undefined) ??
         (user.user_metadata?.full_name as string | undefined) ??
         null,
-      photo_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+      photo_url: getUserPhotoUrl(user),
     });
   }, []);
 
@@ -199,6 +247,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     withTimeout(supabase.auth.getSession(), 10000, 'Session restore')
       .then(async ({ data, error }) => {
         if (error) throw error;
+        const recoveryMarkerIsActive = await hasActivePasswordRecoveryMarker();
+        if (recoveryMarkerIsActive && data.session?.user) {
+          setPasswordRecoveryStatus('ready');
+          setPasswordRecoveryError(null);
+        } else if (recoveryMarkerIsActive) {
+          await setPasswordRecoveryMarker(false);
+        }
         await applySession(data.session);
       })
       .catch(async (error) => {
@@ -217,6 +272,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
     const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordRecoveryStatus('processing');
+        setPasswordRecoveryError(null);
+        void setPasswordRecoveryMarker(true).then(() => setPasswordRecoveryStatus('ready'));
+      } else if (event === 'SIGNED_OUT') {
+        setPasswordRecoveryStatus('idle');
+        setPasswordRecoveryError(null);
+        void setPasswordRecoveryMarker(false);
+      }
+
       setTimeout(() => {
         applySession(nextSession, event !== 'TOKEN_REFRESHED')
           .catch((error) => {
@@ -242,14 +307,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!url) return;
       const params = getSupabaseAuthParams(url);
       const isSupabaseAuthLink = Boolean(params.code || (params.accessToken && params.refreshToken));
+      const isPasswordRecoveryLink =
+        params.type === 'recovery' ||
+        params.type === 'invite' ||
+        url.toLowerCase().includes('reset-password');
+
+      if (params.errorCode || params.errorDescription) {
+        if (isPasswordRecoveryLink) {
+          await setPasswordRecoveryMarker(false);
+          setPasswordRecoveryStatus('invalid');
+          setPasswordRecoveryError('This reset link is invalid or has expired. Request a new link to continue.');
+        }
+        clearSensitiveAuthParamsFromBrowserUrl();
+        return;
+      }
+
       if (!isSupabaseAuthLink) return;
+      if (isPasswordRecoveryLink) {
+        setPasswordRecoveryStatus('processing');
+        setPasswordRecoveryError(null);
+      }
 
       try {
         const nextSession = await createSessionFromAuthUrl(url);
         setSession(nextSession);
         if (nextSession?.user) setProfile(await fetchProfile(nextSession.user));
+        if (isPasswordRecoveryLink) {
+          await setPasswordRecoveryMarker(true);
+          setPasswordRecoveryStatus('ready');
+        }
       } catch (error) {
         console.error('Unable to open Supabase auth link:', error);
+        if (isPasswordRecoveryLink) {
+          await setPasswordRecoveryMarker(false);
+          setPasswordRecoveryStatus('invalid');
+          setPasswordRecoveryError('This reset link is invalid or has expired. Request a new link to continue.');
+        }
+      } finally {
+        clearSensitiveAuthParamsFromBrowserUrl();
       }
     }
 
@@ -267,8 +362,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const normalizedEmail = normalizeEmail(email);
     if (!hasSupabaseConfig) {
       const fakeUser = makeDemoUser(normalizedEmail, 'Demo Explorer');
-      setDemoUser(fakeUser);
-      setProfile({
+      const fakeProfile: UserProfile = {
         id: fakeUser.id,
         email: normalizedEmail,
         role: getPrototypeRoleForEmail(normalizedEmail),
@@ -277,8 +371,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         level: 3,
         points: 420,
         friends: [],
-      });
-      return;
+      };
+      setDemoUser(fakeUser);
+      setProfile(fakeProfile);
+      return fakeProfile;
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
@@ -288,7 +384,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await clearAppSession();
       throw new Error('Please verify your email before signing in.');
     }
-  }, []);
+    if (!data.user || !data.session) throw new Error('CebSpot did not return a valid sign-in session.');
+
+    const signedInProfile = await fetchProfile(data.user);
+    setSession(data.session);
+    setProfile(signedInProfile);
+    return signedInProfile;
+  }, [fetchProfile]);
 
   const signInWithGoogle = useCallback(async () => {
     if (!hasSupabaseConfig) {
@@ -372,6 +474,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const resendVerification = useCallback(async (email: string) => {
+    if (!hasSupabaseConfig) return;
+
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: normalizeEmail(email),
+      options: {
+        emailRedirectTo: createAuthRedirectUrl('/auth/callback'),
+      },
+    });
+    if (error) throw new Error(getAuthErrorMessage(error));
+  }, []);
+
   const resetPassword = useCallback(async (email: string) => {
     if (!hasSupabaseConfig) return;
 
@@ -388,10 +503,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw new Error(getAuthErrorMessage(error));
   }, []);
 
+  const completePasswordRecovery = useCallback(async (password: string) => {
+    if (!hasSupabaseConfig) return;
+
+    if (!(await hasActivePasswordRecoveryMarker())) {
+      setPasswordRecoveryStatus('invalid');
+      setPasswordRecoveryError('This reset session has expired. Request a new password reset link.');
+      throw new Error('This reset session has expired. Request a new password reset link.');
+    }
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) {
+      throw new Error('This reset session is no longer valid. Request a new password reset link.');
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    if (updateError) throw new Error(getAuthErrorMessage(updateError));
+
+    const { error: signOutError } = await supabase.auth.signOut({ scope: 'global' });
+    await clearAppSession();
+    await setPasswordRecoveryMarker(false);
+    setDemoUser(null);
+    setSession(null);
+    setProfile(null);
+    setPasswordRecoveryStatus('idle');
+    setPasswordRecoveryError(null);
+
+    if (signOutError) {
+      console.warn('Password changed, but remote sessions could not all be revoked:', signOutError.message);
+    }
+  }, []);
+
   const logOut = useCallback(async () => {
     setDemoUser(null);
     setSession(null);
     setProfile(null);
+    setPasswordRecoveryStatus('idle');
+    setPasswordRecoveryError(null);
 
     if (!hasSupabaseConfig) {
       return;
@@ -405,6 +553,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ]);
 
     await clearAppSession();
+    await setPasswordRecoveryMarker(false);
 
     if (signOutResult.error && !isInvalidRefreshToken(signOutResult.error)) {
       console.warn('Supabase local sign out did not complete cleanly:', signOutResult.error.message);
@@ -427,18 +576,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signInWithGoogle,
       signUp,
+      resendVerification,
       resetPassword,
       updatePassword,
+      completePasswordRecovery,
+      passwordRecoveryStatus,
+      passwordRecoveryError,
       signOut: logOut,
       logOut,
       refreshProfile,
     }),
     [
       demoUser,
+      completePasswordRecovery,
       loading,
       logOut,
       profile,
+      passwordRecoveryError,
+      passwordRecoveryStatus,
       refreshProfile,
+      resendVerification,
       resetPassword,
       session,
       signIn,

@@ -1,8 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,17 +17,21 @@ import { Svg, Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg'
 import { useRouter } from 'expo-router';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+  Inter_400Regular,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+  Inter_900Black,
+  useFonts as useInterFonts,
+} from '@expo-google-fonts/inter';
+import {
   BarChart3,
   Bell,
   CalendarDays,
   CheckCircle2,
-  ChevronLeft,
   ChevronRight,
   ChevronUp,
-  Download,
   Edit3,
   FileText,
-  Filter,
   LayoutDashboard,
   LogOut,
   LucideIcon,
@@ -52,15 +58,19 @@ import { TileMap } from '../src/components/TileMap';
 import { ADMIN_EMAIL, hasAdminAccess, normalizeAuthEmail } from '../src/constants/authRoles';
 import { colors } from '../src/constants/colors';
 import { shadow } from '../src/constants/design';
+import { REVIEW_REPORT_CATEGORIES } from '../src/constants/reportCategories';
 import { useScopedAuth } from '../src/hooks/useScopedAuth';
+import { ownerVerificationDocumentService } from '../src/services/ownerVerificationDocumentService';
 import {
   applySpotEditSuggestion,
   approveSpotSubmission,
   dismissAdminReport,
   getAdminDashboardData,
+  reviewOwnerAccessRequest,
   type AdminDashboardData,
   type AdminListingRow,
   type AdminOwnerRequestRow,
+  type AdminOwnerRequestDecision,
   type AdminProgressItem,
   type AdminPulseRow,
   type AdminReportRow,
@@ -125,7 +135,25 @@ const navItems: NavItem[] = [
   { id: 'system', label: 'System', icon: Settings, searchPlaceholder: 'Search system settings...' },
 ];
 
+const adminFontFamily = 'Inter_400Regular';
+
 const requestBars = [40, 60, 30, 80, 100, 52, 70];
+
+// Simple trailing debounce. Used to coalesce bursts of realtime table-change
+// events (a single bulk operation can touch several tables at once) into one
+// dashboard refetch instead of one per table.
+function debounce<Args extends unknown[]>(fn: (...args: Args) => void, waitMs: number) {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  const debounced = (...args: Args) => {
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => fn(...args), waitMs);
+  };
+  debounced.cancel = () => {
+    if (timeout) clearTimeout(timeout);
+    timeout = null;
+  };
+  return debounced;
+}
 
 function iconTone(tone: StatCardProps['tone']) {
   switch (tone) {
@@ -148,6 +176,12 @@ export default function AdminConsoleScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { client, isSignedIn, loading: authLoading, profile, signIn, logOut } = useScopedAuth('admin');
+  const [adminFontsLoaded] = useInterFonts({
+    Inter_400Regular,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+    Inter_900Black,
+  });
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
   const [query, setQuery] = useState('');
   const [signingOut, setSigningOut] = useState(false);
@@ -156,25 +190,54 @@ export default function AdminConsoleScreen() {
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [approvingSubmissionId, setApprovingSubmissionId] = useState<string | null>(null);
   const [moderatingReportId, setModeratingReportId] = useState<string | null>(null);
+  const [reviewingOwnerRequestId, setReviewingOwnerRequestId] = useState<string | null>(null);
   const [approvalNotice, setApprovalNotice] = useState<{ tone: 'success' | 'error'; title: string; copy: string } | null>(null);
 
   const activeNav = navItems.find((item) => item.id === activeSection) ?? navItems[0];
   const compact = width < 1180;
+  // This client-side check only controls whether the admin UI renders — it
+  // is a UX gate, not a security boundary. Every read/write this screen
+  // performs (getAdminDashboardData, approveSpotSubmission,
+  // reviewOwnerAccessRequest, etc.) must be re-authorized server-side
+  // (RLS policies / role checks in Supabase), since a client-side flag can
+  // always be bypassed by calling the API directly.
   const isAdmin = hasAdminAccess(profile);
   const adminName = profile?.display_name || 'Admin User';
   const adminInitial = adminName.charAt(0).toUpperCase();
 
+  // Guards against the mount-after-unmount and stale-response races described
+  // below. `dashboardRequestId` is bumped on every refresh attempt; a
+  // response is only applied if it's still the most recent request in
+  // flight when it resolves, which prevents an older, slower refetch from
+  // clobbering a newer one (including an optimistic update applied after it
+  // started).
+  const mountedRef = useRef(true);
+  const dashboardRequestId = useRef(0);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const refreshDashboard = useCallback(async () => {
     if (!isSignedIn || !isAdmin) return;
 
+    const requestId = ++dashboardRequestId.current;
     try {
       setDashboardLoading(true);
       setDashboardError(null);
-      setDashboard(await getAdminDashboardData(client));
+      const data = await getAdminDashboardData(client);
+      if (!mountedRef.current || requestId !== dashboardRequestId.current) return;
+      setDashboard(data);
     } catch (error: any) {
+      if (!mountedRef.current || requestId !== dashboardRequestId.current) return;
       setDashboardError(error?.message ?? 'Unable to load admin dashboard data.');
     } finally {
-      setDashboardLoading(false);
+      if (mountedRef.current && requestId === dashboardRequestId.current) {
+        setDashboardLoading(false);
+      }
     }
   }, [client, isAdmin, isSignedIn]);
 
@@ -182,27 +245,40 @@ export default function AdminConsoleScreen() {
     refreshDashboard();
   }, [refreshDashboard]);
 
+  // Realtime table changes call this instead of refreshDashboard directly so
+  // that a burst of changes across multiple tables (common for a single
+  // admin action, e.g. approving a submission touches spots + submissions +
+  // activities) collapses into one refetch instead of one per event.
+  const debouncedRefreshRef = useRef(debounce(refreshDashboard, 400));
+  useEffect(() => {
+    debouncedRefreshRef.current = debounce(refreshDashboard, 400);
+    return () => debouncedRefreshRef.current.cancel();
+  }, [refreshDashboard]);
+  const handleRealtimeChange = useCallback(() => {
+    debouncedRefreshRef.current();
+  }, []);
+
   useEffect(() => {
     if (!isSignedIn || !isAdmin) return undefined;
 
     const channel = client
       .channel(`admin-dashboard-${Date.now()}-${Math.random().toString(36).slice(2)}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'spots' }, refreshDashboard)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, refreshDashboard)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, refreshDashboard)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'owner_access_requests' }, refreshDashboard)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'spot_submissions' }, refreshDashboard)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'spot_submission_votes' }, refreshDashboard)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'spot_search_events' }, refreshDashboard)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'review_reports' }, refreshDashboard)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'spot_edit_suggestions' }, refreshDashboard)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, refreshDashboard)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spots' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'owner_access_requests' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spot_submissions' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spot_submission_votes' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spot_search_events' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'review_reports' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'spot_edit_suggestions' }, handleRealtimeChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, handleRealtimeChange)
       .subscribe();
 
     return () => {
       client.removeChannel(channel);
     };
-  }, [client, isAdmin, isSignedIn, refreshDashboard]);
+  }, [client, isAdmin, isSignedIn, handleRealtimeChange]);
 
   async function handleSignOut(redirectToLogin = true) {
     try {
@@ -216,6 +292,13 @@ export default function AdminConsoleScreen() {
     } finally {
       setSigningOut(false);
     }
+  }
+
+  function confirmSignOut() {
+    Alert.alert('Log out of CebSpot?', 'Are you sure you want to log out of the admin account?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log Out', style: 'destructive', onPress: () => void handleSignOut() },
+    ]);
   }
 
   async function handleApproveSubmission(submission: AdminSpotSubmissionRow) {
@@ -277,7 +360,9 @@ export default function AdminConsoleScreen() {
         title: 'Report dismissed',
         copy: `${report.spot} was removed from the active moderation queue.`,
       });
-      refreshDashboard().catch(() => undefined);
+      refreshDashboard().catch((error: any) => {
+        setDashboardError(error?.message ?? 'Report was dismissed, but dashboard refresh failed.');
+      });
     } catch (error: any) {
       setApprovalNotice({
         tone: 'error',
@@ -311,7 +396,9 @@ export default function AdminConsoleScreen() {
         title: 'Spot updated',
         copy: `${report.spot} was updated and the suggestion was marked approved.`,
       });
-      refreshDashboard().catch(() => undefined);
+      refreshDashboard().catch((error: any) => {
+        setDashboardError(error?.message ?? 'Spot was updated, but dashboard refresh failed.');
+      });
     } catch (error: any) {
       setApprovalNotice({
         tone: 'error',
@@ -323,6 +410,70 @@ export default function AdminConsoleScreen() {
     }
   }
 
+  async function handleReviewOwnerRequest(
+    request: AdminOwnerRequestRow,
+    decision: AdminOwnerRequestDecision,
+    notes: string,
+  ) {
+    try {
+      setReviewingOwnerRequestId(request.id);
+      setApprovalNotice(null);
+      const result = await reviewOwnerAccessRequest(request.id, decision, notes, client);
+      const nextStatus = decision === 'approved' ? 'Approved' : 'Rejected';
+
+      setDashboard((current) =>
+        current
+          ? {
+              ...current,
+              metrics: {
+                ...current.metrics,
+                pendingOwnerRequests: Math.max(0, current.metrics.pendingOwnerRequests - 1),
+              },
+              users:
+                decision === 'approved'
+                  ? current.users.map((user) =>
+                      user.id === request.requesterId ? { ...user, role: user.role === 'Admin' ? user.role : 'Owner' } : user,
+                    )
+                  : current.users,
+              ownerRequests: current.ownerRequests.map((item) =>
+                item.id === request.id
+                  ? {
+                      ...item,
+                      status: nextStatus,
+                      spotId: result?.spotId ?? item.spotId,
+                      adminNotes: notes.trim() || null,
+                      reviewedAt: new Date().toISOString(),
+                    }
+                  : item,
+              ),
+            }
+          : current,
+      );
+
+      setApprovalNotice({
+        tone: 'success',
+        title: decision === 'approved' ? 'Owner access approved' : 'Owner request rejected',
+        copy:
+          decision === 'approved'
+            ? `A dedicated owner account for ${request.applicant} was created and invited to manage ${result?.spotName ?? request.spot}.`
+            : `${request.applicant}'s request for ${request.spot} was rejected.`,
+      });
+      refreshDashboard().catch((error: any) => {
+        setDashboardError(error?.message ?? 'The request was reviewed, but dashboard refresh failed.');
+      });
+      return true;
+    } catch (error: any) {
+      setApprovalNotice({
+        tone: 'error',
+        title: decision === 'approved' ? 'Approval failed' : 'Rejection failed',
+        copy: error?.message ?? 'Please try again.',
+      });
+      return false;
+    } finally {
+      setReviewingOwnerRequestId(null);
+    }
+  }
+
   function openReportSpot(report: AdminReportRow) {
     if (!report.spotId) {
       Alert.alert('Spot unavailable', 'This report is not linked to a spot record.');
@@ -331,7 +482,7 @@ export default function AdminConsoleScreen() {
     router.push(`/spot/${report.spotId}`);
   }
 
-  if (authLoading) {
+  if (authLoading || !adminFontsLoaded) {
     return (
       <View style={styles.adminGateScreen}>
         <Text style={styles.adminGateBrand}>CebSpot Admin</Text>
@@ -367,7 +518,11 @@ export default function AdminConsoleScreen() {
         <View style={styles.sidebarFooter}>
           <View style={styles.adminCard}>
             <View style={styles.adminAvatar}>
-              <Text style={styles.adminAvatarText}>{adminInitial}</Text>
+              {profile?.photo_url ? (
+                <Image source={{ uri: profile.photo_url }} style={styles.adminAvatarImage} />
+              ) : (
+                <Text style={styles.adminAvatarText}>{adminInitial}</Text>
+              )}
             </View>
             {!compact && (
               <View style={styles.adminCopy}>
@@ -380,7 +535,7 @@ export default function AdminConsoleScreen() {
               </View>
             )}
           </View>
-          <Pressable style={styles.signOutButton} onPress={() => handleSignOut()} disabled={signingOut}>
+          <Pressable style={styles.signOutButton} onPress={confirmSignOut} disabled={signingOut}>
             <LogOut size={18} color={adminPalette.outlineVariant} />
             {!compact && <Text style={styles.signOutText}>{signingOut ? 'Signing out...' : 'Sign out'}</Text>}
           </Pressable>
@@ -451,7 +606,15 @@ export default function AdminConsoleScreen() {
                 />
               )}
               {activeSection === 'users' && <UsersSection dashboard={dashboard} query={query} />}
-              {activeSection === 'requests' && <OwnerRequestsSection dashboard={dashboard} query={query} />}
+              {activeSection === 'requests' && (
+                <OwnerRequestsSection
+                  dashboard={dashboard}
+                  client={client}
+                  query={query}
+                  reviewingRequestId={reviewingOwnerRequestId}
+                  onReviewRequest={handleReviewOwnerRequest}
+                />
+              )}
               {activeSection === 'system' && <SystemSection dashboard={dashboard} />}
             </>
           ) : (
@@ -493,6 +656,9 @@ function AdminLoginGate({
       Alert.alert('Missing details', 'Enter the admin email and password.');
       return;
     }
+    // Friendlier error message only — this is not the security check. Real
+    // enforcement has to happen server-side (see isAdmin comment above);
+    // this merely avoids sending an obviously-wrong-account sign-in.
     if (normalizedEmail !== ADMIN_EMAIL) {
       Alert.alert('Admin only', `Use the CebSpot admin account: ${ADMIN_EMAIL}`);
       return;
@@ -651,6 +817,10 @@ function formatCompactNumber(value: number) {
   return String(value);
 }
 
+function formatAdminMoney(value: number) {
+  return `P ${Math.round(value).toLocaleString('en-US')}`;
+}
+
 function matchesQuery(values: Array<string | number | null | undefined>, query: string) {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
@@ -670,6 +840,9 @@ function filterSubmissions(rows: AdminSpotSubmissionRow[], query: string) {
       item.status,
       item.id,
       item.description,
+      item.address,
+      item.submitterName,
+      item.submitterEmail,
       item.popularityScore,
       item.voteCount,
     ], query),
@@ -862,6 +1035,18 @@ function SpotsSection({
 }) {
   const listings = filterListings(dashboard.recentListings, query);
   const pendingSubmissions = filterSubmissions(dashboard.pendingSubmissions, query);
+  const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pendingSubmissions.length) {
+      setExpandedSubmissionId(null);
+      return;
+    }
+    if (expandedSubmissionId && !pendingSubmissions.some((submission) => submission.id === expandedSubmissionId)) {
+      setExpandedSubmissionId(null);
+    }
+  }, [expandedSubmissionId, pendingSubmissions]);
+
   return (
     <View>
       <PageIntro
@@ -893,68 +1078,25 @@ function SpotsSection({
       </View>
 
       <DataPanel title="Pending Spot Submissions" right={<Text style={styles.exportLink}>{pendingSubmissions.length} Pending</Text>}>
-        <DataTable
-          columns={[
-            {
-              key: 'name',
-              label: 'Submitted Spot',
-              flex: 1.8,
-              render: (item) => (
-                <View style={styles.listingCell}>
-                  <Image source={{ uri: item.image }} style={styles.listingImage} />
-                  <View>
-                    <Text style={styles.tableStrong}>{item.name}</Text>
-                    <Text style={styles.tableMini} numberOfLines={1}>
-                      {item.description || `ID: ${item.id}`}
-                    </Text>
-                  </View>
-                </View>
-              ),
-            },
-            { key: 'category', label: 'Category', render: (item) => <Text style={styles.tableMuted}>{item.category}</Text> },
-            { key: 'barangay', label: 'Barangay', render: (item) => <Text style={styles.tableMuted}>{item.barangay}</Text> },
-            {
-              key: 'popularity',
-              label: 'Popularity',
-              render: (item) => (
-                <View>
-                  <Text style={styles.tablePrimary}>{item.popularityScore} pts</Text>
-                  <Text style={styles.tableMini}>
-                    {item.voteCount} votes / {item.searchCount} searches / {item.similarSubmissionCount} similar
-                  </Text>
-                </View>
-              ),
-            },
-            { key: 'submitted', label: 'Submitted', render: (item) => <Text style={styles.tableMuted}>{item.submitted}</Text> },
-            { key: 'status', label: 'Status', render: (item) => <StatusBadge label={item.status} warning /> },
-            {
-              key: 'actions',
-              label: 'Actions',
-              align: 'right',
-              render: (item) => (
-                <Pressable
-                  style={[styles.approveSubmissionButton, approvingSubmissionId === item.id && styles.tableIconButtonDisabled]}
-                  onPress={() => onApproveSubmission(item)}
-                  disabled={approvingSubmissionId === item.id}
-                >
-                  {approvingSubmissionId === item.id ? (
-                    <ActivityIndicator color={colors.white} />
-                  ) : (
-                    <>
-                      <CheckCircle2 size={16} color={colors.white} />
-                      <Text style={styles.approveSubmissionText}>Approve</Text>
-                    </>
-                  )}
-                </Pressable>
-              ),
-            },
-          ]}
-          data={pendingSubmissions}
-          emptyCopy="No pending spot submissions need approval."
+        <PendingSubmissionsTable
+          submissions={pendingSubmissions}
+          expandedSubmissionId={expandedSubmissionId}
+          approvingSubmissionId={approvingSubmissionId}
+          onToggleSubmission={(submission) =>
+            setExpandedSubmissionId((current) => (current === submission.id ? null : submission.id))
+          }
+          onApproveSubmission={onApproveSubmission}
         />
       </DataPanel>
 
-      <DataPanel title="Recent Listings" right={<Text style={styles.exportLink}>Export CSV</Text>}>
+      <DataPanel
+        title="Recent Listings"
+        right={
+          <Pressable onPress={() => Alert.alert('Coming soon', "CSV export isn't wired up yet.")}>
+            <Text style={styles.exportLink}>Export CSV</Text>
+          </Pressable>
+        }
+      >
         <DataTable
           columns={[
             {
@@ -979,8 +1121,11 @@ function SpotsSection({
               key: 'actions',
               label: 'Actions',
               align: 'right',
-              render: () => (
-                <Pressable style={styles.tableIconButton}>
+              render: (item) => (
+                <Pressable
+                  style={styles.tableIconButton}
+                  onPress={() => Alert.alert('Coming soon', `Editing ${item.name} isn't wired up yet.`)}
+                >
                   <Edit3 size={16} color={adminPalette.onSurfaceVariant} />
                 </Pressable>
               ),
@@ -991,15 +1136,206 @@ function SpotsSection({
         />
       </DataPanel>
 
-      <Pressable style={styles.floatingAdd}>
+      <Pressable
+        style={styles.floatingAdd}
+        onPress={() => Alert.alert('Coming soon', "Manually adding a spot isn't wired up yet.")}
+      >
         <Plus size={24} color={colors.white} />
       </Pressable>
     </View>
   );
 }
 
-const reportFilters = ['All', 'Spot Issue', 'Fake Review', 'Wrong Info', 'Offensive Content'] as const;
+function PendingSubmissionsTable({
+  submissions,
+  expandedSubmissionId,
+  approvingSubmissionId,
+  onToggleSubmission,
+  onApproveSubmission,
+}: {
+  submissions: AdminSpotSubmissionRow[];
+  expandedSubmissionId: string | null;
+  approvingSubmissionId: string | null;
+  onToggleSubmission: (submission: AdminSpotSubmissionRow) => void;
+  onApproveSubmission: (submission: AdminSpotSubmissionRow) => void;
+}) {
+  return (
+    <View>
+      <View style={styles.tableHead}>
+        {['Submitted Spot', 'Sender', 'Category', 'Popularity', 'Submitted', 'Actions'].map((label, index) => (
+          <Text
+            key={label}
+            style={[
+              styles.tableHeadText,
+              { flex: index === 0 ? 1.9 : index === 1 ? 1.25 : 1, textAlign: index === 5 ? 'right' : 'left' },
+            ]}
+          >
+            {label}
+          </Text>
+        ))}
+      </View>
+      {submissions.map((submission) => {
+        const expanded = expandedSubmissionId === submission.id;
+        const approving = approvingSubmissionId === submission.id;
+        return (
+          <React.Fragment key={submission.id}>
+            <View style={[styles.tableRow, expanded && styles.submissionRowExpanded]}>
+              <View style={{ flex: 1.9 }}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => onToggleSubmission(submission)}
+                  style={({ pressed }) => [styles.submissionSpotButton, pressed && styles.submissionSpotButtonPressed]}
+                >
+                  <Image source={{ uri: submission.image }} style={styles.listingImage} />
+                  <View style={styles.submissionSpotCopy}>
+                    <Text style={styles.tableStrong}>{submission.name}</Text>
+                    <Text style={styles.tableMini} numberOfLines={1}>
+                      {submission.description || `ID: ${submission.id}`}
+                    </Text>
+                  </View>
+                  {expanded ? <ChevronUp size={16} color={adminPalette.primary} /> : <ChevronRight size={16} color={adminPalette.primary} />}
+                </Pressable>
+              </View>
+              <View style={{ flex: 1.25 }}>
+                <Text style={styles.tableStrong} numberOfLines={1}>{submission.submitterName}</Text>
+                <Text style={styles.tableMini} numberOfLines={1}>{submission.submitterEmail}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.tableMuted}>{submission.category}</Text>
+                <Text style={styles.tableMini} numberOfLines={1}>{submission.barangay}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.tablePrimary}>{submission.popularityScore} pts</Text>
+                <Text style={styles.tableMini}>
+                  {submission.voteCount} votes / {submission.searchCount} searches / {submission.similarSubmissionCount} similar
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.tableMuted}>{submission.submitted}</Text>
+                <StatusBadge label={submission.status} warning />
+              </View>
+              <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                <Pressable
+                  style={[styles.approveSubmissionButton, approving && styles.tableIconButtonDisabled]}
+                  onPress={() => onApproveSubmission(submission)}
+                  disabled={approving}
+                >
+                  {approving ? (
+                    <ActivityIndicator color={colors.white} />
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} color={colors.white} />
+                      <Text style={styles.approveSubmissionText}>Approve</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+            {expanded && <ExpandedSpotSubmission submission={submission} />}
+          </React.Fragment>
+        );
+      })}
+      {!submissions.length && <EmptyState title="Nothing here yet" copy="No pending spot submissions need approval." compact />}
+    </View>
+  );
+}
+
+function ExpandedSpotSubmission({ submission }: { submission: AdminSpotSubmissionRow }) {
+  const images = submission.images.length ? submission.images : [submission.image];
+  return (
+    <View style={styles.expandedSubmission}>
+      <View style={styles.submissionDetailHero}>
+        <Image source={{ uri: images[0] }} style={styles.submissionHeroImage} />
+        <View style={styles.submissionDetailCopy}>
+          <View style={styles.submissionTitleRow}>
+            <View style={styles.submissionTitleCopy}>
+              <Text style={styles.microHeadingPrimary}>Submitted Spot</Text>
+              <Text style={styles.submissionDetailTitle}>{submission.name}</Text>
+            </View>
+            <StatusBadge label={submission.status} warning />
+          </View>
+          <Text style={styles.submissionDescription}>
+            {submission.description || 'No description was included with this spot submission.'}
+          </Text>
+          <View style={styles.submissionMetaGrid}>
+            <SubmissionMeta label="Category" value={submission.category} />
+            <SubmissionMeta label="Barangay" value={submission.barangay} />
+            <SubmissionMeta label="Coordinates" value={`${submission.latitude.toFixed(5)}, ${submission.longitude.toFixed(5)}`} />
+            <SubmissionMeta label="Reservation" value={submission.isReservable ? `Reservable / ${submission.reservationType ?? 'free'}` : 'Not reservable'} />
+            <SubmissionMeta label="Fee" value={submission.paymentRequired ? formatAdminMoney(submission.reservationFee) : 'No payment required'} />
+            <SubmissionMeta label="Submitted" value={submission.submitted} />
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.submissionDetailGrid}>
+        <View style={styles.submissionDetailBlock}>
+          <Text style={styles.microHeadingPrimary}>Sender</Text>
+          <View style={styles.senderCard}>
+            <View style={styles.userAvatar}>
+              <Text style={styles.userAvatarText}>{getSenderInitials(submission.submitterName, submission.submitterEmail)}</Text>
+            </View>
+            <View style={styles.senderCopy}>
+              <Text style={styles.tableStrong}>{submission.submitterName}</Text>
+              <Text style={styles.tableMini}>{submission.submitterEmail}</Text>
+              <Text style={styles.senderIdText}>ID: {submission.submitterId || 'Unavailable'}</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.submissionDetailBlock}>
+          <Text style={styles.microHeadingPrimary}>Address</Text>
+          <View style={styles.addressCard}>
+            <MapPin size={15} color={adminPalette.primary} />
+            <Text style={styles.addressText}>{submission.address}</Text>
+          </View>
+        </View>
+
+        <View style={styles.submissionDetailBlockWide}>
+          <Text style={styles.microHeadingPrimary}>Submitted Photos</Text>
+          <View style={styles.submissionImageGrid}>
+            {images.map((image, index) => (
+              <Image key={`${image}-${index}`} source={{ uri: image }} style={styles.submissionDetailImage} />
+            ))}
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function SubmissionMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.submissionMetaItem}>
+      <Text style={styles.submissionMetaLabel}>{label}</Text>
+      <Text style={styles.submissionMetaValue} numberOfLines={2}>{value}</Text>
+    </View>
+  );
+}
+
+function getSenderInitials(name?: string | null, email?: string | null) {
+  const source = (name && name !== 'Unknown sender' ? name : email) ?? 'Sender';
+  return source
+    .split(source.includes('@') ? '@' : /\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('') || 'S';
+}
+
+const reportFilters = ['All', ...REVIEW_REPORT_CATEGORIES, 'Spot edit suggestion'] as const;
 type ReportFilter = (typeof reportFilters)[number];
+
+const urgentReportTypes = new Set([
+  'Frauds and scams',
+  'Hate speech',
+  'Harassment or bullying',
+  'Pornography and nudity',
+  'Illegal activities and regulated goods',
+  'Child or minor safety',
+]);
+
+const warningReportTypes = new Set(['Inaccurate or misleading review', 'Spam', 'Spot edit suggestion']);
 
 function ReportsSection({
   reports,
@@ -1040,7 +1376,12 @@ function ReportsSection({
         title="Reports"
         subtitle="Issues submitted by users about spots, reviews, or content."
       />
-      <View style={styles.reportTabs}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.reportTabsScroller}
+        contentContainerStyle={styles.reportTabs}
+      >
         {reportFilters.map((tab) => (
           <Pressable
             key={tab}
@@ -1050,7 +1391,7 @@ function ReportsSection({
             <Text style={[styles.reportTabText, selectedReportType === tab && styles.reportTabTextActive]}>{tab}</Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
 
       <View style={styles.reportPanel}>
         <View style={styles.reportHeader}>
@@ -1067,7 +1408,11 @@ function ReportsSection({
               onPress={() => setActiveReportId((current) => (current === report.id ? null : report.id))}
             >
               <View style={styles.reportColumn}>
-                <StatusBadge label={report.type} danger={report.type === 'Fake Review'} warning={report.type === 'Wrong Info'} />
+                <StatusBadge
+                  label={report.type}
+                  danger={urgentReportTypes.has(report.type)}
+                  warning={warningReportTypes.has(report.type)}
+                />
               </View>
               <View style={styles.reportColumn}>
                 <Text style={styles.tableStrong}>{report.spot}</Text>
@@ -1093,7 +1438,19 @@ function ReportsSection({
                 >
                   <Text style={styles.reviewButtonText}>{activeReportId === report.id ? 'Hide' : 'Review'}</Text>
                 </Pressable>
-                <Trash2Safe onPress={() => onDismissReport(report, '')} disabled={moderatingReportId === report.id} />
+                <Trash2Safe
+                  onPress={() =>
+                    Alert.alert(
+                      'Dismiss this report?',
+                      `This removes "${report.spot}" from the moderation queue with no resolution notes. This can't be undone.`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Dismiss', style: 'destructive', onPress: () => onDismissReport(report, '') },
+                      ],
+                    )
+                  }
+                  disabled={moderatingReportId === report.id}
+                />
               </View>
             </Pressable>
             {activeReportId === report.id && (
@@ -1287,8 +1644,16 @@ function ExpandedReport({
   );
 }
 
+const userRoleFilters = ['All', 'Spotter', 'Owner'] as const;
+type UserRoleFilter = (typeof userRoleFilters)[number];
+// 'Spotter' in the UI maps to the 'user' role value stored on the record.
+const userRoleFilterValue: Record<Exclude<UserRoleFilter, 'All'>, string> = { Spotter: 'user', Owner: 'owner' };
+
 function UsersSection({ dashboard, query }: { dashboard: AdminDashboardData; query: string }) {
-  const visibleUsers = filterUsers(dashboard.users, query);
+  const [roleFilter, setRoleFilter] = useState<UserRoleFilter>('All');
+  const visibleUsers = filterUsers(dashboard.users, query).filter(
+    (user) => roleFilter === 'All' || user.role.toLowerCase() === userRoleFilterValue[roleFilter],
+  );
   const ownerCount = dashboard.users.filter((user) => user.role.toLowerCase() === 'owner').length;
   const spotterCount = dashboard.users.filter((user) => user.role.toLowerCase() === 'user').length;
   return (
@@ -1298,7 +1663,10 @@ function UsersSection({ dashboard, query }: { dashboard: AdminDashboardData; que
         title="Users"
         subtitle="Profiles registered in CebSpot."
         right={
-          <Pressable style={styles.addUserButton}>
+          <Pressable
+            style={styles.addUserButton}
+            onPress={() => Alert.alert('Coming soon', "Manually adding a user isn't wired up yet.")}
+          >
             <Plus size={19} color={colors.white} />
             <Text style={styles.addUserText}>Add User</Text>
           </Pressable>
@@ -1307,9 +1675,13 @@ function UsersSection({ dashboard, query }: { dashboard: AdminDashboardData; que
 
       <View style={styles.filterBar}>
         <View style={styles.filterPillRow}>
-          {['All', 'Spotter', 'Owner'].map((item) => (
-            <Pressable key={item} style={[styles.filterPill, item === 'All' && styles.filterPillActive]}>
-              <Text style={[styles.filterPillText, item === 'All' && styles.filterPillTextActive]}>{item}</Text>
+          {userRoleFilters.map((item) => (
+            <Pressable
+              key={item}
+              onPress={() => setRoleFilter(item)}
+              style={[styles.filterPill, item === roleFilter && styles.filterPillActive]}
+            >
+              <Text style={[styles.filterPillText, item === roleFilter && styles.filterPillTextActive]}>{item}</Text>
             </Pressable>
           ))}
         </View>
@@ -1329,7 +1701,11 @@ function UsersSection({ dashboard, query }: { dashboard: AdminDashboardData; que
               render: (item) => (
                 <View style={styles.userCell}>
                   <View style={styles.userAvatar}>
-                    <Text style={styles.userAvatarText}>{item.avatar}</Text>
+                    {item.photoUrl ? (
+                      <Image source={{ uri: item.photoUrl }} style={styles.userAvatarImage} />
+                    ) : (
+                      <Text style={styles.userAvatarText}>{item.avatar}</Text>
+                    )}
                   </View>
                   <View>
                     <Text style={styles.tableStrong}>{item.name}</Text>
@@ -1355,12 +1731,20 @@ function UsersSection({ dashboard, query }: { dashboard: AdminDashboardData; que
               key: 'actions',
               label: 'Actions',
               align: 'right',
-              render: () => (
+              render: (item) => (
                 <View style={styles.inlineActions}>
-                  <Pressable style={styles.tableIconButton}>
+                  <Pressable
+                    style={styles.tableIconButton}
+                    onPress={() => Alert.alert('Coming soon', `Editing ${item.name} isn't wired up yet.`)}
+                  >
                     <Edit3 size={16} color={adminPalette.primary} />
                   </Pressable>
-                  <Pressable style={styles.tableIconButton}>
+                  <Pressable
+                    style={styles.tableIconButton}
+                    onPress={() =>
+                      Alert.alert('Coming soon', `Removing ${item.name} isn't wired up yet.`)
+                    }
+                  >
                     <XCircle size={17} color={adminPalette.error} />
                   </Pressable>
                 </View>
@@ -1376,21 +1760,59 @@ function UsersSection({ dashboard, query }: { dashboard: AdminDashboardData; que
   );
 }
 
-function OwnerRequestsSection({ dashboard, query }: { dashboard: AdminDashboardData; query: string }) {
-  const visibleRequests = filterOwnerRequests(dashboard.ownerRequests, query);
+function OwnerRequestsSection({
+  dashboard,
+  client,
+  query,
+  reviewingRequestId,
+  onReviewRequest,
+}: {
+  dashboard: AdminDashboardData;
+  client: SupabaseClient;
+  query: string;
+  reviewingRequestId: string | null;
+  onReviewRequest: (request: AdminOwnerRequestRow, decision: AdminOwnerRequestDecision, notes: string) => Promise<boolean>;
+}) {
+  const requestFilters = ['All', 'Pending', 'Approved', 'Rejected'] as const;
+  const initialExpandedId = dashboard.ownerRequests.find((request) => request.expanded)?.id ?? null;
+  const [statusFilter, setStatusFilter] = useState<(typeof requestFilters)[number]>('All');
+  const [expandedRequestId, setExpandedRequestId] = useState<string | null>(initialExpandedId);
+  const [decisionPrompt, setDecisionPrompt] = useState<{
+    request: AdminOwnerRequestRow;
+    decision: AdminOwnerRequestDecision;
+    notes: string;
+  } | null>(null);
+  const visibleRequests = filterOwnerRequests(dashboard.ownerRequests, query).filter(
+    (request) => statusFilter === 'All' || request.status.toLowerCase() === statusFilter.toLowerCase(),
+  );
+
+  useEffect(() => {
+    if (expandedRequestId && !dashboard.ownerRequests.some((request) => request.id === expandedRequestId)) {
+      setExpandedRequestId(null);
+    }
+  }, [dashboard.ownerRequests, expandedRequestId]);
+
+  function confirmDecision(request: AdminOwnerRequestRow, decision: AdminOwnerRequestDecision, notes = '') {
+    setDecisionPrompt({ request, decision, notes });
+  }
+
   return (
     <View>
       <PageIntro
         eyebrow="People & Access"
         title="Owner Requests"
-        subtitle="Manage applications from users wanting to register as spot owners and integrate reservation systems."
+        subtitle="Review owner applications and verification documents manually before granting access."
       />
 
       <View style={styles.requestToolbar}>
         <View style={styles.filterPillRow}>
-          {['All', 'Pending', 'Approved', 'Rejected'].map((item) => (
-            <Pressable key={item} style={[styles.requestPill, item === 'All' && styles.requestPillActive]}>
-              <Text style={[styles.requestPillText, item === 'All' && styles.requestPillTextActive]}>{item}</Text>
+          {requestFilters.map((item) => (
+            <Pressable
+              key={item}
+              onPress={() => setStatusFilter(item)}
+              style={[styles.requestPill, item === statusFilter && styles.requestPillActive]}
+            >
+              <Text style={[styles.requestPillText, item === statusFilter && styles.requestPillTextActive]}>{item}</Text>
               {item === 'Pending' && (
                 <View style={styles.pendingCount}>
                   <Text style={styles.pendingCountText}>{dashboard.metrics.pendingOwnerRequests}</Text>
@@ -1399,10 +1821,7 @@ function OwnerRequestsSection({ dashboard, query }: { dashboard: AdminDashboardD
             </Pressable>
           ))}
         </View>
-        <View style={styles.inlineActions}>
-          <ToolbarButton icon={Filter} label="Filter" />
-          <ToolbarButton icon={Download} label="Export" />
-        </View>
+        <Text style={styles.filterSummary}>{visibleRequests.length} matching requests</Text>
       </View>
 
       <View style={styles.requestsTable}>
@@ -1413,9 +1832,13 @@ function OwnerRequestsSection({ dashboard, query }: { dashboard: AdminDashboardD
             </Text>
           ))}
         </View>
-        {visibleRequests.map((request) => (
+        {visibleRequests.map((request) => {
+          const expanded = expandedRequestId === request.id;
+          const pending = request.status.toLowerCase() === 'pending';
+          const reviewing = reviewingRequestId === request.id;
+          return (
           <View key={request.id}>
-            <View style={[styles.requestRow, request.expanded && styles.requestRowExpanded]}>
+            <View style={[styles.requestRow, expanded && styles.requestRowExpanded]}>
               <View style={styles.requestColumn}>
                 <View style={styles.userCell}>
                   <View style={styles.requestAvatar}>
@@ -1440,41 +1863,60 @@ function OwnerRequestsSection({ dashboard, query }: { dashboard: AdminDashboardD
                 <Text style={styles.tableMuted}>{request.applied}</Text>
               </View>
               <View style={[styles.requestColumn, styles.requestActions]}>
-                <Pressable style={[styles.requestIconAction, styles.approveAction]}>
-                  <CheckCircle2 size={18} color={request.expanded ? colors.white : '#16a34a'} />
-                </Pressable>
-                <Pressable style={[styles.requestIconAction, request.expanded && styles.collapseAction]}>
-                  {request.expanded ? <ChevronUp size={18} color={colors.white} /> : <Mail size={18} color="#2563eb" />}
-                </Pressable>
-                {!request.expanded && (
-                  <Pressable style={styles.requestIconAction}>
-                    <XCircle size={18} color={adminPalette.error} />
+                {pending ? (
+                  <>
+                    <Pressable
+                      accessibilityLabel={`Approve ${request.applicant}'s owner request`}
+                      disabled={reviewing}
+                      onPress={() => confirmDecision(request, 'approved', request.adminNotes ?? '')}
+                      style={[styles.requestIconAction, reviewing && styles.ownerActionDisabled]}
+                    >
+                      {reviewing ? <ActivityIndicator size="small" color="#16a34a" /> : <CheckCircle2 size={18} color="#16a34a" />}
+                    </Pressable>
+                    <Pressable
+                      accessibilityLabel={expanded ? 'Collapse owner request' : 'View owner request details'}
+                      onPress={() => setExpandedRequestId(expanded ? null : request.id)}
+                      style={[styles.requestIconAction, expanded && styles.collapseAction]}
+                    >
+                      {expanded ? <ChevronUp size={18} color={colors.white} /> : <Mail size={18} color="#2563eb" />}
+                    </Pressable>
+                    <Pressable
+                      accessibilityLabel={`Reject ${request.applicant}'s owner request`}
+                      disabled={reviewing}
+                      onPress={() => confirmDecision(request, 'rejected', request.adminNotes ?? '')}
+                      style={[styles.requestIconAction, reviewing && styles.ownerActionDisabled]}
+                    >
+                      <XCircle size={18} color={adminPalette.error} />
+                    </Pressable>
+                  </>
+                ) : (
+                  <Pressable
+                    accessibilityLabel={expanded ? 'Collapse owner request' : 'View owner request details'}
+                    onPress={() => setExpandedRequestId(expanded ? null : request.id)}
+                    style={styles.reviewedRequestAction}
+                  >
+                    <StatusBadge label={request.status} />
                   </Pressable>
                 )}
               </View>
             </View>
-            {request.expanded && <ExpandedOwnerRequest request={request} />}
+            {expanded && (
+              <ExpandedOwnerRequest
+                client={client}
+                request={request}
+                reviewing={reviewing}
+                onApprove={(notes) => confirmDecision(request, 'approved', notes)}
+                onReject={(notes) => confirmDecision(request, 'rejected', notes)}
+              />
+            )}
           </View>
-        ))}
+          );
+        })}
         {!visibleRequests.length && <EmptyState title="No owner requests found" copy="There are no matching access requests." compact />}
-        <Pagination copy={`Showing ${visibleRequests.length} of ${dashboard.ownerRequests.length} requests`} numbered />
+        <Pagination copy={`Showing ${visibleRequests.length} of ${dashboard.ownerRequests.length} requests`} />
       </View>
 
       <View style={styles.bottomBento}>
-        <View style={styles.systemUpdateCard}>
-          <View style={styles.updateTagRow}>
-            <Text style={styles.updateTag}>System Update</Text>
-            <Text style={styles.updateVersion}>Ver 2.4.0</Text>
-          </View>
-          <Text style={styles.updateTitle}>Automated Verification is Live</Text>
-          <Text style={styles.updateCopy}>
-            {dashboard.metrics.pendingOwnerRequests} pending applications need admin review before owners can manage reservations.
-          </Text>
-          <Pressable style={styles.updateButton}>
-            <Text style={styles.updateButtonText}>Review Logs</Text>
-          </Pressable>
-          <ShieldCheck size={150} color="#FA5F0018" style={styles.updateWatermark} />
-        </View>
         <View style={styles.velocityCard}>
           <Text style={styles.microHeadingPrimary}>Request Velocity</Text>
           <BarChart values={requestBars} activeIndex={4} compact />
@@ -1489,11 +1931,149 @@ function OwnerRequestsSection({ dashboard, query }: { dashboard: AdminDashboardD
           </View>
         </View>
       </View>
+
+      <OwnerRequestDecisionModal
+        prompt={decisionPrompt}
+        reviewing={Boolean(decisionPrompt && reviewingRequestId === decisionPrompt.request.id)}
+        onChangeNotes={(notes) => setDecisionPrompt((current) => current ? { ...current, notes } : current)}
+        onCancel={() => setDecisionPrompt(null)}
+        onConfirm={() => {
+          if (!decisionPrompt) return;
+          const { request, decision, notes } = decisionPrompt;
+          void onReviewRequest(request, decision, notes).then((completed) => {
+            if (completed) setDecisionPrompt(null);
+          });
+        }}
+      />
     </View>
   );
 }
 
-function ExpandedOwnerRequest({ request }: { request: AdminOwnerRequestRow }) {
+function OwnerRequestDecisionModal({
+  prompt,
+  reviewing,
+  onChangeNotes,
+  onCancel,
+  onConfirm,
+}: {
+  prompt: { request: AdminOwnerRequestRow; decision: AdminOwnerRequestDecision; notes: string } | null;
+  reviewing: boolean;
+  onChangeNotes: (notes: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const approving = prompt?.decision === 'approved';
+  const rejectionNeedsReason = !approving && !prompt?.notes.trim();
+
+  return (
+    <Modal animationType="fade" transparent visible={Boolean(prompt)} onRequestClose={onCancel}>
+      <View style={styles.ownerDecisionBackdrop}>
+        <Pressable accessibilityLabel="Close owner request confirmation" onPress={onCancel} style={styles.ownerDecisionScrim} />
+        {prompt && (
+          <View style={styles.ownerDecisionModal}>
+            <View style={styles.ownerDecisionHeader}>
+              <View style={[styles.ownerDecisionIcon, approving ? styles.ownerDecisionIconApprove : styles.ownerDecisionIconReject]}>
+                {approving ? (
+                  <CheckCircle2 size={24} color={adminPalette.success} />
+                ) : (
+                  <XCircle size={24} color={adminPalette.error} />
+                )}
+              </View>
+              <View style={styles.ownerDecisionHeadingCopy}>
+                <Text style={styles.ownerDecisionEyebrow}>Owner Access</Text>
+                <Text style={styles.ownerDecisionTitle}>{approving ? 'Approve request?' : 'Reject request?'}</Text>
+              </View>
+              <Pressable accessibilityLabel="Close confirmation" onPress={onCancel} style={styles.ownerDecisionClose}>
+                <XCircle size={20} color={adminPalette.onSurfaceVariant} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.ownerDecisionCopy}>
+              {approving
+                ? `${prompt.request.applicant} will become an owner and receive management access to the matching CebSpot listing.`
+                : `${prompt.request.applicant} will not receive owner access to this spot.`}
+            </Text>
+
+            <View style={styles.ownerDecisionSpot}>
+              <MapPin size={17} color={adminPalette.primary} />
+              <View style={styles.ownerDecisionSpotCopy}>
+                <Text style={styles.ownerDecisionSpotName}>{prompt.request.spot}</Text>
+                <Text style={styles.ownerDecisionSpotAddress}>{prompt.request.fullAddress}</Text>
+              </View>
+            </View>
+
+            <Text style={styles.ownerDecisionNotesLabel}>{approving ? 'Internal notes (optional)' : 'Rejection reason (required)'}</Text>
+            <TextInput
+              multiline
+              editable={!reviewing}
+              value={prompt.notes}
+              onChangeText={onChangeNotes}
+              placeholder={approving ? 'Add verification notes...' : 'Explain why this request was rejected...'}
+              placeholderTextColor={adminPalette.outline}
+              style={styles.ownerDecisionNotes}
+            />
+            {rejectionNeedsReason && <Text style={styles.ownerDecisionValidation}>Add a reason before rejecting this request.</Text>}
+
+            <View style={styles.ownerDecisionActions}>
+              <Pressable disabled={reviewing} onPress={onCancel} style={styles.ownerDecisionCancel}>
+                <Text style={styles.ownerDecisionCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                disabled={reviewing || rejectionNeedsReason}
+                onPress={onConfirm}
+                style={[
+                  styles.ownerDecisionConfirm,
+                  approving ? styles.ownerDecisionConfirmApprove : styles.ownerDecisionConfirmReject,
+                  (reviewing || rejectionNeedsReason) && styles.ownerActionDisabled,
+                ]}
+              >
+                {reviewing ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Text style={styles.ownerDecisionConfirmText}>{approving ? 'Approve Access' : 'Reject Request'}</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        )}
+      </View>
+    </Modal>
+  );
+}
+
+function ExpandedOwnerRequest({
+  client,
+  request,
+  reviewing,
+  onApprove,
+  onReject,
+}: {
+  client: SupabaseClient;
+  request: AdminOwnerRequestRow;
+  reviewing: boolean;
+  onApprove: (notes: string) => void;
+  onReject: (notes: string) => void;
+}) {
+  const [notes, setNotes] = useState(request.adminNotes ?? '');
+  const [openingDocument, setOpeningDocument] = useState<string | null>(null);
+  const pending = request.status.toLowerCase() === 'pending';
+
+  useEffect(() => {
+    setNotes(request.adminNotes ?? '');
+  }, [request.adminNotes, request.id]);
+
+  async function openDocument(path: string) {
+    try {
+      setOpeningDocument(path);
+      const url = await ownerVerificationDocumentService.getSignedUrl(path, client);
+      await Linking.openURL(url);
+    } catch (error: any) {
+      Alert.alert('Unable to open document', error.message ?? 'Please try again.');
+    } finally {
+      setOpeningDocument(null);
+    }
+  }
+
   return (
     <View style={styles.expandedRequest}>
       <View style={styles.expandedRequestColumn}>
@@ -1505,35 +2085,65 @@ function ExpandedOwnerRequest({ request }: { request: AdminOwnerRequestRow }) {
         </View>
       </View>
       <View style={styles.expandedRequestColumn}>
-        <Text style={styles.microHeadingPrimary}>Verification Documents</Text>
-        <Image
-          source={{
-            uri: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=400',
-          }}
-          style={styles.documentImage}
-        />
-        <View style={styles.documentRow}>
-          <FileText size={13} color={adminPalette.onSurfaceVariant} />
-          <Text style={styles.documentText}>Mayors_Permit_2023_TheSocial.pdf (2.4 MB)</Text>
+        <Text style={styles.microHeadingPrimary}>Applicant Details</Text>
+        <View style={styles.ownerDetailGroup}>
+          <Text style={styles.ownerDetailLabel}>Contact</Text>
+          <Text style={styles.ownerDetailValue}>{request.email}</Text>
+          <Text style={styles.ownerDetailValue}>{request.phone || 'Phone not provided'}</Text>
+        </View>
+        <View style={styles.ownerDetailGroup}>
+          <Text style={styles.ownerDetailLabel}>Spot Address</Text>
+          <Text style={styles.ownerDetailValue}>{request.fullAddress}</Text>
+        </View>
+        <View style={styles.ownerDetailGroup}>
+          <Text style={styles.ownerDetailLabel}>Requested Access</Text>
+          <View style={styles.accessNeedRow}>
+            {request.accessNeeds.length ? request.accessNeeds.map((need) => (
+              <View key={need} style={styles.accessNeedChip}>
+                <Text style={styles.accessNeedText}>{need}</Text>
+              </View>
+            )) : <Text style={styles.ownerDetailValue}>No access areas specified</Text>}
+          </View>
+        </View>
+        <View style={styles.ownerDetailGroup}>
+          <Text style={styles.ownerDetailLabel}>Verification Documents</Text>
+          {request.verificationDocuments.length ? request.verificationDocuments.map((path, index) => (
+            <Pressable key={path} disabled={Boolean(openingDocument)} onPress={() => openDocument(path)} style={styles.documentRow}>
+              <FileText size={15} color={adminPalette.primary} />
+              <Text style={styles.documentText}>{path.split('/').pop() || `Document ${index + 1}`}</Text>
+              <Text style={styles.documentOpenText}>{openingDocument === path ? 'Opening...' : 'Open'}</Text>
+            </Pressable>
+          )) : <Text style={styles.ownerDetailValue}>No documents attached</Text>}
         </View>
       </View>
       <View style={styles.expandedRequestColumn}>
         <Text style={styles.microHeadingPrimary}>Internal Admin Notes</Text>
         <TextInput
           multiline
+          editable={pending && !reviewing}
+          value={notes}
+          onChangeText={setNotes}
           placeholder="Add private notes about this applicant..."
           placeholderTextColor={adminPalette.outline}
-          style={styles.ownerNotesInput}
-          defaultValue={request.adminNotes ?? ''}
+          style={[styles.ownerNotesInput, !pending && styles.ownerNotesInputReadOnly]}
         />
-        <View style={styles.ownerActionRow}>
-          <Pressable style={styles.rejectButton}>
-            <Text style={styles.rejectButtonText}>Reject</Text>
-          </Pressable>
-          <Pressable style={styles.approveButton}>
-            <Text style={styles.approveButtonText}>Approve Request</Text>
-          </Pressable>
-        </View>
+        {pending ? (
+          <View style={styles.ownerActionRow}>
+            <Pressable disabled={reviewing} onPress={() => onReject(notes)} style={[styles.rejectButton, reviewing && styles.ownerActionDisabled]}>
+              <Text style={styles.rejectButtonText}>Reject</Text>
+            </Pressable>
+            <Pressable disabled={reviewing} onPress={() => onApprove(notes)} style={[styles.approveButton, reviewing && styles.ownerActionDisabled]}>
+              {reviewing ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={styles.approveButtonText}>Approve Request</Text>}
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.reviewedRequestSummary}>
+            <StatusBadge label={request.status} />
+            <Text style={styles.reviewedRequestCopy}>
+              {request.reviewedAt ? `Reviewed ${formatLastUpdated(request.reviewedAt)}` : 'Request reviewed'}
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -1885,30 +2495,15 @@ function ToolbarButton({ icon: Icon, label }: { icon: LucideIcon; label: string 
   );
 }
 
-function Pagination({ copy, numbered }: { copy: string; numbered?: boolean }) {
+// Every row in these tables is already loaded and filtered client-side —
+// there's no real server-side paging behind this screen. Showing working-
+// looking chevrons and page numbers here would suggest more data is
+// reachable than actually is, so this intentionally renders as a plain
+// count rather than fake, non-functional page controls.
+function Pagination({ copy }: { copy: string }) {
   return (
     <View style={styles.pagination}>
       <Text style={styles.paginationText}>{copy}</Text>
-      <View style={styles.paginationActions}>
-        <Pressable style={styles.paginationButton}>
-          <ChevronLeft size={16} color={adminPalette.onSurfaceVariant} />
-        </Pressable>
-        {numbered && (
-          <>
-            <View style={styles.pageNumberActive}>
-              <Text style={styles.pageNumberActiveText}>1</Text>
-            </View>
-            {[2, 3].map((page) => (
-              <View key={page} style={styles.pageNumber}>
-                <Text style={styles.pageNumberText}>{page}</Text>
-              </View>
-            ))}
-          </>
-        )}
-        <Pressable style={styles.paginationButton}>
-          <ChevronRight size={16} color={adminPalette.onSurfaceVariant} />
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -1960,6 +2555,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     backgroundColor: adminPalette.background,
+    fontFamily: adminFontFamily,
   },
   adminGateScreen: {
     flex: 1,
@@ -1967,6 +2563,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     backgroundColor: adminPalette.background,
+    fontFamily: adminFontFamily,
   },
   adminGateCard: {
     width: '100%',
@@ -2006,6 +2603,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     color: adminPalette.onSurface,
     backgroundColor: adminPalette.surfaceBright,
+    fontFamily: adminFontFamily,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -2179,6 +2777,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     color: adminPalette.onSurface,
+    fontFamily: adminFontFamily,
     fontSize: 13,
     fontWeight: '600',
     paddingVertical: 8,
@@ -2827,6 +3426,171 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: adminPalette.surfaceContainer,
   },
+  adminAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 18,
+  },
+  submissionRowExpanded: {
+    backgroundColor: adminPalette.surfaceBright,
+  },
+  submissionSpotButton: {
+    minHeight: 50,
+    borderRadius: 8,
+    paddingRight: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  submissionSpotButtonPressed: {
+    opacity: 0.72,
+  },
+  submissionSpotCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  expandedSubmission: {
+    marginHorizontal: 24,
+    marginBottom: 22,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: adminPalette.primary + '22',
+    backgroundColor: adminPalette.surfaceLowest,
+    overflow: 'hidden',
+    ...shadow.card,
+  },
+  submissionDetailHero: {
+    flexDirection: 'row',
+    gap: 22,
+    padding: 22,
+    borderBottomWidth: 1,
+    borderBottomColor: adminPalette.surfaceContainer,
+  },
+  submissionHeroImage: {
+    width: 240,
+    height: 170,
+    borderRadius: 10,
+    backgroundColor: adminPalette.surfaceContainer,
+  },
+  submissionDetailCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 14,
+  },
+  submissionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 14,
+  },
+  submissionTitleCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  submissionDetailTitle: {
+    color: adminPalette.onSurface,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '900',
+  },
+  submissionDescription: {
+    color: adminPalette.onSurfaceVariant,
+    fontSize: 13,
+    lineHeight: 21,
+    fontWeight: '600',
+  },
+  submissionMetaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  submissionMetaItem: {
+    width: '31%',
+    minWidth: 150,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: adminPalette.outlineVariant + '50',
+    backgroundColor: adminPalette.surfaceBright,
+    padding: 10,
+  },
+  submissionMetaLabel: {
+    color: adminPalette.outline,
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  submissionMetaValue: {
+    color: adminPalette.onSurface,
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '800',
+    marginTop: 5,
+  },
+  submissionDetailGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 18,
+    padding: 22,
+  },
+  submissionDetailBlock: {
+    flex: 1,
+    minWidth: 260,
+  },
+  submissionDetailBlockWide: {
+    width: '100%',
+  },
+  senderCard: {
+    minHeight: 82,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: adminPalette.outlineVariant + '55',
+    backgroundColor: adminPalette.surfaceBright,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  senderCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  senderIdText: {
+    color: adminPalette.outline,
+    fontSize: 10,
+    lineHeight: 15,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  addressCard: {
+    minHeight: 82,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: adminPalette.outlineVariant + '55',
+    backgroundColor: adminPalette.surfaceBright,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  addressText: {
+    flex: 1,
+    color: adminPalette.onSurface,
+    fontSize: 12,
+    lineHeight: 19,
+    fontWeight: '700',
+  },
+  submissionImageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  submissionDetailImage: {
+    width: 150,
+    height: 112,
+    borderRadius: 10,
+    backgroundColor: adminPalette.surfaceContainer,
+  },
   tableIconButton: {
     width: 34,
     height: 34,
@@ -2867,12 +3631,15 @@ const styles = StyleSheet.create({
     borderColor: adminPalette.primary + '22',
     ...shadow.lifted,
   },
-  reportTabs: {
-    flexDirection: 'row',
-    gap: 22,
+  reportTabsScroller: {
     borderBottomWidth: 1,
     borderBottomColor: adminPalette.surfaceContainer,
     marginBottom: 24,
+  },
+  reportTabs: {
+    flexDirection: 'row',
+    gap: 22,
+    paddingRight: 18,
   },
   reportTab: {
     paddingHorizontal: 6,
@@ -3133,6 +3900,7 @@ const styles = StyleSheet.create({
     backgroundColor: adminPalette.surfaceLow,
     padding: 12,
     color: adminPalette.onSurface,
+    fontFamily: adminFontFamily,
     fontSize: 12,
     textAlignVertical: 'top',
   },
@@ -3385,6 +4153,7 @@ const styles = StyleSheet.create({
   requestActions: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
+    alignItems: 'center',
     gap: 8,
   },
   requestIconAction: {
@@ -3395,8 +4164,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   approveAction: {},
+  ownerActionDisabled: {
+    opacity: 0.5,
+  },
   collapseAction: {
     backgroundColor: adminPalette.primary,
+  },
+  reviewedRequestAction: {
+    minHeight: 36,
+    justifyContent: 'center',
   },
   expandedRequest: {
     marginHorizontal: 42,
@@ -3407,11 +4183,13 @@ const styles = StyleSheet.create({
     backgroundColor: adminPalette.surfaceLowest,
     padding: 28,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 28,
     ...shadow.lifted,
   },
   expandedRequestColumn: {
     flex: 1,
+    minWidth: 220,
     borderRightWidth: 1,
     borderRightColor: adminPalette.surfaceContainer,
     paddingRight: 24,
@@ -3437,6 +4215,39 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '600',
   },
+  ownerDetailGroup: {
+    marginBottom: 14,
+  },
+  ownerDetailLabel: {
+    color: adminPalette.outline,
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  ownerDetailValue: {
+    color: adminPalette.onSurface,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  accessNeedRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  accessNeedChip: {
+    borderRadius: 7,
+    backgroundColor: adminPalette.secondaryContainer + '66',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  accessNeedText: {
+    color: '#763400',
+    fontSize: 9,
+    fontWeight: '800',
+  },
   documentImage: {
     height: 105,
     borderRadius: 10,
@@ -3453,6 +4264,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
+  documentOpenText: {
+    color: adminPalette.primary,
+    fontSize: 10,
+    fontWeight: '900',
+    marginLeft: 'auto',
+  },
   ownerNotesInput: {
     height: 104,
     borderRadius: 12,
@@ -3461,8 +4278,17 @@ const styles = StyleSheet.create({
     backgroundColor: adminPalette.surfaceBright,
     padding: 14,
     color: adminPalette.onSurface,
+    fontFamily: adminFontFamily,
     fontSize: 12,
     textAlignVertical: 'top',
+  },
+  ownerNotesInputReadOnly: {
+    opacity: 0.72,
+  },
+  userAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 18,
   },
   ownerActionRow: {
     flexDirection: 'row',
@@ -3496,6 +4322,176 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 1.1,
+  },
+  reviewedRequestSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 14,
+  },
+  reviewedRequestCopy: {
+    color: adminPalette.onSurfaceVariant,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  ownerDecisionBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: '#00000066',
+  },
+  ownerDecisionScrim: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  ownerDecisionModal: {
+    width: '100%',
+    maxWidth: 520,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: adminPalette.outlineVariant + '66',
+    backgroundColor: adminPalette.surfaceLowest,
+    padding: 24,
+    ...shadow.lifted,
+  },
+  ownerDecisionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  ownerDecisionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ownerDecisionIconApprove: {
+    backgroundColor: adminPalette.successContainer,
+  },
+  ownerDecisionIconReject: {
+    backgroundColor: adminPalette.errorContainer + '24',
+  },
+  ownerDecisionHeadingCopy: {
+    flex: 1,
+  },
+  ownerDecisionEyebrow: {
+    color: adminPalette.primary,
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  ownerDecisionTitle: {
+    color: adminPalette.onSurface,
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '900',
+  },
+  ownerDecisionClose: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ownerDecisionCopy: {
+    color: adminPalette.onSurfaceVariant,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 18,
+  },
+  ownerDecisionSpot: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderRadius: 8,
+    backgroundColor: adminPalette.surfaceLow,
+    padding: 14,
+    marginTop: 16,
+  },
+  ownerDecisionSpotCopy: {
+    flex: 1,
+  },
+  ownerDecisionSpotName: {
+    color: adminPalette.onSurface,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  ownerDecisionSpotAddress: {
+    color: adminPalette.onSurfaceVariant,
+    fontSize: 11,
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  ownerDecisionNotesLabel: {
+    color: adminPalette.onSurfaceVariant,
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginTop: 18,
+    marginBottom: 7,
+  },
+  ownerDecisionNotes: {
+    minHeight: 96,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: adminPalette.outlineVariant,
+    backgroundColor: adminPalette.surfaceBright,
+    padding: 13,
+    color: adminPalette.onSurface,
+    fontFamily: adminFontFamily,
+    fontSize: 12,
+    textAlignVertical: 'top',
+  },
+  ownerDecisionValidation: {
+    color: adminPalette.error,
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  ownerDecisionActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 22,
+  },
+  ownerDecisionCancel: {
+    minHeight: 42,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: adminPalette.outlineVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  ownerDecisionCancelText: {
+    color: adminPalette.onSurfaceVariant,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  ownerDecisionConfirm: {
+    minWidth: 142,
+    minHeight: 42,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  ownerDecisionConfirmApprove: {
+    backgroundColor: adminPalette.success,
+  },
+  ownerDecisionConfirmReject: {
+    backgroundColor: adminPalette.error,
+  },
+  ownerDecisionConfirmText: {
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   bottomBento: {
     flexDirection: 'row',

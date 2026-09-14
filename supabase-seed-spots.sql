@@ -57,10 +57,10 @@ insert into public.spots (
 ) values
 (
   '66666666-6666-4666-8666-666666666666',
-  'Test Cebspot Restaurant',
-  'A warm Cebu restaurant test spot for validating venue details, reservations, owner approvals, and GCash payments.',
-  'Restaurant',
-  array['Restaurant', 'Reservations'],
+  'Test Cebspot Club',
+  'A Cebu nightlife test spot for validating venue details, reservations, owner approvals, and GCash payments.',
+  'Club',
+  array['Club', 'Nightlife', 'Reservations'],
   'Barangay Apas, Cebu City',
   10.3306,
   123.9062,
@@ -75,8 +75,8 @@ insert into public.spots (
   4.7,
   42,
   150,
-  '7:00 AM - 10:00 PM',
-  'https://example.com/cebspot-cafe',
+  '8:00 PM - 4:00 AM',
+  'https://example.com/test-cebspot-club',
   '+63 917 555 0198',
   true,
   true,
@@ -224,13 +224,38 @@ on conflict (id) do update set
 update public.spots
 set
   gcash_wallet_number = '0917 555 0198',
-  gcash_wallet_name = 'Test Cebspot Restaurant',
-  gcash_qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=GCash%20Test%20Cebspot%20Restaurant%2009175550198',
+  gcash_wallet_name = 'Test Cebspot Club',
+  gcash_qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=GCash%20Test%20Cebspot%20Club%2009175550198',
   gcash_amount = reservation_fee,
   payment_required = true,
   reservation_type = 'paid'
 where id = '66666666-6666-4666-8666-666666666666'
-   or lower(name) = 'test cebspot restaurant';
+   or lower(name) in ('test cebspot restaurant', 'test cebspot club');
+
+with club_tables as (
+  select jsonb_agg(
+    jsonb_build_object('tableId', table_id, 'capacity', capacity, 'isReserved', false)
+    order by display_order
+  ) as inventory
+  from (
+    select 'C' || lpad(number::text, 2, '0') as table_id, 4 as capacity, number as display_order
+    from generate_series(1, 42) as number
+    union all
+    select 'VVIP' || lpad(number::text, 2, '0'), 10, 100 + number
+    from generate_series(1, 4) as number
+    union all
+    select 'VIP' || lpad(number::text, 2, '0'), 10, 200 + number
+    from generate_series(5, 20) as number
+  ) tables
+)
+update public.spots
+set table_inventory = jsonb_build_object(
+  'sunset', club_tables.inventory,
+  'prime', club_tables.inventory,
+  'late', club_tables.inventory
+)
+from club_tables
+where id = '66666666-6666-4666-8666-666666666666';
 
 -- Extra Cebu City mock spots for map density and discovery testing.
 insert into public.spots (

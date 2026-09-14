@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  ActivityIndicator,
   BackHandler,
   Image,
   Platform,
@@ -9,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  Modal,
   View,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -95,6 +97,7 @@ export default function SubmitSpotScreen() {
   const [longitude, setLongitude] = useState(123.8854);
   const [showMap, setShowMap] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [shareStatus, setShareStatus] = useState<'sharing' | 'success' | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
@@ -292,6 +295,7 @@ export default function SubmitSpotScreen() {
 
     try {
       setSubmitting(true);
+      setShareStatus('sharing');
 
       await spotSubmissionQueueService.enqueue(
         {
@@ -313,9 +317,14 @@ export default function SubmitSpotScreen() {
         },
         profile.display_name || 'Explorer'
       );
-      router.replace('/');
+      setShareStatus('success');
+      setTimeout(() => {
+        setShareStatus(null);
+        router.replace('/');
+      }, 1000);
     } catch (error: any) {
       console.error('Submit spot error:', error);
+      setShareStatus(null);
       Alert.alert('Submission failed', error.message ?? 'Please try again.');
       setSubmitting(false);
     }
@@ -604,6 +613,21 @@ export default function SubmitSpotScreen() {
         onPress={submit}
       />
 
+      <Modal visible={Boolean(shareStatus)} transparent animationType="fade" onRequestClose={() => undefined}>
+        <View style={styles.statusOverlayBackdrop}>
+          <View style={[styles.statusOverlayCard, { backgroundColor: appColors.surfaceRaised }]}>
+            {shareStatus === 'sharing' ? (
+              <ActivityIndicator size="large" color={colors.primary} />
+            ) : (
+              <Check size={42} color={colors.primary} />
+            )}
+            <Text style={[styles.statusOverlayText, { color: appColors.onSurface }]}>
+              {shareStatus === 'sharing' ? 'Sharing the Spot' : 'Spot submitted'}
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
       <ConfirmationModal
         visible={exitConfirmationOpen}
         title="Leave this spot?"
@@ -665,6 +689,27 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     fontWeight: '900',
     textTransform: 'uppercase',
+  },
+  statusOverlayBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  statusOverlayCard: {
+    minWidth: 190,
+    minHeight: 150,
+    padding: spacing.xl,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    ...shadow.card,
+  },
+  statusOverlayText: {
+    fontSize: fontSize.md,
+    fontWeight: '900',
+    textAlign: 'center',
   },
   intro: {
     alignItems: 'center',

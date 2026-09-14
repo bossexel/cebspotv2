@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Alert, LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { addDays, format } from 'date-fns';
+import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
 import {
   ArrowLeft,
   CalendarDays,
@@ -22,6 +23,12 @@ import {
 } from 'lucide-react-native';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
 import { colors } from '../../src/constants/colors';
+import {
+  clubFloorTables,
+  clubTableColors,
+  clubTableDisplayName,
+  normalizeClubTableInventory,
+} from '../../src/constants/clubFloorPlan';
 import type { AppColors } from '../../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../../src/constants/design';
 import { useAuth } from '../../src/hooks/useAuth';
@@ -32,6 +39,7 @@ import type { ReservationStatus, Spot } from '../../src/types';
 import {
   calculateReservationFee,
   checkReservationAvailability,
+  getReservedTableIds,
   getSpotReservationType,
   isPaymentRequired,
 } from '../../src/utils/reservations';
@@ -67,6 +75,33 @@ const slots = [
   },
 ] as const;
 
+const clubSlots = [
+  {
+    id: 'sunset',
+    name: 'Early Night',
+    time: '20:00 - 22:30',
+    startTime: '20:00',
+    endTime: '22:30',
+    icon: 'sun',
+  },
+  {
+    id: 'prime',
+    name: 'Prime',
+    time: '23:00 - 01:30',
+    startTime: '23:00',
+    endTime: '01:30',
+    icon: 'moon',
+  },
+  {
+    id: 'late',
+    name: 'Late Night',
+    time: '02:00 - 04:00',
+    startTime: '02:00',
+    endTime: '04:00',
+    icon: 'sparkles',
+  },
+] as const;
+
 const groupSizes = [
   { id: 'solo', label: 'Solo', subtitle: '(1 person)', guests: 1 },
   { id: 'table-for-2', label: 'Table for 2', subtitle: '(2 persons)', guests: 2 },
@@ -74,7 +109,7 @@ const groupSizes = [
   { id: 'big-group', label: 'Big Group', subtitle: '(6+ party)', guests: 6 },
 ] as const;
 
-type Slot = (typeof slots)[number];
+type Slot = (typeof slots)[number] | (typeof clubSlots)[number];
 type GroupSize = (typeof groupSizes)[number];
 type SlotId = Slot['id'];
 type GroupSizeId = GroupSize['id'];
@@ -166,8 +201,9 @@ function reserveTables(inventory: TableInventory, slotId: SlotId, tableIds: stri
   );
 }
 
-function getTableInventoryForDate(date: string, baseInventory = tableInventory): TableInventory {
+function getTableInventoryForDate(date: string, baseInventory = tableInventory, simulateDemoAvailability = true): TableInventory {
   const inventory = cloneInventory(baseInventory);
+  if (!simulateDemoAvailability) return inventory;
   const dayNumber = Number(format(toLocalDate(date), 'd'));
 
   if (dayNumber % 5 === 0) {
@@ -196,9 +232,10 @@ function getAvailableTablesForSlot(
   groupSizeId: GroupSizeId,
   date: string,
   baseInventory = tableInventory,
+  simulateDemoAvailability = true,
 ) {
   const requiredCapacity = getRequiredCapacity(groupSizeId);
-  const inventory = getTableInventoryForDate(date, baseInventory);
+  const inventory = getTableInventoryForDate(date, baseInventory, simulateDemoAvailability);
 
   return inventory[slotId].filter((table) => !table.isReserved && table.capacity >= requiredCapacity);
 }
@@ -211,13 +248,25 @@ function formatHoldTime(seconds: number) {
   return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
-function isSlotAvailable(slotId: SlotId, groupSizeId: GroupSizeId, date: string, baseInventory = tableInventory) {
-  return getAvailableTablesForSlot(slotId, groupSizeId, date, baseInventory).length > 0;
+function isSlotAvailable(
+  slotId: SlotId,
+  groupSizeId: GroupSizeId,
+  date: string,
+  baseInventory = tableInventory,
+  simulateDemoAvailability = true,
+) {
+  return getAvailableTablesForSlot(slotId, groupSizeId, date, baseInventory, simulateDemoAvailability).length > 0;
 }
 
-function getAvailabilityLabel(slotId: SlotId, groupSizeId: GroupSizeId, date: string, baseInventory = tableInventory) {
-  const inventory = getTableInventoryForDate(date, baseInventory);
-  const availableTables = getAvailableTablesForSlot(slotId, groupSizeId, date, baseInventory);
+function getAvailabilityLabel(
+  slotId: SlotId,
+  groupSizeId: GroupSizeId,
+  date: string,
+  baseInventory = tableInventory,
+  simulateDemoAvailability = true,
+) {
+  const inventory = getTableInventoryForDate(date, baseInventory, simulateDemoAvailability);
+  const availableTables = getAvailableTablesForSlot(slotId, groupSizeId, date, baseInventory, simulateDemoAvailability);
   const openTables = inventory[slotId].filter((table) => !table.isReserved);
   const count = availableTables.length;
 
@@ -233,12 +282,13 @@ function getSlotAvailability(
   groupSizeId: GroupSizeId,
   date: string,
   baseInventory = tableInventory,
+  simulateDemoAvailability = true,
 ): SlotAvailability {
-  const availableTables = getAvailableTablesForSlot(slotId, groupSizeId, date, baseInventory);
+  const availableTables = getAvailableTablesForSlot(slotId, groupSizeId, date, baseInventory, simulateDemoAvailability);
   return {
     availableTables,
-    isAvailable: isSlotAvailable(slotId, groupSizeId, date, baseInventory),
-    label: getAvailabilityLabel(slotId, groupSizeId, date, baseInventory),
+    isAvailable: isSlotAvailable(slotId, groupSizeId, date, baseInventory, simulateDemoAvailability),
+    label: getAvailabilityLabel(slotId, groupSizeId, date, baseInventory, simulateDemoAvailability),
   };
 }
 
@@ -334,7 +384,7 @@ function DateSelector({
           <View style={styles.calendarHeader}>
             <Pressable
               accessibilityRole="button"
-              style={[styles.calendarNavButton, { backgroundColor: appColors.white }]}
+              style={[styles.calendarNavButton, { backgroundColor: appColors.surfaceRaised }]}
               onPress={() => moveMonth(-1)}
             >
               <ChevronLeft size={18} color={appColors.onSurface} />
@@ -349,7 +399,7 @@ function DateSelector({
             </View>
             <Pressable
               accessibilityRole="button"
-              style={[styles.calendarNavButton, { backgroundColor: appColors.white }]}
+              style={[styles.calendarNavButton, { backgroundColor: appColors.surfaceRaised }]}
               onPress={() => moveMonth(1)}
             >
               <ChevronRight size={18} color={appColors.onSurface} />
@@ -441,12 +491,14 @@ function ExperienceSlotCard({
 }
 
 function ExperienceSlotSelector({
+  bookingSlots,
   selectedSlotId,
   slotAvailability,
   notice,
   onSelectSlot,
   appColors,
 }: {
+  bookingSlots: readonly Slot[];
   selectedSlotId: SlotId | null;
   slotAvailability: Record<SlotId, SlotAvailability>;
   notice: string;
@@ -465,7 +517,7 @@ function ExperienceSlotSelector({
         }
       />
       <View style={styles.slotList}>
-        {slots.map((slot) => (
+        {bookingSlots.map((slot) => (
           <ExperienceSlotCard
             key={slot.id}
             slot={slot}
@@ -538,6 +590,185 @@ function GroupSizeSelector({
             appColors={appColors}
           />
         ))}
+      </View>
+    </View>
+  );
+}
+
+function ClubFloorPlanSelector({
+  inventory,
+  selectedSlotId,
+  selectedTableId,
+  selectedGroupId,
+  loadingAvailability,
+  onSelectTable,
+  onRefresh,
+  appColors,
+}: {
+  inventory: TableInventory;
+  selectedSlotId: SlotId | null;
+  selectedTableId: string | null;
+  selectedGroupId: GroupSizeId;
+  loadingAvailability: boolean;
+  onSelectTable: (tableId: string) => void;
+  onRefresh: () => void;
+  appColors: AppColors;
+}) {
+  const requiredCapacity = getRequiredCapacity(selectedGroupId);
+  const tableById = new Map((selectedSlotId ? inventory[selectedSlotId] : []).map((table) => [table.tableId, table]));
+  const selectedLabel = selectedTableId ? clubTableDisplayName(selectedTableId) : null;
+
+  return (
+    <View style={styles.sectionBlock}>
+      <SectionTitle
+        title="Choose Your Table"
+        appColors={appColors}
+        icon={<UsersRound size={16} color={colors.primary} />}
+        side={
+          <Pressable accessibilityRole="button" style={styles.floorRefreshButton} onPress={onRefresh}>
+            {loadingAvailability ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <RefreshCw size={14} color={colors.primary} />
+            )}
+            <Text style={styles.floorRefreshText}>Availability</Text>
+          </Pressable>
+        }
+      />
+      <Text style={[styles.floorPlanHelp, { color: appColors.onSurfaceVariant }]}>
+        Swipe across the floor plan and tap an available table. Reserved tables are dimmed and marked with an X.
+      </Text>
+      <View style={[styles.floorPlanLegend, { backgroundColor: appColors.surfaceLow }]}>
+        {[
+          ['Cocktail · 4 pax', clubTableColors.cocktail],
+          ['Main-floor VIP · 10 pax', clubTableColors['vip-main']],
+          ['VVIP · 10 pax', clubTableColors['vvip-main']],
+          ['Mezzanine VIP · 10 pax', clubTableColors['vip-mezzanine']],
+        ].map(([label, color]) => (
+          <View key={label} style={styles.floorLegendItem}>
+            <View style={[styles.floorLegendDot, { backgroundColor: color }]} />
+            <Text style={[styles.floorLegendText, { color: appColors.onSurfaceVariant }]}>{label}</Text>
+          </View>
+        ))}
+        <View style={styles.floorLegendItem}>
+          <View style={[styles.floorLegendDot, styles.floorReservedLegendDot]}>
+            <Text style={styles.floorReservedLegendX}>×</Text>
+          </View>
+          <Text style={[styles.floorLegendText, { color: appColors.onSurfaceVariant }]}>Reserved</Text>
+        </View>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator
+        contentContainerStyle={styles.floorPlanScrollContent}
+      >
+        <View style={styles.floorPlanCanvas}>
+          <Svg width={720} height={700} viewBox="0 0 720 700">
+            <Rect x="8" y="8" width="704" height="684" rx="18" fill="#090A0C" />
+            <Rect x="40" y="24" width="640" height="304" rx="8" fill="none" stroke="#F4F4F5" strokeWidth="3" />
+            <Rect x="40" y="354" width="640" height="312" rx="8" fill="#16270E" stroke="#86C51F" strokeWidth="3" />
+            <SvgText x="24" y="188" fill="#F4F4F5" fontSize="24" fontWeight="800" rotation="-90" origin="24,188">MAIN FLOOR</SvgText>
+            <SvgText x="24" y="570" fill="#86C51F" fontSize="24" fontWeight="800" rotation="-90" origin="24,570">MEZZANINE</SvgText>
+            <Rect x="306" y="46" width="104" height="58" rx="5" fill="#F4F4F5" />
+            <SvgText x="358" y="80" fill="#111827" fontSize="14" fontWeight="900" textAnchor="middle">DJ BOOTH</SvgText>
+            <Rect x="574" y="178" width="82" height="90" rx="6" fill="none" stroke="#F4F4F5" strokeWidth="3" />
+            <SvgText x="615" y="218" fill="#F4F4F5" fontSize="15" fontWeight="900" textAnchor="middle">MAIN</SvgText>
+            <SvgText x="615" y="238" fill="#F4F4F5" fontSize="15" fontWeight="900" textAnchor="middle">BAR</SvgText>
+            <Rect x="42" y="270" width="62" height="54" fill="#159C96" />
+            <SvgText x="73" y="300" fill="#FFFFFF" fontSize="10" fontWeight="800" textAnchor="middle">ENTRY</SvgText>
+            <Line x1="205" y1="336" x2="650" y2="336" stroke="#F4F4F5" strokeWidth="2" />
+            <SvgText x="615" y="384" fill="#A7F3D0" fontSize="10" fontWeight="700" textAnchor="middle">KTV LOUNGE</SvgText>
+            <SvgText x="615" y="397" fill="#A7F3D0" fontSize="10" fontWeight="700" textAnchor="middle">GOLF SIMULATOR</SvgText>
+
+            {clubFloorTables.map((table) => {
+              const savedTable = tableById.get(table.tableId);
+              const reserved = Boolean(savedTable?.isReserved);
+              const unavailable = !table.bookable || !savedTable || reserved || savedTable.capacity < requiredCapacity;
+              const selected = table.tableId === selectedTableId;
+              const unavailableForGroup = Boolean(savedTable && !reserved && savedTable.capacity < requiredCapacity);
+              const fill = reserved
+                ? clubTableColors[table.kind]
+                : unavailable
+                  ? '#555B66'
+                  : clubTableColors[table.kind];
+              const darkText = !unavailable && (table.kind === 'vvip-main' || table.kind === 'vip-mezzanine');
+
+              return (
+                <G
+                  key={table.tableId}
+                  onPress={unavailable ? undefined : () => onSelectTable(table.tableId)}
+                >
+                  <Rect
+                    x={table.x - 5}
+                    y={table.y - 5}
+                    width={table.width + 10}
+                    height={table.height + 10}
+                    rx={9}
+                    fill="transparent"
+                  />
+                  <Rect
+                    x={table.x}
+                    y={table.y}
+                    width={table.width}
+                    height={table.height}
+                    rx={7}
+                    fill={fill}
+                    fillOpacity={reserved ? 0.42 : unavailableForGroup ? 0.55 : 1}
+                    stroke={selected ? colors.white : 'rgba(255,255,255,0.2)'}
+                    strokeWidth={selected ? 4 : 1}
+                  />
+                  <SvgText
+                    x={table.x + table.width / 2}
+                    y={table.y + table.height / 2 + 4}
+                    fill={darkText ? '#111827' : '#FFFFFF'}
+                    fontSize={table.kind === 'cocktail' ? 11 : 9}
+                    fontWeight="900"
+                    textAnchor="middle"
+                    opacity={reserved ? 0.42 : unavailableForGroup ? 0.55 : 1}
+                  >
+                    {table.label}
+                  </SvgText>
+                  {reserved ? (
+                    <>
+                      <Line
+                        x1={table.x + 6}
+                        y1={table.y + 5}
+                        x2={table.x + table.width - 6}
+                        y2={table.y + table.height - 5}
+                        stroke="#FFFFFF"
+                        strokeWidth={3}
+                        strokeLinecap="round"
+                      />
+                      <Line
+                        x1={table.x + table.width - 6}
+                        y1={table.y + 5}
+                        x2={table.x + 6}
+                        y2={table.y + table.height - 5}
+                        stroke="#FFFFFF"
+                        strokeWidth={3}
+                        strokeLinecap="round"
+                      />
+                    </>
+                  ) : null}
+                </G>
+              );
+            })}
+          </Svg>
+        </View>
+      </ScrollView>
+      <View
+        style={[
+          styles.floorSelectionBar,
+          { backgroundColor: selectedLabel ? colors.primary + '12' : appColors.surfaceLow },
+        ]}
+      >
+        <View style={styles.floorSelectionCopy}>
+          <Text style={[styles.floorSelectionLabel, { color: appColors.onSurfaceVariant }]}>Selected table</Text>
+          <Text style={[styles.floorSelectionValue, { color: appColors.onSurface }]}>
+            {selectedLabel ?? 'Tap an available table on the plan'}
+          </Text>
+        </View>
+        {selectedTableId ? <CheckCircle2 size={22} color={colors.primary} /> : null}
       </View>
     </View>
   );
@@ -634,7 +865,7 @@ function ReservationAdjustmentsCard({
   ];
 
   return (
-    <View style={[styles.adjustmentCard, { backgroundColor: appColors.white }]}>
+    <View style={[styles.adjustmentCard, { backgroundColor: appColors.surfaceRaised }]}>
       <View style={styles.adjustmentHeader}>
         <View style={styles.adjustmentHeaderIcon}>
           <ShieldCheck size={18} color={colors.primary} />
@@ -650,28 +881,32 @@ function ReservationAdjustmentsCard({
       <View style={styles.adjustmentList}>
         <AdjustmentItem
           icon={<RefreshCw size={16} color={colors.primary} />}
-          label="Reschedule Allowed"
-          description="You can reschedule this reservation from your My Reservations page if the new date and time are still available."
+          label={paymentRequired ? 'Adjustment Requests' : 'Reschedule Allowed'}
+          description={paymentRequired
+            ? "Contact the spot about adjustment requests. Any changes are subject to availability and the spot's policies."
+            : "You may reschedule your free reservation from My Reservations, subject to availability and the spot's policies."}
           appColors={appColors}
         />
         <AdjustmentItem
           icon={<XCircle size={16} color={colors.primary} />}
-          label="Cancellation Allowed"
-          description="You can cancel this reservation before the scheduled time. Cancellation rules may depend on the spot's policy."
+          label={paymentRequired ? 'No Cancellation After Payment' : 'Cancellation Allowed'}
+          description={paymentRequired
+            ? "Once your reservation is booked and paid, cancellation is not allowed, in accordance with the spot's policies."
+            : "You may cancel your free reservation before the scheduled visit, subject to the spot's cancellation policy."}
           appColors={appColors}
         />
         {paymentRequired ? (
           <AdjustmentItem
             icon={<ShieldCheck size={16} color={colors.primary} />}
             label="Paid Reservation Notice"
-            description="If you already paid the reservation fee and cancel later, your payment may require refund review by the spot owner."
+            description="Reservation deposits and processing fees are non-refundable. Please review your booking details before completing payment."
             appColors={appColors}
           />
         ) : (
           <AdjustmentItem
             icon={<CheckCircle2 size={16} color={colors.primary} />}
             label="Free Reservation Notice"
-            description="No payment is required for this booking. You may cancel or reschedule based on availability."
+            description="No reservation fee or deposit is required. Cancellation and adjustments follow the spot's policies; changes are subject to availability."
             appColors={appColors}
           />
         )}
@@ -704,7 +939,9 @@ function ReservationAdjustmentsCard({
           fill={acknowledged ? colors.successContainer : 'transparent'}
         />
         <Text style={[styles.acknowledgementText, { color: appColors.onSurfaceVariant }]}>
-          I understand the reschedule, cancellation, and payment review conditions.
+          {paymentRequired
+            ? 'I understand the no-cancellation policy after payment, non-refundable fees, and adjustment conditions.'
+            : 'I understand the cancellation and adjustment conditions for this free reservation.'}
         </Text>
       </Pressable>
     </View>
@@ -752,22 +989,31 @@ function TableHoldTimer({
   hasTable: boolean;
   onRefreshHold: () => void;
 }) {
+  const { appColors } = useTheme();
   if (!hasTable) return null;
 
   return (
-    <View style={[styles.holdTimerCard, expired && styles.holdTimerExpired]}>
+    <View
+      style={[
+        styles.holdTimerCard,
+        {
+          backgroundColor: expired ? appColors.dangerContainer : appColors.surfaceRaised,
+          borderColor: expired ? appColors.danger + '66' : colors.primary + '24',
+        },
+      ]}
+    >
       <View style={styles.holdTimerIcon}>
         <Clock3 size={19} color={expired ? colors.danger : colors.primary} />
       </View>
       <View style={styles.holdTimerCopy}>
-        <Text style={styles.holdTimerLabel}>TABLE HOLD</Text>
+        <Text style={[styles.holdTimerLabel, { color: appColors.onSurfaceVariant }]}>TABLE HOLD</Text>
         <Text style={[styles.holdTimerValue, expired && styles.holdTimerExpiredText]}>
           {expired ? 'Expired' : formatHoldTime(secondsRemaining)}
         </Text>
-        <Text style={styles.holdTimerNote}>
+        <Text style={[styles.holdTimerNote, { color: appColors.onSurfaceVariant }]}>
           {expired
             ? 'Refresh the hold before confirming this reservation.'
-            : 'Complete this reservation within 5 minutes to keep this table selection.'}
+            : 'Complete the deposit within 5 minutes to keep this table selection.'}
         </Text>
       </View>
       {expired && (
@@ -818,6 +1064,13 @@ export default function ReservationScreen() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedSlotId, setSelectedSlotId] = useState<SlotId | null>('sunset');
   const [selectedGroupId, setSelectedGroupId] = useState<GroupSizeId>('table-for-2');
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [reservedTableIdsBySlot, setReservedTableIdsBySlot] = useState<Record<SlotId, string[]>>({
+    sunset: [],
+    prime: [],
+    late: [],
+  });
+  const [loadingTableAvailability, setLoadingTableAvailability] = useState(false);
   const [additionalInfo, setAdditionalInfo] = useState('');
   const [bookingStatus] = useState<ReservationStatus>('pending');
   const [availabilityNotice, setAvailabilityNotice] = useState('');
@@ -828,25 +1081,71 @@ export default function ReservationScreen() {
   const [bookingFormOffset, setBookingFormOffset] = useState(0);
 
   const dates = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(new Date(), index)), []);
+  const isClubBooking = spot?.id === testCebspotSpotId || spot?.category?.toLowerCase().includes('club') === true;
+  const bookingSlots = isClubBooking ? clubSlots : slots;
   const liveTableInventory = useMemo(
-    () => (spot?.table_inventory ? (normalizeTableInventory(spot.table_inventory) as TableInventory) : tableInventory),
-    [spot?.table_inventory],
+    () => isClubBooking
+      ? (normalizeClubTableInventory(spot?.table_inventory) as TableInventory)
+      : spot?.table_inventory
+        ? (normalizeTableInventory(spot.table_inventory) as TableInventory)
+        : tableInventory,
+    [isClubBooking, spot?.table_inventory],
+  );
+  const availabilityInventory = useMemo(
+    () => (['sunset', 'prime', 'late'] as SlotId[]).reduce((inventory, slotId) => {
+      const reservedIds = new Set(reservedTableIdsBySlot[slotId]);
+      inventory[slotId] = liveTableInventory[slotId].map((table) => ({
+        ...table,
+        isReserved: table.isReserved || reservedIds.has(table.tableId),
+      }));
+      return inventory;
+    }, {} as TableInventory),
+    [liveTableInventory, reservedTableIdsBySlot],
   );
   const slotAvailability = useMemo(
     () =>
-      slots.reduce(
+      bookingSlots.reduce(
         (availability, slot) => ({
           ...availability,
-          [slot.id]: getSlotAvailability(slot.id, selectedGroupId, selectedDate, liveTableInventory),
+          [slot.id]: getSlotAvailability(
+            slot.id,
+            selectedGroupId,
+            selectedDate,
+            availabilityInventory,
+            !isClubBooking,
+          ),
         }),
         {} as Record<SlotId, SlotAvailability>
       ),
-    [liveTableInventory, selectedDate, selectedGroupId]
+    [availabilityInventory, bookingSlots, isClubBooking, selectedDate, selectedGroupId]
   );
-  const selectedSlot = selectedSlotId ? slots.find((slot) => slot.id === selectedSlotId) ?? null : null;
+  const selectedSlot = selectedSlotId ? bookingSlots.find((slot) => slot.id === selectedSlotId) ?? null : null;
   const selectedGroup = groupSizes.find((group) => group.id === selectedGroupId) ?? groupSizes[1];
   const selectedSlotAvailability = selectedSlotId ? slotAvailability[selectedSlotId] : null;
-  const selectedTable = selectedSlotAvailability?.availableTables[0] ?? null;
+  const selectedTable = isClubBooking
+    ? selectedSlotAvailability?.availableTables.find((table) => table.tableId === selectedTableId) ?? null
+    : selectedSlotAvailability?.availableTables[0] ?? null;
+  const refreshClubAvailability = useCallback(async () => {
+    if (!spot || !isClubBooking) return;
+    setLoadingTableAvailability(true);
+    try {
+      const entries = await Promise.all(
+        clubSlots.map(async (slot) => [
+          slot.id,
+          await getReservedTableIds({
+            spotId: spot.id,
+            reservationDate: selectedDate,
+            slotId: slot.id,
+          }),
+        ] as const),
+      );
+      setReservedTableIdsBySlot(Object.fromEntries(entries) as Record<SlotId, string[]>);
+    } catch (error) {
+      console.warn('Unable to refresh club table availability:', error);
+    } finally {
+      setLoadingTableAvailability(false);
+    }
+  }, [isClubBooking, selectedDate, spot?.id]);
   const resetTableHold = useCallback(() => {
     setHoldSecondsRemaining(tableHoldDurationSeconds);
     setHoldExpired(false);
@@ -865,7 +1164,9 @@ export default function ReservationScreen() {
     !submitting;
   const selectedSummary =
     selectedSlot && selectedSlotAvailability
-      ? `${selectedSlot.name} - ${selectedGroup.label} - ${selectedSlotAvailability.label}`
+      ? `${selectedSlot.name} - ${selectedGroup.label} - ${
+          selectedTable ? clubTableDisplayName(selectedTable.tableId) : selectedSlotAvailability.label
+        }`
       : `${selectedGroup.label} - Choose an available time`;
 
   useEffect(() => {
@@ -897,20 +1198,30 @@ export default function ReservationScreen() {
   }, [id]);
 
   useEffect(() => {
+    void refreshClubAvailability();
+  }, [refreshClubAvailability]);
+
+  useEffect(() => {
     const selectedIsAvailable = selectedSlotId ? slotAvailability[selectedSlotId].isAvailable : false;
     if (selectedSlotId && selectedIsAvailable) {
       setAvailabilityNotice('');
       return;
     }
 
-    const firstAvailableSlot = slots.find((slot) => slotAvailability[slot.id].isAvailable)?.id ?? null;
+    const firstAvailableSlot = bookingSlots.find((slot) => slotAvailability[slot.id].isAvailable)?.id ?? null;
     if (firstAvailableSlot !== selectedSlotId) {
       if (selectedSlotId) {
         setAvailabilityNotice('Selected time is not available for this group size.');
       }
       setSelectedSlotId(firstAvailableSlot);
     }
-  }, [selectedDate, selectedGroupId, selectedSlotId, slotAvailability]);
+  }, [bookingSlots, selectedDate, selectedGroupId, selectedSlotId, slotAvailability]);
+
+  useEffect(() => {
+    if (!isClubBooking || !selectedTableId || !selectedSlotAvailability) return;
+    const remainsAvailable = selectedSlotAvailability.availableTables.some((table) => table.tableId === selectedTableId);
+    if (!remainsAvailable) setSelectedTableId(null);
+  }, [isClubBooking, selectedSlotAvailability, selectedTableId]);
 
   useEffect(() => {
     if (!selectedTable) return;
@@ -993,8 +1304,10 @@ export default function ReservationScreen() {
 
     if (!selectedSlotAvailability?.isAvailable || !selectedTable) {
       Alert.alert(
-        'Unavailable',
-        'That time slot is not available for your selected group size. Please choose another time.'
+        isClubBooking ? 'Choose a table' : 'Unavailable',
+        isClubBooking
+          ? 'Select an available table from the floor plan before confirming.'
+          : 'That time slot is not available for your selected group size. Please choose another time.'
       );
       return;
     }
@@ -1013,7 +1326,16 @@ export default function ReservationScreen() {
       tableId: selectedTable.tableId,
     });
     if (!available) {
-      Alert.alert('Unavailable', 'This slot is no longer available. Please choose another schedule.');
+      if (isClubBooking) {
+        setSelectedTableId(null);
+        void refreshClubAvailability();
+      }
+      Alert.alert(
+        'Table unavailable',
+        isClubBooking
+          ? 'This table was just booked by another guest. Choose another available table on the floor plan.'
+          : 'This slot is no longer available. Please choose another schedule.',
+      );
       return;
     }
 
@@ -1091,7 +1413,7 @@ export default function ReservationScreen() {
   return (
     <ScreenContainer appColors={appColors} scroll scrollRef={scrollRef}>
       <View style={styles.header}>
-        <Pressable style={[styles.backButton, { backgroundColor: appColors.white }]} onPress={() => router.back()}>
+        <Pressable style={[styles.backButton, { backgroundColor: appColors.surfaceRaised }]} onPress={() => router.back()}>
           <ArrowLeft size={20} color={appColors.onSurface} />
         </Pressable>
         <View style={styles.headerCopy}>
@@ -1114,6 +1436,7 @@ export default function ReservationScreen() {
         </View>
         <View onLayout={trackSection('time')}>
           <ExperienceSlotSelector
+            bookingSlots={bookingSlots}
             selectedSlotId={selectedSlotId}
             slotAvailability={slotAvailability}
             notice={availabilityNotice}
@@ -1128,6 +1451,18 @@ export default function ReservationScreen() {
             appColors={appColors}
           />
         </View>
+        {isClubBooking ? (
+          <ClubFloorPlanSelector
+            inventory={availabilityInventory}
+            selectedSlotId={selectedSlotId}
+            selectedTableId={selectedTableId}
+            selectedGroupId={selectedGroupId}
+            loadingAvailability={loadingTableAvailability}
+            onSelectTable={setSelectedTableId}
+            onRefresh={() => void refreshClubAvailability()}
+            appColors={appColors}
+          />
+        ) : null}
         <AdditionalInfoInput value={additionalInfo} onChangeText={setAdditionalInfo} appColors={appColors} />
         <ReservationAdjustmentsCard
           appColors={appColors}
@@ -1420,6 +1755,94 @@ const styles = StyleSheet.create({
     marginTop: 3,
     textAlign: 'center',
   },
+  floorRefreshButton: {
+    minHeight: 34,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primary + '10',
+  },
+  floorRefreshText: {
+    color: colors.primary,
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  floorPlanHelp: {
+    fontSize: fontSize.xs,
+    lineHeight: 17,
+    fontWeight: '700',
+    marginTop: -spacing.sm,
+  },
+  floorPlanLegend: {
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  floorLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  floorLegendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 3,
+  },
+  floorReservedLegendDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
+    backgroundColor: '#6B7280',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  floorReservedLegendX: {
+    color: colors.white,
+    fontSize: 13,
+    lineHeight: 14,
+    fontWeight: '900',
+  },
+  floorLegendText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  floorPlanScrollContent: {
+    paddingRight: spacing.md,
+  },
+  floorPlanCanvas: {
+    width: 720,
+    height: 700,
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+  },
+  floorSelectionBar: {
+    minHeight: 64,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  floorSelectionCopy: {
+    flex: 1,
+  },
+  floorSelectionLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  floorSelectionValue: {
+    fontSize: fontSize.md,
+    fontWeight: '900',
+    marginTop: 3,
+  },
   noteInput: {
     minHeight: 140,
     borderRadius: radius.xl,
@@ -1538,9 +1961,7 @@ const styles = StyleSheet.create({
   },
   holdTimerCard: {
     borderRadius: radius.xl,
-    backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.primary + '24',
     padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1549,8 +1970,6 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   holdTimerExpired: {
-    borderColor: colors.danger + '40',
-    backgroundColor: colors.dangerContainer,
   },
   holdTimerIcon: {
     width: 38,
@@ -1564,7 +1983,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   holdTimerLabel: {
-    color: colors.onSurfaceVariant,
     fontSize: 8,
     fontWeight: '900',
     textTransform: 'uppercase',
@@ -1580,7 +1998,6 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
   holdTimerNote: {
-    color: colors.onSurfaceVariant,
     fontSize: fontSize.xs,
     fontWeight: '800',
     lineHeight: 17,

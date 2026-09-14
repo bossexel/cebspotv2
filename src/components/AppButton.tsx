@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
 import { colors } from '../constants/colors';
 import { fontSize, radius, shadow, spacing } from '../constants/design';
+import { useTheme } from '../hooks/useTheme';
 
 interface AppButtonProps {
   label: string;
@@ -22,6 +23,7 @@ export function AppButton({
   style,
   icon,
 }: AppButtonProps) {
+  const { appColors } = useTheme();
   const isPrimary = variant === 'primary';
   const isSecondary = variant === 'secondary';
 
@@ -33,8 +35,8 @@ export function AppButton({
       style={({ pressed }) => [
         styles.button,
         isPrimary && styles.primary,
-        isSecondary && styles.secondary,
-        variant === 'ghost' && styles.ghost,
+        isSecondary && [styles.secondary, { backgroundColor: appColors.surfaceRaised, borderColor: appColors.outlineVariant }],
+        variant === 'ghost' && [styles.ghost, { backgroundColor: appColors.primary + '12' }],
         (disabled || loading) && styles.disabled,
         pressed && styles.pressed,
         style,
@@ -61,12 +63,9 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   secondary: {
-    backgroundColor: colors.surfaceContainer,
     borderWidth: 1,
-    borderColor: colors.outlineVariant,
   },
   ghost: {
-    backgroundColor: colors.primary + '12',
   },
   disabled: {
     opacity: 0.55,

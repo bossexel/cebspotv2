@@ -45,6 +45,12 @@ export function isPaymentRequired(
   return getSpotReservationType(spot) === 'paid';
 }
 
+export function allowsSelfServiceReservationChanges(
+  reservation: Pick<Reservation, 'fee' | 'reservation_fee' | 'reservation_type' | 'payment_required' | 'spot_id' | 'spot_name'>,
+) {
+  return getSpotReservationType(reservation) === 'free';
+}
+
 export function getReservationTypeLabel(typeOrReservation: ReservationType | ReservationPricingSource) {
   const type = typeof typeOrReservation === 'string' ? typeOrReservation : getSpotReservationType(typeOrReservation);
   const fee = typeof typeOrReservation === 'string' ? 0 : calculateReservationFee(typeOrReservation);
@@ -134,6 +140,8 @@ export function getReservationStatusLabel(status?: ReservationStatus | string | 
       return 'Cancelled';
     case 'rescheduled':
       return 'Rescheduled';
+    case 'checked_in':
+      return 'Guest Arrived';
     case 'completed':
       return 'Completed';
     case 'no_show':
@@ -152,7 +160,38 @@ export type ReservationAvailabilityInput = {
   excludeReservationId?: string | null;
 };
 
+export type ReservedTableIdsInput = {
+  spotId?: string | null;
+  reservationDate?: string | null;
+  slotId?: string | null;
+};
+
 let reservationAvailabilityRpcWarningShown = false;
+let reservedTableIdsRpcWarningShown = false;
+
+export async function getReservedTableIds(input: ReservedTableIdsInput = {}) {
+  const { spotId, reservationDate, slotId } = input;
+  if (!hasSupabaseConfig || !spotId || !reservationDate || !slotId) return [];
+
+  const { data, error } = await supabase.rpc('get_reserved_table_ids', {
+    target_spot_id: spotId,
+    target_reservation_date: reservationDate,
+    target_slot_id: slotId,
+  });
+  if (!error) {
+    return Array.isArray(data)
+      ? data.filter((tableId): tableId is string => typeof tableId === 'string' && Boolean(tableId))
+      : [];
+  }
+
+  const rpcMissing = /get_reserved_table_ids|function|schema cache/i.test(error.message ?? '');
+  if (!rpcMissing) throw error;
+  if (!reservedTableIdsRpcWarningShown) {
+    reservedTableIdsRpcWarningShown = true;
+    console.warn('Reserved-table RPC is missing. Run the latest club floor-plan SQL to show live table availability.');
+  }
+  return [];
+}
 
 export async function checkReservationAvailability(input: ReservationAvailabilityInput = {}) {
   const { spotId, reservationDate, slotId, tableId, excludeReservationId } = input;

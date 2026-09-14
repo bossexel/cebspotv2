@@ -74,12 +74,13 @@ export function AppUpdatePrompt() {
       <View style={styles.root}>
         <View style={styles.scrim} />
         <View style={[styles.dialog, { backgroundColor: appColors.surfaceRaised, borderColor: appColors.outlineVariant }]}>
-          <View style={styles.badge}>
-            {updating ? <ActivityIndicator color={colors.white} /> : <Text style={styles.badgeText}>UP</Text>}
-          </View>
-          <Text style={[styles.title, { color: appColors.onSurface }]}>New update is available</Text>
+          <Text style={[styles.title, { color: appColors.onSurface }]}>
+            {updating ? 'Updating CebSpot' : 'New update is available'}
+          </Text>
           <Text style={[styles.message, { color: appColors.onSurfaceVariant }]}>
-            Press update to use CebSpot.
+            {updating
+              ? 'Downloading your update. CebSpot will restart when it is ready.'
+              : 'Tap Update to get the latest improvements. CebSpot will restart to apply them.'}
           </Text>
           {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
           <Pressable
@@ -120,20 +121,6 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     alignItems: 'center',
     ...shadow.lifted,
-  },
-  badge: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    marginBottom: spacing.lg,
-  },
-  badgeText: {
-    color: colors.white,
-    fontSize: fontSize.sm,
-    fontWeight: '900',
   },
   title: {
     fontSize: fontSize.xl,

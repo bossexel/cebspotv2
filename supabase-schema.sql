@@ -53,6 +53,9 @@ create table if not exists spots (
 create table if not exists reservations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references profiles(id) on delete cascade,
+  guest_name text,
+  guest_email text,
+  guest_phone text,
   spot_id uuid not null references spots(id) on delete cascade,
   spot_name text not null,
   reservation_date date not null,
@@ -64,12 +67,14 @@ create table if not exists reservations (
   reservation_type text not null default 'free' check (reservation_type in ('free', 'paid')),
   reservation_fee numeric(10, 2) not null default 0,
   payment_required boolean not null default false,
-  status text not null default 'pending' check (status in ('pending', 'pending_payment', 'confirmed', 'cancelled', 'rescheduled', 'completed', 'no_show')),
+  status text not null default 'pending' check (status in ('pending', 'pending_payment', 'confirmed', 'cancelled', 'rescheduled', 'checked_in', 'completed', 'no_show')),
   payment_status text not null default 'not_required' check (payment_status in ('not_required', 'pending', 'paid', 'failed', 'refunded')),
   payment_method text,
   payment_reference text,
   payment_proof_url text,
   payer_gcash_number text,
+  payment_terms_accepted boolean not null default false,
+  payment_terms_accepted_at timestamptz,
   qr_code text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -81,7 +86,7 @@ create table if not exists reservation_payments (
   user_id uuid references profiles(id) on delete set null,
   spot_id uuid references spots(id) on delete set null,
   provider text not null default 'paymongo' check (provider in ('paymongo', 'manual')),
-  payment_method text not null default 'gcash',
+  payment_method text not null default 'qrph',
   provider_checkout_session_id text unique,
   provider_payment_intent_id text unique,
   provider_payment_method_id text,
@@ -111,7 +116,7 @@ update profiles
 set role = case
   when lower(email) = 'testadmin@cebspot.com' then 'admin'
   when lower(email) = 'testowner@cebspot.com' then 'owner'
-  else 'user'
+  else role
 end;
 
 create or replace function public.assign_profile_role_from_email()
@@ -121,11 +126,19 @@ security definer
 set search_path = public
 as $$
 begin
-  new.role := case
-    when lower(coalesce(new.email, '')) = 'testadmin@cebspot.com' then 'admin'
-    when lower(coalesce(new.email, '')) = 'testowner@cebspot.com' then 'owner'
-    else 'user'
-  end;
+  if lower(coalesce(new.email, '')) = 'testadmin@cebspot.com' then
+    new.role := 'admin';
+  elsif tg_op = 'INSERT' and lower(coalesce(new.email, '')) = 'testowner@cebspot.com' then
+    new.role := 'owner';
+  elsif tg_op = 'INSERT' then
+    new.role := coalesce(new.role, 'user');
+  elsif new.email is distinct from old.email and lower(coalesce(new.email, '')) = 'testowner@cebspot.com' then
+    new.role := 'owner';
+  elsif new.email is distinct from old.email and lower(coalesce(old.email, '')) = 'testowner@cebspot.com' then
+    new.role := 'user';
+  elsif new.role is null then
+    new.role := old.role;
+  end if;
 
   return new;
 end;
@@ -137,36 +150,8 @@ create trigger profiles_assign_role_from_email
   before insert or update of email, role on public.profiles
   for each row execute function public.assign_profile_role_from_email();
 
-create or replace function public.enforce_test_cebspot_spot_owner()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  candidate_email text;
-  candidate_role text;
-begin
-  if new.id = '66666666-6666-4666-8666-666666666666' and new.owner_id is not null then
-    select lower(email), role
-    into candidate_email, candidate_role
-    from public.profiles
-    where id = new.owner_id;
-
-    if candidate_email <> 'testowner@cebspot.com' or candidate_role <> 'owner' then
-      raise exception 'Test Cebspot Restaurant can only be owned by testowner@cebspot.com.';
-    end if;
-  end if;
-
-  return new;
-end;
-$$;
-
 drop trigger if exists spots_enforce_test_cebspot_owner on public.spots;
-
-create trigger spots_enforce_test_cebspot_owner
-  before insert or update of owner_id on public.spots
-  for each row execute function public.enforce_test_cebspot_spot_owner();
+drop function if exists public.enforce_test_cebspot_spot_owner();
 
 alter table spots
   add column if not exists reservation_type text not null default 'free',
@@ -181,6 +166,9 @@ alter table spots
 
 alter table reservations
   add column if not exists guest_count integer not null default 1,
+  add column if not exists guest_name text,
+  add column if not exists guest_email text,
+  add column if not exists guest_phone text,
   add column if not exists note text,
   add column if not exists reservation_time_start time,
   add column if not exists reservation_time_end time,
@@ -198,13 +186,40 @@ alter table reservations
   add column if not exists cancellation_reason text,
   add column if not exists cancelled_at timestamptz,
   add column if not exists adjustment_acknowledged boolean not null default false,
-  add column if not exists adjustment_acknowledged_at timestamptz;
+  add column if not exists adjustment_acknowledged_at timestamptz,
+  add column if not exists payment_terms_accepted boolean not null default false,
+  add column if not exists payment_terms_accepted_at timestamptz;
+
+create or replace function public.enforce_paid_reservation_checkout_details()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.payment_required then
+    if not coalesce(new.payment_terms_accepted, false) then
+      raise exception 'Deposit terms must be accepted before creating a paid reservation.';
+    end if;
+    if nullif(trim(coalesce(new.guest_name, '')), '') is null
+      or nullif(trim(coalesce(new.guest_email, '')), '') is null
+      or nullif(trim(coalesce(new.guest_phone, '')), '') is null then
+      raise exception 'Guest name, email, and phone are required for paid reservations.';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists reservations_require_checkout_details on public.reservations;
+create trigger reservations_require_checkout_details
+  before insert or update of payment_required, payment_terms_accepted on public.reservations
+  for each row execute function public.enforce_paid_reservation_checkout_details();
 
 alter table reservation_payments
   add column if not exists user_id uuid references profiles(id) on delete set null,
   add column if not exists spot_id uuid references spots(id) on delete set null,
   add column if not exists provider text not null default 'paymongo',
-  add column if not exists payment_method text not null default 'gcash',
+  add column if not exists payment_method text not null default 'qrph',
   add column if not exists provider_checkout_session_id text,
   add column if not exists provider_payment_intent_id text unique,
   add column if not exists provider_payment_method_id text,
@@ -232,7 +247,7 @@ alter table reservations drop constraint if exists reservations_status_check;
 alter table reservations drop constraint if exists reservations_payment_status_check;
 alter table reservations drop constraint if exists reservations_reservation_type_check;
 alter table reservations
-  add constraint reservations_status_check check (status in ('pending', 'pending_payment', 'confirmed', 'cancelled', 'rescheduled', 'completed', 'no_show')),
+  add constraint reservations_status_check check (status in ('pending', 'pending_payment', 'confirmed', 'cancelled', 'rescheduled', 'checked_in', 'completed', 'no_show')),
   add constraint reservations_payment_status_check check (payment_status in ('not_required', 'pending', 'paid', 'failed', 'refund_pending', 'refunded', 'non_refundable', 'unpaid', 'on-site')),
   add constraint reservations_reservation_type_check check (reservation_type in ('free', 'paid'));
 
@@ -287,6 +302,7 @@ alter table local_updates
 create table if not exists local_update_comments (
   id uuid primary key default gen_random_uuid(),
   local_update_id uuid not null references local_updates(id) on delete cascade,
+  parent_comment_id uuid references local_update_comments(id) on delete cascade,
   user_id uuid not null references profiles(id) on delete cascade,
   user_name text not null,
   user_photo_url text,
@@ -294,6 +310,9 @@ create table if not exists local_update_comments (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table local_update_comments
+  add column if not exists parent_comment_id uuid references local_update_comments(id) on delete cascade;
 
 create table if not exists circles (
   id uuid primary key default gen_random_uuid(),
@@ -349,10 +368,14 @@ create table if not exists spot_submission_votes (
   id uuid primary key default gen_random_uuid(),
   submission_id uuid not null references spot_submissions(id) on delete cascade,
   user_id uuid not null references profiles(id) on delete cascade,
-  vote_type text not null default 'up' check (vote_type in ('up')),
+  vote_type text not null default 'up' check (vote_type in ('up', 'down')),
   created_at timestamptz not null default now(),
   unique(submission_id, user_id)
 );
+
+alter table spot_submission_votes drop constraint if exists spot_submission_votes_vote_type_check;
+alter table spot_submission_votes
+  add constraint spot_submission_votes_vote_type_check check (vote_type in ('up', 'down'));
 
 create table if not exists spot_search_events (
   id uuid primary key default gen_random_uuid(),
@@ -364,7 +387,7 @@ create table if not exists spot_search_events (
 
 create table if not exists owner_access_requests (
   id uuid primary key default gen_random_uuid(),
-  requester_id uuid not null references profiles(id) on delete cascade,
+  requester_id uuid references profiles(id) on delete set null,
   contact_name text not null,
   contact_email text not null,
   contact_phone text,
@@ -372,12 +395,17 @@ create table if not exists owner_access_requests (
   spot_address text not null,
   category text not null,
   access_needs text[] not null default '{}',
+  verification_documents text[] not null default '{}',
   message text,
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
   admin_notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table owner_access_requests
+  alter column requester_id drop not null,
+  add column if not exists verification_documents text[] not null default '{}';
 
 create table if not exists owner_spot_access (
   id uuid primary key default gen_random_uuid(),
@@ -388,45 +416,84 @@ create table if not exists owner_spot_access (
   unique(owner_id, spot_id)
 );
 
-create or replace function public.enforce_test_cebspot_owner_access()
-returns trigger
+create or replace function public.get_spot_claim_status(target_spot_id uuid)
+returns jsonb
 language plpgsql
+stable
 security definer
 set search_path = public
-as $$
+as $function$
 declare
-  candidate_email text;
-  candidate_role text;
+  target_spot public.spots%rowtype;
+  primary_owner_id uuid;
+  primary_owner_email text;
+  local_part text;
+  domain_part text;
+  masked_owner_email text;
+  current_user_has_access boolean := false;
 begin
-  if new.spot_id = '66666666-6666-4666-8666-666666666666' then
-    select lower(email), role
-    into candidate_email, candidate_role
-    from public.profiles
-    where id = new.owner_id;
+  select *
+  into target_spot
+  from public.spots
+  where id = target_spot_id;
 
-    if candidate_email <> 'testowner@cebspot.com' or candidate_role <> 'owner' then
-      raise exception 'Only testowner@cebspot.com can receive Test Cebspot owner access.';
+  if not found then
+    raise exception 'Spot not found.';
+  end if;
+
+  primary_owner_id := target_spot.owner_id;
+
+  if primary_owner_id is null then
+    select access.owner_id
+    into primary_owner_id
+    from public.owner_spot_access access
+    where access.spot_id = target_spot.id
+    order by case when access.role = 'owner' then 0 else 1 end, access.created_at asc
+    limit 1;
+  end if;
+
+  if primary_owner_id is not null then
+    select lower(trim(profile.email))
+    into primary_owner_email
+    from public.profiles profile
+    where profile.id = primary_owner_id;
+
+    if primary_owner_email is not null and position('@' in primary_owner_email) > 1 then
+      local_part := split_part(primary_owner_email, '@', 1);
+      domain_part := split_part(primary_owner_email, '@', 2);
+      masked_owner_email :=
+        left(local_part, least(2, length(local_part))) || '•••@' || domain_part;
+    else
+      masked_owner_email := 'a verified account';
     end if;
   end if;
 
-  return new;
+  if auth.uid() is not null then
+    current_user_has_access :=
+      primary_owner_id = auth.uid()
+      or exists (
+        select 1
+        from public.owner_spot_access access
+        where access.spot_id = target_spot.id
+          and access.owner_id = auth.uid()
+      );
+  end if;
+
+  return jsonb_build_object(
+    'spotId', target_spot.id::text,
+    'spotName', target_spot.name,
+    'managed', primary_owner_id is not null,
+    'ownerHint', masked_owner_email,
+    'hasAccess', current_user_has_access
+  );
 end;
-$$;
+$function$;
+
+revoke all on function public.get_spot_claim_status(uuid) from public;
+grant execute on function public.get_spot_claim_status(uuid) to anon, authenticated;
 
 drop trigger if exists owner_spot_access_enforce_test_cebspot_owner on public.owner_spot_access;
-
-create trigger owner_spot_access_enforce_test_cebspot_owner
-  before insert or update of owner_id, spot_id on public.owner_spot_access
-  for each row execute function public.enforce_test_cebspot_owner_access();
-
-delete from owner_spot_access access
-using profiles owner_profile
-where access.owner_id = owner_profile.id
-  and access.spot_id = '66666666-6666-4666-8666-666666666666'
-  and (
-    owner_profile.role <> 'owner'
-    or lower(owner_profile.email) <> 'testowner@cebspot.com'
-  );
+drop function if exists public.enforce_test_cebspot_owner_access();
 
 create table if not exists reviews (
   id uuid primary key default gen_random_uuid(),
@@ -434,7 +501,7 @@ create table if not exists reviews (
   user_id uuid not null references profiles(id) on delete cascade,
   user_name text,
   user_photo_url text,
-  rating numeric(2, 1) not null default 5 check (rating >= 1 and rating <= 5),
+  rating numeric(2, 1) not null default 0 check (rating >= 0 and rating <= 5),
   comment text,
   media_urls text[] default '{}',
   media_types text[] default '{}',
@@ -444,6 +511,9 @@ create table if not exists reviews (
   updated_at timestamptz not null default now()
 );
 
+alter table reviews drop constraint if exists reviews_rating_check;
+alter table reviews add constraint reviews_rating_check check (rating >= 0 and rating <= 5);
+
 create table if not exists review_reports (
   id uuid primary key default gen_random_uuid(),
   review_id uuid not null references reviews(id) on delete cascade,
@@ -452,6 +522,22 @@ create table if not exists review_reports (
   created_at timestamptz not null default now(),
   unique(review_id, reporter_id)
 );
+
+create table if not exists review_replies (
+  id uuid primary key default gen_random_uuid(),
+  spot_id uuid not null references spots(id) on delete cascade,
+  review_id uuid not null references reviews(id) on delete cascade,
+  parent_reply_id uuid references review_replies(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  user_name text not null,
+  user_photo_url text,
+  body text not null check (char_length(trim(body)) between 1 and 500),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table review_replies
+  add column if not exists parent_reply_id uuid references review_replies(id) on delete cascade;
 
 create index if not exists spots_public_idx on spots(is_public);
 create index if not exists spots_category_idx on spots(category);
@@ -467,11 +553,43 @@ create index if not exists reservation_payments_user_idx on reservation_payments
 create index if not exists reservation_payments_spot_idx on reservation_payments(spot_id, created_at desc);
 create unique index if not exists reservation_payments_checkout_session_idx on reservation_payments(provider_checkout_session_id);
 create index if not exists reservation_payments_provider_intent_idx on reservation_payments(provider_payment_intent_id);
+with ranked_pending_payments as (
+  select
+    id,
+    row_number() over (partition by reservation_id order by created_at desc, id desc) as duplicate_rank
+  from reservation_payments
+  where provider = 'paymongo'
+    and payment_method = 'gcash'
+    and status = 'pending'
+)
+update reservation_payments
+set status = 'expired',
+    updated_at = now()
+where id in (
+  select id
+  from ranked_pending_payments
+  where duplicate_rank > 1
+);
+create unique index if not exists reservation_payments_one_pending_paymongo_gcash_idx
+  on reservation_payments(reservation_id)
+  where provider = 'paymongo'
+    and payment_method = 'gcash'
+    and status = 'pending';
+create unique index if not exists reservation_payments_one_pending_paymongo_qrph_idx
+  on reservation_payments(reservation_id)
+  where provider = 'paymongo'
+    and payment_method = 'qrph'
+    and status = 'pending';
 create index if not exists activities_created_idx on activities(created_at desc);
+create unique index if not exists activities_reservation_reminder_unique_idx
+  on activities(user_id, target_id, type)
+  where type = 'reservation_reminder' and target_id is not null;
 create index if not exists local_updates_created_idx on local_updates(created_at desc);
 create index if not exists local_updates_source_idx on local_updates(source_type, source_id);
 create index if not exists local_update_comments_update_created_idx
   on local_update_comments(local_update_id, created_at);
+create index if not exists local_update_comments_parent_idx
+  on local_update_comments(parent_comment_id, created_at);
 create index if not exists circles_owner_idx on circles(owner_id);
 create unique index if not exists circles_invite_code_unique_idx
   on circles(invite_code)
@@ -486,13 +604,24 @@ create index if not exists owner_spot_access_owner_idx on owner_spot_access(owne
 create index if not exists owner_spot_access_spot_idx on owner_spot_access(spot_id);
 create index if not exists reviews_spot_idx on reviews(spot_id, created_at desc);
 create index if not exists review_reports_review_idx on review_reports(review_id);
+create index if not exists review_replies_spot_idx on review_replies(spot_id, created_at);
+create index if not exists review_replies_review_idx on review_replies(review_id, created_at);
+create index if not exists review_replies_parent_idx on review_replies(parent_reply_id, created_at);
 
 insert into storage.buckets (id, name, public)
 values ('spot-images', 'spot-images', true)
 on conflict (id) do update set public = true;
 
 insert into storage.buckets (id, name, public)
+values ('profile-photos', 'profile-photos', true)
+on conflict (id) do update set public = true;
+
+insert into storage.buckets (id, name, public)
 values ('payment-proofs', 'payment-proofs', false)
+on conflict (id) do update set public = false;
+
+insert into storage.buckets (id, name, public)
+values ('owner-verification-documents', 'owner-verification-documents', false)
 on conflict (id) do update set public = false;
 
 alter table profiles enable row level security;
@@ -510,6 +639,7 @@ alter table owner_access_requests enable row level security;
 alter table owner_spot_access enable row level security;
 alter table reviews enable row level security;
 alter table review_reports enable row level security;
+alter table review_replies enable row level security;
 
 drop policy if exists "profiles_select_own" on profiles;
 drop policy if exists "profiles_insert_own" on profiles;
@@ -532,8 +662,14 @@ drop policy if exists "local_update_comments_read" on local_update_comments;
 drop policy if exists "local_update_comments_delete_own" on local_update_comments;
 drop policy if exists "spot_images_read" on storage.objects;
 drop policy if exists "spot_images_insert_own" on storage.objects;
+drop policy if exists "profile_photos_read" on storage.objects;
+drop policy if exists "profile_photos_insert_own" on storage.objects;
+drop policy if exists "profile_photos_update_own" on storage.objects;
+drop policy if exists "profile_photos_delete_own" on storage.objects;
 drop policy if exists "payment_proofs_read_related" on storage.objects;
 drop policy if exists "payment_proofs_insert_own" on storage.objects;
+drop policy if exists "owner_verification_documents_insert" on storage.objects;
+drop policy if exists "owner_verification_documents_read_admin" on storage.objects;
 drop policy if exists "circles_member_read" on circles;
 drop policy if exists "circles_insert_own" on circles;
 drop policy if exists "spot_submissions_insert_own" on spot_submissions;
@@ -543,12 +679,16 @@ drop policy if exists "spot_submission_votes_upsert_own" on spot_submission_vote
 drop policy if exists "spot_search_events_insert_any_auth" on spot_search_events;
 drop policy if exists "spot_search_events_read_own" on spot_search_events;
 drop policy if exists "owner_access_requests_insert_own" on owner_access_requests;
+drop policy if exists "owner_access_requests_public_insert" on owner_access_requests;
 drop policy if exists "owner_access_requests_select_own" on owner_access_requests;
 drop policy if exists "owner_spot_access_select_own" on owner_spot_access;
 drop policy if exists "reviews_read" on reviews;
 drop policy if exists "reviews_insert_own" on reviews;
 drop policy if exists "reviews_update_own" on reviews;
 drop policy if exists "review_reports_insert_own" on review_reports;
+drop policy if exists "review_replies_read" on review_replies;
+drop policy if exists "review_replies_insert_own" on review_replies;
+drop policy if exists "review_replies_delete_own" on review_replies;
 
 create policy "profiles_select_own"
   on profiles for select
@@ -558,10 +698,26 @@ create policy "profiles_insert_own"
   on profiles for insert
   with check (auth.uid() = id);
 
+create or replace function public.current_profile_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role from public.profiles where id = auth.uid();
+$$;
+
+revoke all on function public.current_profile_role() from public;
+grant execute on function public.current_profile_role() to authenticated;
+
 create policy "profiles_update_own"
   on profiles for update
   using (auth.uid() = id)
-  with check (auth.uid() = id);
+  with check (
+    auth.uid() = id
+    and role = public.current_profile_role()
+  );
 
 create policy "profiles_select_owned_reservation_guests"
   on profiles for select
@@ -695,6 +851,23 @@ create policy "spot_images_insert_own"
   on storage.objects for insert
   with check (bucket_id = 'spot-images' and auth.uid()::text = (storage.foldername(name))[1]);
 
+create policy "profile_photos_read"
+  on storage.objects for select
+  using (bucket_id = 'profile-photos');
+
+create policy "profile_photos_insert_own"
+  on storage.objects for insert
+  with check (bucket_id = 'profile-photos' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "profile_photos_update_own"
+  on storage.objects for update
+  using (bucket_id = 'profile-photos' and auth.uid()::text = (storage.foldername(name))[1])
+  with check (bucket_id = 'profile-photos' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "profile_photos_delete_own"
+  on storage.objects for delete
+  using (bucket_id = 'profile-photos' and auth.uid()::text = (storage.foldername(name))[1]);
+
 create policy "payment_proofs_read_related"
   on storage.objects for select
   using (
@@ -715,6 +888,23 @@ create policy "payment_proofs_read_related"
 create policy "payment_proofs_insert_own"
   on storage.objects for insert
   with check (bucket_id = 'payment-proofs' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "owner_verification_documents_insert"
+  on storage.objects for insert
+  with check (bucket_id = 'owner-verification-documents' and auth.role() in ('anon', 'authenticated'));
+
+create policy "owner_verification_documents_read_admin"
+  on storage.objects for select
+  using (
+    bucket_id = 'owner-verification-documents'
+    and exists (
+      select 1
+      from public.profiles profile
+      where profile.id = auth.uid()
+        and profile.role = 'admin'
+        and lower(profile.email) = 'testadmin@cebspot.com'
+    )
+  );
 
 create policy "circles_member_read"
   on circles for select
@@ -896,13 +1086,85 @@ create policy "spot_search_events_read_own"
   on spot_search_events for select
   using (user_id = auth.uid());
 
-create policy "owner_access_requests_insert_own"
+create or replace function public.get_owner_business_email_status(candidate_email text)
+returns text
+language plpgsql
+stable
+security definer
+set search_path = public, auth
+as $function$
+declare
+  normalized_email text := lower(trim(coalesce(candidate_email, '')));
+begin
+  if normalized_email = '' or normalized_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then
+    return 'invalid';
+  end if;
+
+  if exists (
+    select 1 from auth.users where lower(trim(email)) = normalized_email
+  ) or exists (
+    select 1 from public.profiles where lower(trim(email)) = normalized_email
+  ) then
+    return 'registered';
+  end if;
+
+  if exists (
+    select 1
+    from public.owner_access_requests
+    where lower(trim(contact_email)) = normalized_email
+      and status = 'pending'
+  ) then
+    return 'pending';
+  end if;
+
+  return 'available';
+end;
+$function$;
+
+revoke all on function public.get_owner_business_email_status(text) from public;
+grant execute on function public.get_owner_business_email_status(text) to anon, authenticated;
+
+create or replace function public.reject_unavailable_owner_business_email()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, auth
+as $function$
+declare
+  email_status text;
+begin
+  email_status := public.get_owner_business_email_status(new.contact_email);
+
+  if email_status = 'registered' then
+    raise exception 'This email already belongs to a CebSpot user. Use a separate, unregistered business email for the owner account.'
+      using errcode = '23505';
+  elsif email_status = 'pending' then
+    raise exception 'An owner access request for this business email is already pending.'
+      using errcode = '23505';
+  elsif email_status = 'invalid' then
+    raise exception 'Enter a valid business email address.'
+      using errcode = '22023';
+  end if;
+
+  return new;
+end;
+$function$;
+
+drop trigger if exists owner_requests_reject_unavailable_email on public.owner_access_requests;
+create trigger owner_requests_reject_unavailable_email
+before insert on public.owner_access_requests
+for each row execute function public.reject_unavailable_owner_business_email();
+
+create policy "owner_access_requests_public_insert"
   on owner_access_requests for insert
-  with check (auth.role() = 'authenticated' and requester_id = auth.uid());
+  with check (requester_id is null or requester_id = auth.uid());
 
 create policy "owner_access_requests_select_own"
   on owner_access_requests for select
   using (requester_id = auth.uid());
+
+grant insert on table owner_access_requests to anon, authenticated;
+grant select on table owner_access_requests to authenticated;
 
 create policy "owner_spot_access_select_own"
   on owner_spot_access for select
@@ -924,6 +1186,21 @@ create policy "reviews_update_own"
 create policy "review_reports_insert_own"
   on review_reports for insert
   with check (auth.role() = 'authenticated' and reporter_id = auth.uid());
+
+create policy "review_replies_read"
+  on review_replies for select
+  using (true);
+
+create policy "review_replies_insert_own"
+  on review_replies for insert
+  with check (auth.role() = 'authenticated' and user_id = auth.uid());
+
+create policy "review_replies_delete_own"
+  on review_replies for delete
+  using (user_id = auth.uid());
+
+grant select on table public.review_replies to anon, authenticated;
+grant insert, delete on table public.review_replies to authenticated;
 
 create or replace function public.sync_local_update_comment_count()
 returns trigger
@@ -962,9 +1239,13 @@ create trigger local_update_comments_sync_count
   after insert or delete on public.local_update_comments
   for each row execute function public.sync_local_update_comment_count();
 
-create or replace function public.add_local_update_comment(
+drop function if exists public.add_local_update_comment(uuid, text);
+drop function if exists public.add_local_update_comment(uuid, text, uuid);
+
+create function public.add_local_update_comment(
   target_local_update_id uuid,
-  comment_body text
+  comment_body text,
+  parent_comment_id uuid default null
 )
 returns public.local_update_comments
 language plpgsql
@@ -974,7 +1255,9 @@ as $$
 declare
   current_user_id uuid := auth.uid();
   normalized_body text := trim(comment_body);
+  target_parent_comment_id uuid := $3;
   created_comment public.local_update_comments%rowtype;
+  commented_update public.local_updates%rowtype;
 begin
   if current_user_id is null then
     raise exception 'Authentication is required to comment.';
@@ -992,8 +1275,19 @@ begin
     raise exception 'Local update not found.';
   end if;
 
+  if target_parent_comment_id is not null and not exists (
+    select 1
+    from public.local_update_comments parent
+    where parent.id = target_parent_comment_id
+      and parent.local_update_id = target_local_update_id
+      and parent.parent_comment_id is null
+  ) then
+    raise exception 'Reply target not found.';
+  end if;
+
   insert into public.local_update_comments (
     local_update_id,
+    parent_comment_id,
     user_id,
     user_name,
     user_photo_url,
@@ -1001,6 +1295,7 @@ begin
   )
   select
     target_local_update_id,
+    target_parent_comment_id,
     profile.id,
     coalesce(nullif(trim(profile.display_name), ''), split_part(profile.email, '@', 1), 'CebSpot user'),
     profile.photo_url,
@@ -1013,12 +1308,44 @@ begin
     raise exception 'Your profile is unavailable.';
   end if;
 
+  select *
+  into commented_update
+  from public.local_updates
+  where id = target_local_update_id;
+
+  if commented_update.source_type = 'spot_submission'
+    and commented_update.user_id is not null
+    and commented_update.user_id <> current_user_id then
+    insert into public.activities (
+      user_id,
+      user_name,
+      user_photo_url,
+      action,
+      target_id,
+      target_name,
+      type,
+      content,
+      spot_name
+    )
+    values (
+      commented_update.user_id,
+      created_comment.user_name,
+      created_comment.user_photo_url,
+      'commented on your spot',
+      coalesce(commented_update.source_id, commented_update.id::text),
+      commented_update.title,
+      'spot_comment',
+      created_comment.user_name || ' commented on your spot.',
+      commented_update.title
+    );
+  end if;
+
   return created_comment;
 end;
 $$;
 
-revoke all on function public.add_local_update_comment(uuid, text) from public;
-grant execute on function public.add_local_update_comment(uuid, text) to authenticated;
+revoke all on function public.add_local_update_comment(uuid, text, uuid) from public;
+grant execute on function public.add_local_update_comment(uuid, text, uuid) to authenticated;
 
 create or replace function public.check_reservation_slot_available(
   target_spot_id uuid,
@@ -1028,12 +1355,38 @@ create or replace function public.check_reservation_slot_available(
   excluded_reservation_id uuid default null
 )
 returns boolean
-language sql
-stable
+language plpgsql
 security definer
 set search_path = public
 as $$
-  select not exists (
+begin
+  update public.reservations
+  set
+    status = 'cancelled',
+    payment_status = 'failed',
+    refund_status = 'not_applicable',
+    cancellation_reason = 'PayMongo checkout expired without payment.',
+    cancelled_at = now(),
+    updated_at = now()
+  where status = 'pending_payment'
+    and payment_status in ('pending', 'unpaid')
+    and payment_method in ('paymongo_gcash', 'paymongo_qrph')
+      and created_at < now() - interval '5 minutes';
+
+  update public.reservation_payments
+  set
+    status = 'expired',
+    updated_at = now()
+  where reservation_id in (
+    select id
+    from public.reservations
+    where status = 'cancelled'
+      and cancellation_reason = 'PayMongo checkout expired without payment.'
+      and cancelled_at >= now() - interval '1 minute'
+  )
+    and status = 'pending';
+
+  return not exists (
     select 1
     from public.reservations
     where spot_id = target_spot_id
@@ -1043,9 +1396,308 @@ as $$
       and status not in ('cancelled', 'completed', 'no_show')
       and (excluded_reservation_id is null or id <> excluded_reservation_id)
   );
+end;
 $$;
 
 grant execute on function public.check_reservation_slot_available(uuid, date, text, text, uuid) to authenticated;
+
+create or replace function public.get_reserved_table_ids(
+  target_spot_id uuid,
+  target_reservation_date date,
+  target_slot_id text
+)
+returns text[]
+language sql
+security definer
+set search_path = public
+as $$
+  select coalesce(array_agg(distinct table_id order by table_id), '{}'::text[])
+  from public.reservations
+  where spot_id = target_spot_id
+    and reservation_date = target_reservation_date
+    and slot_id = target_slot_id
+    and table_id is not null
+    and status not in ('cancelled', 'completed', 'no_show')
+    and not (
+      status = 'pending_payment'
+      and payment_status in ('pending', 'unpaid')
+      and payment_method in ('paymongo_gcash', 'paymongo_qrph')
+        and created_at < now() - interval '5 minutes'
+    );
+$$;
+
+revoke all on function public.get_reserved_table_ids(uuid, date, text) from public;
+grant execute on function public.get_reserved_table_ids(uuid, date, text) to anon, authenticated;
+
+create or replace function public.void_unpaid_reservation(
+  target_reservation_id uuid,
+  cancellation_reason text default 'Payment was not completed.'
+)
+returns public.reservations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_reservation public.reservations%rowtype;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required to void a reservation.';
+  end if;
+
+  select *
+  into current_reservation
+  from public.reservations
+  where id = target_reservation_id
+    and user_id = auth.uid()
+  for update;
+
+  if not found then
+    raise exception 'Reservation not found.';
+  end if;
+
+  if current_reservation.payment_status = 'paid' then
+    raise exception 'A paid reservation cannot be voided.';
+  end if;
+
+  if current_reservation.status in ('confirmed', 'completed', 'no_show') then
+    raise exception 'This reservation can no longer be voided.';
+  end if;
+
+  if current_reservation.status <> 'cancelled' then
+    update public.reservations
+    set
+      status = 'cancelled',
+      payment_status = 'failed',
+      refund_status = 'not_applicable',
+      cancellation_reason = coalesce(nullif(trim(void_unpaid_reservation.cancellation_reason), ''), 'Payment was not completed.'),
+      cancelled_at = now(),
+      updated_at = now()
+    where id = target_reservation_id;
+  end if;
+
+  update public.reservation_payments
+  set
+    status = 'expired',
+    updated_at = now()
+  where reservation_id = target_reservation_id
+    and status = 'pending';
+
+  select *
+  into current_reservation
+  from public.reservations
+  where id = target_reservation_id;
+
+  return current_reservation;
+end;
+$$;
+
+grant execute on function public.void_unpaid_reservation(uuid, text) to authenticated;
+
+create or replace function public.cancel_own_free_reservation(
+  target_reservation_id uuid,
+  cancellation_reason_input text default null
+)
+returns public.reservations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_reservation public.reservations%rowtype;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required to cancel a reservation.' using errcode = '42501';
+  end if;
+
+  select *
+  into current_reservation
+  from public.reservations
+  where id = target_reservation_id
+    and user_id = auth.uid()
+  for update;
+
+  if not found then
+    raise exception 'Reservation not found.' using errcode = 'P0002';
+  end if;
+
+  if current_reservation.payment_required or current_reservation.reservation_type = 'paid' then
+    raise exception 'This spot does not allow self-service cancellation for this reservation.' using errcode = '42501';
+  end if;
+
+  if current_reservation.status in ('cancelled', 'completed', 'no_show') then
+    raise exception 'This reservation can no longer be cancelled.';
+  end if;
+
+  update public.reservations
+  set
+    status = 'cancelled',
+    payment_status = 'not_required',
+    refund_status = 'not_applicable',
+    cancellation_reason = nullif(trim(cancellation_reason_input), ''),
+    cancelled_at = now(),
+    updated_at = now()
+  where id = target_reservation_id
+  returning * into current_reservation;
+
+  return current_reservation;
+end;
+$$;
+
+revoke all on function public.cancel_own_free_reservation(uuid, text) from public;
+grant execute on function public.cancel_own_free_reservation(uuid, text) to authenticated;
+
+create or replace function public.reschedule_own_free_reservation(
+  target_reservation_id uuid,
+  reservation_date_input date
+)
+returns public.reservations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_reservation public.reservations%rowtype;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required to adjust a reservation.' using errcode = '42501';
+  end if;
+
+  select *
+  into current_reservation
+  from public.reservations
+  where id = target_reservation_id
+    and user_id = auth.uid()
+  for update;
+
+  if not found then
+    raise exception 'Reservation not found.' using errcode = 'P0002';
+  end if;
+
+  if current_reservation.payment_required or current_reservation.reservation_type = 'paid' then
+    raise exception 'This spot does not allow self-service adjustments for this reservation.' using errcode = '42501';
+  end if;
+
+  if current_reservation.status in ('cancelled', 'completed', 'no_show') then
+    raise exception 'This reservation can no longer be adjusted.';
+  end if;
+
+  if reservation_date_input < current_date then
+    raise exception 'Reservation date cannot be in the past.';
+  end if;
+
+  update public.reservations
+  set
+    reservation_date = reservation_date_input,
+    status = 'rescheduled',
+    updated_at = now()
+  where id = target_reservation_id
+  returning * into current_reservation;
+
+  return current_reservation;
+end;
+$$;
+
+revoke all on function public.reschedule_own_free_reservation(uuid, date) from public;
+grant execute on function public.reschedule_own_free_reservation(uuid, date) to authenticated;
+
+create or replace function public.owner_record_reservation_attendance(
+  reservation_id uuid,
+  attendance_status text
+)
+returns public.reservations
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_reservation public.reservations%rowtype;
+  owner_label text;
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required to update attendance.' using errcode = '42501';
+  end if;
+
+  if attendance_status not in ('checked_in', 'no_show') then
+    raise exception 'Attendance status must be checked_in or no_show.';
+  end if;
+
+  select *
+  into current_reservation
+  from public.reservations
+  where id = reservation_id
+  for update;
+
+  if not found then
+    raise exception 'Reservation not found.' using errcode = 'P0002';
+  end if;
+
+  if not exists (
+    select 1
+    from public.spots
+    left join public.owner_spot_access access on access.spot_id = spots.id
+    where spots.id = current_reservation.spot_id
+      and (spots.owner_id = auth.uid() or access.owner_id = auth.uid())
+  ) then
+    raise exception 'Only the spot owner can update reservation attendance.' using errcode = '42501';
+  end if;
+
+  if current_reservation.status in ('cancelled', 'checked_in', 'completed', 'no_show') then
+    raise exception 'Attendance was already resolved for this reservation.';
+  end if;
+
+  if current_reservation.payment_required and current_reservation.payment_status <> 'paid' then
+    raise exception 'Attendance cannot be recorded before the required payment is confirmed.';
+  end if;
+
+  if current_reservation.status not in ('pending', 'confirmed', 'rescheduled') then
+    raise exception 'This reservation is not ready for an attendance decision.';
+  end if;
+
+  update public.reservations
+  set status = attendance_status,
+      updated_at = now()
+  where id = reservation_id
+  returning * into current_reservation;
+
+  select coalesce(nullif(trim(spots.name), ''), 'CebSpot venue')
+  into owner_label
+  from public.spots
+  where spots.id = current_reservation.spot_id;
+
+  insert into public.activities (
+    user_id,
+    user_name,
+    action,
+    target_id,
+    target_name,
+    type,
+    content,
+    spot_id,
+    spot_name
+  )
+  values (
+    current_reservation.user_id,
+    owner_label,
+    case when attendance_status = 'checked_in' then 'confirmed your arrival' else 'marked your reservation as no show' end,
+    current_reservation.id::text,
+    current_reservation.spot_name,
+    case when attendance_status = 'checked_in' then 'reservation_checked_in' else 'reservation_no_show' end,
+    case
+      when attendance_status = 'checked_in'
+        then current_reservation.spot_name || ' confirmed that you arrived. Your table remains assigned to your reservation.'
+      else current_reservation.spot_name || ' marked your reservation as a no-show. The table has been released under the reservation policy.'
+    end,
+    current_reservation.spot_id,
+    current_reservation.spot_name
+  );
+
+  return current_reservation;
+end;
+$$;
+
+revoke all on function public.owner_record_reservation_attendance(uuid, text) from public;
+grant execute on function public.owner_record_reservation_attendance(uuid, text) to authenticated;
 
 create or replace function public.approve_paid_reservation(reservation_id uuid)
 returns public.reservations
@@ -1121,85 +1773,7 @@ $$;
 
 grant execute on function public.approve_paid_reservation(uuid) to authenticated;
 
-create or replace function public.claim_test_cebspot_owner_access()
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  requester_email text;
-  requester_role text;
-begin
-  if auth.uid() is null then
-    raise exception 'Authentication required to claim Test Cebspot owner access.';
-  end if;
-
-  select lower(email), role
-  into requester_email, requester_role
-  from public.profiles
-  where id = auth.uid();
-
-  if requester_email <> 'testowner@cebspot.com' or requester_role <> 'owner' then
-    raise exception 'Only the Test Cebspot owner account can claim this owner access.';
-  end if;
-
-  delete from public.owner_spot_access access
-  using public.profiles owner_profile
-  where access.owner_id = owner_profile.id
-    and access.spot_id = '66666666-6666-4666-8666-666666666666'
-    and (
-      access.owner_id <> auth.uid()
-      or owner_profile.role <> 'owner'
-      or lower(owner_profile.email) <> 'testowner@cebspot.com'
-    );
-
-  update public.spots
-  set
-    name = 'Test Cebspot Restaurant',
-    category = 'Restaurant',
-    categories = array['Restaurant', 'Reservations'],
-    gcash_wallet_number = '0917 555 0198',
-    gcash_wallet_name = 'Test Cebspot Restaurant',
-    gcash_qr_url = 'https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=GCash%20Test%20Cebspot%20Restaurant%2009175550198',
-    gcash_amount = greatest(coalesce(reservation_fee, 0), 150),
-    table_inventory = case
-      when table_inventory is null or table_inventory = '{}'::jsonb then jsonb_build_object(
-        'sunset', jsonb_build_array(
-          jsonb_build_object('tableId', 's1', 'capacity', 2, 'isReserved', false),
-          jsonb_build_object('tableId', 's2', 'capacity', 2, 'isReserved', false),
-          jsonb_build_object('tableId', 's3', 'capacity', 4, 'isReserved', false),
-          jsonb_build_object('tableId', 's4', 'capacity', 6, 'isReserved', false)
-        ),
-        'prime', jsonb_build_array(
-          jsonb_build_object('tableId', 'p1', 'capacity', 2, 'isReserved', true),
-          jsonb_build_object('tableId', 'p2', 'capacity', 2, 'isReserved', false),
-          jsonb_build_object('tableId', 'p3', 'capacity', 4, 'isReserved', true)
-        ),
-        'late', jsonb_build_array(
-          jsonb_build_object('tableId', 'l1', 'capacity', 2, 'isReserved', false),
-          jsonb_build_object('tableId', 'l2', 'capacity', 6, 'isReserved', false)
-        )
-      )
-      else table_inventory
-    end,
-    reservation_fee = greatest(coalesce(reservation_fee, 0), 150),
-    payment_required = true,
-    reservation_type = 'paid',
-    is_public = true,
-    is_reservable = true,
-    owner_id = auth.uid(),
-    updated_at = now()
-  where id = '66666666-6666-4666-8666-666666666666';
-
-  insert into public.owner_spot_access (owner_id, spot_id, role)
-  values (auth.uid(), '66666666-6666-4666-8666-666666666666', 'owner')
-  on conflict (owner_id, spot_id) do update
-  set role = excluded.role;
-end;
-$$;
-
-grant execute on function public.claim_test_cebspot_owner_access() to authenticated;
+drop function if exists public.claim_test_cebspot_owner_access();
 
 create or replace function public.distance_km(
   lat1 double precision,
@@ -1223,20 +1797,27 @@ as $$
   );
 $$;
 
+drop view if exists public.pending_spot_submission_popularity;
+
 create or replace view public.pending_spot_submission_popularity as
 select
   s.*,
-  coalesce(v.vote_count, 0) as vote_count,
+  coalesce(v.up_count, 0) as up_count,
+  coalesce(v.down_count, 0) as down_count,
+  (coalesce(v.up_count, 0) - coalesce(v.down_count, 0)) as vote_count,
   coalesce(se.search_count, 0) as search_count,
   coalesce(sim.similar_submission_count, 0) as similar_submission_count,
   (
-    coalesce(v.vote_count, 0) * 3 +
+    greatest(coalesce(v.up_count, 0) - coalesce(v.down_count, 0), 0) * 3 +
     coalesce(se.search_count, 0) +
     coalesce(sim.similar_submission_count, 0) * 2
   ) as popularity_score
 from spot_submissions s
 left join (
-  select submission_id, count(*)::integer as vote_count
+  select
+    submission_id,
+    count(*) filter (where vote_type = 'up')::integer as up_count,
+    count(*) filter (where vote_type = 'down')::integer as down_count
   from spot_submission_votes
   group by submission_id
 ) v on v.submission_id = s.id
@@ -1262,55 +1843,345 @@ left join lateral (
 ) sim on true
 where s.status = 'pending';
 
-drop function if exists public.toggle_spot_submission_vote(uuid);
+drop function if exists public.get_spot_submission_group_media(uuid);
 
-create function public.toggle_spot_submission_vote(target_submission_id uuid)
-returns table (vote_count integer, voted boolean)
+create function public.get_spot_submission_group_media(target_submission_id uuid)
+returns table (media_url text)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with target as (
+    select *
+    from public.spot_submissions
+    where id = target_submission_id
+  ),
+  related as (
+    select submission.*
+    from public.spot_submissions submission
+    cross join target
+    where submission.status = 'pending'
+      and (
+        submission.id = target.id
+        or lower(trim(submission.name)) = lower(trim(target.name))
+        or (
+          submission.category = target.category
+          and public.distance_km(submission.latitude, submission.longitude, target.latitude, target.longitude) <= 0.25
+        )
+      )
+  ),
+  media as (
+    select
+      nullif(trim(uploaded.media_url), '') as media_url,
+      min(related.created_at) as first_seen,
+      min(uploaded.ordinality) as first_index
+    from related
+    cross join lateral unnest(coalesce(related.images, '{}'::text[])) with ordinality as uploaded(media_url, ordinality)
+    group by nullif(trim(uploaded.media_url), '')
+  )
+  select media.media_url
+  from media
+  where media.media_url is not null
+  order by media.first_seen, media.first_index;
+$$;
+
+revoke all on function public.get_spot_submission_group_media(uuid) from public;
+grant execute on function public.get_spot_submission_group_media(uuid) to anon, authenticated;
+
+drop function if exists public.publish_spot_submission_local_update(uuid);
+
+create function public.publish_spot_submission_local_update(target_submission_id uuid)
+returns table (
+  local_update_id uuid,
+  canonical_submission_id uuid,
+  similar_submission_count integer,
+  vote_count integer,
+  grouped boolean
+)
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
   current_user_id uuid := auth.uid();
-  deleted_vote_id uuid;
-  next_vote_count integer;
-  is_voted boolean;
+  submitted public.spot_submissions%rowtype;
+  canonical public.spot_submissions%rowtype;
+  submitter public.profiles%rowtype;
+  v_local_update_id uuid;
+  v_media_urls text[];
+  v_similar_submission_count integer;
+  v_vote_count integer;
+  v_up_count integer;
+  v_down_count integer;
+begin
+  if current_user_id is null then
+    raise exception 'Authentication is required to submit a spot.';
+  end if;
+
+  select *
+  into submitted
+  from public.spot_submissions
+  where id = target_submission_id
+    and submitter_id = current_user_id;
+
+  if not found then
+    raise exception 'Spot submission not found.';
+  end if;
+
+  select candidate.*
+  into canonical
+  from public.spot_submissions candidate
+  where candidate.status = 'pending'
+    and (
+      lower(trim(candidate.name)) = lower(trim(submitted.name))
+      or (
+        candidate.category = submitted.category
+        and public.distance_km(candidate.latitude, candidate.longitude, submitted.latitude, submitted.longitude) <= 0.25
+      )
+    )
+  order by candidate.created_at asc, candidate.id asc
+  limit 1;
+
+  if not found then
+    canonical := submitted;
+  end if;
+
+  select *
+  into submitter
+  from public.profiles
+  where id = canonical.submitter_id;
+
+  insert into public.spot_submission_votes (submission_id, user_id, vote_type)
+  values (canonical.id, current_user_id, 'up')
+  on conflict (submission_id, user_id) do update
+    set vote_type = 'up',
+        created_at = now();
+
+  select
+    count(*) filter (where spot_submission_votes.vote_type = 'up')::integer,
+    count(*) filter (where spot_submission_votes.vote_type = 'down')::integer
+  into v_up_count, v_down_count
+  from public.spot_submission_votes
+  where submission_id = canonical.id;
+
+  v_vote_count := v_up_count - v_down_count;
+
+  select coalesce(array_agg(group_media.media_url), '{}'::text[])
+  into v_media_urls
+  from public.get_spot_submission_group_media(canonical.id) group_media;
+
+  select greatest(count(*)::integer - 1, 0)
+  into v_similar_submission_count
+  from public.spot_submissions related
+  where related.status = 'pending'
+    and (
+      related.id = canonical.id
+      or lower(trim(related.name)) = lower(trim(canonical.name))
+      or (
+        related.category = canonical.category
+        and public.distance_km(related.latitude, related.longitude, canonical.latitude, canonical.longitude) <= 0.25
+      )
+    );
+
+  select id
+  into v_local_update_id
+  from public.local_updates
+  where source_type = 'spot_submission'
+    and source_id = canonical.id::text
+  order by created_at asc
+  limit 1;
+
+  if v_local_update_id is null then
+    insert into public.local_updates (
+      user_id,
+      user_name,
+      user_photo_url,
+      title,
+      body,
+      location_name,
+      latitude,
+      longitude,
+      image_url,
+      media_urls,
+      source_type,
+      source_id,
+      spot_count,
+      comments_count
+    )
+    values (
+      canonical.submitter_id,
+      coalesce(nullif(trim(submitter.display_name), ''), split_part(submitter.email, '@', 1), 'Explorer'),
+      submitter.photo_url,
+      canonical.name,
+      coalesce(canonical.description, 'Shared a new spot for the CebSpot community.'),
+      canonical.address,
+      canonical.latitude,
+      canonical.longitude,
+      v_media_urls[1],
+      v_media_urls,
+      'spot_submission',
+      canonical.id::text,
+      v_vote_count,
+      0
+    )
+    returning id into v_local_update_id;
+  else
+    update public.local_updates
+    set image_url = coalesce(v_media_urls[1], image_url),
+        media_urls = v_media_urls,
+        spot_count = v_vote_count,
+        updated_at = now()
+    where id = v_local_update_id;
+  end if;
+
+  update public.local_updates
+  set spot_count = v_vote_count,
+      media_urls = v_media_urls,
+      image_url = coalesce(v_media_urls[1], image_url),
+      updated_at = now()
+  where source_type = 'spot_submission'
+    and source_id = canonical.id::text;
+
+  local_update_id := v_local_update_id;
+  canonical_submission_id := canonical.id;
+  similar_submission_count := v_similar_submission_count;
+  vote_count := v_vote_count;
+  grouped := canonical.id <> submitted.id;
+  return next;
+end;
+$$;
+
+revoke all on function public.publish_spot_submission_local_update(uuid) from public;
+grant execute on function public.publish_spot_submission_local_update(uuid) to authenticated;
+
+drop function if exists public.vote_on_spot_submission(uuid, text);
+drop function if exists public.toggle_spot_submission_vote(uuid);
+
+create function public.vote_on_spot_submission(target_submission_id uuid, next_vote_type text)
+returns table (vote_count integer, up_count integer, down_count integer, vote_type text, voted boolean)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  requested_vote_type text := lower(trim(next_vote_type));
+  previous_vote_type text;
+  selected_vote_type text;
+  voted_submission public.spot_submissions%rowtype;
+  voter_profile public.profiles%rowtype;
+  voter_name text;
 begin
   if current_user_id is null then
     raise exception 'Authentication is required to vote.';
   end if;
 
-  if not exists (select 1 from public.spot_submissions where id = target_submission_id) then
+  if requested_vote_type not in ('up', 'down') then
+    raise exception 'Vote type must be up or down.';
+  end if;
+
+  select *
+  into voted_submission
+  from public.spot_submissions
+  where id = target_submission_id;
+
+  if not found then
     raise exception 'Spot submission not found.';
   end if;
 
-  delete from public.spot_submission_votes
+  select spot_submission_votes.vote_type
+  into previous_vote_type
+  from public.spot_submission_votes
   where submission_id = target_submission_id
-    and user_id = current_user_id
-  returning id into deleted_vote_id;
+    and user_id = current_user_id;
 
-  if deleted_vote_id is null then
+  if previous_vote_type = requested_vote_type then
+    delete from public.spot_submission_votes
+    where submission_id = target_submission_id
+      and user_id = current_user_id;
+    selected_vote_type := null;
+  elsif previous_vote_type is null then
     insert into public.spot_submission_votes (submission_id, user_id, vote_type)
-    values (target_submission_id, current_user_id, 'up')
-    on conflict (submission_id, user_id) do nothing;
-    is_voted := true;
+    values (target_submission_id, current_user_id, requested_vote_type);
+    selected_vote_type := requested_vote_type;
   else
-    is_voted := false;
+    update public.spot_submission_votes
+    set vote_type = requested_vote_type,
+        created_at = now()
+    where submission_id = target_submission_id
+      and user_id = current_user_id;
+    selected_vote_type := requested_vote_type;
   end if;
 
-  select count(*)::integer
-  into next_vote_count
+  select
+    count(*) filter (where spot_submission_votes.vote_type = 'up')::integer,
+    count(*) filter (where spot_submission_votes.vote_type = 'down')::integer
+  into up_count, down_count
   from public.spot_submission_votes
   where submission_id = target_submission_id;
 
+  vote_count := up_count - down_count;
+
   update public.local_updates
-  set spot_count = next_vote_count,
+  set spot_count = vote_count,
       updated_at = now()
   where source_type = 'spot_submission'
     and source_id = target_submission_id::text;
 
-  return query select next_vote_count, is_voted;
+  if selected_vote_type = 'up'
+    and previous_vote_type is distinct from 'up'
+    and voted_submission.submitter_id <> current_user_id then
+    select *
+    into voter_profile
+    from public.profiles
+    where id = current_user_id;
+
+    voter_name := coalesce(
+      nullif(trim(voter_profile.display_name), ''),
+      split_part(voter_profile.email, '@', 1),
+      'CebSpot user'
+    );
+
+    insert into public.activities (
+      user_id,
+      user_name,
+      user_photo_url,
+      action,
+      target_id,
+      target_name,
+      type,
+      content,
+      spot_name
+    )
+    values (
+      voted_submission.submitter_id,
+      voter_name,
+      voter_profile.photo_url,
+      'liked your spot',
+      voted_submission.id::text,
+      voted_submission.name,
+      'spot_liked',
+      voter_name || ' liked your spot.',
+      voted_submission.name
+    );
+  end if;
+
+  return query select vote_count, up_count, down_count, selected_vote_type, selected_vote_type is not null;
 end;
+$$;
+
+revoke all on function public.vote_on_spot_submission(uuid, text) from public;
+grant execute on function public.vote_on_spot_submission(uuid, text) to authenticated;
+
+create function public.toggle_spot_submission_vote(target_submission_id uuid)
+returns table (vote_count integer, voted boolean)
+language sql
+security definer
+set search_path = public
+as $$
+  select vote_count, voted
+  from public.vote_on_spot_submission(target_submission_id, 'up');
 $$;
 
 revoke all on function public.toggle_spot_submission_vote(uuid) from public;
@@ -1325,21 +2196,33 @@ as $$
 declare
   current_user_id uuid := auth.uid();
   next_vote_count integer;
+  next_up_count integer;
+  next_down_count integer;
 begin
   if current_user_id is null then
     raise exception 'Authentication required to vote for a spot submission.';
   end if;
 
-  insert into spot_submission_votes (submission_id, user_id, vote_type)
-  values (target_submission_id, current_user_id, 'up')
-  on conflict (submission_id, user_id) do nothing;
+  if not exists (select 1 from public.spot_submissions where id = target_submission_id) then
+    raise exception 'Spot submission not found.';
+  end if;
 
-  select count(*)::integer
-  into next_vote_count
-  from spot_submission_votes
+  insert into public.spot_submission_votes (submission_id, user_id, vote_type)
+  values (target_submission_id, current_user_id, 'up')
+  on conflict (submission_id, user_id) do update
+    set vote_type = 'up',
+        created_at = now();
+
+  select
+    count(*) filter (where spot_submission_votes.vote_type = 'up')::integer,
+    count(*) filter (where spot_submission_votes.vote_type = 'down')::integer
+  into next_up_count, next_down_count
+  from public.spot_submission_votes
   where submission_id = target_submission_id;
 
-  update local_updates
+  next_vote_count := next_up_count - next_down_count;
+
+  update public.local_updates
   set spot_count = next_vote_count,
       updated_at = now()
   where source_type = 'spot_submission'
@@ -1431,6 +2314,10 @@ language plpgsql
 security definer set search_path = public
 as $$
 begin
+  if nullif(trim(coalesce(new.email, '')), '') is null then
+    return new;
+  end if;
+
   insert into public.profiles (id, email, role, first_name, last_name, display_name, photo_url)
   values (
     new.id,
@@ -1447,14 +2334,21 @@ begin
       nullif(trim(concat_ws(' ', new.raw_user_meta_data ->> 'first_name', new.raw_user_meta_data ->> 'last_name')), ''),
       nullif(trim(coalesce(new.raw_user_meta_data ->> 'full_name', '')), '')
     ),
-    new.raw_user_meta_data ->> 'avatar_url'
+    coalesce(
+      nullif(trim(coalesce(new.raw_user_meta_data ->> 'avatar_url', '')), ''),
+      nullif(trim(coalesce(new.raw_user_meta_data ->> 'picture', '')), '')
+    )
   )
   on conflict (id) do update set
     email = excluded.email,
-    role = excluded.role,
-    first_name = coalesce(public.profiles.first_name, excluded.first_name),
-    last_name = coalesce(public.profiles.last_name, excluded.last_name),
-    display_name = coalesce(public.profiles.display_name, excluded.display_name),
+      role = case
+        when lower(excluded.email) = 'testadmin@cebspot.com' then 'admin'
+        when lower(excluded.email) = 'testowner@cebspot.com' then 'owner'
+        else public.profiles.role
+      end,
+    first_name = coalesce(excluded.first_name, public.profiles.first_name),
+    last_name = coalesce(excluded.last_name, public.profiles.last_name),
+    display_name = coalesce(excluded.display_name, public.profiles.display_name),
     photo_url = coalesce(public.profiles.photo_url, excluded.photo_url),
     updated_at = now();
 
@@ -1463,10 +2357,53 @@ end;
 $$;
 
 drop trigger if exists on_auth_user_created on auth.users;
+drop trigger if exists on_auth_user_updated on auth.users;
 
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+create trigger on_auth_user_updated
+  after update of email, raw_user_meta_data on auth.users
+  for each row execute function public.handle_new_user();
+
+insert into public.profiles (id, email, role, first_name, last_name, display_name, photo_url)
+select
+  auth_user.id,
+  trim(auth_user.email),
+  case
+    when lower(auth_user.email) = 'testadmin@cebspot.com' then 'admin'
+    when lower(auth_user.email) = 'testowner@cebspot.com' then 'owner'
+    else 'user'
+  end,
+  nullif(trim(coalesce(auth_user.raw_user_meta_data ->> 'first_name', '')), ''),
+  nullif(trim(coalesce(auth_user.raw_user_meta_data ->> 'last_name', '')), ''),
+  coalesce(
+    nullif(trim(coalesce(auth_user.raw_user_meta_data ->> 'display_name', '')), ''),
+    nullif(trim(concat_ws(' ', auth_user.raw_user_meta_data ->> 'first_name', auth_user.raw_user_meta_data ->> 'last_name')), ''),
+    nullif(trim(coalesce(auth_user.raw_user_meta_data ->> 'full_name', '')), ''),
+    split_part(auth_user.email, '@', 1)
+  ),
+  coalesce(
+    nullif(trim(coalesce(auth_user.raw_user_meta_data ->> 'avatar_url', '')), ''),
+    nullif(trim(coalesce(auth_user.raw_user_meta_data ->> 'picture', '')), '')
+  )
+from auth.users auth_user
+where nullif(trim(coalesce(auth_user.email, '')), '') is not null
+on conflict (id) do update set
+  email = excluded.email,
+    role = case
+      when lower(excluded.email) = 'testadmin@cebspot.com' then 'admin'
+      when lower(excluded.email) = 'testowner@cebspot.com' then 'owner'
+      else public.profiles.role
+    end,
+  first_name = coalesce(excluded.first_name, public.profiles.first_name),
+  last_name = coalesce(excluded.last_name, public.profiles.last_name),
+  display_name = coalesce(excluded.display_name, public.profiles.display_name),
+  photo_url = coalesce(public.profiles.photo_url, excluded.photo_url),
+  updated_at = now();
+
+grant select, insert, update on table public.profiles to authenticated;
 
 update public.local_updates local_update
 set comments_count = (
@@ -1476,8 +2413,16 @@ set comments_count = (
 );
 
 alter table public.local_updates replica identity full;
+alter table public.activities replica identity full;
 alter table public.local_update_comments replica identity full;
 alter table public.spot_submission_votes replica identity full;
+alter table public.review_replies replica identity full;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.activities;
+exception when duplicate_object then null;
+end $$;
 
 do $$
 begin
@@ -1494,6 +2439,12 @@ end $$;
 do $$
 begin
   alter publication supabase_realtime add table public.spot_submission_votes;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.review_replies;
 exception when duplicate_object then null;
 end $$;
 

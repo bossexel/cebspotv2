@@ -4,10 +4,15 @@ const SUPABASE_URL = "https://fathkdyxgeeokxeobxqp.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhdGhrZHl4Z2Vlb2t4ZW9ieHFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTA5NTEsImV4cCI6MjA4NjgyNjk1MX0.bmFK3oSm4-f6Yp3e39l1yDhT29GIkfW4tHXSc-vBXR8";
 
-const TEST_SPOT_ID = "66666666-6666-4666-8666-666666666666";
-const OWNER_EMAIL = "testowner@cebspot.com";
-const TABLES_STORAGE_KEY = `cebspot-owner-tables-${TEST_SPOT_ID}`;
-const APPROVAL_MARK_KEY = `cebspot-owner-approval-rpc-${TEST_SPOT_ID}`;
+let activeSpotId = null;
+
+function tablesStorageKey() {
+  return activeSpotId ? `cebspot-owner-tables-${activeSpotId}` : null;
+}
+
+function approvalMarkKey() {
+  return activeSpotId ? `cebspot-owner-approval-rpc-${activeSpotId}` : null;
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -79,7 +84,8 @@ function installReservationEnhancementStyles() {
     }
 
     .ceb-proof-button,
-    .ceb-accept-button {
+    .ceb-accept-button,
+    .ceb-attendance-button {
       border: 0;
       cursor: pointer;
       font-weight: 800;
@@ -106,12 +112,32 @@ function installReservationEnhancementStyles() {
       box-shadow: 0 8px 18px rgba(22, 163, 74, 0.18);
     }
 
+    .ceb-attendance-button {
+      margin-left: 0.35rem;
+      padding: 0.5rem 0.85rem;
+      border-radius: 0.9rem;
+      font-size: 0.75rem;
+    }
+
+    .ceb-arrived-button {
+      background: #16a34a;
+      color: #ffffff;
+    }
+
+    .ceb-no-show-button {
+      border: 1px solid #fecdd3;
+      background: #fff1f2;
+      color: #be123c;
+    }
+
     .ceb-proof-button:hover,
-    .ceb-accept-button:hover {
+    .ceb-accept-button:hover,
+    .ceb-attendance-button:hover {
       transform: translateY(-1px);
     }
 
-    .ceb-accept-button:disabled {
+    .ceb-accept-button:disabled,
+    .ceb-attendance-button:disabled {
       cursor: default;
       transform: none;
       opacity: 0.65;
@@ -234,7 +260,9 @@ function installReservationEnhancementStyles() {
 
 function readTables() {
   try {
-    const stored = window.localStorage.getItem(TABLES_STORAGE_KEY);
+    const storageKey = tablesStorageKey();
+    if (!storageKey) return [];
+    const stored = window.localStorage.getItem(storageKey);
     const parsed = stored ? JSON.parse(stored) : [];
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
@@ -288,11 +316,44 @@ async function requireOwnerSession() {
     return null;
   }
 
-  const isOwner = profile?.role === "owner" && String(profile.email || "").toLowerCase() === OWNER_EMAIL;
+  const isOwner = profile?.role === "owner";
 
   if (!isOwner) {
     warn("Signing out non-owner account from owner portal.", profile?.email || user.email);
     await supabase.auth.signOut();
+    return null;
+  }
+
+  const { data: accessRows, error: accessError } = await supabase
+    .from("owner_spot_access")
+    .select("spot_id,role,created_at")
+    .eq("owner_id", user.id)
+    .order("created_at", { ascending: true });
+  if (accessError) {
+    warn("Unable to load this business account's assigned spot.", accessError);
+    return null;
+  }
+
+  const primaryAccess = (accessRows || []).find((access) => access.role === "owner") || accessRows?.[0];
+  if (primaryAccess?.spot_id) {
+    activeSpotId = primaryAccess.spot_id;
+    return user;
+  }
+
+  const { data: ownedSpot, error: ownedSpotError } = await supabase
+    .from("spots")
+    .select("id")
+    .eq("owner_id", user.id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (ownedSpotError) {
+    warn("Unable to load this business account's venue.", ownedSpotError);
+    return null;
+  }
+  activeSpotId = ownedSpot?.id || null;
+  if (!activeSpotId) {
+    warn("This owner account is not assigned to a venue.");
     return null;
   }
 
@@ -327,12 +388,12 @@ function rememberReservation(reservation) {
 
 async function loadReservationRows() {
   const user = await requireOwnerSession();
-  if (!user) return;
+  if (!user || !activeSpotId) return;
 
   const { data, error } = await supabase
     .from("reservations")
     .select("*")
-    .eq("spot_id", TEST_SPOT_ID)
+    .eq("spot_id", activeSpotId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -402,6 +463,40 @@ async function approveReservation(reservationId) {
   }
 }
 
+function canRecordAttendance(reservation) {
+  const status = String(reservation?.status || "").toLowerCase();
+  if (["cancelled", "checked_in", "completed", "no_show"].includes(status)) return false;
+  if (reservation?.payment_required && reservation?.payment_status !== "paid") return false;
+  return ["pending", "confirmed", "rescheduled"].includes(status);
+}
+
+async function recordReservationAttendance(reservationId, attendanceStatus) {
+  const reservation = reservationRows.get(reservationId);
+  if (!reservation || !canRecordAttendance(reservation)) return;
+
+  const isNoShow = attendanceStatus === "no_show";
+  const prompt = isNoShow
+    ? "Mark this guest as a no-show? Their table will be released immediately for the next reservation."
+    : "Confirm that this guest has arrived? Their table will remain occupied.";
+  if (!window.confirm(prompt)) return;
+
+  try {
+    const { data, error } = await supabase.rpc("owner_record_reservation_attendance", {
+      reservation_id: reservationId,
+      attendance_status: attendanceStatus,
+    });
+    if (error) throw error;
+
+    const updated = Array.isArray(data) ? data[0] : data;
+    if (updated) rememberReservation(updated);
+    await loadReservationRows();
+    queueEnhanceReservationsPage();
+  } catch (error) {
+    warn("Unable to update reservation attendance. Run supabase-reservation-attendance.sql if this RPC is missing.", error);
+    window.alert(error?.message || "Unable to update reservation attendance.");
+  }
+}
+
 function textLine(label, value) {
   const line = document.createElement("div");
   const labelEl = document.createElement("strong");
@@ -429,6 +524,10 @@ function buildPaymentDetails(reservation) {
   details.className = "ceb-payment-details";
 
   details.append(
+    textLine("Guest", reservation.guest_name),
+    textLine("Email", reservation.guest_email),
+    textLine("Phone", reservation.guest_phone || reservation.payer_gcash_number),
+    textLine("Deposit terms", reservation.payment_terms_accepted ? "Accepted" : "Not recorded"),
     textLine("Reference", reservation.payment_reference),
     textLine("GCash", reservation.payer_gcash_number),
     textLine("Method", reservation.payment_method),
@@ -514,6 +613,10 @@ function buildPaymentCard(reservation) {
   grid.className = "ceb-payment-card-grid";
   actions.className = "ceb-payment-card-actions";
 
+  appendPaymentField(grid, "Guest", reservation.guest_name);
+  appendPaymentField(grid, "Email", reservation.guest_email);
+  appendPaymentField(grid, "Phone", reservation.guest_phone || reservation.payer_gcash_number);
+  appendPaymentField(grid, "Deposit terms", reservation.payment_terms_accepted ? "Accepted" : "Not recorded");
   appendPaymentField(grid, "GCash number", reservation.payer_gcash_number);
   appendPaymentField(grid, "Reference number", reservation.payment_reference);
   appendPaymentField(grid, "Payment method", reservation.payment_method);
@@ -589,11 +692,13 @@ function enhanceReservationRow(table, row) {
     reservation.payment_status,
     reservation.payment_reference,
     reservation.payer_gcash_number,
+    reservation.guest_phone,
+    reservation.payment_terms_accepted,
     reservation.payment_proof_url,
     bookingRef,
   ].join("|");
 
-  if (row.dataset.cebReservationEnhanced === signature && row.querySelector(".ceb-accept-button")) return;
+  if (row.dataset.cebReservationEnhanced === signature) return;
 
   row.dataset.cebReservationEnhanced = signature;
 
@@ -606,6 +711,7 @@ function enhanceReservationRow(table, row) {
 
   dpPaidCell?.querySelector(".ceb-payment-details")?.remove();
   actionsCell?.querySelector(".ceb-accept-button")?.remove();
+  actionsCell?.querySelectorAll(".ceb-attendance-button").forEach((button) => button.remove());
 
   if (dpPaidCell && hasPaymentDetails(reservation)) {
     dpPaidCell.append(buildPaymentDetails(reservation));
@@ -624,6 +730,24 @@ function enhanceReservationRow(table, row) {
   acceptButton.textContent = isApproved ? "Approved" : "Accept";
 
   actionsCell.append(acceptButton);
+
+  if (canRecordAttendance(reservation)) {
+    const arrivedButton = document.createElement("button");
+    arrivedButton.type = "button";
+    arrivedButton.className = "ceb-attendance-button ceb-arrived-button";
+    arrivedButton.dataset.cebAttendanceReservation = reservation.id;
+    arrivedButton.dataset.cebAttendanceStatus = "checked_in";
+    arrivedButton.textContent = "Guest Arrived";
+
+    const noShowButton = document.createElement("button");
+    noShowButton.type = "button";
+    noShowButton.className = "ceb-attendance-button ceb-no-show-button";
+    noShowButton.dataset.cebAttendanceReservation = reservation.id;
+    noShowButton.dataset.cebAttendanceStatus = "no_show";
+    noShowButton.textContent = "No Show";
+
+    actionsCell.append(arrivedButton, noShowButton);
+  }
 }
 
 function enhanceReservationsPage() {
@@ -666,21 +790,11 @@ function startReservationsDomObserver() {
   });
 }
 
-async function claimOwnerAccess() {
-  const user = await requireOwnerSession();
-  if (!user) return;
-
-  const { error } = await supabase.rpc("claim_test_cebspot_owner_access");
-  if (error) {
-    warn("Unable to claim Test Cebspot owner access. Run the latest schema if ownership is wrong.", error);
-  }
-}
-
 async function syncTablesToSpot() {
   if (syncingTables) return;
 
   const user = await requireOwnerSession();
-  if (!user) return;
+  if (!user || !activeSpotId) return;
 
   const tables = readTables();
   if (!tables.length) return;
@@ -702,7 +816,7 @@ async function syncTablesToSpot() {
       payload.reservation_type = fee > 0 ? "paid" : "free";
     }
 
-    const { error } = await supabase.from("spots").update(payload).eq("id", TEST_SPOT_ID);
+    const { error } = await supabase.from("spots").update(payload).eq("id", activeSpotId);
     if (error) throw error;
   } catch (error) {
     warn("Unable to sync tables and pricing.", error);
@@ -713,7 +827,9 @@ async function syncTablesToSpot() {
 
 function getApprovedReservationMarks() {
   try {
-    return new Set(JSON.parse(window.sessionStorage.getItem(APPROVAL_MARK_KEY) || "[]"));
+    const storageKey = approvalMarkKey();
+    if (!storageKey) return new Set();
+    return new Set(JSON.parse(window.sessionStorage.getItem(storageKey) || "[]"));
   } catch {
     return new Set();
   }
@@ -722,7 +838,8 @@ function getApprovedReservationMarks() {
 function markApprovalAttempt(reservationId) {
   const marks = getApprovedReservationMarks();
   marks.add(reservationId);
-  window.sessionStorage.setItem(APPROVAL_MARK_KEY, JSON.stringify([...marks]));
+  const storageKey = approvalMarkKey();
+  if (storageKey) window.sessionStorage.setItem(storageKey, JSON.stringify([...marks]));
 }
 
 async function activityAlreadyExists(reservationId) {
@@ -742,7 +859,7 @@ async function activityAlreadyExists(reservationId) {
 }
 
 async function ensureApprovalNotification(reservation) {
-  if (!reservation?.id || reservation.spot_id !== TEST_SPOT_ID) return;
+  if (!reservation?.id || !activeSpotId || reservation.spot_id !== activeSpotId) return;
   if (reservation.status !== "confirmed" && reservation.payment_status !== "paid") return;
 
   const marks = getApprovedReservationMarks();
@@ -768,12 +885,12 @@ async function ensureApprovalNotification(reservation) {
 
 async function scanRecentApprovals() {
   const user = await requireOwnerSession();
-  if (!user) return;
+  if (!user || !activeSpotId) return;
 
   const { data, error } = await supabase
     .from("reservations")
     .select("*")
-    .eq("spot_id", TEST_SPOT_ID)
+    .eq("spot_id", activeSpotId)
     .order("updated_at", { ascending: false })
     .limit(8);
 
@@ -788,13 +905,13 @@ async function scanRecentApprovals() {
 }
 
 function setupRealtime() {
-  if (reservationChannel || spotChannel) return;
+  if (reservationChannel || spotChannel || !activeSpotId) return;
 
   reservationChannel = supabase
     .channel("owner-portal-live-reservations")
     .on(
       "postgres_changes",
-      { event: "*", schema: "public", table: "reservations", filter: `spot_id=eq.${TEST_SPOT_ID}` },
+      { event: "*", schema: "public", table: "reservations", filter: `spot_id=eq.${activeSpotId}` },
       (payload) => {
         rememberReservation(payload.new);
         queueEnhanceReservationsPage();
@@ -807,7 +924,7 @@ function setupRealtime() {
     .channel("owner-portal-live-spot")
     .on(
       "postgres_changes",
-      { event: "*", schema: "public", table: "spots", filter: `id=eq.${TEST_SPOT_ID}` },
+      { event: "*", schema: "public", table: "spots", filter: `id=eq.${activeSpotId}` },
       () => undefined,
     )
     .subscribe();
@@ -825,6 +942,16 @@ function wireDomEvents() {
         button.disabled = true;
         button.textContent = "Accepting...";
         approveReservation(button.dataset.cebAcceptReservation);
+        return;
+      }
+      if (button?.dataset.cebAttendanceReservation && button?.dataset.cebAttendanceStatus) {
+        event.preventDefault();
+        event.stopPropagation();
+        button.disabled = true;
+        recordReservationAttendance(
+          button.dataset.cebAttendanceReservation,
+          button.dataset.cebAttendanceStatus,
+        );
         return;
       }
       if (button?.dataset.cebProofReservation) {
@@ -852,7 +979,7 @@ function wireDomEvents() {
   });
 
   window.addEventListener("storage", (event) => {
-    if (event.key === TABLES_STORAGE_KEY) {
+    if (event.key === tablesStorageKey()) {
       window.setTimeout(syncTablesToSpot, 250);
     }
   });
@@ -862,7 +989,7 @@ async function boot() {
   installReservationEnhancementStyles();
   wireDomEvents();
   startReservationsDomObserver();
-  await claimOwnerAccess();
+  await requireOwnerSession();
   await syncTablesToSpot();
   await loadReservationRows();
   queueEnhanceReservationsPage();
@@ -870,7 +997,12 @@ async function boot() {
   setupRealtime();
 
   supabase.auth.onAuthStateChange(async () => {
-    await claimOwnerAccess();
+    if (reservationChannel) await supabase.removeChannel(reservationChannel);
+    if (spotChannel) await supabase.removeChannel(spotChannel);
+    reservationChannel = null;
+    spotChannel = null;
+    activeSpotId = null;
+    await requireOwnerSession();
     await syncTablesToSpot();
     await loadReservationRows();
     queueEnhanceReservationsPage();

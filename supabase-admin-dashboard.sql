@@ -103,6 +103,16 @@ create policy "review_reports_admin_select"
   on public.review_reports for select
   using (public.is_current_user_admin());
 
+alter table public.owner_access_requests
+  alter column requester_id drop not null,
+  add column if not exists verification_documents text[] not null default '{}',
+  add column if not exists spot_id uuid references public.spots(id) on delete set null,
+  add column if not exists reviewed_by uuid references public.profiles(id) on delete set null,
+  add column if not exists reviewed_at timestamptz;
+
+create index if not exists owner_access_requests_spot_idx
+  on public.owner_access_requests(spot_id, status, created_at desc);
+
 create policy "review_reports_admin_update"
   on public.review_reports for update
   using (public.is_current_user_admin())
@@ -364,10 +374,24 @@ begin
               'spotId', spots.id::text,
               'reviewId', reviews.id::text,
               'type', case
-                when lower(coalesce(review_reports.reason, '')) ~ '(hate|harass|bully|porn|nudity|offensive|child|minor)' then 'Offensive Content'
-                when lower(coalesce(review_reports.reason, '')) ~ '(wrong|incorrect|inaccurate|misleading|address|location|map|pin|website|contact|opening|description|category)' then 'Wrong Info'
-                when lower(coalesce(review_reports.reason, '')) ~ '(fake|fraud|scam|spam)' then 'Fake Review'
-                else 'Spot Issue'
+                when lower(trim(split_part(coalesce(review_reports.reason, ''), ':', 1))) = 'inaccurate or misleading review' then 'Inaccurate or misleading review'
+                when lower(trim(split_part(coalesce(review_reports.reason, ''), ':', 1))) = 'frauds and scams' then 'Frauds and scams'
+                when lower(trim(split_part(coalesce(review_reports.reason, ''), ':', 1))) = 'spam' then 'Spam'
+                when lower(trim(split_part(coalesce(review_reports.reason, ''), ':', 1))) = 'hate speech' then 'Hate speech'
+                when lower(trim(split_part(coalesce(review_reports.reason, ''), ':', 1))) = 'harassment or bullying' then 'Harassment or bullying'
+                when lower(trim(split_part(coalesce(review_reports.reason, ''), ':', 1))) = 'pornography and nudity' then 'Pornography and nudity'
+                when lower(trim(split_part(coalesce(review_reports.reason, ''), ':', 1))) = 'illegal activities and regulated goods' then 'Illegal activities and regulated goods'
+                when lower(trim(split_part(coalesce(review_reports.reason, ''), ':', 1))) = 'child or minor safety' then 'Child or minor safety'
+                when lower(trim(split_part(coalesce(review_reports.reason, ''), ':', 1))) = 'others' then 'Others'
+                when lower(coalesce(review_reports.reason, '')) ~ '(child|minor)' then 'Child or minor safety'
+                when lower(coalesce(review_reports.reason, '')) ~ '(porn|nudity|sexual)' then 'Pornography and nudity'
+                when lower(coalesce(review_reports.reason, '')) ~ '(harass|bully)' then 'Harassment or bullying'
+                when lower(coalesce(review_reports.reason, '')) ~ '(hate)' then 'Hate speech'
+                when lower(coalesce(review_reports.reason, '')) ~ '(illegal|regulated|drug|weapon)' then 'Illegal activities and regulated goods'
+                when lower(coalesce(review_reports.reason, '')) ~ '(fake|fraud|scam)' then 'Frauds and scams'
+                when lower(coalesce(review_reports.reason, '')) ~ '(spam)' then 'Spam'
+                when lower(coalesce(review_reports.reason, '')) ~ '(wrong|incorrect|inaccurate|misleading|address|location|map|pin|website|contact|opening|description|category)' then 'Inaccurate or misleading review'
+                else 'Others'
               end,
               'spot', coalesce(spots.name, 'Reported review'),
               'area', coalesce(spots.address, 'Cebu City'),
@@ -426,7 +450,7 @@ begin
               'field', spot_edit_suggestions.field,
               'currentValue', spot_edit_suggestions.current_value,
               'suggestedValue', spot_edit_suggestions.suggested_value,
-              'type', 'Wrong Info',
+              'type', 'Spot edit suggestion',
               'spot', coalesce(spots.name, 'Spot edit suggestion'),
               'area', coalesce(spots.address, 'Cebu City'),
               'reporter', upper(coalesce(
@@ -467,7 +491,8 @@ begin
             'role', initcap(profiles.role),
             'location', coalesce(profiles.location->>'address', 'Cebu City'),
             'joined', to_char(profiles.created_at, 'Mon DD, YYYY'),
-            'avatar', upper(left(coalesce(nullif(trim(profiles.display_name), ''), profiles.email, 'CU'), 1))
+            'avatar', upper(left(coalesce(nullif(trim(profiles.display_name), ''), profiles.email, 'CU'), 1)),
+            'photoUrl', profiles.photo_url
           ) as row_payload
         from public.profiles
         order by profiles.created_at desc
@@ -481,11 +506,17 @@ begin
           owner_access_requests.created_at,
           jsonb_build_object(
             'id', owner_access_requests.id::text,
+            'requesterId', owner_access_requests.requester_id::text,
+            'spotId', owner_access_requests.spot_id::text,
             'applicant', coalesce(nullif(trim(owner_access_requests.contact_name), ''), split_part(owner_access_requests.contact_email, '@', 1), 'Applicant'),
             'initials', upper(left(coalesce(nullif(trim(owner_access_requests.contact_name), ''), owner_access_requests.contact_email, 'OR'), 2)),
             'email', owner_access_requests.contact_email,
+            'phone', owner_access_requests.contact_phone,
             'spot', owner_access_requests.spot_name,
+            'fullAddress', owner_access_requests.spot_address,
             'category', owner_access_requests.category,
+            'accessNeeds', owner_access_requests.access_needs,
+            'verificationDocuments', owner_access_requests.verification_documents,
             'barangay', coalesce(
               nullif(trim(substring(owner_access_requests.spot_address from '(?i)Barangay\s+([^,]+)')), ''),
               nullif(trim(split_part(owner_access_requests.spot_address, ',', 1)), ''),
@@ -495,11 +526,11 @@ begin
             'status', initcap(owner_access_requests.status),
             'message', owner_access_requests.message,
             'adminNotes', owner_access_requests.admin_notes,
+            'reviewedAt', owner_access_requests.reviewed_at,
             'expanded', row_number() over (order by owner_access_requests.created_at desc) = 1
           ) as row_payload
         from public.owner_access_requests
         order by owner_access_requests.created_at desc
-        limit 10
       ) request_rows
     ),
     'pendingSubmissions', (
@@ -511,21 +542,35 @@ begin
             'id', spot_submissions.id::text,
             'name', spot_submissions.name,
             'category', spot_submissions.category,
+            'categories', spot_submissions.categories,
             'barangay', coalesce(
               nullif(trim(substring(spot_submissions.address from '(?i)Barangay\s+([^,]+)')), ''),
               nullif(trim(split_part(spot_submissions.address, ',', 1)), ''),
               'Cebu City'
             ),
+            'address', spot_submissions.address,
+            'latitude', spot_submissions.latitude,
+            'longitude', spot_submissions.longitude,
             'submitted', to_char(spot_submissions.created_at, 'Mon DD, YYYY'),
+            'createdAt', spot_submissions.created_at,
             'status', initcap(spot_submissions.status),
             'image', coalesce(spot_submissions.images[1], 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=240'),
+            'images', coalesce(to_jsonb(spot_submissions.images), '[]'::jsonb),
             'voteCount', spot_submissions.vote_count,
             'searchCount', spot_submissions.search_count,
             'similarSubmissionCount', spot_submissions.similar_submission_count,
             'popularityScore', spot_submissions.popularity_score,
-            'description', spot_submissions.description
+            'description', spot_submissions.description,
+            'reservationType', spot_submissions.reservation_type,
+            'reservationFee', spot_submissions.reservation_fee,
+            'paymentRequired', spot_submissions.payment_required,
+            'isReservable', spot_submissions.is_reservable,
+            'submitterId', spot_submissions.submitter_id::text,
+            'submitterName', coalesce(nullif(trim(submitter.display_name), ''), split_part(submitter.email, '@', 1), 'Unknown sender'),
+            'submitterEmail', coalesce(submitter.email, 'No email on profile')
           ) as row_payload
         from public.pending_spot_submission_popularity spot_submissions
+        left join public.profiles submitter on submitter.id = spot_submissions.submitter_id
         where spot_submissions.status = 'pending'
         order by spot_submissions.popularity_score desc, spot_submissions.created_at desc
         limit 20
@@ -659,6 +704,255 @@ $$;
 
 revoke all on function public.approve_spot_submission(uuid) from public;
 grant execute on function public.approve_spot_submission(uuid) to authenticated;
+
+drop function if exists public.review_owner_access_request(uuid, text, text);
+
+create or replace function public.review_owner_access_request(
+  target_request_id uuid,
+  decision text,
+  notes text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  owner_request public.owner_access_requests%rowtype;
+  requester_profile public.profiles%rowtype;
+  linked_spot public.spots%rowtype;
+  normalized_decision text := lower(trim(coalesce(decision, '')));
+  normalized_notes text := nullif(trim(coalesce(notes, '')), '');
+  matching_spot_count integer := 0;
+begin
+  if not public.is_current_user_admin() then
+    raise exception 'Admin access required.';
+  end if;
+
+  if normalized_decision not in ('approved', 'rejected') then
+    raise exception 'Decision must be approved or rejected.';
+  end if;
+
+  if normalized_decision = 'approved' then
+    raise exception 'Owner approvals must use the dedicated business-account provisioning function.';
+  end if;
+
+  if normalized_decision = 'rejected' and normalized_notes is null then
+    raise exception 'Add a rejection reason before rejecting this request.';
+  end if;
+
+  select *
+  into owner_request
+  from public.owner_access_requests
+  where id = target_request_id
+  for update;
+
+  if not found then
+    raise exception 'Owner access request not found.';
+  end if;
+
+  if owner_request.status <> 'pending' then
+    if owner_request.status = normalized_decision then
+      return jsonb_build_object(
+        'ok', true,
+        'requestId', owner_request.id::text,
+        'status', owner_request.status,
+        'spotId', owner_request.spot_id::text,
+        'alreadyReviewed', true
+      );
+    end if;
+
+    raise exception 'This owner access request has already been reviewed.';
+  end if;
+
+  if owner_request.requester_id is not null then
+    select *
+    into requester_profile
+    from public.profiles
+    where id = owner_request.requester_id
+    for update;
+  else
+    select *
+    into requester_profile
+    from public.profiles
+    where lower(email) = lower(owner_request.contact_email)
+    order by created_at asc
+    limit 1
+    for update;
+
+    if found then
+      owner_request.requester_id := requester_profile.id;
+
+      update public.owner_access_requests
+      set requester_id = requester_profile.id,
+          updated_at = now()
+      where id = owner_request.id;
+    end if;
+  end if;
+
+  if requester_profile.id is null and normalized_decision = 'approved' then
+    raise exception 'Create the owner account first, using the applicant email, before approving this request.';
+  end if;
+
+  if normalized_decision = 'approved' then
+    if owner_request.spot_id is not null then
+      select *
+      into linked_spot
+      from public.spots
+      where id = owner_request.spot_id
+      for update;
+    else
+      select count(*)::integer
+      into matching_spot_count
+      from public.spots
+      where regexp_replace(lower(trim(name)), '[^a-z0-9]+', '', 'g') =
+            regexp_replace(lower(trim(owner_request.spot_name)), '[^a-z0-9]+', '', 'g')
+        and regexp_replace(lower(trim(address)), '[^a-z0-9]+', '', 'g') =
+            regexp_replace(lower(trim(owner_request.spot_address)), '[^a-z0-9]+', '', 'g');
+
+      if matching_spot_count = 0 then
+        select count(*)::integer
+        into matching_spot_count
+        from public.spots
+        where regexp_replace(lower(trim(name)), '[^a-z0-9]+', '', 'g') =
+              regexp_replace(lower(trim(owner_request.spot_name)), '[^a-z0-9]+', '', 'g');
+
+        if matching_spot_count = 0 then
+          raise exception 'No CebSpot listing matches this spot. Create the listing before approving owner access.';
+        elsif matching_spot_count > 1 then
+          raise exception 'Multiple listings share this spot name. Correct the request address or resolve the duplicates before approval.';
+        end if;
+
+        select *
+        into linked_spot
+        from public.spots
+        where regexp_replace(lower(trim(name)), '[^a-z0-9]+', '', 'g') =
+              regexp_replace(lower(trim(owner_request.spot_name)), '[^a-z0-9]+', '', 'g')
+        for update;
+      elsif matching_spot_count > 1 then
+        raise exception 'Multiple listings match this request. Resolve the duplicate spots before approval.';
+      else
+        select *
+        into linked_spot
+        from public.spots
+        where regexp_replace(lower(trim(name)), '[^a-z0-9]+', '', 'g') =
+              regexp_replace(lower(trim(owner_request.spot_name)), '[^a-z0-9]+', '', 'g')
+          and regexp_replace(lower(trim(address)), '[^a-z0-9]+', '', 'g') =
+              regexp_replace(lower(trim(owner_request.spot_address)), '[^a-z0-9]+', '', 'g')
+        for update;
+      end if;
+    end if;
+
+    if not found then
+      raise exception 'The linked spot no longer exists.';
+    end if;
+
+    if linked_spot.owner_id is not null and linked_spot.owner_id <> owner_request.requester_id then
+      raise exception 'This spot already belongs to another owner. Resolve the ownership conflict before approval.';
+    end if;
+
+    update public.profiles
+    set
+      role = case when role = 'admin' then role else 'owner' end,
+      updated_at = now()
+    where id = owner_request.requester_id;
+
+    update public.spots
+    set owner_id = owner_request.requester_id,
+        updated_at = now()
+    where id = linked_spot.id;
+
+    insert into public.owner_spot_access (owner_id, spot_id, role)
+    values (owner_request.requester_id, linked_spot.id, 'owner')
+    on conflict (owner_id, spot_id) do update
+    set role = excluded.role;
+
+    update public.owner_access_requests
+    set
+      status = 'approved',
+      spot_id = linked_spot.id,
+      admin_notes = normalized_notes,
+      reviewed_by = auth.uid(),
+      reviewed_at = now(),
+      updated_at = now()
+    where id = owner_request.id;
+
+    insert into public.activities (
+      user_id,
+      user_name,
+      action,
+      target_id,
+      target_name,
+      type,
+      content,
+      spot_id,
+      spot_name
+    )
+    values (
+      owner_request.requester_id,
+      'CebSpot Admin',
+      'approved your owner access request',
+      owner_request.id::text,
+      linked_spot.name,
+      'owner_access_approved',
+      'Your owner access for ' || linked_spot.name || ' is ready.',
+      linked_spot.id,
+      linked_spot.name
+    );
+
+    return jsonb_build_object(
+      'ok', true,
+      'requestId', owner_request.id::text,
+      'status', 'approved',
+      'spotId', linked_spot.id::text,
+      'spotName', linked_spot.name,
+      'alreadyReviewed', false
+    );
+  end if;
+
+  update public.owner_access_requests
+  set
+    status = 'rejected',
+    admin_notes = normalized_notes,
+    reviewed_by = auth.uid(),
+    reviewed_at = now(),
+    updated_at = now()
+  where id = owner_request.id;
+
+  insert into public.activities (
+    user_id,
+    user_name,
+    action,
+    target_id,
+    target_name,
+    type,
+    content,
+    spot_name
+  )
+  select
+    owner_request.requester_id,
+    'CebSpot Admin',
+    'reviewed your owner access request',
+    owner_request.id::text,
+    owner_request.spot_name,
+    'owner_access_rejected',
+    'Your owner access request for ' || owner_request.spot_name || ' was not approved.',
+    owner_request.spot_name
+  where owner_request.requester_id is not null;
+
+  return jsonb_build_object(
+    'ok', true,
+    'requestId', owner_request.id::text,
+    'status', 'rejected',
+    'spotId', null,
+    'spotName', owner_request.spot_name,
+    'alreadyReviewed', false
+  );
+end;
+$$;
+
+revoke all on function public.review_owner_access_request(uuid, text, text) from public;
+grant execute on function public.review_owner_access_request(uuid, text, text) to authenticated;
 
 drop function if exists public.dismiss_admin_report(text, uuid, text);
 

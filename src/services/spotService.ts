@@ -5,6 +5,7 @@ import type { Spot } from '../types';
 import { calculateReservationFee, getSpotReservationType, isPaymentRequired } from '../utils/reservations';
 
 type TableInventoryUpdate = Record<string, Array<{ tableId: string; capacity: number; isReserved?: boolean }>>;
+const discoverySpotLimit = 500;
 
 function normalizeSpot(row: any): Spot {
   const reservationFee = calculateReservationFee(row);
@@ -46,18 +47,18 @@ function normalizeSpot(row: any): Spot {
 }
 
 function withLocalTestSpots(spots: Spot[]) {
-  const testCebspotRestaurant = sampleSpots.find((spot) => spot.id === '66666666-6666-4666-8666-666666666666');
+  const testCebspotClub = sampleSpots.find((spot) => spot.id === '66666666-6666-4666-8666-666666666666');
   if (
-    !testCebspotRestaurant ||
-    spots.some((spot) => spot.id === testCebspotRestaurant.id || spot.name === testCebspotRestaurant.name)
+    !testCebspotClub ||
+    spots.some((spot) => spot.id === testCebspotClub.id || spot.name === testCebspotClub.name)
   ) {
     return spots;
   }
-  return [testCebspotRestaurant, ...spots];
+  return [testCebspotClub, ...spots];
 }
 
 export const spotService = {
-  async getSpots(limit = 75): Promise<Spot[]> {
+  async getSpots(limit = discoverySpotLimit): Promise<Spot[]> {
     if (!hasSupabaseConfig) return sampleSpots.slice(0, limit);
 
     const { data, error } = await supabase

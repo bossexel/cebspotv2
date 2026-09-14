@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
+import { getReviewReportCategory } from '../constants/reportCategories';
 import { makeSampleReservation, sampleActivities, sampleReviews, sampleSpots } from '../constants/sampleData';
 import type { Activity, OwnerAccessRequest, Reservation, Spot, SpotEditSuggestion, SpotSubmission, UserProfile } from '../types';
 
@@ -110,36 +111,68 @@ export type AdminUserRow = {
   location: string;
   joined: string;
   avatar: string;
+  photoUrl?: string | null;
 };
 
 export type AdminOwnerRequestRow = {
   id: string;
+  requesterId: string | null;
+  spotId?: string | null;
   applicant: string;
   initials: string;
   email: string;
+  phone?: string | null;
   spot: string;
+  fullAddress: string;
   category: string;
+  accessNeeds: string[];
+  verificationDocuments: string[];
   barangay: string;
   applied: string;
   status: string;
   message?: string | null;
   adminNotes?: string | null;
+  reviewedAt?: string | null;
   expanded?: boolean;
+};
+
+export type AdminOwnerRequestDecision = 'approved' | 'rejected';
+
+export type AdminOwnerRequestDecisionResult = {
+  ok: boolean;
+  requestId: string;
+  status: AdminOwnerRequestDecision;
+  spotId?: string | null;
+  spotName?: string | null;
+  alreadyReviewed?: boolean;
 };
 
 export type AdminSpotSubmissionRow = {
   id: string;
   name: string;
   category: string;
+  categories?: string[] | null;
   barangay: string;
+  address: string;
+  latitude: number;
+  longitude: number;
   submitted: string;
+  createdAt?: string | null;
   status: string;
   image: string;
+  images: string[];
   voteCount: number;
   searchCount: number;
   similarSubmissionCount: number;
   popularityScore: number;
   description?: string | null;
+  reservationType?: string | null;
+  reservationFee: number;
+  paymentRequired: boolean;
+  isReservable: boolean;
+  submitterId: string;
+  submitterName: string;
+  submitterEmail: string;
 };
 
 export type AdminDashboardData = {
@@ -218,13 +251,7 @@ function toStatusLabel(value?: string | null) {
 }
 
 function toAdminReportType(reason?: string | null) {
-  const lower = (reason ?? '').toLowerCase();
-  if (/hate|harass|bully|porn|nudity|offensive|child|minor/.test(lower)) return 'Offensive Content';
-  if (/wrong|incorrect|inaccurate|misleading|address|location|map|pin|website|contact|opening|description|category/.test(lower)) {
-    return 'Wrong Info';
-  }
-  if (/fake|fraud|scam|spam/.test(lower)) return 'Fake Review';
-  return 'Spot Issue';
+  return getReviewReportCategory(reason);
 }
 
 function parseReportCoordinate(value?: string | null): AdminReportCoordinate | null {
@@ -280,11 +307,12 @@ function normalizeAdminReportRows(rows: any[] = []): AdminReportRow[] {
     const source: AdminReportSource = row.source === 'spot_edit_suggestion' ? 'spot_edit_suggestion' : 'review_report';
     const currentValue = row.currentValue ?? row.current_value ?? null;
     const suggestedValue = row.suggestedValue ?? row.suggested_value ?? null;
+    const note = row.note ?? null;
     return {
       id: String(row.id),
       source,
       createdAt: row.createdAt ?? row.created_at ?? null,
-      type: row.type ?? 'Spot Issue',
+      type: source === 'spot_edit_suggestion' ? 'Spot edit suggestion' : toAdminReportType(note ?? row.type),
       spotId: row.spotId ?? row.spot_id ?? null,
       reviewId: row.reviewId ?? row.review_id ?? null,
       field: row.field ?? null,
@@ -303,7 +331,7 @@ function normalizeAdminReportRows(rows: any[] = []): AdminReportRow[] {
       reviewDate: row.reviewDate ?? row.review_date ?? null,
       reviewMediaUrls: stringArray(row.reviewMediaUrls ?? row.review_media_urls),
       reviewThread: normalizeReviewThread(row.reviewThread ?? row.review_thread),
-      note: row.note ?? null,
+      note,
       expanded: Boolean(row.expanded ?? index === 0),
     };
   });
@@ -388,7 +416,7 @@ function isOnOrBefore(value: string | null | undefined, target: Date) {
 }
 
 function isPaidReservation(reservation: Reservation) {
-  return ['confirmed', 'completed'].includes(reservation.status) && reservation.payment_status === 'paid';
+  return ['confirmed', 'checked_in', 'completed'].includes(reservation.status) && reservation.payment_status === 'paid';
 }
 
 function buildDailyInsights(input: {
@@ -520,23 +548,68 @@ function mapUser(profile: UserProfile): AdminUserRow {
     location,
     joined: formatShortDate(profile.created_at),
     avatar: getInitials(name, profile.email),
+    photoUrl: profile.photo_url ?? null,
   };
+}
+
+function normalizeAdminUserRows(rows: any[] = []): AdminUserRow[] {
+  return rows.map((row) => ({
+    id: String(row.id),
+    name: row.name ?? row.display_name ?? row.email?.split('@')[0] ?? 'CebSpot user',
+    email: row.email ?? 'No email linked',
+    role: toStatusLabel(row.role ?? 'user'),
+    location: row.location?.address ?? row.location ?? 'Cebu City',
+    joined: row.joined ?? formatShortDate(row.created_at),
+    avatar: row.avatar ?? getInitials(row.name ?? row.display_name, row.email),
+    photoUrl: row.photoUrl ?? row.photo_url ?? null,
+  }));
 }
 
 function mapOwnerRequest(request: OwnerAccessRequest): AdminOwnerRequestRow {
   return {
     id: request.id,
+    requesterId: request.requester_id ?? null,
+    spotId: request.spot_id ?? null,
     applicant: request.contact_name || request.contact_email?.split('@')[0] || 'Applicant',
     initials: getInitials(request.contact_name, request.contact_email),
     email: request.contact_email,
+    phone: request.contact_phone ?? null,
     spot: request.spot_name,
+    fullAddress: request.spot_address,
     category: request.category,
+    accessNeeds: request.access_needs ?? [],
+    verificationDocuments: stringArray(request.verification_documents),
     barangay: getBarangay(request.spot_address),
     applied: formatShortDate(request.created_at),
     status: toStatusLabel(request.status),
     message: request.message,
     adminNotes: request.admin_notes,
+    reviewedAt: request.reviewed_at ?? null,
   };
+}
+
+function normalizeAdminOwnerRequestRows(rows: any[] = []): AdminOwnerRequestRow[] {
+  return rows.map((row) => ({
+    id: String(row.id),
+    requesterId: row.requesterId ?? row.requester_id ?? null,
+    spotId: row.spotId ?? row.spot_id ?? null,
+    applicant: row.applicant ?? row.contact_name ?? row.contact_email?.split('@')[0] ?? 'Applicant',
+    initials: row.initials ?? getInitials(row.applicant ?? row.contact_name, row.email ?? row.contact_email),
+    email: row.email ?? row.contact_email ?? 'No email linked',
+    phone: row.phone ?? row.contact_phone ?? null,
+    spot: row.spot ?? row.spot_name ?? 'Unknown spot',
+    fullAddress: row.fullAddress ?? row.spot_address ?? row.barangay ?? 'Cebu City',
+    category: row.category ?? 'Uncategorized',
+    accessNeeds: stringArray(row.accessNeeds ?? row.access_needs),
+    verificationDocuments: stringArray(row.verificationDocuments ?? row.verification_documents),
+    barangay: row.barangay ?? getBarangay(row.fullAddress ?? row.spot_address),
+    applied: row.applied ?? formatShortDate(row.created_at),
+    status: toStatusLabel(row.status ?? 'pending'),
+    message: row.message ?? null,
+    adminNotes: row.adminNotes ?? row.admin_notes ?? null,
+    reviewedAt: row.reviewedAt ?? row.reviewed_at ?? null,
+    expanded: Boolean(row.expanded),
+  }));
 }
 
 function normalizeSubmission(row: any): SpotSubmission {
@@ -552,20 +625,83 @@ function normalizeSubmission(row: any): SpotSubmission {
   };
 }
 
-function mapSubmission(submission: SpotSubmission): AdminSpotSubmissionRow {
+function normalizeAdminSpotSubmissionRows(rows: any[] = [], submitters: any[] = []): AdminSpotSubmissionRow[] {
+  const submittersById = new Map(submitters.map((submitter) => [String(submitter.id), submitter]));
+  return rows.map((row) => {
+    const images = stringArray(row.images);
+    const submitterId = String(row.submitterId ?? row.submitter_id ?? '');
+    const submitter = submittersById.get(submitterId);
+    const submitterEmail = row.submitterEmail ?? row.submitter_email ?? submitter?.email ?? 'No email on profile';
+    const submitterName =
+      row.submitterName ??
+      row.submitter_name ??
+      submitter?.display_name ??
+      submitter?.name ??
+      submitterEmail?.split('@')[0] ??
+      'Unknown sender';
+    return {
+      id: String(row.id),
+      name: row.name ?? 'Submitted spot',
+      category: row.category ?? 'Uncategorized',
+      categories: Array.isArray(row.categories) ? row.categories : null,
+      barangay: row.barangay ?? getBarangay(row.address),
+      address: row.address ?? 'Cebu City',
+      latitude: numberValue(row.latitude),
+      longitude: numberValue(row.longitude),
+      submitted: row.submitted ?? formatShortDate(row.createdAt ?? row.created_at),
+      createdAt: row.createdAt ?? row.created_at ?? null,
+      status: row.status ?? 'Pending',
+      image: row.image ?? images[0] ?? fallbackSpotImage,
+      images,
+      voteCount: numberValue(row.voteCount ?? row.vote_count),
+      searchCount: numberValue(row.searchCount ?? row.search_count),
+      similarSubmissionCount: numberValue(row.similarSubmissionCount ?? row.similar_submission_count),
+      popularityScore: numberValue(row.popularityScore ?? row.popularity_score),
+      description: row.description ?? null,
+      reservationType: row.reservationType ?? row.reservation_type ?? null,
+      reservationFee: numberValue(row.reservationFee ?? row.reservation_fee),
+      paymentRequired: Boolean(row.paymentRequired ?? row.payment_required),
+      isReservable: Boolean(row.isReservable ?? row.is_reservable),
+      submitterId,
+      submitterName,
+      submitterEmail,
+    };
+  });
+}
+
+function mapSubmission(submission: SpotSubmission, submitter?: UserProfile): AdminSpotSubmissionRow {
+  const images = stringArray(submission.images);
+  const submitterName =
+    submitter?.display_name ||
+    submitter?.email?.split('@')[0] ||
+    (submission as any).submitter_name ||
+    'Unknown sender';
   return {
     id: submission.id,
     name: submission.name,
     category: submission.category,
+    categories: submission.categories ?? null,
     barangay: getBarangay(submission.address),
+    address: submission.address,
+    latitude: submission.latitude,
+    longitude: submission.longitude,
     submitted: formatShortDate(submission.created_at),
+    createdAt: submission.created_at,
     status: toStatusLabel(submission.status),
-    image: submission.images?.[0] ?? fallbackSpotImage,
+    image: images[0] ?? fallbackSpotImage,
+    images,
     voteCount: numberValue((submission as any).vote_count),
     searchCount: numberValue((submission as any).search_count),
     similarSubmissionCount: numberValue((submission as any).similar_submission_count),
     popularityScore: numberValue((submission as any).popularity_score),
     description: submission.description,
+    reservationType: submission.reservation_type ?? null,
+    reservationFee: numberValue(submission.reservation_fee),
+    paymentRequired: Boolean(submission.payment_required),
+    isReservable: Boolean(submission.is_reservable),
+    submitterId: submission.submitter_id,
+    submitterName,
+    submitterEmail: submitter?.email ?? 'No email on profile',
   };
 }
 
@@ -587,7 +723,7 @@ function buildDashboardFromRows(input: {
   const reservationsToday = input.reservations.filter((reservation) => new Date(reservation.created_at) >= today).length;
   const reservations30d = input.reservations.filter((reservation) => new Date(reservation.created_at) >= thirtyDaysAgo).length;
   const confirmedReservations = input.reservations.filter((reservation) =>
-    ['confirmed', 'completed'].includes(reservation.status),
+    ['confirmed', 'checked_in', 'completed'].includes(reservation.status),
   ).length;
   const estimatedRevenue = input.reservations.reduce((sum, reservation) => {
     return isPaidReservation(reservation) ? sum + numberValue(reservation.reservation_fee || reservation.fee) : sum;
@@ -603,7 +739,10 @@ function buildDashboardFromRows(input: {
   });
   const users = input.users.map(mapUser);
   const ownerRequests = input.ownerRequests.map(mapOwnerRequest);
-  const pendingSubmissions = input.pendingSubmissions.map(mapSubmission);
+  const profilesById = new Map(input.users.map((profile) => [profile.id, profile]));
+  const pendingSubmissions = input.pendingSubmissions.map((submission) =>
+    mapSubmission(submission, profilesById.get(submission.submitter_id)),
+  );
 
   return {
     source: input.source,
@@ -678,7 +817,7 @@ function sampleDashboard(): AdminDashboardData {
       requester_id: 'sample-owner',
       contact_name: 'Clyde',
       contact_email: 'testowner@cebspot.com',
-      spot_name: 'Test Cebspot Restaurant',
+      spot_name: 'Test Cebspot Club',
       spot_address: 'Barangay Apas, Cebu City',
       category: 'Restaurant',
       access_needs: ['Reservations', 'Payments'],
@@ -773,6 +912,23 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
   if (!rpcError && rpcData) {
     const rows = rpcData as any;
     const data = sampleDashboard();
+    const { data: detailedSubmissionRows } = await client
+      .from('pending_spot_submission_popularity')
+      .select('*')
+      .order('popularity_score', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(100);
+    const pendingSubmissionRows = detailedSubmissionRows?.length ? detailedSubmissionRows : rows.pendingSubmissions;
+    const pendingSubmitterIds = Array.from(
+      new Set(
+        (pendingSubmissionRows ?? [])
+          .map((submission: any) => submission.submitterId ?? submission.submitter_id)
+          .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0),
+      ),
+    );
+    const { data: pendingSubmitters, error: pendingSubmittersError } = pendingSubmitterIds.length
+      ? await client.from('profiles').select('id,email,display_name,role,created_at').in('id', pendingSubmitterIds)
+      : { data: [], error: null };
     const dailyInsights = normalizeDailyInsights(rows.dailyInsights ?? rows.daily_insights ?? []);
     const reservationRows = rows.reservationsDaily ?? rows.reservations_daily ?? [];
     const spotRows = rows.newSpotsDaily ?? rows.new_spots_daily ?? [];
@@ -799,10 +955,13 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
       recentListings: rows.recentListings ?? data.recentListings,
       livePulse: rows.livePulse ?? data.livePulse,
       reports: normalizeAdminReportRows(rows.reports ?? data.reports),
-      users: rows.users ?? data.users,
-      ownerRequests: rows.ownerRequests ?? data.ownerRequests,
-      pendingSubmissions: rows.pendingSubmissions ?? data.pendingSubmissions,
-      errors: [],
+      users: normalizeAdminUserRows(rows.users ?? data.users),
+      ownerRequests: normalizeAdminOwnerRequestRows(rows.ownerRequests ?? data.ownerRequests),
+      pendingSubmissions: normalizeAdminSpotSubmissionRows(
+        pendingSubmissionRows ?? data.pendingSubmissions,
+        pendingSubmitters?.length ? pendingSubmitters : rows.users ?? data.users,
+      ),
+      errors: pendingSubmittersError ? [`Submission senders: ${pendingSubmittersError.message}`] : [],
     };
   }
 
@@ -845,7 +1004,7 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
       ),
       readTable<OwnerAccessRequest>(
         'Owner requests',
-        client.from('owner_access_requests').select('*').order('created_at', { ascending: false }).limit(100),
+        client.from('owner_access_requests').select('*').order('created_at', { ascending: false }),
         errors,
       ),
       readTable<any>(
@@ -926,7 +1085,7 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
           id: suggestion.id,
           source: 'spot_edit_suggestion' as const,
           createdAt: suggestion.created_at,
-          type: toAdminReportType(suggestion.field),
+          type: 'Spot edit suggestion',
           spotId: suggestion.spot_id,
           field: suggestion.field,
           currentValue: suggestion.current_value ?? null,
@@ -981,6 +1140,69 @@ export async function approveSpotSubmission(submissionId: string, client: Supaba
     );
     if (missingRpc) {
       throw new Error('Run supabase-admin-dashboard.sql in Supabase first, then refresh the dashboard.');
+    }
+    throw error;
+  }
+
+  return data;
+}
+
+export async function reviewOwnerAccessRequest(
+  requestId: string,
+  decision: AdminOwnerRequestDecision,
+  adminNotes = '',
+  client: SupabaseClient = supabase,
+): Promise<AdminOwnerRequestDecisionResult | null> {
+  if (!hasSupabaseConfig) return null;
+
+  if (decision === 'approved') {
+    const { data, error } = await withTimeout<{
+      data: AdminOwnerRequestDecisionResult | null;
+      error: any;
+    }>(
+      client.functions.invoke('provision-owner-account', {
+        body: {
+          requestId,
+          notes: adminNotes.trim() || null,
+        },
+      }),
+      30000,
+      'Dedicated owner account provisioning',
+    );
+
+    if (error) {
+      let message = error.message ?? 'Unable to create the dedicated owner account.';
+      const response = error.context as Response | undefined;
+      if (response && typeof response.clone === 'function') {
+        try {
+          const payload = await response.clone().json();
+          if (typeof payload?.error === 'string' && payload.error) message = payload.error;
+        } catch {
+          // Keep the Supabase Functions error when the response is not JSON.
+        }
+      }
+      throw new Error(message);
+    }
+
+    return data;
+  }
+
+  const { data, error } = await withTimeout<{ data: AdminOwnerRequestDecisionResult | null; error: any }>(
+    client.rpc('review_owner_access_request', {
+      target_request_id: requestId,
+      decision,
+      notes: adminNotes.trim() || null,
+    }),
+    15000,
+    'Owner request review',
+  );
+
+  if (error) {
+    const missingRpc = /review_owner_access_request|schema cache|could not find the function|pgrst202/i.test(
+      error.message ?? error.details ?? '',
+    );
+    if (missingRpc) {
+      throw new Error('Run the updated supabase-admin-dashboard.sql in Supabase first, then refresh the dashboard.');
     }
     throw error;
   }

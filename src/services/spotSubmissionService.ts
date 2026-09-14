@@ -163,6 +163,41 @@ function submissionMedia(submission: NewSpotSubmissionUpload): SpotSubmissionMed
   }));
 }
 
+async function publishSubmissionLocalUpdate(
+  submission: NewSpotSubmission,
+  submissionId: string,
+  userName: string
+) {
+  if (hasSupabaseConfig) {
+    const { error } = await supabase.rpc('publish_spot_submission_local_update', {
+      target_submission_id: submissionId,
+    });
+
+    if (!error) return;
+
+    const missingGroupingRpc = /publish_spot_submission_local_update|schema cache|function/i.test(error.message ?? '');
+    if (!missingGroupingRpc) {
+      console.error('Unable to group submitted spot in Activity:', error);
+    }
+  }
+
+  await localUpdateService.createLocalUpdate({
+    user_id: submission.submitter_id,
+    user_name: userName || 'Explorer',
+    title: submission.name,
+    body: submission.description || 'Shared a new spot for the CebSpot community.',
+    location_name: submission.address,
+    latitude: submission.latitude,
+    longitude: submission.longitude,
+    image_url: submission.images?.[0] ?? null,
+    media_urls: submission.images ?? [],
+    source_type: 'spot_submission',
+    source_id: submissionId,
+    spot_count: 0,
+    comments_count: 0,
+  });
+}
+
 async function uploadSubmissionMedia(
   submission: NewSpotSubmissionUpload,
   onProgress?: SpotSubmissionProgressHandler
@@ -213,21 +248,7 @@ export const spotSubmissionService = {
         spot_name: submission.name,
       });
       await reportProgress(options.onProgress, 70, uploadProgressMessage);
-      await localUpdateService.createLocalUpdate({
-        user_id: submission.submitter_id,
-        user_name: userName || 'Explorer',
-        title: submission.name,
-        body: submission.description || 'Shared a new spot for the CebSpot community.',
-        location_name: submission.address,
-        latitude: submission.latitude,
-        longitude: submission.longitude,
-        image_url: submission.images?.[0] ?? null,
-        media_urls: submission.images ?? [],
-        source_type: 'spot_submission',
-        source_id: created.id,
-        spot_count: 0,
-        comments_count: 0,
-      });
+      await publishSubmissionLocalUpdate(databaseSubmission, created.id, userName);
       await reportProgress(options.onProgress, 100, 'Spot submitted for review');
       return created;
     }
@@ -267,21 +288,7 @@ export const spotSubmissionService = {
 
     await reportProgress(options.onProgress, 96, uploadProgressMessage);
     try {
-      await localUpdateService.createLocalUpdate({
-        user_id: submissionWithUploadedImages.submitter_id,
-        user_name: userName || 'Explorer',
-        title: submissionWithUploadedImages.name,
-        body: submissionWithUploadedImages.description || 'Shared a new spot for the CebSpot community.',
-        location_name: submissionWithUploadedImages.address,
-        latitude: submissionWithUploadedImages.latitude,
-        longitude: submissionWithUploadedImages.longitude,
-        image_url: submissionWithUploadedImages.images?.[0] ?? null,
-        media_urls: submissionWithUploadedImages.images ?? [],
-        source_type: 'spot_submission',
-        source_id: data.id,
-        spot_count: 0,
-        comments_count: 0,
-      });
+      await publishSubmissionLocalUpdate(submissionWithUploadedImages, data.id, userName);
     } catch (localUpdateError) {
       console.error('Unable to publish local update for submitted spot:', localUpdateError);
     }

@@ -5,6 +5,7 @@ import {
   FlatList,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,8 +14,8 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
-import { useRouter } from 'expo-router';
+import type { NativeScrollEvent, NativeSyntheticEvent, ViewToken } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Bookmark,
   Layers,
@@ -27,13 +28,15 @@ import {
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { TileMap } from '../src/components/TileMap';
 import { AppColors, colors } from '../src/constants/colors';
-import { fontSize, radius, shadow, spacing, tabBarHeight } from '../src/constants/design';
+import { bottomNavLayout, fontSize, radius, shadow, spacing } from '../src/constants/design';
 import { sampleSpots } from '../src/constants/sampleData';
 import { useLocation } from '../src/hooks/useLocation';
 import { useTheme } from '../src/hooks/useTheme';
 import { savedSpotService } from '../src/services/savedSpotService';
 import { spotService } from '../src/services/spotService';
 import type { Spot } from '../src/types';
+import { calculateHaversineDistanceKm, type GeoCoordinate } from '../src/utils/distance';
+import { getSpotCategoryColor } from '../src/utils/spotCategory';
 
 type EnhancedSpot = Spot & {
   distanceValue: number;
@@ -51,26 +54,28 @@ const categories = ['All', 'Outdoor', 'Specialty Coffee', 'Social Dining', 'Stre
 const ratingOptions = [0, 3, 3.5, 4, 4.5];
 const distanceOptions = [1, 5, 10, 25, 50];
 
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const earthRadiusKm = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadiusKm * c;
-}
-
-function enhanceSpots(spots: Spot[]): EnhancedSpot[] {
+function enhanceSpots(spots: Spot[], origin: GeoCoordinate = cebuRegion): EnhancedSpot[] {
   return spots.map((spot, index) => ({
     ...spot,
     rating: spot.rating ?? 4.2 + (index % 5) * 0.13,
-    distanceValue: calculateDistance(10.3298, 123.9054, spot.latitude, spot.longitude),
+    distanceValue: calculateHaversineDistanceKm(origin, {
+      latitude: spot.latitude,
+      longitude: spot.longitude,
+    }),
   }));
+}
+
+function compareSpotsForDiscovery(first: EnhancedSpot, second: EnhancedSpot) {
+  const distanceDelta = first.distanceValue - second.distanceValue;
+  if (Math.abs(distanceDelta) > 0.001) return distanceDelta;
+
+  const ratingDelta = (second.rating ?? 0) - (first.rating ?? 0);
+  if (Math.abs(ratingDelta) > 0.001) return ratingDelta;
+
+  const reviewDelta = (second.review_count ?? 0) - (first.review_count ?? 0);
+  if (reviewDelta !== 0) return reviewDelta;
+
+  return new Date(second.created_at ?? 0).getTime() - new Date(first.created_at ?? 0).getTime();
 }
 
 function spotCenter(spot: EnhancedSpot) {
@@ -80,23 +85,19 @@ function spotCenter(spot: EnhancedSpot) {
   };
 }
 
-function categoryColor(spot: EnhancedSpot) {
-  const allCategories = [spot.category, ...(spot.categories ?? [])].join(' ').toLowerCase();
-  if (allCategories.includes('coffee') || allCategories.includes('cafe')) return '#D4A373';
-  if (allCategories.includes('pulse') || allCategories.includes('club') || allCategories.includes('night')) return '#EC4899';
-  if (allCategories.includes('bar') || allCategories.includes('night') || allCategories.includes('chill')) return '#3B82F6';
-  if (allCategories.includes('outdoor') || allCategories.includes('park') || allCategories.includes('garden')) return '#22C55E';
-  if (allCategories.includes('food') || allCategories.includes('dining') || allCategories.includes('hub')) return '#10B981';
-  return '#10B981';
-}
-
 export default function ExploreScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ focusSpotId?: string | string[]; openSpot?: string | string[] }>();
   const { width } = useWindowDimensions();
+  const [navigationHeight, setNavigationHeight] = useState(bottomNavLayout.minHeight);
   const { appColors } = useTheme();
   const { getCurrentLocation, location, loading: locating } = useLocation();
   const listRef = useRef<FlatList<EnhancedSpot> | null>(null);
+  const programmaticCardTarget = useRef<string | null>(null);
+  const lastFocusedSpotId = useRef<string | null>(null);
+  const distanceOriginRef = useRef<GeoCoordinate>(cebuRegion);
   const requestedInitialLocationRef = useRef(false);
+  const openedFocusSpotRef = useRef<string | null>(null);
   const [spots, setSpots] = useState<EnhancedSpot[]>(enhanceSpots(sampleSpots));
   const [search, setSearch] = useState('');
   const [zoomedOnce, setZoomedOnce] = useState(false);
@@ -105,6 +106,7 @@ export default function ExploreScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedSpot, setSelectedSpot] = useState<EnhancedSpot | null>(spots[0] ?? null);
+  lastFocusedSpotId.current = selectedSpot?.id ?? null;
   const [mapCenter, setMapCenter] = useState(cebuRegion);
   const [mapZoom, setMapZoom] = useState(14);
   const [mapTransitionKey, setMapTransitionKey] = useState(0);
@@ -119,6 +121,12 @@ export default function ExploreScreen() {
   const cardWidth = Math.min(width - spacing.md * 2, 390);
   const snapInterval = cardWidth + spacing.md;
   const favoriteSpotIdSet = useMemo(() => new Set(favoriteSpotIds), [favoriteSpotIds]);
+  const focusSpotId = Array.isArray(params.focusSpotId) ? params.focusSpotId[0] : params.focusSpotId;
+  const shouldOpenFocusedSpot = (Array.isArray(params.openSpot) ? params.openSpot[0] : params.openSpot) === '1';
+  const distanceOrigin = useMemo<GeoCoordinate>(
+    () => location ? { latitude: location.latitude, longitude: location.longitude } : cebuRegion,
+    [location?.latitude, location?.longitude]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -126,14 +134,14 @@ export default function ExploreScreen() {
     async function load() {
       try {
         const fetchedSpots = await spotService.getSpots();
-        const nextSpots = enhanceSpots(fetchedSpots.length ? fetchedSpots : sampleSpots);
+        const nextSpots = enhanceSpots(fetchedSpots.length ? fetchedSpots : sampleSpots, distanceOriginRef.current);
         if (!mounted) return;
         setSpots(nextSpots);
         setSelectedSpot(nextSpots[0] ?? null);
         setActiveIndex(0);
       } catch (error) {
-        console.error('Unable to load spots:', error);
-        const nextSpots = enhanceSpots(sampleSpots);
+        console.warn('Unable to load live spots; using fallback data:', error);
+        const nextSpots = enhanceSpots(sampleSpots, distanceOriginRef.current);
         if (!mounted) return;
         setSpots(nextSpots);
         setSelectedSpot(nextSpots[0] ?? null);
@@ -147,7 +155,7 @@ export default function ExploreScreen() {
 
     const unsubscribe = spotService.subscribeToSpots((nextRows) => {
       if (!mounted) return;
-      const nextSpots = enhanceSpots(nextRows.length ? nextRows : sampleSpots);
+      const nextSpots = enhanceSpots(nextRows.length ? nextRows : sampleSpots, distanceOriginRef.current);
       setSpots(nextSpots);
       setSelectedSpot((current) => {
         if (!current) return nextSpots[0] ?? null;
@@ -160,6 +168,11 @@ export default function ExploreScreen() {
       unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    distanceOriginRef.current = distanceOrigin;
+    setSpots((current) => enhanceSpots(current, distanceOrigin));
+  }, [distanceOrigin]);
 
   useEffect(() => {
     let mounted = true;
@@ -217,18 +230,21 @@ export default function ExploreScreen() {
       const matchesRating = (spot.rating ?? 0) >= filters.minRating;
       const matchesDistance = spot.distanceValue <= filters.maxDistance;
       return matchesSearch && matchesCategory && matchesRating && matchesDistance;
-    });
+    }).sort(compareSpotsForDiscovery);
   }, [filters, search, spots]);
 
   useEffect(() => {
-    const nextSpot = filteredSpots[activeIndex] ?? filteredSpots[0] ?? null;
+    const hasActiveSpot = Boolean(filteredSpots[activeIndex]);
+    const nextIndex = hasActiveSpot ? activeIndex : 0;
+    const nextSpot = filteredSpots[nextIndex] ?? null;
+
     if (!nextSpot) {
       setSelectedSpot(null);
       return;
     }
 
-    if (!filteredSpots.find((spot) => spot.id === selectedSpot?.id)) {
-      setActiveIndex(0);
+    if (selectedSpot?.id !== nextSpot.id) {
+      setActiveIndex(nextIndex);
       setSelectedSpot(nextSpot);
       setMapCenter(spotCenter(nextSpot));
       setMapZoom(16);
@@ -244,14 +260,61 @@ export default function ExploreScreen() {
     setZoomedOnce(true);
   }, [initialLocationChecked, location, selectedSpot, zoomedOnce]);
 
+  useEffect(() => {
+    if (!focusSpotId || loading) return;
+    if (openedFocusSpotRef.current === `${focusSpotId}:${shouldOpenFocusedSpot ? 'open' : 'focus'}`) return;
+
+    const targetSpotId = focusSpotId;
+    let cancelled = false;
+    let openTimer: ReturnType<typeof setTimeout> | undefined;
+
+    async function focusSpotFromNotification() {
+      setSearch('');
+      setFilters({ category: 'All', minRating: 0, maxDistance: 50 });
+
+      const existingSpot = spots.find((spot) => spot.id === targetSpotId);
+      const loadedSpot = existingSpot ?? await spotService.getSpotById(targetSpotId);
+      if (cancelled || !loadedSpot) return;
+
+      const enhancedSpot = 'distanceValue' in loadedSpot
+        ? loadedSpot as EnhancedSpot
+        : enhanceSpots([loadedSpot], distanceOriginRef.current)[0];
+      if (!enhancedSpot) return;
+
+      const nextIndex = Math.max(0, spots.findIndex((spot) => spot.id === enhancedSpot.id));
+      setSpots((current) => (current.some((spot) => spot.id === enhancedSpot.id) ? current : [enhancedSpot, ...current]));
+      setSelectedSpot(enhancedSpot);
+      setActiveIndex(nextIndex);
+      setMapCenter(spotCenter(enhancedSpot));
+      setMapZoom(17);
+      setMapTransitionKey((current) => current + 1);
+      setZoomedOnce(true);
+      openedFocusSpotRef.current = `${targetSpotId}:${shouldOpenFocusedSpot ? 'open' : 'focus'}`;
+      listRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+
+      if (shouldOpenFocusedSpot) {
+        openTimer = setTimeout(() => {
+          router.push(`/spot/${enhancedSpot.id}`);
+        }, 1200);
+      }
+    }
+
+    void focusSpotFromNotification();
+    return () => {
+      cancelled = true;
+      if (openTimer) clearTimeout(openTimer);
+    };
+  }, [focusSpotId, loading, router, shouldOpenFocusedSpot, spots]);
+
   const mapMarkers = useMemo(
     () => [
       ...filteredSpots.map((spot) => ({
         id: spot.id,
         latitude: spot.latitude,
         longitude: spot.longitude,
-        color: categoryColor(spot),
+        color: getSpotCategoryColor(spot.category, spot.categories),
         selected: selectedSpot?.id === spot.id,
+        label: spot.name,
         category: [spot.category, ...(spot.categories ?? [])].join(' '),
       })),
       ...(location
@@ -277,22 +340,36 @@ export default function ExploreScreen() {
     await getCurrentLocation();
   }, [getCurrentLocation]);
 
-  const setActiveSpot = useCallback((spot: EnhancedSpot, index: number, scroll = true) => {
+  const setActiveSpot = useCallback((spot: EnhancedSpot, index: number, scroll = true, force = true) => {
+    // Scroll/momentum events often report the same card. Do not restart its flight.
+    if (!force && lastFocusedSpotId.current === spot.id) return;
+    lastFocusedSpotId.current = spot.id;
     setSelectedSpot(spot);
     setActiveIndex(index);
     setMapCenter(spotCenter(spot));
     setMapZoom(16);
     setMapTransitionKey((current) => current + 1);
     if (scroll) {
-      listRef.current?.scrollToIndex({ index, animated: true });
+      programmaticCardTarget.current = spot.id;
+      // A native FlatList consumes the next tap while an animated programmatic
+      // scroll is settling. Pin selection must leave the destination card
+      // immediately tappable; its focus spring and the map camera still animate.
+      listRef.current?.scrollToIndex({ index, animated: false });
     }
   }, []);
 
   const handleCardSnap = useCallback((offsetX: number) => {
-    const index = Math.round(offsetX / snapInterval);
+    const index = Math.max(0, Math.min(filteredSpots.length - 1, Math.round(offsetX / snapInterval)));
     const spot = filteredSpots[index];
     if (!spot) return;
-    setActiveSpot(spot, index, false);
+    // A pin tap may scroll past several cards. Keep the tapped destination selected.
+    if (programmaticCardTarget.current) {
+      if (spot.id === programmaticCardTarget.current && Math.abs(offsetX - index * snapInterval) < 2) {
+        programmaticCardTarget.current = null;
+      }
+      return;
+    }
+    setActiveSpot(spot, index, false, false);
   }, [filteredSpots, setActiveSpot, snapInterval]);
 
   const handleCardMomentumEnd = useCallback(
@@ -301,6 +378,24 @@ export default function ExploreScreen() {
     },
     [handleCardSnap]
   );
+
+  const handleCardDragStart = useCallback(() => {
+    programmaticCardTarget.current = null;
+  }, []);
+
+  const carouselViewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 60,
+    minimumViewTime: 60,
+  }).current;
+
+  const handleViewableCardsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken<EnhancedSpot>[] }) => {
+      if (programmaticCardTarget.current) return;
+      const visibleCard = viewableItems.find((item) => item.isViewable && item.item);
+      if (!visibleCard || visibleCard.index == null) return;
+      setActiveSpot(visibleCard.item, visibleCard.index, false, false);
+    },
+  ).current;
 
   const toggleFavorite = useCallback((spotId: string) => {
     setFavoriteSpotIds((current) =>
@@ -330,30 +425,33 @@ export default function ExploreScreen() {
     [snapInterval]
   );
 
+  const openSpot = useCallback((spotId: string) => router.push(`/spot/${spotId}`), [router]);
+
   const renderSpotCard = useCallback(
-    ({ item, index }: { item: EnhancedSpot; index: number }) => (
+    ({ item }: { item: EnhancedSpot }) => (
       <PulseSpotCard
         spot={item}
         active={selectedSpot?.id === item.id}
         width={cardWidth}
         appColors={appColors}
-        onFocus={() => setActiveSpot(item, index, false)}
-        onOpen={() => router.push(`/spot/${item.id}`)}
+        onOpen={openSpot}
         isFavorite={favoriteSpotIdSet.has(item.id)}
-        onToggleFavorite={() => toggleFavorite(item.id)}
+        onToggleFavorite={toggleFavorite}
       />
     ),
-    [appColors, cardWidth, favoriteSpotIdSet, router, selectedSpot?.id, setActiveSpot, toggleFavorite]
+    [appColors, cardWidth, favoriteSpotIdSet, openSpot, selectedSpot?.id, toggleFavorite]
   );
 
   return (
-    <ScreenContainer appColors={appColors} showBottomNav padded={false}>
+    <ScreenContainer appColors={appColors} showBottomNav bottomNavOverlay onBottomNavHeightChange={setNavigationHeight} padded={false}>
       <View style={[styles.screen, { backgroundColor: appColors.surface }]}>
         <TileMap
           style={styles.map}
           center={mapCenter}
           zoom={mapZoom}
           transitionKey={mapTransitionKey}
+          attributionPosition="topleft"
+          attributionInset={76}
           onCenterChange={setMapCenter}
           onZoomChange={setMapZoom}
           markers={mapMarkers}
@@ -405,7 +503,9 @@ export default function ExploreScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.explorePanel} pointerEvents="box-none">
+        <View style={[styles.explorePanel, {
+          bottom: bottomNavLayout.bottom + navigationHeight + bottomNavLayout.raisedContent + bottomNavLayout.carouselGap,
+        }]} pointerEvents="box-none">
           <View style={styles.sectionHeader}>
             <View>
               <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Nearby Spots</Text>
@@ -419,6 +519,7 @@ export default function ExploreScreen() {
             <ActivityIndicator color={colors.primary} style={styles.loader} />
           ) : filteredSpots.length ? (
             <FlatList
+              testID="spot-carousel"
               ref={listRef}
               data={filteredSpots}
               keyExtractor={keyExtractor}
@@ -426,17 +527,23 @@ export default function ExploreScreen() {
               showsHorizontalScrollIndicator={false}
               snapToInterval={snapInterval}
               decelerationRate="fast"
-              contentContainerStyle={styles.cardRail}
+              contentContainerStyle={[styles.cardRail, { paddingRight: Math.max(spacing.md, width - cardWidth - spacing.md * 2) }]}
+              contentInsetAdjustmentBehavior="never"
+              keyboardShouldPersistTaps="handled"
+              directionalLockEnabled
+              disableIntervalMomentum
               getItemLayout={getCardItemLayout}
+              onScrollBeginDrag={handleCardDragStart}
               onMomentumScrollEnd={handleCardMomentumEnd}
+              onViewableItemsChanged={handleViewableCardsChanged}
+              viewabilityConfig={carouselViewabilityConfig}
               onScrollToIndexFailed={handleScrollToIndexFailed}
               renderItem={renderSpotCard}
-              scrollEventThrottle={16}
               initialNumToRender={4}
               maxToRenderPerBatch={4}
               windowSize={5}
               updateCellsBatchingPeriod={80}
-              removeClippedSubviews
+              removeClippedSubviews={Platform.OS === 'android'}
             />
           ) : (
             <View
@@ -599,10 +706,9 @@ interface PulseSpotCardProps {
   active: boolean;
   width: number;
   appColors: AppColors;
-  onFocus: () => void;
-  onOpen: () => void;
+  onOpen: (spotId: string) => void;
   isFavorite: boolean;
-  onToggleFavorite: () => void;
+  onToggleFavorite: (spotId: string) => void;
 }
 
 const PulseSpotCard = memo(function PulseSpotCard({
@@ -610,7 +716,6 @@ const PulseSpotCard = memo(function PulseSpotCard({
   active,
   width,
   appColors,
-  onFocus,
   onOpen,
   isFavorite,
   onToggleFavorite,
@@ -633,34 +738,23 @@ const PulseSpotCard = memo(function PulseSpotCard({
       inputRange: [0, 1],
       outputRange: [0.72, 1],
     }),
-    transform: [
-      {
-        scale: focusAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.94, 1],
-        }),
-      },
-      {
-        translateY: focusAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [8, 0],
-        }),
-      },
-    ],
   };
 
   return (
     <Animated.View style={[styles.cardShell, { width }, animatedCardStyle]}>
-      <Pressable onPress={onFocus}>
-        <View
-          style={[
-            styles.pulseCard,
-            {
-              backgroundColor: appColors.surfaceLow + 'F2',
-              borderColor: active ? colors.primary + '55' : appColors.outlineVariant + '40',
-            },
-          ]}
-        >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${spot.name}`}
+        onPress={() => onOpen(spot.id)}
+        style={({ pressed }) => [
+          styles.pulseCard,
+          {
+            backgroundColor: appColors.surfaceLow + 'F2',
+            borderColor: active ? colors.primary + '55' : appColors.outlineVariant + '40',
+          },
+          pressed && styles.cardPressed,
+        ]}
+      >
         <View style={[styles.imageWrap, { backgroundColor: appColors.surfaceContainer }]}>
           <Image source={{ uri: imageUrl }} style={styles.cardImage} />
         </View>
@@ -671,29 +765,6 @@ const PulseSpotCard = memo(function PulseSpotCard({
               <Text style={[styles.cardTitle, { color: appColors.onSurface }]} numberOfLines={1}>
                 {spot.name}
               </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${isFavorite ? 'Remove' : 'Add'} ${spot.name} ${isFavorite ? 'from' : 'to'} favorites`}
-                hitSlop={8}
-                onPress={(event) => {
-                  event.stopPropagation();
-                  onToggleFavorite();
-                }}
-                style={({ pressed }) => [
-                  styles.favoriteButton,
-                  {
-                    backgroundColor: isFavorite ? colors.primary + '16' : appColors.surfaceContainer,
-                    borderColor: isFavorite ? colors.primary + '66' : appColors.outlineVariant + '44',
-                  },
-                  pressed && styles.favoriteButtonPressed,
-                ]}
-              >
-                <Bookmark
-                  size={15}
-                  color={isFavorite ? colors.primary : appColors.onSurfaceVariant}
-                  fill={isFavorite ? colors.primary : 'transparent'}
-                />
-              </Pressable>
             </View>
 
             <Text style={[styles.cardMeta, { color: appColors.onSurfaceVariant }]} numberOfLines={1}>
@@ -715,25 +786,34 @@ const PulseSpotCard = memo(function PulseSpotCard({
             </View>
           </View>
 
-          <Pressable style={styles.goButton} onPress={onOpen}>
+          <View style={styles.goButton}>
             <Text style={styles.goButtonText}>Go to Spot</Text>
-          </Pressable>
+          </View>
         </View>
-        </View>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${isFavorite ? 'Remove' : 'Add'} ${spot.name} ${isFavorite ? 'from' : 'to'} favorites`}
+        hitSlop={7}
+        onPress={() => onToggleFavorite(spot.id)}
+        style={({ pressed }) => [
+          styles.favoriteButton,
+          {
+            backgroundColor: isFavorite ? colors.primary + '16' : appColors.surfaceContainer,
+            borderColor: isFavorite ? colors.primary + '66' : appColors.outlineVariant + '44',
+          },
+          pressed && styles.favoriteButtonPressed,
+        ]}
+      >
+        <Bookmark
+          size={15}
+          color={isFavorite ? colors.primary : appColors.onSurfaceVariant}
+          fill={isFavorite ? colors.primary : 'transparent'}
+        />
       </Pressable>
     </Animated.View>
   );
-}, arePulseSpotCardPropsEqual);
-
-function arePulseSpotCardPropsEqual(previous: PulseSpotCardProps, next: PulseSpotCardProps) {
-  return (
-    previous.spot === next.spot &&
-    previous.active === next.active &&
-    previous.width === next.width &&
-    previous.appColors === next.appColors &&
-    previous.isFavorite === next.isFavorite
-  );
-}
+});
 
 const styles = StyleSheet.create({
   screen: {
@@ -854,7 +934,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: tabBarHeight - 54,
   },
   sectionHeader: {
     paddingHorizontal: spacing.lg,
@@ -876,7 +955,6 @@ const styles = StyleSheet.create({
   cardRail: {
     paddingLeft: spacing.md,
     paddingRight: spacing.md,
-    paddingBottom: spacing.md,
   },
   cardShell: {
     marginRight: spacing.md,
@@ -888,7 +966,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     gap: spacing.md,
-    ...shadow.lifted,
+  },
+  cardPressed: {
+    opacity: 0.86,
   },
   imageWrap: {
     width: 112,
@@ -909,8 +989,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+    minHeight: 30,
+    paddingRight: 30 + spacing.xs,
   },
   favoriteButton: {
+    position: 'absolute',
+    top: spacing.md + 1,
+    right: spacing.md + 1,
     width: 30,
     height: 30,
     borderRadius: 15,
@@ -977,7 +1062,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadow.card,
   },
   goButtonText: {
     color: colors.white,

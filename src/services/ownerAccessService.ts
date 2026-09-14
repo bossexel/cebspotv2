@@ -6,6 +6,16 @@ import { spotSubmissionService } from './spotSubmissionService';
 
 const localOwnerAccessRequests: OwnerAccessRequest[] = [];
 
+export type SpotClaimStatus = {
+  spotId: string;
+  spotName: string;
+  managed: boolean;
+  ownerHint: string | null;
+  hasAccess: boolean;
+};
+
+export type OwnerBusinessEmailStatus = 'available' | 'registered' | 'pending' | 'invalid' | 'unknown';
+
 function looksLikeMissingTable(error: any) {
   return /owner_access_requests|relation|schema cache|does not exist/i.test(error?.message ?? '');
 }
@@ -31,15 +41,106 @@ function normalizeOwnerAccessRequest(row: any): OwnerAccessRequest {
 }
 
 export const ownerAccessService = {
-  async claimTestCebspotOwnerAccess(client: SupabaseClient = supabase): Promise<boolean> {
-    if (!hasSupabaseConfig) return true;
+  async getBusinessEmailStatus(
+    email: string,
+    client: SupabaseClient = supabase,
+  ): Promise<OwnerBusinessEmailStatus> {
+    if (!hasSupabaseConfig) return 'available';
 
-    const { error } = await client.rpc('claim_test_cebspot_owner_access');
+    const { data, error } = await client.rpc('get_owner_business_email_status', {
+      candidate_email: email.trim().toLowerCase(),
+    });
     if (error) {
-      console.warn('Unable to claim Test Cebspot owner access:', error.message);
-      return false;
+      const missingRpc = /get_owner_business_email_status|schema cache|could not find the function|pgrst202/i.test(
+        error.message ?? '',
+      );
+      if (missingRpc) return 'unknown';
+      throw error;
     }
-    return true;
+
+    return ['available', 'registered', 'pending', 'invalid'].includes(String(data))
+      ? data as OwnerBusinessEmailStatus
+      : 'unknown';
+  },
+
+  async getSpotClaimStatus(spotId: string, client: SupabaseClient = supabase): Promise<SpotClaimStatus> {
+    if (!hasSupabaseConfig) {
+      return { spotId, spotName: 'This spot', managed: false, ownerHint: null, hasAccess: false };
+    }
+
+    const { data, error } = await client.rpc('get_spot_claim_status', {
+      target_spot_id: spotId,
+    });
+    if (error) {
+      const missingRpc = /get_spot_claim_status|schema cache|could not find the function|pgrst202/i.test(
+        error.message ?? '',
+      );
+      if (missingRpc) {
+        const { data: spot, error: spotError } = await client
+          .from('spots')
+          .select('id,name,owner_id')
+          .eq('id', spotId)
+          .maybeSingle();
+        if (spotError) throw spotError;
+        if (!spot) throw new Error('Spot not found.');
+        const { data: authData } = await client.auth.getUser();
+        const { data: existingAccess } = authData.user
+          ? await client
+              .from('owner_spot_access')
+              .select('id')
+              .eq('spot_id', spotId)
+              .eq('owner_id', authData.user.id)
+              .limit(1)
+          : { data: null };
+        return {
+          spotId: spot.id,
+          spotName: spot.name,
+          managed: Boolean(spot.owner_id),
+          ownerHint: spot.owner_id ? 'another verified account' : null,
+          hasAccess: Boolean(
+            authData.user && (spot.owner_id === authData.user.id || existingAccess?.length),
+          ),
+        };
+      }
+      throw error;
+    }
+
+    const result = (data ?? {}) as Record<string, unknown>;
+    return {
+      spotId: String(result.spotId ?? spotId),
+      spotName: String(result.spotName ?? 'This spot'),
+      managed: Boolean(result.managed),
+      ownerHint: typeof result.ownerHint === 'string' ? result.ownerHint : null,
+      hasAccess: Boolean(result.hasAccess),
+    };
+  },
+
+  async getPrimaryManagedSpotId(client: SupabaseClient = supabase): Promise<string | null> {
+    if (!hasSupabaseConfig) return null;
+
+    const { data: authData, error: authError } = await client.auth.getUser();
+    if (authError) throw authError;
+    if (!authData.user) return null;
+
+    const { data: accessRows, error: accessError } = await client
+      .from('owner_spot_access')
+      .select('spot_id,role,created_at')
+      .eq('owner_id', authData.user.id)
+      .order('created_at', { ascending: true });
+    if (accessError) throw accessError;
+
+    const primaryAccess = (accessRows ?? []).find((row) => row.role === 'owner') ?? accessRows?.[0];
+    if (primaryAccess?.spot_id) return String(primaryAccess.spot_id);
+
+    const { data: ownedSpot, error: spotError } = await client
+      .from('spots')
+      .select('id')
+      .eq('owner_id', authData.user.id)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (spotError) throw spotError;
+    return ownedSpot?.id ? String(ownedSpot.id) : null;
   },
 
   async createRequest(request: NewOwnerAccessRequest, userName: string): Promise<OwnerAccessRequest> {
@@ -55,6 +156,22 @@ export const ownerAccessService = {
       return created;
     }
 
+    if (!request.requester_id) {
+      const { error } = await supabase.from('owner_access_requests').insert(request);
+      if (error) {
+        if (!looksLikeMissingTable(error)) throw error;
+        throw new Error('Owner access requests are temporarily unavailable. Please try again later.');
+      }
+
+      return normalizeOwnerAccessRequest({
+        ...request,
+        id: `submitted-owner-access-${Date.now()}`,
+        status: 'pending',
+        admin_notes: null,
+        created_at: new Date().toISOString(),
+      });
+    }
+
     const { data, error } = await supabase
       .from('owner_access_requests')
       .insert(request)
@@ -63,6 +180,10 @@ export const ownerAccessService = {
 
     if (error) {
       if (!looksLikeMissingTable(error)) throw error;
+
+      if (!request.requester_id) {
+        throw new Error('Owner access requests are temporarily unavailable. Please try again later.');
+      }
 
       const fallback = await spotSubmissionService.createSubmission(
         {
@@ -90,6 +211,8 @@ export const ownerAccessService = {
     }
 
     const created = normalizeOwnerAccessRequest(data);
+
+    if (!request.requester_id) return created;
 
     try {
       await activityService.logActivity({

@@ -26,6 +26,14 @@ function isEmailConfirmed(user: User) {
   return Boolean(user.email_confirmed_at || user.confirmed_at);
 }
 
+function getUserPhotoUrl(user: User) {
+  return (
+    (user.user_metadata?.avatar_url as string | undefined) ??
+    (user.user_metadata?.picture as string | undefined) ??
+    null
+  );
+}
+
 async function withTimeout<T>(task: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
@@ -42,12 +50,12 @@ async function withTimeout<T>(task: Promise<T>, timeoutMs: number, label: string
 
 async function ensureScopedProfile(client: SupabaseClient, user: User): Promise<UserProfile> {
   const email = user.email ?? '';
-  const role = getPrototypeRoleForEmail(email);
+  const prototypeRole = getPrototypeRoleForEmail(email);
   const displayName =
     (user.user_metadata?.display_name as string | undefined) ??
     (user.user_metadata?.full_name as string | undefined) ??
     null;
-  const photoUrl = (user.user_metadata?.avatar_url as string | undefined) ?? null;
+  const photoUrl = getUserPhotoUrl(user);
 
   const { data: existing, error: fetchError } = await client
     .from('profiles')
@@ -55,14 +63,30 @@ async function ensureScopedProfile(client: SupabaseClient, user: User): Promise<
     .eq('id', user.id)
     .maybeSingle();
   if (fetchError) throw fetchError;
-  if (existing) return existing as UserProfile;
+  if (existing) {
+    const updates: Partial<UserProfile> = {};
+    if (prototypeRole !== 'user' && existing.role !== prototypeRole) updates.role = prototypeRole;
+    if (email && existing.email !== email) updates.email = email;
+    if (!existing.display_name && displayName) updates.display_name = displayName;
+    if (!existing.photo_url && photoUrl) updates.photo_url = photoUrl;
+    if (!Object.keys(updates).length) return existing as UserProfile;
+
+    const { data: repairedProfile, error: updateError } = await client
+      .from('profiles')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', user.id)
+      .select('*')
+      .single();
+    if (updateError) throw updateError;
+    return repairedProfile as UserProfile;
+  }
 
   const { data, error } = await client
     .from('profiles')
     .insert({
       id: user.id,
       email,
-      role,
+      role: prototypeRole,
       display_name: displayName,
       photo_url: photoUrl,
       level: 1,

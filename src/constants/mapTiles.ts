@@ -1,4 +1,4 @@
-export const mapTilerKey = process.env.EXPO_PUBLIC_MAPTILER_KEY;
+export const mapTilerKey = process.env.EXPO_PUBLIC_MAPTILER_KEY?.trim();
 export const cartoBasemapsKey = process.env.EXPO_PUBLIC_CARTO_BASEMAPS_API_KEY?.trim();
 
 const cartoKeyQuery = cartoBasemapsKey
@@ -25,8 +25,17 @@ export const mapAttribution = mapTilerKey
 
 export const staticMapTileUrl = cartoBasemapsKey
   ? `https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png${cartoKeyQuery}`
-  : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  : lightTileUrl;
 export const fallbackStaticMapTileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 export const staticMapAttribution = cartoBasemapsKey
   ? 'OpenStreetMap contributors | CARTO'
-  : 'OpenStreetMap contributors';
+  : mapAttribution;
+
+// Include OSM even when a commercial provider is selected: it is also the fallback.
+export const staticMapAttributionHtml =
+  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors' +
+  (cartoBasemapsKey
+    ? ' | <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
+    : mapTilerKey
+      ? ' | <a href="https://www.maptiler.com/copyright/" target="_blank" rel="noopener">MapTiler</a>'
+      : '');

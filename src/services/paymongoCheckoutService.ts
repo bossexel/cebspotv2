@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-export interface PaymongoGcashCheckout {
+export interface PaymongoCheckout {
   checkoutUrl: string;
   checkoutSessionId: string;
   amount: number;
@@ -43,7 +43,7 @@ export const paymongoCheckoutService = {
     reservationId: string;
     successUrl?: string;
     cancelUrl?: string;
-  }): Promise<PaymongoGcashCheckout> {
+  }): Promise<PaymongoCheckout> {
     const { data, error } = await supabase.functions.invoke('paymongo-create-gcash-checkout', {
       body: input,
     });
@@ -53,6 +53,23 @@ export const paymongoCheckoutService = {
       throw new Error('PayMongo did not return a checkout URL.');
     }
 
-    return data as PaymongoGcashCheckout;
+    return data as PaymongoCheckout;
+  },
+
+  async createQrphCheckout(input: {
+    reservationId: string;
+    successUrl?: string;
+    cancelUrl?: string;
+  }): Promise<PaymongoCheckout> {
+    const { data, error } = await supabase.functions.invoke('paymongo-create-qrph-checkout', {
+      body: input,
+    });
+
+    if (error) throw new Error(await getFunctionErrorMessage(error));
+    if (!data?.checkoutUrl || !data?.checkoutSessionId) {
+      throw new Error('PayMongo did not return a checkout URL.');
+    }
+
+    return data as PaymongoCheckout;
   },
 };

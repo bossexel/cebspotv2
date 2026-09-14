@@ -2,7 +2,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { makeSampleReservation, sampleSpots } from '../constants/sampleData';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import type { NewReservation, Reservation } from '../types';
-import { calculateReservationFee, getSpotReservationType, isTestCebspotRecord } from '../utils/reservations';
+import {
+  allowsSelfServiceReservationChanges,
+  calculateReservationFee,
+  getSpotReservationType,
+  isTestCebspotRecord,
+} from '../utils/reservations';
 import { activityService } from './activityService';
 
 const localReservations: Reservation[] = [];
@@ -39,12 +44,92 @@ function normalizeReservation(row: any): Reservation {
     payment_reference: row.payment_reference ?? null,
     payment_proof_url: row.payment_proof_url ?? null,
     payer_gcash_number: row.payer_gcash_number ?? null,
+    guest_name: row.guest_name ?? null,
+    guest_email: row.guest_email ?? null,
+    guest_phone: row.guest_phone ?? null,
     refund_status: row.refund_status ?? 'not_applicable',
     cancellation_reason: row.cancellation_reason ?? null,
     cancelled_at: row.cancelled_at ?? null,
     adjustment_acknowledged: Boolean(row.adjustment_acknowledged ?? false),
     adjustment_acknowledged_at: row.adjustment_acknowledged_at ?? null,
+    payment_terms_accepted: Boolean(row.payment_terms_accepted ?? false),
+    payment_terms_accepted_at: row.payment_terms_accepted_at ?? null,
   };
+}
+
+function getProviderPaymentReference(payment: any, currentReference?: string | null) {
+  const isPaid = payment?.status === 'paid';
+  const providerReference = isPaid
+    ? payment.provider_payment_id ?? payment.provider_payment_intent_id ?? payment.provider_checkout_session_id
+    : payment.provider_checkout_session_id ?? payment.provider_payment_intent_id ?? payment.provider_payment_id;
+
+  return isPaid ? providerReference ?? currentReference ?? null : currentReference ?? providerReference ?? null;
+}
+
+async function attachPaymentReferences(reservations: Reservation[], client: SupabaseClient) {
+  if (!reservations.length) return reservations;
+
+  try {
+    const { data, error } = await client
+      .from('reservation_payments')
+      .select(
+        'reservation_id, status, provider_checkout_session_id, provider_payment_intent_id, provider_payment_id',
+      )
+      .in(
+        'reservation_id',
+        reservations.map((reservation) => reservation.id),
+      )
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const paymentsByReservation = new Map<string, any>();
+    for (const payment of data ?? []) {
+      const existing = paymentsByReservation.get(payment.reservation_id);
+      if (!existing || (payment.status === 'paid' && existing.status !== 'paid')) {
+        paymentsByReservation.set(payment.reservation_id, payment);
+      }
+    }
+
+    return reservations.map((reservation) => {
+      const payment = paymentsByReservation.get(reservation.id);
+      if (!payment) return reservation;
+
+      return {
+        ...reservation,
+        payment_reference: getProviderPaymentReference(payment, reservation.payment_reference),
+      };
+    });
+  } catch (error) {
+    // Keep the owner dashboard usable while an older Supabase schema refreshes.
+    console.warn('Unable to reconcile owner payment references:', error);
+    return reservations;
+  }
+}
+
+async function attachGuestDetails(reservations: Reservation[], client: SupabaseClient) {
+  if (!reservations.length) return reservations;
+
+  const userIds = [...new Set(reservations.map((reservation) => reservation.user_id).filter(Boolean))];
+  if (!userIds.length) return reservations;
+
+  try {
+    const { data, error } = await client.from('profiles').select('id, display_name, email').in('id', userIds);
+    if (error) throw error;
+
+    const profilesById = new Map((data ?? []).map((profile) => [profile.id, profile]));
+    return reservations.map((reservation) => {
+      const guestProfile = profilesById.get(reservation.user_id);
+      return {
+        ...reservation,
+        guest_name: reservation.guest_name?.trim() || guestProfile?.display_name?.trim() || guestProfile?.email?.split('@')[0] || 'Guest',
+        guest_email: reservation.guest_email ?? guestProfile?.email ?? null,
+      };
+    });
+  } catch (error) {
+    console.warn('Unable to load reservation guest names:', error);
+    return reservations;
+  }
 }
 
 function toLegacyReservation(reservation: NewReservation) {
@@ -66,6 +151,11 @@ function toLegacyReservation(reservation: NewReservation) {
     refund_status,
     adjustment_acknowledged,
     adjustment_acknowledged_at,
+    guest_name,
+    guest_email,
+    guest_phone,
+    payment_terms_accepted,
+    payment_terms_accepted_at,
     ...legacy
   } = reservation;
 
@@ -188,7 +278,7 @@ export const reservationService = {
       .insert(reservationToCreate)
       .select('*')
       .single();
-    if (error && /column|schema cache|payment_required|reservation_type|guest_count|note|payment_proof_url|payer_gcash_number/i.test(error.message)) {
+    if (error && /column|schema cache|payment_required|reservation_type|guest_count|guest_name|guest_email|guest_phone|payment_terms_accepted|note|payment_proof_url|payer_gcash_number/i.test(error.message)) {
       const legacyReservation = toLegacyReservation(reservationToCreate);
       const retry = await supabase.from('reservations').insert(legacyReservation).select('*').single();
       data = retry.data;
@@ -256,7 +346,8 @@ export const reservationService = {
       .eq('spot_id', spotId)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return (data ?? []).map(normalizeReservation);
+    const reservations = await attachPaymentReferences((data ?? []).map(normalizeReservation), client);
+    return attachGuestDetails(reservations, client);
   },
 
   subscribeToSpotReservations(
@@ -325,6 +416,28 @@ export const reservationService = {
     return data ? normalizeReservation(data) : null;
   },
 
+  async recordReservationAttendance(
+    id: string,
+    attendanceStatus: 'checked_in' | 'no_show',
+    client: SupabaseClient = supabase,
+  ): Promise<Reservation | null> {
+    const local = localReservations.find((reservation) => reservation.id === id);
+    if (local) {
+      local.status = attendanceStatus;
+      local.updated_at = new Date().toISOString();
+      return local;
+    }
+
+    const { data, error } = await client.rpc('owner_record_reservation_attendance', {
+      reservation_id: id,
+      attendance_status: attendanceStatus,
+    });
+    if (error) throw error;
+
+    const updated = Array.isArray(data) ? data[0] : data;
+    return updated ? normalizeReservation(updated) : null;
+  },
+
   subscribeToUserReservations(userId: string, callback: (reservations: Reservation[]) => void) {
     if (!hasSupabaseConfig) {
       callback(localReservations.filter((reservation) => reservation.user_id === userId));
@@ -351,28 +464,31 @@ export const reservationService = {
   async cancelReservation(id: string, reason?: string): Promise<void> {
     const local = localReservations.find((reservation) => reservation.id === id);
     if (local) {
+      if (!allowsSelfServiceReservationChanges(local)) {
+        throw new Error('This spot does not allow self-service cancellation for this reservation.');
+      }
       Object.assign(local, getCancellationFields(local, reason));
       return;
     }
 
-    const existing = await this.getReservationById(id);
-    const cancellationFields = existing
-      ? getCancellationFields(existing, reason)
-      : {
-          status: 'cancelled' as const,
-          payment_status: 'pending' as const,
-          refund_status: 'not_applicable' as const,
-          cancellation_reason: reason?.trim() || null,
-          cancelled_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
+    const { error } = await supabase.rpc('cancel_own_free_reservation', {
+      target_reservation_id: id,
+      cancellation_reason_input: reason?.trim() || null,
+    });
+    if (error) throw error;
+  },
 
-    let { error } = await supabase.from('reservations').update(cancellationFields).eq('id', id);
-    if (error && /column|schema cache|refund_status|cancellation_reason|cancelled_at/i.test(error.message)) {
-      const { refund_status, cancellation_reason, cancelled_at, ...legacyFields } = cancellationFields;
-      const retry = await supabase.from('reservations').update(legacyFields).eq('id', id);
-      error = retry.error;
+  async voidUnpaidReservation(id: string, reason = 'Payment was not completed.'): Promise<void> {
+    const local = localReservations.find((reservation) => reservation.id === id);
+    if (local) {
+      Object.assign(local, getCancellationFields(local, reason));
+      return;
     }
+
+    const { error } = await supabase.rpc('void_unpaid_reservation', {
+      target_reservation_id: id,
+      cancellation_reason: reason,
+    });
     if (error) throw error;
   },
 
@@ -389,6 +505,9 @@ export const reservationService = {
   ): Promise<void> {
     const local = localReservations.find((reservation) => reservation.id === id);
     if (local) {
+      if (!allowsSelfServiceReservationChanges(local)) {
+        throw new Error('This spot does not allow self-service adjustments for this reservation.');
+      }
       local.reservation_date = reservationDate;
       local.reservation_time = reservationTime;
       local.reservation_time_start = reservationTime;
@@ -401,34 +520,10 @@ export const reservationService = {
       return;
     }
 
-    const updateFields = {
-      reservation_date: reservationDate,
-      reservation_time: reservationTime,
-      reservation_time_start: reservationTime,
-      reservation_time_end: options?.reservationTimeEnd ?? null,
-      slot_id: options?.slotId ?? null,
-      table_id: options?.tableId ?? null,
-      group_size_type: options?.groupSizeType ?? null,
-      status: 'rescheduled' as const,
-      updated_at: new Date().toISOString(),
-    };
-
-    let { error } = await supabase
-      .from('reservations')
-      .update(updateFields)
-      .eq('id', id);
-    if (error && /column|schema cache|reservation_time_start|reservation_time_end|slot_id|table_id|group_size_type/i.test(error.message)) {
-      const {
-        reservation_time_start,
-        reservation_time_end,
-        slot_id,
-        table_id,
-        group_size_type,
-        ...legacyFields
-      } = updateFields;
-      const retry = await supabase.from('reservations').update(legacyFields).eq('id', id);
-      error = retry.error;
-    }
+    const { error } = await supabase.rpc('reschedule_own_free_reservation', {
+      target_reservation_id: id,
+      reservation_date_input: reservationDate,
+    });
     if (error) {
       if (isReservationSlotConflict(error)) throwReservationSlotConflict();
       throw error;

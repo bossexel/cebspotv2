@@ -16,7 +16,13 @@ function normalizeReturnUrl(value: unknown, fallback: string) {
 
   try {
     const url = new URL(value);
-    if (['http:', 'https:', 'cebspot:', 'exp:'].includes(url.protocol)) return value;
+    if (['cebspot:', 'exp:'].includes(url.protocol)) return value;
+    if (
+      ['http:', 'https:'].includes(url.protocol) &&
+      ['localhost', '127.0.0.1', '::1'].includes(url.hostname)
+    ) {
+      return value;
+    }
   } catch {
     // Fall through to the safe fallback below.
   }
@@ -43,6 +49,20 @@ function toCentavos(amount: number) {
   return Math.round(amount * 100);
 }
 
+function assertCheckoutAllowed(reservation: Record<string, unknown>) {
+  if (reservation.payment_status === 'paid') {
+    throw new Error('This reservation is already paid.');
+  }
+
+  if (reservation.status === 'cancelled' || reservation.status === 'completed' || reservation.status === 'no_show') {
+    throw new Error('This reservation cannot accept payment anymore.');
+  }
+
+  if (reservation.payment_required === false && reservation.reservation_type !== 'paid') {
+    throw new Error('This reservation does not require payment.');
+  }
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -60,6 +80,29 @@ Deno.serve(async (request) => {
     const supabase = makeServiceClient();
     const user = await getUserFromRequest(request, supabase);
     const reservation = await getReservationForUser(reservationId, user.id, supabase);
+    assertCheckoutAllowed(reservation);
+
+    const { data: existingPayment, error: existingPaymentError } = await supabase
+      .from('reservation_payments')
+      .select('provider_checkout_session_id, checkout_url, amount, currency, status')
+      .eq('reservation_id', reservationId)
+      .eq('provider', 'paymongo')
+      .eq('payment_method', 'gcash')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingPaymentError) throw existingPaymentError;
+    if (existingPayment?.checkout_url && existingPayment?.provider_checkout_session_id) {
+      return jsonResponse({
+        checkoutUrl: existingPayment.checkout_url,
+        checkoutSessionId: existingPayment.provider_checkout_session_id,
+        amount: Number(existingPayment.amount),
+        currency: existingPayment.currency ?? 'PHP',
+        reused: true,
+      });
+    }
+
     const amount = getReservationAmount(reservation);
     if (amount < 1) throw new Error('GCash checkout requires a payment amount of at least PHP 1.00.');
 

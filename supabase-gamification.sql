@@ -93,24 +93,6 @@ create table if not exists public.user_achievements (
 create index if not exists user_achievements_user_completed_idx
   on public.user_achievements(user_id, completed, unlocked_at desc);
 
-create table if not exists public.spot_visits (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles(id) on delete cascade,
-  spot_id uuid not null references public.spots(id) on delete cascade,
-  latitude double precision not null,
-  longitude double precision not null,
-  distance_from_spot numeric(10, 2),
-  location_accuracy numeric(10, 2),
-  verified boolean not null default false,
-  visited_at timestamptz not null default now()
-);
-
-create index if not exists spot_visits_user_created_idx
-  on public.spot_visits(user_id, visited_at desc);
-
-create index if not exists spot_visits_spot_created_idx
-  on public.spot_visits(spot_id, visited_at desc);
-
 create table if not exists public.review_helpful_votes (
   id uuid primary key default gen_random_uuid(),
   review_id uuid not null references public.reviews(id) on delete cascade,
@@ -230,11 +212,6 @@ begin
           coalesce(media_type.kind, '') ilike 'video%'
           or media.url ~* '\.(mp4|mov|m4v|webm)(\?|#|$)'
         );
-    elsif achievement_record.requirement_type = 'verified_visits' then
-      select count(*)::integer into progress_value
-      from public.spot_visits
-      where user_id = target_user_id
-        and verified;
     elsif achievement_record.requirement_type = 'completed_reservations' then
       select count(*)::integer into progress_value
       from public.reservations
@@ -416,27 +393,10 @@ $$;
 
 revoke all on function public.award_points(uuid, text, integer, text, text, jsonb, boolean) from public;
 
-create or replace function public.distance_meters(
-  lat_a double precision,
-  lon_a double precision,
-  lat_b double precision,
-  lon_b double precision
-)
-returns double precision
-language sql
-immutable
-as $$
-  select 6371000 * 2 * asin(
-    least(
-      1,
-      sqrt(
-        power(sin(radians(lat_b - lat_a) / 2), 2) +
-        cos(radians(lat_a)) * cos(radians(lat_b)) *
-        power(sin(radians(lon_b - lon_a) / 2), 2)
-      )
-    )
-  );
-$$;
+-- Visit check-ins were retired because proximity alone cannot prove a visit and
+-- could be abused for repeat XP. These drops also disable calls from old builds.
+drop function if exists public.record_spot_visit(uuid, double precision, double precision, double precision);
+drop function if exists public.distance_meters(double precision, double precision, double precision, double precision);
 
 create or replace function public.handle_review_gamification()
 returns trigger
@@ -464,15 +424,17 @@ begin
 
   normalized_comment := trim(coalesce(new.comment, ''));
 
-  perform public.award_points(
-    new.user_id,
-    'RATING_CREATED',
-    1,
-    new.id::text,
-    'review',
-    jsonb_build_object('spot_id', new.spot_id, 'rating', new.rating),
-    true
-  );
+  if coalesce(new.rating, 0) > 0 then
+    perform public.award_points(
+      new.user_id,
+      'RATING_CREATED',
+      1,
+      new.id::text,
+      'review',
+      jsonb_build_object('spot_id', new.spot_id, 'rating', new.rating),
+      true
+    );
+  end if;
 
   if normalized_comment <> '' then
     perform public.award_points(
@@ -659,80 +621,6 @@ create trigger review_reports_gamification_handled
   after insert or update of status on public.review_reports
   for each row execute function public.handle_review_report_gamification();
 
-create or replace function public.record_spot_visit(
-  target_spot_id uuid,
-  visit_latitude double precision,
-  visit_longitude double precision,
-  location_accuracy double precision default null
-)
-returns public.spot_visits
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  current_user_id uuid := auth.uid();
-  spot_record public.spots%rowtype;
-  distance numeric(10, 2);
-  verified_visit boolean;
-  created_visit public.spot_visits%rowtype;
-begin
-  if current_user_id is null then
-    raise exception 'Authentication is required to check in.';
-  end if;
-
-  select *
-  into spot_record
-  from public.spots
-  where id = target_spot_id
-    and is_public = true;
-
-  if not found then
-    raise exception 'Spot not found or not public.';
-  end if;
-
-  distance := public.distance_meters(visit_latitude, visit_longitude, spot_record.latitude, spot_record.longitude)::numeric(10, 2);
-  verified_visit := distance <= 150 and (location_accuracy is null or location_accuracy <= 100);
-
-  insert into public.spot_visits (
-    user_id,
-    spot_id,
-    latitude,
-    longitude,
-    distance_from_spot,
-    location_accuracy,
-    verified
-  )
-  values (
-    current_user_id,
-    target_spot_id,
-    visit_latitude,
-    visit_longitude,
-    distance,
-    location_accuracy,
-    verified_visit
-  )
-  returning * into created_visit;
-
-  if verified_visit then
-    perform public.award_points(
-      current_user_id,
-      'VERIFIED_VISIT',
-      10,
-      target_spot_id::text || ':' || to_char(created_visit.visited_at, 'YYYY-MM-DD'),
-      'spot_visit_day',
-      jsonb_build_object('visit_id', created_visit.id, 'spot_id', target_spot_id, 'distance_meters', distance),
-      true
-    );
-  end if;
-
-  return created_visit;
-end;
-$$;
-
-revoke all on function public.record_spot_visit(uuid, double precision, double precision, double precision) from public;
-grant execute on function public.record_spot_visit(uuid, double precision, double precision, double precision) to authenticated;
-
 create or replace function public.mark_review_helpful(target_review_id uuid)
 returns jsonb
 language plpgsql
@@ -742,7 +630,12 @@ as $$
 declare
   current_user_id uuid := auth.uid();
   review_record public.reviews%rowtype;
+  existing_vote public.review_helpful_votes%rowtype;
   created_vote public.review_helpful_votes%rowtype;
+  spot_record public.spots%rowtype;
+  voter_profile public.profiles%rowtype;
+  voter_name text;
+  reward_reference text;
 begin
   if current_user_id is null then
     raise exception 'Authentication is required.';
@@ -761,6 +654,24 @@ begin
     raise exception 'You cannot mark your own review as helpful.';
   end if;
 
+  select *
+  into existing_vote
+  from public.review_helpful_votes
+  where review_id = target_review_id
+    and user_id = current_user_id;
+
+  if found then
+    delete from public.review_helpful_votes
+    where id = existing_vote.id;
+
+    update public.reviews
+    set likes_count = greatest(coalesce(likes_count, 0) - 1, 0),
+        updated_at = now()
+    where id = target_review_id;
+
+    return jsonb_build_object('helpful', false, 'awarded', false);
+  end if;
+
   insert into public.review_helpful_votes (review_id, user_id)
   values (target_review_id, current_user_id)
   on conflict do nothing
@@ -771,19 +682,68 @@ begin
   end if;
 
   update public.reviews
-  set likes_count = likes_count + 1,
+  set likes_count = coalesce(likes_count, 0) + 1,
       updated_at = now()
   where id = target_review_id;
 
-  perform public.award_points(
-    review_record.user_id,
-    'REVIEW_MARKED_HELPFUL',
-    2,
-    created_vote.id::text,
-    'review_helpful_vote',
-    jsonb_build_object('review_id', target_review_id, 'voter_id', current_user_id),
-    true
+  select * into voter_profile
+  from public.profiles
+  where id = current_user_id;
+
+  voter_name := coalesce(
+    nullif(trim(voter_profile.display_name), ''),
+    split_part(voter_profile.email, '@', 1),
+    'CebSpot user'
   );
+
+  select * into spot_record
+  from public.spots
+  where id = review_record.spot_id;
+
+  insert into public.activities (
+    user_id,
+    user_name,
+    user_photo_url,
+    action,
+    target_id,
+    target_name,
+    type,
+    content,
+    spot_id,
+    spot_name
+  )
+  values (
+    review_record.user_id,
+    voter_name,
+    voter_profile.photo_url,
+    'found your review helpful',
+    target_review_id::text,
+    coalesce(spot_record.name, 'Review'),
+    'review_liked',
+    voter_name || ' found your review helpful.',
+    review_record.spot_id,
+    coalesce(spot_record.name, 'CebSpot spot')
+  );
+
+  reward_reference := target_review_id::text || ':' || current_user_id::text;
+  if not exists (
+    select 1
+    from public.point_transactions
+    where user_id = review_record.user_id
+      and activity_type = 'REVIEW_MARKED_HELPFUL'
+      and reference_type = 'review_helpful_vote'
+      and reference_id = reward_reference
+  ) then
+    perform public.award_points(
+      review_record.user_id,
+      'REVIEW_MARKED_HELPFUL',
+      2,
+      reward_reference,
+      'review_helpful_vote',
+      jsonb_build_object('review_id', target_review_id, 'voter_id', current_user_id),
+      true
+    );
+  end if;
 
   return jsonb_build_object('helpful', true, 'awarded', true);
 end;
@@ -1001,7 +961,6 @@ values
   ('DETAILED_GUIDE', 'Detailed Guide', 'Write 5 detailed reviews with at least 150 characters.', 'file-text', 'detailed_reviews', 5, 10, true),
   ('PHOTO_SCOUT', 'Photo Scout', 'Upload 10 helpful spot photos.', 'camera', 'photos_uploaded', 10, 10, true),
   ('VIDEO_SCOUT', 'Video Scout', 'Upload 5 spot videos.', 'video', 'videos_uploaded', 5, 10, true),
-  ('ON_THE_GROUND', 'On the Ground', 'Complete 5 verified spot visits.', 'map-pin', 'verified_visits', 5, 10, true),
   ('BOOKED_EXPLORER', 'Booked Explorer', 'Complete 3 reservations.', 'calendar-check', 'completed_reservations', 3, 10, true),
   ('HIDDEN_GEM_SCOUT', 'Hidden Gem Scout', 'Get 3 submitted spots approved.', 'sparkles', 'approved_spot_submissions', 3, 15, true),
   ('CLEAN_MAP_HELPER', 'Clean Map Helper', 'Get 5 spot edits approved.', 'shield-check', 'approved_edits', 5, 10, true),
@@ -1018,10 +977,16 @@ on conflict (code) do update set
   xp_reward = excluded.xp_reward,
   enabled = excluded.enabled;
 
+-- Hide the retired achievement when upgrading an existing CebSpot database.
+update public.achievements
+set enabled = false,
+    xp_reward = 0
+where code = 'ON_THE_GROUND'
+   or requirement_type = 'verified_visits';
+
 alter table public.point_transactions enable row level security;
 alter table public.achievements enable row level security;
 alter table public.user_achievements enable row level security;
-alter table public.spot_visits enable row level security;
 alter table public.review_helpful_votes enable row level security;
 alter table public.place_questions enable row level security;
 alter table public.place_question_answers enable row level security;
@@ -1029,7 +994,6 @@ alter table public.place_question_answers enable row level security;
 drop policy if exists "point_transactions_select_own" on public.point_transactions;
 drop policy if exists "achievements_read_enabled" on public.achievements;
 drop policy if exists "user_achievements_select_own" on public.user_achievements;
-drop policy if exists "spot_visits_select_own" on public.spot_visits;
 drop policy if exists "review_helpful_votes_select_own" on public.review_helpful_votes;
 drop policy if exists "place_questions_read" on public.place_questions;
 drop policy if exists "place_questions_insert_own" on public.place_questions;
@@ -1045,10 +1009,6 @@ create policy "achievements_read_enabled"
 
 create policy "user_achievements_select_own"
   on public.user_achievements for select
-  using (user_id = auth.uid() or public.is_current_user_admin());
-
-create policy "spot_visits_select_own"
-  on public.spot_visits for select
   using (user_id = auth.uid() or public.is_current_user_admin());
 
 create policy "review_helpful_votes_select_own"
@@ -1069,14 +1029,12 @@ create policy "place_question_answers_read"
 
 revoke all on table public.point_transactions from public, anon, authenticated;
 revoke all on table public.user_achievements from public, anon, authenticated;
-revoke all on table public.spot_visits from public, anon, authenticated;
 revoke all on table public.review_helpful_votes from public, anon, authenticated;
 revoke all on table public.place_question_answers from public, anon, authenticated;
 
 grant select on table public.point_transactions to authenticated;
 grant select on table public.achievements to anon, authenticated;
 grant select on table public.user_achievements to authenticated;
-grant select on table public.spot_visits to authenticated;
 grant select on table public.review_helpful_votes to authenticated;
 grant select, insert on table public.place_questions to authenticated;
 grant select on table public.place_question_answers to anon, authenticated;

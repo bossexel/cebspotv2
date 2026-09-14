@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -28,12 +28,12 @@ import {
   Heart,
   Info,
   MapPin,
+  MessageCircle,
   MoreHorizontal,
   Navigation,
   Phone,
   Send,
   Share2,
-  ShieldCheck,
   Star,
   Users,
   Video,
@@ -42,35 +42,29 @@ import {
 import { AppButton } from '../../src/components/AppButton';
 import { CategoryChip } from '../../src/components/CategoryChip';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
+import { SpotCategoryIcon } from '../../src/components/SpotCategoryIcon';
 import { TileMap } from '../../src/components/TileMap';
 import { colors } from '../../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../../src/constants/design';
+import { REVIEW_REPORT_CATEGORIES } from '../../src/constants/reportCategories';
 import { sampleSpots } from '../../src/constants/sampleData';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useLocation } from '../../src/hooks/useLocation';
 import { useTheme } from '../../src/hooks/useTheme';
 import { gamificationService } from '../../src/services/gamificationService';
 import { reviewService } from '../../src/services/reviewService';
+import { reviewMediaService } from '../../src/services/reviewMediaService';
 import { spotEditSuggestionService } from '../../src/services/spotEditSuggestionService';
 import { spotService } from '../../src/services/spotService';
-import type { Review, Spot } from '../../src/types';
-import { calculateReservationFee, getReservationTypeLabel, getSpotReservationType, isPaymentRequired } from '../../src/utils/reservations';
+import type { Review, ReviewReply, Spot } from '../../src/types';
+import { calculateReservationFee, isPaymentRequired } from '../../src/utils/reservations';
+import { rankSimilarSpots } from '../../src/utils/similarSpots';
+import { getSpotCategoryColor } from '../../src/utils/spotCategory';
 
 const fallbackImage =
   'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=900';
 const testCebspotSpotId = '66666666-6666-4666-8666-666666666666';
-
-const reportReasons = [
-  'Inaccurate or misleading review',
-  'Frauds and scams',
-  'Spam',
-  'Hate speech',
-  'Harassment or bullying',
-  'Pornography and nudity',
-  'Illegal activities and regulated goods',
-  'Others',
-  'Child or minor safety',
-];
+const reviewPreviewLimit = 4;
 
 const editSuggestionFields = [
   'Location / map pin',
@@ -87,6 +81,19 @@ type MapCoordinate = {
   latitude: number;
   longitude: number;
 };
+
+type ReviewReplyTarget = {
+  review: Review;
+  reply?: ReviewReply | null;
+};
+
+const routeEndpoints = [
+  'https://router.project-osrm.org/route/v1/driving',
+  'https://routing.openstreetmap.de/routed-car/route/v1/driving',
+];
+const routeCache = new Map<string, MapCoordinate[]>();
+const routeRequestTimeoutMs = 8000;
+const routeCacheLimit = 24;
 
 function midpoint(
   first: { latitude: number; longitude: number },
@@ -106,6 +113,23 @@ function normalizeWebsiteUrl(url: string) {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;
 }
 
+function formatUpdateTime(createdAt: string) {
+  const elapsedMs = Date.now() - new Date(createdAt).getTime();
+  const elapsedMinutes = Math.max(0, Math.floor(elapsedMs / 60000));
+  if (elapsedMinutes < 1) return 'Just now';
+  if (elapsedMinutes < 60) return `${elapsedMinutes}m ago`;
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) return `${elapsedHours}h ago`;
+  return `${Math.floor(elapsedHours / 24)}d ago`;
+}
+
+function groupReviewReplies(replies: ReviewReply[]) {
+  return replies.reduce<Record<string, ReviewReply[]>>((groups, reply) => {
+    groups[reply.review_id] = [...(groups[reply.review_id] ?? []), reply];
+    return groups;
+  }, {});
+}
+
 function openPhoneNumber(phoneNumber: string) {
   const normalizedNumber = phoneNumber.replace(/[^\d+]/g, '');
   Linking.openURL(`tel:${normalizedNumber}`).catch((error) => {
@@ -113,34 +137,62 @@ function openPhoneNumber(phoneNumber: string) {
   });
 }
 
-async function fetchRoute(origin: MapCoordinate, destination: MapCoordinate) {
-  try {
-    const url =
-      `https://router.project-osrm.org/route/v1/driving/` +
-      `${origin.longitude},${origin.latitude};` +
-      `${destination.longitude},${destination.latitude}` +
-      `?overview=full&geometries=geojson`;
+function routeCacheKey(origin: MapCoordinate, destination: MapCoordinate) {
+  return [origin, destination]
+    .map(({ latitude, longitude }) => `${latitude.toFixed(4)},${longitude.toFixed(4)}`)
+    .join(':');
+}
 
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.warn(`Route line request failed with status ${response.status}`);
-      return [];
+async function fetchRoute(
+  origin: MapCoordinate,
+  destination: MapCoordinate,
+  signal?: AbortSignal,
+) {
+  const cacheKey = routeCacheKey(origin, destination);
+  const cachedRoute = routeCache.get(cacheKey);
+  if (cachedRoute) return cachedRoute;
+
+  for (const endpoint of routeEndpoints) {
+    if (signal?.aborted) return [];
+
+    const requestController = new AbortController();
+    const abortRequest = () => requestController.abort();
+    signal?.addEventListener('abort', abortRequest, { once: true });
+    const timeout = setTimeout(abortRequest, routeRequestTimeoutMs);
+
+    try {
+      const url =
+        `${endpoint}/${origin.longitude},${origin.latitude};` +
+        `${destination.longitude},${destination.latitude}` +
+        `?overview=full&geometries=geojson`;
+      const response = await fetch(url, { signal: requestController.signal });
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const coordinates = data.routes?.[0]?.geometry?.coordinates;
+      if (!Array.isArray(coordinates) || coordinates.length === 0) continue;
+
+      const route = coordinates.map(([longitude, latitude]: [number, number]) => ({
+        latitude,
+        longitude,
+      }));
+      if (routeCache.size >= routeCacheLimit) {
+        const oldestKey = routeCache.keys().next().value;
+        if (oldestKey) routeCache.delete(oldestKey);
+      }
+      routeCache.set(cacheKey, route);
+      return route;
+    } catch (error) {
+      if (signal?.aborted) return [];
+      console.warn(`Route provider ${new URL(endpoint).hostname} was unavailable`, error);
+    } finally {
+      clearTimeout(timeout);
+      signal?.removeEventListener('abort', abortRequest);
     }
-
-    const data = await response.json();
-    if (!data.routes || data.routes.length === 0) {
-      console.warn('No route line found');
-      return [];
-    }
-
-    return data.routes[0].geometry.coordinates.map(([longitude, latitude]: [number, number]) => ({
-      latitude,
-      longitude,
-    }));
-  } catch (error) {
-    console.error('Failed to fetch route line:', error);
-    return [];
   }
+
+  console.warn('No route line is currently available');
+  return [];
 }
 
 export default function SpotDetailsScreen() {
@@ -150,22 +202,32 @@ export default function SpotDetailsScreen() {
   const { appColors } = useTheme();
   const { profile } = useAuth();
   const { getCurrentLocation, location } = useLocation();
+  const screenScrollRef = useRef<ScrollView>(null);
   const heroGalleryRef = useRef<FlatList<string> | null>(null);
   const [spot, setSpot] = useState<Spot | null>(null);
+  const [availableSpots, setAvailableSpots] = useState<Spot[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [helpfulReviewIds, setHelpfulReviewIds] = useState<string[]>([]);
+  const [reviewRepliesByReviewId, setReviewRepliesByReviewId] = useState<Record<string, ReviewReply[]>>({});
+  const [showAllReviews, setShowAllReviews] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewRating, setReviewRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
   const [reviewMedia, setReviewMedia] = useState<{ uri: string; type: string }[]>([]);
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewStatusOverlay, setReviewStatusOverlay] = useState<'submitting' | 'success' | null>(null);
+  const [reviewGallery, setReviewGallery] = useState<{ urls: string[]; index: number } | null>(null);
+  const [reviewReplyTarget, setReviewReplyTarget] = useState<ReviewReplyTarget | null>(null);
+  const [reviewReplyText, setReviewReplyText] = useState('');
+  const [submittingReviewReply, setSubmittingReviewReply] = useState(false);
+  const [reviewConversation, setReviewConversation] = useState<Review | null>(null);
   const [reportingReview, setReportingReview] = useState<Review | null>(null);
   const [selectedReportReason, setSelectedReportReason] = useState('');
   const [reportDetails, setReportDetails] = useState('');
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
-  const [checkingIn, setCheckingIn] = useState(false);
   const [editSuggestionOpen, setEditSuggestionOpen] = useState(false);
   const [editSuggestionField, setEditSuggestionField] = useState(editSuggestionFields[0]);
   const [editSuggestionValue, setEditSuggestionValue] = useState('');
@@ -180,6 +242,9 @@ export default function SpotDetailsScreen() {
 
   useEffect(() => {
     let active = true;
+    screenScrollRef.current?.scrollTo({ y: 0, animated: false });
+    setActiveImageIndex(0);
+    setLoading(true);
     const shouldSubscribeToLiveSettings = Boolean(id);
     const unsubscribe = shouldSubscribeToLiveSettings
       ? spotService.subscribeToSpotById(id, (nextSpot) => {
@@ -190,11 +255,23 @@ export default function SpotDetailsScreen() {
     async function loadSpot() {
       if (!id) return;
       try {
-        const nextSpot = await spotService.getSpotById(id);
-        if (active) setSpot(nextSpot);
+        const [nextSpot, nextSpots] = await Promise.all([
+          spotService.getSpotById(id),
+          spotService.getSpots().catch((error) => {
+            console.warn('Unable to load similar spots; using local spots:', error);
+            return sampleSpots;
+          }),
+        ]);
+        if (active) {
+          setSpot(nextSpot);
+          setAvailableSpots(nextSpots);
+        }
       } catch (error) {
         console.error('Unable to load spot:', error);
-        if (active) setSpot(sampleSpots.find((sample) => sample.id === id) ?? null);
+        if (active) {
+          setSpot(sampleSpots.find((sample) => sample.id === id) ?? null);
+          setAvailableSpots(sampleSpots);
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -213,13 +290,27 @@ export default function SpotDetailsScreen() {
   }, [getCurrentLocation]);
 
   useEffect(() => {
+    setShowAllReviews(false);
+    setHelpfulReviewIds([]);
+    setReviewReplyTarget(null);
+    setReviewReplyText('');
+
     async function loadReviews() {
       if (!id) return;
       try {
-        setReviews(await reviewService.getReviewsForSpot(id));
+        const nextReviews = await reviewService.getReviewsForSpot(id);
+        const [nextReplies, nextHelpfulReviewIds] = await Promise.all([
+          reviewService.getRepliesForSpot(id),
+          reviewService.getHelpfulReviewIds(nextReviews.map((review) => review.id)),
+        ]);
+        setReviews(nextReviews);
+        setReviewRepliesByReviewId(groupReviewReplies(nextReplies));
+        setHelpfulReviewIds(nextHelpfulReviewIds);
       } catch (error) {
         console.error('Unable to load reviews:', error);
         setReviews([]);
+        setHelpfulReviewIds([]);
+        setReviewRepliesByReviewId({});
       } finally {
         setReviewsLoading(false);
       }
@@ -230,6 +321,7 @@ export default function SpotDetailsScreen() {
 
   useEffect(() => {
     let cancelled = false;
+    const routeRequestController = new AbortController();
 
     async function loadTransitRoute() {
       if (!location || !spot) {
@@ -246,6 +338,7 @@ export default function SpotDetailsScreen() {
           latitude: spot.latitude,
           longitude: spot.longitude,
         },
+        routeRequestController.signal,
       );
 
       if (!cancelled) {
@@ -257,8 +350,14 @@ export default function SpotDetailsScreen() {
 
     return () => {
       cancelled = true;
+      routeRequestController.abort();
     };
   }, [location?.latitude, location?.longitude, spot?.id, spot?.latitude, spot?.longitude]);
+
+  const similarSpots = useMemo(
+    () => (spot ? rankSimilarSpots(spot, availableSpots) : []),
+    [availableSpots, spot],
+  );
 
   if (loading) {
     return (
@@ -282,10 +381,12 @@ export default function SpotDetailsScreen() {
   }
 
   const imageUrls = spot.images?.length ? spot.images : [fallbackImage];
+  const visibleReviews = showAllReviews ? reviews : reviews.slice(0, reviewPreviewLimit);
+  const hiddenReviewCount = Math.max(0, reviews.length - visibleReviews.length);
   const spotCategories = Array.from(new Set(spot.categories?.length ? spot.categories : [spot.category]));
-  const reservationType = getSpotReservationType(spot);
   const reservationFee = calculateReservationFee(spot);
   const paymentRequired = isPaymentRequired(spot);
+  const spotCategoryColor = getSpotCategoryColor(spot.category, spot.categories);
   const spotCoordinate = { latitude: spot.latitude, longitude: spot.longitude };
   const userCoordinate = location ? { latitude: location.latitude, longitude: location.longitude } : null;
   const transitCenter = userCoordinate ? midpoint(userCoordinate, spotCoordinate) : spotCoordinate;
@@ -308,7 +409,7 @@ export default function SpotDetailsScreen() {
     {
       id: spot.id,
       ...spotCoordinate,
-      color: colors.primary,
+      color: spotCategoryColor,
       selected: true,
       category: [spot.category, ...(spot.categories ?? [])].join(' '),
       label: spot.category,
@@ -345,7 +446,7 @@ export default function SpotDetailsScreen() {
 
   async function attachReviewMedia() {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images', 'videos'],
+      mediaTypes: ['images'],
       allowsMultipleSelection: true,
       quality: 0.8,
     });
@@ -353,10 +454,7 @@ export default function SpotDetailsScreen() {
     if (!result.canceled) {
       setReviewMedia((current) => [
         ...current,
-        ...result.assets.map((asset) => ({
-          uri: asset.uri,
-          type: asset.type === 'video' ? 'video' : 'image',
-        })),
+        ...result.assets.map((asset) => ({ uri: asset.uri, type: 'image' as const })),
       ]);
     }
   }
@@ -373,6 +471,8 @@ export default function SpotDetailsScreen() {
 
     try {
       setSubmittingReview(true);
+      setReviewStatusOverlay('submitting');
+      const reviewMediaUrls = await reviewMediaService.anonymizeAndUpload(reviewMedia, profile.id, spot.id);
       const created = await reviewService.createReview({
         spot_id: spot.id,
         user_id: profile.id,
@@ -380,15 +480,27 @@ export default function SpotDetailsScreen() {
         user_photo_url: profile.photo_url,
         rating: reviewRating,
         comment: reviewText.trim(),
-        media_urls: reviewMedia.map((media) => media.uri),
-        media_types: reviewMedia.map((media) => media.type),
+        media_urls: reviewMediaUrls,
+        media_types: reviewMediaUrls.map(() => 'image'),
       });
       setReviews((current) => [created, ...current]);
+      setShowAllReviews(true);
       setReviewText('');
-      setReviewRating(5);
+      setReviewRating(0);
       setReviewMedia([]);
+      setReviewStatusOverlay('success');
+      setTimeout(() => setReviewStatusOverlay(null), 1000);
     } catch (error: any) {
       console.error('Create review error:', error);
+      setReviewStatusOverlay(null);
+      if (reviewMedia.length) {
+        Alert.alert(
+          'Review not posted',
+          error?.message ?? 'We could not privacy-process the selected photo. The original photo was not uploaded.'
+        );
+        return;
+      }
+
       Alert.alert('Review saved locally', 'Supabase reviews table may need the updated schema. Showing it in this session.');
       setReviews((current) => [
         {
@@ -408,10 +520,45 @@ export default function SpotDetailsScreen() {
         ...current,
       ]);
       setReviewText('');
-      setReviewRating(5);
+      setReviewRating(0);
       setReviewMedia([]);
     } finally {
       setSubmittingReview(false);
+    }
+  }
+
+  async function submitReviewReply() {
+    if (!profile) {
+      Alert.alert('Sign in required', 'Please sign in before replying.');
+      return;
+    }
+    if (!spot || !reviewReplyTarget || submittingReviewReply) return;
+
+    const normalizedBody = reviewReplyText.trim();
+    if (!normalizedBody) return;
+
+    try {
+      setSubmittingReviewReply(true);
+      const created = await reviewService.createReviewReply({
+        spot_id: spot.id,
+        review_id: reviewReplyTarget.review.id,
+        parent_reply_id: reviewReplyTarget.reply?.parent_reply_id ?? reviewReplyTarget.reply?.id ?? null,
+        user_id: profile.id,
+        user_name: profile.display_name || profile.email || 'CebSpot user',
+        user_photo_url: profile.photo_url,
+        body: normalizedBody,
+      });
+      setReviewRepliesByReviewId((current) => ({
+        ...current,
+        [created.review_id]: [...(current[created.review_id] ?? []), created],
+      }));
+      setReviewReplyText('');
+      setReviewReplyTarget({ review: reviewReplyTarget.review });
+    } catch (error: any) {
+      console.error('Create review reply error:', error);
+      Alert.alert('Reply failed', error.message ?? 'Please try again.');
+    } finally {
+      setSubmittingReviewReply(false);
     }
   }
 
@@ -423,49 +570,20 @@ export default function SpotDetailsScreen() {
 
     try {
       const result = await gamificationService.markReviewHelpful(reviewId);
-      if (result.awarded) {
-        setReviews((current) =>
-          current.map((review) =>
-            review.id === reviewId ? { ...review, likes_count: (review.likes_count ?? 0) + 1 } : review
-          )
-        );
-      }
+      const isHelpful = Boolean(result.helpful);
+      setHelpfulReviewIds((current) =>
+        isHelpful ? Array.from(new Set([...current, reviewId])) : current.filter((id) => id !== reviewId)
+      );
+      setReviews((current) =>
+        current.map((review) => {
+          if (review.id !== reviewId) return review;
+          const wasHelpful = helpfulReviewIds.includes(reviewId);
+          const delta = wasHelpful === isHelpful ? 0 : isHelpful ? 1 : -1;
+          return { ...review, likes_count: Math.max(0, (review.likes_count ?? 0) + delta) };
+        })
+      );
     } catch (error: any) {
       Alert.alert('Unable to mark helpful', error.message ?? 'Please try again.');
-    }
-  }
-
-  async function verifyVisit() {
-    if (!profile) {
-      Alert.alert('Sign in required', 'Please sign in before verifying your visit.');
-      return;
-    }
-    if (!spot || checkingIn) return;
-
-    try {
-      setCheckingIn(true);
-      const currentLocation = await getCurrentLocation();
-      if (!currentLocation) {
-        Alert.alert('Location unavailable', 'Turn on location access and try again near the spot.');
-        return;
-      }
-
-      const visit = await gamificationService.recordSpotVisit({
-        spotId: spot.id,
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-        accuracy: currentLocation.accuracy,
-      });
-
-      if (visit?.verified) {
-        Alert.alert('Visit verified', 'You earned visit XP for checking in at this spot.');
-      } else {
-        Alert.alert('Visit recorded', 'You are too far from the spot for verified visit XP right now.');
-      }
-    } catch (error: any) {
-      Alert.alert('Check-in failed', error.message ?? 'Please try again.');
-    } finally {
-      setCheckingIn(false);
     }
   }
 
@@ -549,6 +667,23 @@ export default function SpotDetailsScreen() {
   function showGalleryImage(index: number) {
     setActiveImageIndex(index);
     heroGalleryRef.current?.scrollToIndex({ index, animated: true });
+  }
+
+  function openReviewGallery(urls: string[], index: number) {
+    if (!urls.length) return;
+    setReviewGallery({ urls, index });
+  }
+
+  function openReviewConversation(review: Review) {
+    setReviewConversation(review);
+    setReviewReplyTarget({ review });
+    setReviewReplyText('');
+  }
+
+  function closeReviewConversation() {
+    setReviewConversation(null);
+    setReviewReplyTarget(null);
+    setReviewReplyText('');
   }
 
   function closeWebsitePreview() {
@@ -653,7 +788,7 @@ export default function SpotDetailsScreen() {
     : [];
 
   return (
-    <ScreenContainer appColors={appColors} scroll padded={false}>
+    <ScreenContainer appColors={appColors} scroll scrollRef={screenScrollRef} padded={false}>
       <View style={styles.hero}>
         <FlatList
           ref={heroGalleryRef}
@@ -691,7 +826,7 @@ export default function SpotDetailsScreen() {
               {paymentRequired ? `Reservation Fee: ₱${reservationFee}` : 'Free Reservation'}
             </Text>
           )}
-          <Text style={styles.heroTitle}>{spot.name}</Text>
+          <Text testID="spot-detail-title" style={styles.heroTitle}>{spot.name}</Text>
           <View style={styles.heroMeta}>
             <MapPin size={14} color={colors.white} />
             <Text style={styles.heroMetaText} numberOfLines={1}>
@@ -708,22 +843,6 @@ export default function SpotDetailsScreen() {
       </View>
 
       <View style={[styles.sheet, { backgroundColor: appColors.surface }]}>
-        {spot.is_reservable && (
-          <View style={[styles.bookingCard, { backgroundColor: appColors.white }]}>
-            <View style={styles.bookingIcon}>
-              <ShieldCheck size={28} color={colors.primary} />
-            </View>
-            <View style={styles.bookingCopy}>
-              <Text style={[styles.cardTitle, { color: appColors.onSurface }]}>Reservation Access</Text>
-              <Text style={[styles.cardSub, { color: appColors.onSurfaceVariant }]}>
-                {paymentRequired
-                  ? `₱${reservationFee} fixed reservation fee required to secure this booking.`
-                  : 'Free reservation. No payment is required for this booking.'}
-              </Text>
-            </View>
-          </View>
-        )}
-
         <View style={styles.chips}>
           {spotCategories.map((category) => (
             <CategoryChip key={category} label={category} appColors={appColors} />
@@ -743,29 +862,6 @@ export default function SpotDetailsScreen() {
             <Text style={[styles.statLabel, { color: appColors.onSurfaceVariant }]}>Volume</Text>
             <Text style={[styles.statValue, { color: appColors.onSurface }]}>Medium</Text>
           </View>
-        </View>
-
-        <View style={[styles.visitCard, { backgroundColor: appColors.surfaceLow }]}>
-          <View style={styles.visitCopy}>
-            <Text style={[styles.cardTitle, { color: appColors.onSurface }]}>Verify your visit</Text>
-            <Text style={[styles.cardSub, { color: appColors.onSurfaceVariant }]}>
-              Check in near this spot to earn verified visit XP.
-            </Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Verify visit at this spot"
-            disabled={checkingIn}
-            style={[styles.visitButton, checkingIn && styles.disabledButton]}
-            onPress={verifyVisit}
-          >
-            {checkingIn ? (
-              <ActivityIndicator size="small" color={colors.white} />
-            ) : (
-              <CheckCircle size={18} color={colors.white} />
-            )}
-            <Text style={styles.visitButtonText}>Check in</Text>
-          </Pressable>
         </View>
 
         <View style={styles.section}>
@@ -816,7 +912,11 @@ export default function SpotDetailsScreen() {
           <View style={[styles.reviewComposer, { backgroundColor: appColors.surfaceLow }]}>
             <View style={styles.ratingPicker}>
               {[1, 2, 3, 4, 5].map((rating) => (
-                <Pressable key={rating} onPress={() => setReviewRating(rating)}>
+                <Pressable
+                  key={rating}
+                  accessibilityLabel={`${rating} star${rating === 1 ? '' : 's'}`}
+                  onPress={() => setReviewRating((current) => (current === rating ? 0 : rating))}
+                >
                   <Star
                     size={22}
                     color={rating <= reviewRating ? colors.primary : appColors.outline}
@@ -831,7 +931,7 @@ export default function SpotDetailsScreen() {
               placeholder="Share your experience at this spot..."
               placeholderTextColor={appColors.onSurfaceVariant}
               multiline
-              style={[styles.reviewInput, { color: appColors.onSurface, backgroundColor: appColors.white }]}
+              style={[styles.reviewInput, { color: appColors.onSurface, backgroundColor: appColors.inputSurface }]}
             />
             {!!reviewMedia.length && (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reviewMediaPreview}>
@@ -857,7 +957,7 @@ export default function SpotDetailsScreen() {
             <View style={styles.reviewActions}>
               <Pressable style={styles.attachButton} onPress={attachReviewMedia}>
                 <Camera size={16} color={colors.primary} />
-                <Text style={styles.attachText}>Photo/Video</Text>
+                    <Text style={styles.attachText}>Photo</Text>
               </Pressable>
               <Pressable style={styles.postButton} onPress={submitReview} disabled={submittingReview}>
                 {submittingReview ? (
@@ -875,65 +975,113 @@ export default function SpotDetailsScreen() {
           {reviewsLoading ? (
             <ActivityIndicator color={colors.primary} />
           ) : reviews.length ? (
-            reviews.map((review) => (
-              <View key={review.id} style={[styles.reviewCard, { backgroundColor: appColors.surfaceLow }]}>
-                <View style={styles.reviewHeader}>
-                  <View style={styles.reviewerAvatar}>
-                    {review.user_photo_url ? (
-                      <Image source={{ uri: review.user_photo_url }} style={styles.reviewerImage} />
-                    ) : (
-                      <Text style={styles.reviewerInitial}>{(review.user_name || 'U').charAt(0).toUpperCase()}</Text>
-                    )}
-                  </View>
-                  <View style={styles.reviewerCopy}>
-                    <Text style={[styles.reviewerName, { color: appColors.onSurface }]}>
-                      {review.user_name || 'CebSpot user'}
-                    </Text>
-                    <View style={styles.reviewStars}>
-                      {[1, 2, 3, 4, 5].map((rating) => (
-                        <Star
-                          key={rating}
-                          size={11}
-                          color={rating <= Math.round(review.rating) ? colors.primary : appColors.outline}
-                          fill={rating <= Math.round(review.rating) ? colors.primary : 'transparent'}
-                        />
-                      ))}
-                    </View>
-                  </View>
-                </View>
+            <>
+              {visibleReviews.map((review) => {
+                const reviewReplies = reviewRepliesByReviewId[review.id] ?? [];
 
-                {!!review.comment && (
-                  <Text style={[styles.reviewComment, { color: appColors.onSurfaceVariant }]}>{review.comment}</Text>
-                )}
-
-                {!!review.media_urls?.length && (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reviewMediaPreview}>
-                    {review.media_urls.map((mediaUrl, index) => (
-                      <View key={`${review.id}-${mediaUrl}-${index}`} style={styles.reviewMediaTile}>
-                        {review.media_types?.[index] === 'video' ? (
-                          <View style={styles.videoThumb}>
-                            <Video size={22} color={colors.white} />
-                            <Text style={styles.videoText}>Video</Text>
-                          </View>
+                return (
+                  <View key={review.id} style={[styles.reviewCard, { backgroundColor: appColors.surfaceLow }]}>
+                    <View style={styles.reviewHeader}>
+                      <View style={styles.reviewerAvatar}>
+                        {review.user_photo_url ? (
+                          <Image source={{ uri: review.user_photo_url }} style={styles.reviewerImage} />
                         ) : (
-                          <Image source={{ uri: mediaUrl }} style={styles.mediaImage} />
+                          <Text style={styles.reviewerInitial}>{(review.user_name || 'U').charAt(0).toUpperCase()}</Text>
                         )}
                       </View>
-                    ))}
-                  </ScrollView>
-                )}
+                      <View style={styles.reviewerCopy}>
+                        <Text style={[styles.reviewerName, { color: appColors.onSurface }]}>
+                          {review.user_name || 'CebSpot user'}
+                        </Text>
+                        <View style={styles.reviewStars}>
+                          {[1, 2, 3, 4, 5].map((rating) => (
+                            <Star
+                              key={rating}
+                              size={11}
+                              color={rating <= Math.round(review.rating) ? colors.primary : appColors.outline}
+                              fill={rating <= Math.round(review.rating) ? colors.primary : 'transparent'}
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    </View>
 
-                <View style={styles.reviewFooter}>
-                  <Pressable style={styles.likeButton} onPress={() => likeReview(review.id)}>
-                    <Heart size={15} color={colors.primary} />
-                    <Text style={styles.likeText}>{review.likes_count ?? 0}</Text>
-                  </Pressable>
-                  <Pressable style={styles.moreButton} onPress={() => openReportForm(review)}>
-                    <MoreHorizontal size={18} color={appColors.onSurfaceVariant} />
-                  </Pressable>
-                </View>
-              </View>
-            ))
+                    {!!review.comment && (
+                      <Text style={[styles.reviewComment, { color: appColors.onSurfaceVariant }]}>{review.comment}</Text>
+                    )}
+
+                    {!!review.media_urls?.length && (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reviewMediaPreview}>
+                        {review.media_urls.map((mediaUrl, index) => {
+                          const isVideo = review.media_types?.[index] === 'video';
+                          const photoUrls = review.media_urls?.filter((url, mediaIndex) => review.media_types?.[mediaIndex] !== 'video') ?? [];
+                          const photoIndex = photoUrls.indexOf(mediaUrl);
+
+                          return (
+                            <Pressable
+                              key={`${review.id}-${mediaUrl}-${index}`}
+                              disabled={isVideo}
+                              onPress={() => !isVideo && openReviewGallery(photoUrls, photoIndex)}
+                              style={styles.reviewMediaTile}
+                            >
+                              {isVideo ? (
+                                <View style={styles.videoThumb}>
+                                  <Video size={22} color={colors.white} />
+                                  <Text style={styles.videoText}>Video</Text>
+                                </View>
+                              ) : (
+                                <Image source={{ uri: mediaUrl }} style={styles.mediaImage} />
+                              )}
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                    )}
+
+                    <View style={styles.reviewFooter}>
+                      <View style={styles.reviewFooterActions}>
+                        <Pressable style={styles.likeButton} onPress={() => likeReview(review.id)}>
+                          <Heart
+                            size={15}
+                            color={helpfulReviewIds.includes(review.id) ? colors.primary : appColors.onSurfaceVariant}
+                            fill={helpfulReviewIds.includes(review.id) ? colors.primary : 'transparent'}
+                          />
+                          <Text style={styles.likeText}>{review.likes_count ?? 0}</Text>
+                        </Pressable>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Open comments for ${review.user_name || 'review'}`}
+                          style={styles.reviewReplyButton}
+                          onPress={() => openReviewConversation(review)}
+                        >
+                          <MessageCircle size={15} color={appColors.onSurfaceVariant} />
+                          <Text style={styles.reviewReplyButtonText}>
+                            Comments{reviewReplies.length ? ` (${reviewReplies.length})` : ''}
+                          </Text>
+                        </Pressable>
+                      </View>
+                      <Pressable style={styles.moreButton} onPress={() => openReportForm(review)}>
+                        <MoreHorizontal size={18} color={appColors.onSurfaceVariant} />
+                      </Pressable>
+                    </View>
+
+                  </View>
+                );
+              })}
+              {hiddenReviewCount > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`See all ${reviews.length} reviews`}
+                  style={[styles.seeAllReviewsButton, { borderColor: appColors.outlineVariant }]}
+                  onPress={() => setShowAllReviews(true)}
+                >
+                  <Text style={styles.seeAllReviewsText}>See all reviews</Text>
+                  <Text style={[styles.seeAllReviewsCount, { color: appColors.onSurfaceVariant }]}>
+                    {hiddenReviewCount} more
+                  </Text>
+                </Pressable>
+              ) : null}
+            </>
           ) : (
             <View style={[styles.emptyReviews, { backgroundColor: appColors.surfaceLow }]}>
               <Text style={[styles.emptyReviewTitle, { color: appColors.onSurface }]}>No reviews yet</Text>
@@ -955,7 +1103,7 @@ export default function SpotDetailsScreen() {
               return (
                 <RowContainer
                   key={detailId}
-                  style={[styles.detailRow, { backgroundColor: appColors.white }]}
+                  style={[styles.detailRow, { backgroundColor: appColors.surfaceRaised }]}
                   onPress={onPress}
                 >
                   <View style={styles.detailIcon}>
@@ -972,7 +1120,19 @@ export default function SpotDetailsScreen() {
               );
             })}
           </View>
-          <Pressable style={[styles.suggestEditButton, { backgroundColor: appColors.white }]} onPress={() => openEditSuggestionForm()}>
+          {spot.is_reservable && (
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={`Reserve a table at ${spot.name}`}
+              hitSlop={8}
+              onPress={() => router.push(`/reservation/${spot.id}`)}
+              style={({ pressed }) => [styles.reservationPrompt, pressed && styles.reservationPromptPressed]}
+            >
+              <Text style={[styles.reservationPromptText, { color: appColors.onSurface }]}>Interested? </Text>
+              <Text style={styles.reservationPromptLink}>Reserve a table here</Text>
+            </Pressable>
+          )}
+          <Pressable style={[styles.suggestEditButton, { backgroundColor: appColors.surfaceRaised }]} onPress={() => openEditSuggestionForm()}>
             <View style={styles.suggestEditIcon}>
               <Edit3 size={17} color={colors.primary} />
             </View>
@@ -986,9 +1146,9 @@ export default function SpotDetailsScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: appColors.onSurfaceVariant }]}>Route Line</Text>
-            <View style={styles.routeBadge}>
-              <Navigation size={13} color={colors.primary} />
-              <Text style={styles.routeBadgeText}>Route Line</Text>
+            <View testID="route-line-badge" style={[styles.routeBadge, { backgroundColor: spotCategoryColor + '18' }]}>
+              <Navigation size={13} color={spotCategoryColor} />
+              <Text style={[styles.routeBadgeText, { color: spotCategoryColor }]}>Route Line</Text>
             </View>
           </View>
           <View style={styles.mapCard}>
@@ -998,33 +1158,81 @@ export default function SpotDetailsScreen() {
               zoom={15}
               markers={transitMarkers}
               routeLine={routeCoordinates}
+              routeLineColor={spotCategoryColor}
             />
           </View>
           <Text style={[styles.ownerPrompt, { color: appColors.onSurfaceVariant }]}>
             Own this spot?{' '}
-            <Text style={styles.ownerPromptLink} onPress={() => router.push('/owner-access')}>
+            <Text
+              style={styles.ownerPromptLink}
+              onPress={() =>
+                router.push({
+                  pathname: '/owner-access',
+                  params: {
+                    spotId: spot.id,
+                    spotName: spot.name,
+                    spotAddress: spot.address,
+                    category: spot.category,
+                  },
+                })
+              }
+            >
               Contact us.
             </Text>
           </Text>
+          {similarSpots.length > 0 && (
+            <View style={styles.similarPlaces}>
+              <Text style={[styles.similarPlacesTitle, { color: appColors.onSurface }]}>Similar Places</Text>
+              <FlatList
+                data={similarSpots}
+                keyExtractor={({ spot: similarSpot }) => similarSpot.id}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.similarPlacesList}
+                renderItem={({ item: { spot: similarSpot, distanceKm } }) => {
+                  const similarImage = similarSpot.images?.[0] ?? fallbackImage;
+                  const similarCategoryColor = getSpotCategoryColor(similarSpot.category, similarSpot.categories);
+                  return (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Open similar place ${similarSpot.name}`}
+                      style={({ pressed }) => [styles.similarPlaceCard, pressed && styles.similarPlaceCardPressed]}
+                      onPress={() => router.push(`/spot/${similarSpot.id}`)}
+                    >
+                      <View style={styles.similarPlaceImageWrap}>
+                        <Image source={{ uri: similarImage }} style={styles.similarPlaceImage} />
+                        <View
+                          testID={`similar-place-category-badge-${similarSpot.id}`}
+                          style={[
+                            styles.similarPlaceCategoryIcon,
+                            {
+                              backgroundColor: similarCategoryColor + '18',
+                              borderColor: similarCategoryColor + '66',
+                            },
+                          ]}
+                        >
+                          <SpotCategoryIcon
+                            category={similarSpot.category}
+                            categories={similarSpot.categories}
+                            color={similarCategoryColor}
+                            size={18}
+                          />
+                        </View>
+                      </View>
+                      <Text style={[styles.similarPlaceName, { color: appColors.onSurface }]} numberOfLines={2}>
+                        {similarSpot.name}
+                      </Text>
+                      <Text style={[styles.similarPlaceMeta, { color: appColors.onSurfaceVariant }]} numberOfLines={1}>
+                        {similarSpot.category} · {distanceKm < 10 ? distanceKm.toFixed(1) : Math.round(distanceKm)} km
+                      </Text>
+                    </Pressable>
+                  );
+                }}
+              />
+            </View>
+          )}
         </View>
       </View>
-
-      {spot.is_reservable && (
-        <View style={[styles.floatingFooter, { backgroundColor: appColors.surfaceLow }]}>
-          <View>
-            <Text style={[styles.accessLabel, { color: appColors.onSurfaceVariant }]}>Access</Text>
-            <Text style={styles.accessPrice}>
-              {paymentRequired ? `₱${reservationFee}` : getReservationTypeLabel(reservationType)}
-            </Text>
-          </View>
-          <AppButton
-            label="Secure Spot"
-            onPress={() => router.push(`/reservation/${spot.id}`)}
-            icon={<ShieldCheck size={18} color={colors.white} />}
-            style={styles.footerButton}
-          />
-        </View>
-      )}
 
       <Modal visible={Boolean(reportingReview)} transparent animationType="fade" onRequestClose={closeReportForm}>
         <Pressable style={styles.reportBackdrop} onPress={closeReportForm}>
@@ -1052,7 +1260,7 @@ export default function SpotDetailsScreen() {
                 </View>
                 <Text style={[styles.reportSubtitle, { color: appColors.onSurfaceVariant }]}>Select a reason</Text>
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.reportReasonList}>
-                  {reportReasons.map((reason) => (
+                  {REVIEW_REPORT_CATEGORIES.map((reason) => (
                     <Pressable
                       key={reason}
                       style={[
@@ -1096,7 +1304,7 @@ export default function SpotDetailsScreen() {
                         multiline
                         style={[
                           styles.reportDetailsInput,
-                          { color: appColors.onSurface, backgroundColor: appColors.white },
+                          { color: appColors.onSurface, backgroundColor: appColors.inputSurface },
                         ]}
                       />
                       <Text style={[styles.wordCount, { color: appColors.onSurfaceVariant }]}>
@@ -1202,7 +1410,7 @@ export default function SpotDetailsScreen() {
                     multiline
                     style={[
                       styles.reportDetailsInput,
-                      { color: appColors.onSurface, backgroundColor: appColors.white },
+                      { color: appColors.onSurface, backgroundColor: appColors.inputSurface },
                     ]}
                   />
                 )}
@@ -1215,7 +1423,7 @@ export default function SpotDetailsScreen() {
                   multiline
                   style={[
                     styles.editNoteInput,
-                    { color: appColors.onSurface, backgroundColor: appColors.white },
+                    { color: appColors.onSurface, backgroundColor: appColors.inputSurface },
                   ]}
                 />
                 <Pressable
@@ -1282,6 +1490,265 @@ export default function SpotDetailsScreen() {
                 </View>
               )}
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(reviewConversation)} transparent animationType="slide" onRequestClose={closeReviewConversation}>
+        <View style={styles.reviewConversationBackdrop}>
+          <View style={[styles.reviewConversationSheet, { backgroundColor: appColors.surface }]}>
+            <View style={[styles.reviewConversationHeader, { borderBottomColor: appColors.outlineVariant }]}>
+              <View style={styles.reviewConversationHeaderCopy}>
+                <Text style={[styles.reviewConversationTitle, { color: appColors.onSurface }]}>Comments</Text>
+                <Text style={[styles.reviewConversationSubtitle, { color: appColors.onSurfaceVariant }]} numberOfLines={1}>
+                  {reviewConversation ? `Conversation on ${reviewConversation.user_name || 'this review'}` : ''}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close review comments"
+                style={[styles.reportClose, { backgroundColor: appColors.surfaceLow }]}
+                onPress={closeReviewConversation}
+              >
+                <X size={18} color={appColors.onSurface} />
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.reviewConversationList} keyboardShouldPersistTaps="handled">
+              {reviewConversation ? (
+                <View style={[styles.reviewConversationOriginal, { backgroundColor: appColors.surfaceLow }]}>
+                  <View style={styles.reviewConversationOriginalHeader}>
+                    <View style={styles.reviewerAvatar}>
+                      {reviewConversation.user_photo_url ? (
+                        <Image source={{ uri: reviewConversation.user_photo_url }} style={styles.reviewerImage} />
+                      ) : (
+                        <Text style={styles.reviewerInitial}>
+                          {(reviewConversation.user_name || 'U').charAt(0).toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.reviewerCopy}>
+                      <Text style={[styles.reviewerName, { color: appColors.onSurface }]}>
+                        {reviewConversation.user_name || 'CebSpot user'}
+                      </Text>
+                      <View style={styles.reviewStars}>
+                        {[1, 2, 3, 4, 5].map((rating) => (
+                          <Star
+                            key={rating}
+                            size={11}
+                            color={rating <= Math.round(reviewConversation.rating) ? colors.primary : appColors.outline}
+                            fill={rating <= Math.round(reviewConversation.rating) ? colors.primary : 'transparent'}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                  {reviewConversation.comment ? (
+                    <Text style={[styles.reviewComment, { color: appColors.onSurfaceVariant }]}>
+                      {reviewConversation.comment}
+                    </Text>
+                  ) : null}
+                  {reviewConversation.media_urls?.length ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.reviewMediaPreview}>
+                      {reviewConversation.media_urls.map((mediaUrl, index) => {
+                        const isVideo = reviewConversation.media_types?.[index] === 'video';
+                        const photoUrls = reviewConversation.media_urls?.filter(
+                          (url, mediaIndex) => reviewConversation.media_types?.[mediaIndex] !== 'video'
+                        ) ?? [];
+                        const photoIndex = photoUrls.indexOf(mediaUrl);
+
+                        return (
+                          <Pressable
+                            key={`${reviewConversation.id}-${mediaUrl}-${index}`}
+                            disabled={isVideo}
+                            onPress={() => !isVideo && openReviewGallery(photoUrls, photoIndex)}
+                            style={styles.reviewMediaTile}
+                          >
+                            {isVideo ? (
+                              <View style={styles.videoThumb}>
+                                <Video size={22} color={colors.white} />
+                                <Text style={styles.videoText}>Video</Text>
+                              </View>
+                            ) : (
+                              <Image source={{ uri: mediaUrl }} style={styles.mediaImage} />
+                            )}
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {reviewConversation && (reviewRepliesByReviewId[reviewConversation.id] ?? []).length ? (
+                (reviewRepliesByReviewId[reviewConversation.id] ?? []).map((threadReply) => (
+                  <View
+                    key={threadReply.id}
+                    style={[
+                      styles.reviewReplyRow,
+                      threadReply.parent_reply_id && styles.reviewReplyNestedRow,
+                      { borderBottomColor: appColors.outlineVariant },
+                    ]}
+                  >
+                    <View style={styles.reviewReplyAvatar}>
+                      {threadReply.user_photo_url ? (
+                        <Image source={{ uri: threadReply.user_photo_url }} style={styles.reviewerImage} />
+                      ) : (
+                        <Text style={styles.reviewReplyInitial}>
+                          {(threadReply.user_name || 'U').charAt(0).toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.reviewReplyCopy}>
+                      <View style={styles.reviewReplyMetaRow}>
+                        <Text style={[styles.reviewReplyAuthor, { color: appColors.onSurface }]} numberOfLines={1}>
+                          {threadReply.user_name || 'CebSpot user'}
+                        </Text>
+                        <Text style={[styles.reviewReplyTime, { color: appColors.onSurfaceVariant }]}>
+                          {formatUpdateTime(threadReply.created_at)}
+                        </Text>
+                      </View>
+                      <Text style={[styles.reviewReplyBody, { color: appColors.onSurfaceVariant }]}>
+                        {threadReply.body}
+                      </Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Reply to ${threadReply.user_name || 'comment'}`}
+                        style={styles.replyButton}
+                        onPress={() => {
+                          if (!reviewConversation) return;
+                          setReviewReplyTarget({ review: reviewConversation, reply: threadReply });
+                          setReviewReplyText('');
+                        }}
+                      >
+                        <Text style={styles.reviewReplyButtonText}>Reply</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.reviewConversationEmpty}>
+                  <MessageCircle size={22} color={colors.primary} />
+                  <Text style={[styles.reviewConversationEmptyTitle, { color: appColors.onSurface }]}>No comments yet</Text>
+                  <Text style={[styles.reviewConversationEmptyText, { color: appColors.onSurfaceVariant }]}>
+                    Start the conversation about this review.
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+
+            {reviewConversation && reviewReplyTarget?.review.id === reviewConversation.id ? (
+              <View style={[styles.reviewReplyComposer, { borderTopColor: appColors.outlineVariant }]}>
+                <View style={[styles.replyingBanner, { backgroundColor: appColors.surfaceRaised }]}>
+                  <Text style={[styles.replyingText, { color: appColors.onSurfaceVariant }]} numberOfLines={1}>
+                    {reviewReplyTarget.reply
+                      ? `Replying to ${reviewReplyTarget.reply.user_name || 'comment'}`
+                      : 'Commenting on this review'}
+                  </Text>
+                  {reviewReplyTarget.reply ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Cancel reply"
+                      onPress={() => {
+                        if (reviewConversation) setReviewReplyTarget({ review: reviewConversation });
+                        setReviewReplyText('');
+                      }}
+                    >
+                      <X size={16} color={appColors.onSurfaceVariant} />
+                    </Pressable>
+                  ) : null}
+                </View>
+                <View style={styles.commentComposerRow}>
+                  <TextInput
+                    multiline
+                    editable={!submittingReviewReply}
+                    maxLength={500}
+                    value={reviewReplyText}
+                    placeholder={reviewReplyTarget.reply ? 'Write a reply' : 'Write a comment'}
+                    placeholderTextColor={appColors.onSurfaceVariant + '88'}
+                    style={[
+                      styles.reviewReplyInput,
+                      {
+                        color: appColors.onSurface,
+                        backgroundColor: appColors.inputSurface,
+                        borderColor: appColors.outlineVariant,
+                      },
+                    ]}
+                    onChangeText={setReviewReplyText}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Send comment"
+                    disabled={submittingReviewReply || !reviewReplyText.trim()}
+                    style={[
+                      styles.sendReviewReplyButton,
+                      (submittingReviewReply || !reviewReplyText.trim()) && styles.disabledButton,
+                    ]}
+                    onPress={submitReviewReply}
+                  >
+                    {submittingReviewReply ? (
+                      <ActivityIndicator size="small" color={colors.white} />
+                    ) : (
+                      <Send size={17} color={colors.white} />
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={Boolean(reviewGallery)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReviewGallery(null)}
+      >
+        <View style={styles.reviewGalleryBackdrop}>
+          <FlatList
+            key={reviewGallery?.urls.join('|') ?? 'review-gallery'}
+            data={reviewGallery?.urls ?? []}
+            horizontal
+            pagingEnabled
+            initialScrollIndex={reviewGallery?.index ?? 0}
+            getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(event) => {
+              const index = Math.round(event.nativeEvent.contentOffset.x / width);
+              setReviewGallery((current) => (current ? { ...current, index } : current));
+            }}
+            renderItem={({ item }) => (
+              <Image source={{ uri: item }} style={[styles.reviewGalleryImage, { width }]} resizeMode="contain" />
+            )}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close review photo viewer"
+            style={styles.reviewGalleryClose}
+            onPress={() => setReviewGallery(null)}
+          >
+            <X size={22} color={colors.white} />
+          </Pressable>
+          {reviewGallery && reviewGallery.urls.length > 1 ? (
+            <Text style={styles.reviewGalleryCount}>
+              {reviewGallery.index + 1} / {reviewGallery.urls.length}
+            </Text>
+          ) : null}
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(reviewStatusOverlay)} transparent animationType="fade" onRequestClose={() => undefined}>
+        <View style={styles.statusOverlayBackdrop}>
+          <View style={[styles.statusOverlayCard, { backgroundColor: appColors.surfaceRaised }]}>
+            {reviewStatusOverlay === 'submitting' ? (
+              <ActivityIndicator size="large" color={colors.primary} />
+            ) : (
+              <CheckCircle size={42} color={colors.primary} />
+            )}
+            <Text style={[styles.statusOverlayText, { color: appColors.onSurface }]}>
+              {reviewStatusOverlay === 'submitting' ? 'Submitting Review' : 'Review Posted'}
+            </Text>
           </View>
         </View>
       </Modal>
@@ -1411,38 +1878,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.xxl,
     padding: spacing.lg,
     gap: spacing.lg,
-    paddingBottom: 118,
-  },
-  bookingCard: {
-    borderRadius: radius.xxl,
-    padding: spacing.lg,
-    flexDirection: 'row',
-    gap: spacing.md,
-    borderWidth: 2,
-    borderColor: colors.primary + '22',
-    ...shadow.card,
-  },
-  bookingIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary + '12',
-  },
-  bookingCopy: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  cardSub: {
-    marginTop: spacing.xs,
-    fontSize: fontSize.sm,
-    lineHeight: 19,
-    fontWeight: '600',
+    paddingBottom: spacing.xxl,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -1463,38 +1899,6 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: fontSize.sm,
     fontWeight: '900',
-  },
-  visitCard: {
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.primary + '18',
-  },
-  visitCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  visitButton: {
-    minHeight: 46,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    ...shadow.card,
-  },
-  visitButtonText: {
-    color: colors.white,
-    fontSize: fontSize.xs,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
   },
   section: {
     gap: spacing.md,
@@ -1715,6 +2119,213 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  reviewFooterActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  reviewReplyButton: {
+    minHeight: 34,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary + '0F',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  reviewReplyButtonText: {
+    color: colors.primary,
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  reviewReplyList: {
+    gap: spacing.sm,
+    marginLeft: spacing.sm,
+    paddingLeft: spacing.md,
+    borderLeftWidth: 2,
+  },
+  reviewReplyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  reviewReplyNestedRow: {
+    marginLeft: spacing.lg,
+  },
+  reviewReplyAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.primary + '12',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  reviewReplyInitial: {
+    color: colors.primary,
+    fontSize: fontSize.sm,
+    fontWeight: '900',
+  },
+  reviewReplyCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  reviewReplyMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  reviewReplyAuthor: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+  },
+  reviewReplyTime: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  reviewReplyBody: {
+    marginTop: 2,
+    fontSize: fontSize.sm,
+    lineHeight: 19,
+    fontWeight: '700',
+  },
+  replyButton: {
+    alignSelf: 'flex-start',
+    minHeight: 26,
+    justifyContent: 'center',
+  },
+  reviewReplyComposer: {
+    gap: spacing.sm,
+  },
+  reviewConversationBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.42)',
+  },
+  reviewConversationSheet: {
+    height: '82%',
+    borderTopLeftRadius: radius.xxl,
+    borderTopRightRadius: radius.xxl,
+    overflow: 'hidden',
+  },
+  reviewConversationHeader: {
+    minHeight: 72,
+    paddingHorizontal: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    borderBottomWidth: 1,
+  },
+  reviewConversationHeaderCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  reviewConversationTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  reviewConversationSubtitle: {
+    marginTop: 2,
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+  },
+  reviewConversationList: {
+    padding: spacing.lg,
+    gap: spacing.md,
+    paddingBottom: spacing.xl,
+  },
+  reviewConversationOriginal: {
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  reviewConversationOriginalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  reviewConversationEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+    gap: spacing.xs,
+  },
+  reviewConversationEmptyTitle: {
+    fontSize: fontSize.md,
+    fontWeight: '900',
+  },
+  reviewConversationEmptyText: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  replyingBanner: {
+    minHeight: 34,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  replyingText: {
+    flex: 1,
+    fontSize: fontSize.xs,
+    fontWeight: '800',
+  },
+  commentComposerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  reviewReplyInput: {
+    flex: 1,
+    minHeight: 42,
+    maxHeight: 106,
+    borderWidth: 1,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    textAlignVertical: 'top',
+  },
+  sendReviewReplyButton: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+  },
+  seeAllReviewsButton: {
+    minHeight: 46,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  seeAllReviewsText: {
+    color: colors.primary,
+    fontSize: fontSize.sm,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  seeAllReviewsCount: {
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+  },
   likeButton: {
     minHeight: 34,
     borderRadius: radius.pill,
@@ -1819,13 +2430,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.primary + '12',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
   },
   routeBadgeText: {
-    color: colors.primary,
     fontSize: fontSize.xs,
     fontWeight: '900',
     textTransform: 'uppercase',
@@ -1853,35 +2462,79 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textDecorationLine: 'underline',
   },
-  floatingFooter: {
-    position: 'absolute',
-    left: spacing.md,
-    right: spacing.md,
-    bottom: spacing.md,
-    minHeight: 78,
-    borderRadius: radius.xl,
-    padding: spacing.md,
+  reservationPrompt: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.white + '66',
-    ...shadow.lifted,
+    flexWrap: 'wrap',
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.sm,
   },
-  accessLabel: {
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
+  reservationPromptPressed: {
+    opacity: 0.68,
   },
-  accessPrice: {
+  reservationPromptText: {
+    fontSize: fontSize.md,
+    fontWeight: '800',
+  },
+  reservationPromptLink: {
     color: colors.primary,
+    fontSize: fontSize.md,
+    fontWeight: '900',
+    textDecorationLine: 'underline',
+  },
+  similarPlaces: {
+    marginTop: spacing.md,
+    gap: spacing.md,
+  },
+  similarPlacesTitle: {
     fontSize: fontSize.xl,
     fontWeight: '900',
   },
-  footerButton: {
-    flex: 1,
+  similarPlacesList: {
+    gap: spacing.md,
+    paddingRight: spacing.lg,
+  },
+  similarPlaceCard: {
+    width: 174,
+    gap: spacing.sm,
+  },
+  similarPlaceCardPressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.98 }],
+  },
+  similarPlaceImageWrap: {
+    width: 174,
+    height: 174,
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+    backgroundColor: colors.surfaceContainer,
+  },
+  similarPlaceImage: {
+    width: '100%',
+    height: '100%',
+  },
+  similarPlaceCategoryIcon: {
+    position: 'absolute',
+    right: spacing.sm,
+    bottom: spacing.sm,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    ...shadow.card,
+  },
+  similarPlaceName: {
+    minHeight: 40,
+    fontSize: fontSize.md,
+    lineHeight: 20,
+    fontWeight: '900',
+  },
+  similarPlaceMeta: {
+    fontSize: fontSize.xs,
+    fontWeight: '700',
   },
   reportBackdrop: {
     flex: 1,
@@ -1894,6 +2547,54 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
+  },
+  reviewGalleryBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.94)',
+    justifyContent: 'center',
+  },
+  reviewGalleryImage: {
+    height: '100%',
+  },
+  reviewGalleryClose: {
+    position: 'absolute',
+    top: spacing.xl,
+    right: spacing.lg,
+    width: 44,
+    height: 44,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  reviewGalleryCount: {
+    position: 'absolute',
+    bottom: spacing.xl,
+    alignSelf: 'center',
+    color: colors.white,
+    fontSize: fontSize.sm,
+    fontWeight: '900',
+  },
+  statusOverlayBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  statusOverlayCard: {
+    minWidth: 190,
+    minHeight: 150,
+    padding: spacing.xl,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    ...shadow.card,
+  },
+  statusOverlayText: {
+    fontSize: fontSize.md,
+    fontWeight: '900',
+    textAlign: 'center',
   },
   websitePreview: {
     height: '82%',

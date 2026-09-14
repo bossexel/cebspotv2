@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Bell, Compass, LucideIcon, Plus, User, Users } from 'lucide-react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { AppColors, colors } from '../constants/colors';
-import { fontSize, radius, shadow, spacing } from '../constants/design';
+import { bottomNavLayout, fontSize, radius, shadow, spacing } from '../constants/design';
 
 interface TabItem {
   label: string;
@@ -21,13 +21,17 @@ const tabs: TabItem[] = [
 const leftTabs = tabs.slice(0, 2);
 const rightTabs = tabs.slice(2);
 
-export function BottomNav({ appColors }: { appColors: AppColors }) {
+export function BottomNav({ appColors, onHeightChange }: { appColors: AppColors; onHeightChange?: (height: number) => void }) {
   const pathname = usePathname();
   const router = useRouter();
 
   return (
     <View pointerEvents="box-none" style={styles.wrap}>
-      <View style={[styles.bar, { backgroundColor: appColors.surfaceLow }]}>
+      <View
+        testID="bottom-navigation"
+        onLayout={(event) => onHeightChange?.(event.nativeEvent.layout.height)}
+        style={[styles.bar, { backgroundColor: appColors.surfaceLow }]}
+      >
         {leftTabs.map((tab) => {
           const active = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href);
           const Icon = tab.icon;
@@ -89,14 +93,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: spacing.md,
+    bottom: bottomNavLayout.bottom,
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
   },
   bar: {
     width: '100%',
     maxWidth: 390,
-    minHeight: 74,
+    minHeight: bottomNavLayout.minHeight,
     borderRadius: radius.xxl,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,

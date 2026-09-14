@@ -14,19 +14,20 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AppButton } from '../src/components/AppButton';
+import { PasswordInput } from '../src/components/PasswordInput';
 import { getPrototypeRoleForEmail } from '../src/constants/authRoles';
 import { colors } from '../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../src/constants/design';
 import { useAuth } from '../src/hooks/useAuth';
 import { useTheme } from '../src/hooks/useTheme';
-import { MIN_PASSWORD_LENGTH, getAuthErrorMessage, isValidEmail, normalizeEmail } from '../src/utils/auth';
+import { MIN_PASSWORD_LENGTH, getAuthErrorMessage, isPasswordReady, isValidEmail, normalizeEmail } from '../src/utils/auth';
 
 const cebspotLogo = require('../assets/cebspot-logo.png');
 
 export default function LoginScreen() {
   const { appColors } = useTheme();
   const router = useRouter();
-  const { signIn, signInWithGoogle, signUp } = useAuth();
+  const { resendVerification, signIn, signInWithGoogle, signUp } = useAuth();
   const [mode, setMode] = useState<'sign-in' | 'sign-up'>('sign-in');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -55,8 +56,11 @@ export default function LoginScreen() {
       return;
     }
 
-    if (mode === 'sign-up' && password.length < MIN_PASSWORD_LENGTH) {
-      Alert.alert('Password too short', `Use at least ${MIN_PASSWORD_LENGTH} characters for your password.`);
+    if (mode === 'sign-up' && !isPasswordReady(password)) {
+      Alert.alert(
+        'Password needs more strength',
+        `Use at least ${MIN_PASSWORD_LENGTH} characters with at least one letter and one number.`
+      );
       return;
     }
 
@@ -69,15 +73,18 @@ export default function LoginScreen() {
       setLoading(true);
       if (mode === 'sign-in') {
         const role = getPrototypeRoleForEmail(normalizedEmail);
-        if (role === 'admin' || role === 'owner') {
-          router.replace(role === 'admin' ? '/admin' : '/owner-dashboard');
+        if (role === 'admin') {
+          router.replace('/admin');
           return;
         }
-        await signIn(normalizedEmail, password);
-        router.replace('/');
+        const signedInProfile = await signIn(normalizedEmail, password);
+        router.replace(signedInProfile.role === 'owner' ? '/owner-dashboard' : '/');
       } else {
         await signUp(normalizedEmail, password, trimmedFirstName, trimmedLastName);
-        Alert.alert('Verify your email', 'We sent a verification link to your email. Open it before signing in.');
+        Alert.alert(
+          'Verify your email',
+          'We sent a verification link to your email. Tap the link to verify your account before signing in.'
+        );
         setMode('sign-in');
         setFirstName('');
         setLastName('');
@@ -85,7 +92,34 @@ export default function LoginScreen() {
         setConfirmPassword('');
       }
     } catch (error: any) {
-      Alert.alert('Authentication failed', getAuthErrorMessage(error));
+      const message = getAuthErrorMessage(error);
+
+      if (mode === 'sign-in' && message === 'Please verify your email before signing in.') {
+        Alert.alert('Verify your email', 'Tap the verification link we sent before signing in.', [
+          { text: 'Not now', style: 'cancel' },
+          {
+            text: 'Resend email',
+            onPress: () => {
+              resendVerificationEmail(normalizedEmail);
+            },
+          },
+        ]);
+        return;
+      }
+
+      Alert.alert('Authentication failed', message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resendVerificationEmail(normalizedEmail: string) {
+    try {
+      setLoading(true);
+      await resendVerification(normalizedEmail);
+      Alert.alert('Verification email sent', 'Check your inbox and tap the link to activate your account.');
+    } catch (error: any) {
+      Alert.alert('Unable to resend email', getAuthErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -134,8 +168,13 @@ export default function LoginScreen() {
                 style={[
                   styles.input,
                   styles.nameInput,
-                  { color: appColors.onSurface, backgroundColor: appColors.white },
+                  {
+                    color: appColors.onSurface,
+                    backgroundColor: appColors.inputSurface,
+                    borderColor: appColors.inputBorder,
+                  },
                 ]}
+                selectionColor={appColors.primary}
               />
               <TextInput
                 value={lastName}
@@ -146,8 +185,13 @@ export default function LoginScreen() {
                 style={[
                   styles.input,
                   styles.nameInput,
-                  { color: appColors.onSurface, backgroundColor: appColors.white },
+                  {
+                    color: appColors.onSurface,
+                    backgroundColor: appColors.inputSurface,
+                    borderColor: appColors.inputBorder,
+                  },
                 ]}
+                selectionColor={appColors.primary}
               />
             </View>
           )}
@@ -158,24 +202,32 @@ export default function LoginScreen() {
             keyboardType="email-address"
             placeholder="Email"
             placeholderTextColor={appColors.onSurfaceVariant}
-            style={[styles.input, { color: appColors.onSurface, backgroundColor: appColors.white }]}
+            selectionColor={appColors.primary}
+            style={[
+              styles.input,
+              {
+                color: appColors.onSurface,
+                backgroundColor: appColors.inputSurface,
+                borderColor: appColors.inputBorder,
+              },
+            ]}
           />
-          <TextInput
+          <PasswordInput
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
             placeholder="Password"
-            placeholderTextColor={appColors.onSurfaceVariant}
-            style={[styles.input, { color: appColors.onSurface, backgroundColor: appColors.white }]}
+            autoCapitalize="none"
+            autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
+            textContentType={mode === 'sign-in' ? 'password' : 'newPassword'}
           />
           {mode === 'sign-up' && (
-            <TextInput
+            <PasswordInput
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              secureTextEntry
               placeholder="Confirm password"
-              placeholderTextColor={appColors.onSurfaceVariant}
-              style={[styles.input, { color: appColors.onSurface, backgroundColor: appColors.white }]}
+              autoCapitalize="none"
+              autoComplete="new-password"
+              textContentType="newPassword"
             />
           )}
 
@@ -285,7 +337,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: '700',
     borderWidth: 1,
-    borderColor: colors.outlineVariant + '66',
   },
   nameRow: {
     flexDirection: 'row',

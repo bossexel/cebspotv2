@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { addDays, format } from 'date-fns';
-import { ArrowLeft, Calendar, RefreshCw, Users, XCircle } from 'lucide-react-native';
+import { addDays, format, isBefore, startOfDay } from 'date-fns';
+import { ArrowLeft, Calendar, Clock, RefreshCw, Users, XCircle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { ScreenContainer } from '../src/components/ScreenContainer';
+import { clubTableDisplayName } from '../src/constants/clubFloorPlan';
 import { colors } from '../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../src/constants/design';
 import { useAuth } from '../src/hooks/useAuth';
@@ -11,11 +12,35 @@ import { useTheme } from '../src/hooks/useTheme';
 import { reservationService } from '../src/services/reservationService';
 import type { Reservation } from '../src/types';
 import {
+  allowsSelfServiceReservationChanges,
   checkReservationAvailability,
   getPaymentStatusLabel,
   getReservationStatusLabel,
   getReservationTypeLabel,
 } from '../src/utils/reservations';
+
+const CLOSED_STATUSES = ['cancelled', 'checked_in', 'completed', 'no_show'];
+
+// Status pill colors so the eye can sort reservations by state at a glance
+// instead of reading every badge.
+function statusTone(status: string): { bg: string; fg: string } {
+  switch (status) {
+    case 'confirmed':
+    case 'rescheduled':
+      return { bg: colors.primary, fg: colors.white };
+    case 'checked_in':
+      return { bg: colors.successContainer, fg: colors.success };
+    case 'pending':
+      return { bg: '#F5A623', fg: colors.white };
+    case 'cancelled':
+    case 'no_show':
+      return { bg: colors.dangerContainer, fg: colors.danger };
+    case 'completed':
+      return { bg: '#E4E4E4', fg: '#6B6B6B' };
+    default:
+      return { bg: colors.primary + '14', fg: colors.primary };
+  }
+}
 
 export default function ReservationsScreen() {
   const router = useRouter();
@@ -50,7 +75,27 @@ export default function ReservationsScreen() {
     return () => unsubscribeReservations?.();
   }, [profile?.id]);
 
+  // Split into Upcoming / Past so a long history doesn't bury what's next.
+  const { upcoming, past } = useMemo(() => {
+    const today = startOfDay(new Date());
+    const upcomingList: Reservation[] = [];
+    const pastList: Reservation[] = [];
+    for (const reservation of reservations) {
+      const isClosed = CLOSED_STATUSES.includes(reservation.status);
+      const isPastDate = isBefore(startOfDay(new Date(reservation.reservation_date)), today);
+      if (isClosed || isPastDate) {
+        pastList.push(reservation);
+      } else {
+        upcomingList.push(reservation);
+      }
+    }
+    upcomingList.sort((a, b) => a.reservation_date.localeCompare(b.reservation_date));
+    pastList.sort((a, b) => b.reservation_date.localeCompare(a.reservation_date));
+    return { upcoming: upcomingList, past: pastList };
+  }, [reservations]);
+
   function openCancellationSheet(reservation: Reservation) {
+    if (!allowsSelfServiceReservationChanges(reservation)) return;
     setCancelTarget(reservation);
     setCancellationReason('');
   }
@@ -62,6 +107,10 @@ export default function ReservationsScreen() {
 
   async function confirmCancellation() {
     if (!cancelTarget) return;
+    if (!allowsSelfServiceReservationChanges(cancelTarget)) {
+      closeCancellationSheet();
+      return;
+    }
     if (!cancellationReason.trim()) {
       Alert.alert('Reason needed', 'Please share a short cancellation reason.');
       return;
@@ -69,8 +118,6 @@ export default function ReservationsScreen() {
 
     try {
       const updatedAt = new Date().toISOString();
-      const paidReservation = cancelTarget.payment_required || cancelTarget.reservation_type === 'paid';
-      const paidAlready = cancelTarget.payment_status === 'paid';
       await reservationService.cancelReservation(cancelTarget.id, cancellationReason);
       setReservations((current) =>
         current.map((item) =>
@@ -78,8 +125,8 @@ export default function ReservationsScreen() {
             ? {
                 ...item,
                 status: 'cancelled',
-                payment_status: paidAlready ? 'refund_pending' : paidReservation ? 'pending' : 'not_required',
-                refund_status: paidAlready ? 'pending_review' : 'not_applicable',
+                payment_status: 'not_required',
+                refund_status: 'not_applicable',
                 cancellation_reason: cancellationReason.trim(),
                 cancelled_at: updatedAt,
                 updated_at: updatedAt,
@@ -94,6 +141,7 @@ export default function ReservationsScreen() {
   }
 
   function openRescheduleSheet(reservation: Reservation) {
+    if (!allowsSelfServiceReservationChanges(reservation)) return;
     setRescheduleTarget(reservation);
     setSelectedRescheduleDate(reservation.reservation_date);
   }
@@ -104,6 +152,10 @@ export default function ReservationsScreen() {
 
   async function confirmReschedule() {
     if (!rescheduleTarget) return;
+    if (!allowsSelfServiceReservationChanges(rescheduleTarget)) {
+      closeRescheduleSheet();
+      return;
+    }
     const available = await checkReservationAvailability({
       spotId: rescheduleTarget.spot_id,
       reservationDate: selectedRescheduleDate,
@@ -147,6 +199,88 @@ export default function ReservationsScreen() {
     }
   }
 
+  function renderCard(reservation: Reservation) {
+    const canModify =
+      !CLOSED_STATUSES.includes(reservation.status) && allowsSelfServiceReservationChanges(reservation);
+    const tone = statusTone(reservation.status);
+    const displayDate = format(new Date(reservation.reservation_date), 'EEE, MMM d');
+
+    return (
+      <View key={reservation.id} style={[styles.card, { backgroundColor: appColors.surfaceLow }]}>
+        <View style={styles.cardHeader}>
+          <Text style={[styles.spotName, { color: appColors.onSurface }]} numberOfLines={1}>
+            {reservation.spot_name}
+          </Text>
+          <View style={[styles.statusPill, { backgroundColor: tone.bg }]}>
+            <Text style={[styles.statusPillText, { color: tone.fg }]}>{getReservationStatusLabel(reservation.status)}</Text>
+          </View>
+        </View>
+
+        <Text style={[styles.typeLabel, { color: appColors.onSurfaceVariant }]}>
+          {getReservationTypeLabel(reservation)}
+        </Text>
+
+        <View style={styles.detailsRow}>
+          <View style={styles.detailItem}>
+            <Calendar size={14} color={appColors.onSurfaceVariant} />
+            <Text style={[styles.detailText, { color: appColors.onSurface }]}>{displayDate}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Clock size={14} color={appColors.onSurfaceVariant} />
+            <Text style={[styles.detailText, { color: appColors.onSurface }]}>{reservation.reservation_time}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Users size={14} color={appColors.onSurfaceVariant} />
+            <Text style={[styles.detailText, { color: appColors.onSurface }]}>
+              {reservation.guest_count ?? reservation.guests}
+            </Text>
+          </View>
+        </View>
+
+        {reservation.table_id || reservation.payment_required ? (
+          <View style={styles.secondaryRow}>
+            {reservation.table_id ? (
+              <Text style={[styles.secondaryText, { color: appColors.onSurfaceVariant }]}>
+                {clubTableDisplayName(reservation.table_id)}
+              </Text>
+            ) : null}
+            {reservation.payment_required ? (
+              <Text style={[styles.secondaryText, { color: appColors.onSurfaceVariant }]}>
+                Payment · {getPaymentStatusLabel(reservation.payment_status)}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        {!!reservation.cancellation_reason && (
+          <Text style={[styles.reasonText, { color: appColors.onSurfaceVariant }]}>
+            Cancelled: {reservation.cancellation_reason}
+          </Text>
+        )}
+
+        <View style={[styles.divider, { backgroundColor: appColors.outlineVariant }]} />
+
+        <View style={styles.actionsRow}>
+          <Pressable style={styles.linkButton} onPress={() => router.push(`/confirmed/${reservation.id}`)}>
+            <Text style={[styles.linkButtonText, { color: appColors.onSurface }]}>Details</Text>
+          </Pressable>
+          {canModify && (
+            <View style={styles.inlineActions}>
+              <Pressable style={styles.iconTextButton} onPress={() => openRescheduleSheet(reservation)}>
+                <RefreshCw size={13} color={colors.primary} />
+                <Text style={styles.iconTextButtonLabel}>Reschedule</Text>
+              </Pressable>
+              <Pressable style={styles.iconTextButton} onPress={() => openCancellationSheet(reservation)}>
+                <XCircle size={13} color={colors.danger} />
+                <Text style={[styles.iconTextButtonLabel, { color: colors.danger }]}>Cancel</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <ScreenContainer appColors={appColors} showBottomNav scroll>
       <View style={styles.header}>
@@ -163,53 +297,31 @@ export default function ReservationsScreen() {
       {loading ? (
         <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
       ) : reservations.length ? (
-        <View style={styles.reservationsSection}>
-          {reservations.map((reservation) => {
-            const canModify = !['cancelled', 'completed', 'no_show'].includes(reservation.status);
-            return (
-              <View key={reservation.id} style={[styles.reservationCard, { backgroundColor: appColors.surfaceLow }]}>
-                <View style={styles.reservationTop}>
-                  <View style={styles.reservationIcon}>
-                    <Calendar size={18} color={colors.primary} />
-                  </View>
-                  <View style={styles.reservationCopy}>
-                    <Text style={[styles.reservationName, { color: appColors.onSurface }]}>{reservation.spot_name}</Text>
-                    <Text style={[styles.reservationMeta, { color: appColors.onSurfaceVariant }]}>
-                      {reservation.reservation_date}, {reservation.reservation_time} - {reservation.guest_count ?? reservation.guests} guests
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.reservationBadges}>
-                  <Text style={styles.statusBadge}>{getReservationStatusLabel(reservation.status)}</Text>
-                  <Text style={styles.typeBadge}>{getReservationTypeLabel(reservation)}</Text>
-                  {reservation.payment_required && (
-                    <Text style={styles.paymentBadge}>Payment: {getPaymentStatusLabel(reservation.payment_status)}</Text>
-                  )}
-                </View>
-                {!!reservation.cancellation_reason && (
-                  <Text style={[styles.reasonText, { color: appColors.onSurfaceVariant }]}>
-                    Reason: {reservation.cancellation_reason}
-                  </Text>
-                )}
-                {canModify && (
-                  <View style={styles.reservationActions}>
-                    <Pressable style={styles.miniButton} onPress={() => openRescheduleSheet(reservation)}>
-                      <RefreshCw size={13} color={colors.primary} />
-                      <Text style={styles.miniButtonText}>Reschedule</Text>
-                    </Pressable>
-                    <Pressable style={[styles.miniButton, styles.cancelButton]} onPress={() => openCancellationSheet(reservation)}>
-                      <XCircle size={13} color={colors.danger} />
-                      <Text style={[styles.miniButtonText, { color: colors.danger }]}>Cancel</Text>
-                    </Pressable>
-                  </View>
-                )}
-                <Pressable style={styles.viewButton} onPress={() => router.push(`/confirmed/${reservation.id}`)}>
-                  <Text style={styles.viewText}>View Details</Text>
-                </Pressable>
+        <>
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionHeader, { color: appColors.onSurface }]}>Upcoming</Text>
+              <Text style={[styles.sectionCount, { color: appColors.onSurfaceVariant }]}>{upcoming.length}</Text>
+            </View>
+            {upcoming.length ? (
+              <View style={styles.cardStack}>{upcoming.map(renderCard)}</View>
+            ) : (
+              <Text style={[styles.emptySectionText, { color: appColors.onSurfaceVariant }]}>
+                Nothing booked yet. Explore spots to reserve your next visit.
+              </Text>
+            )}
+          </View>
+
+          {past.length > 0 && (
+            <View style={styles.sectionBlock}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={[styles.sectionHeader, { color: appColors.onSurface }]}>Past</Text>
+                <Text style={[styles.sectionCount, { color: appColors.onSurfaceVariant }]}>{past.length}</Text>
               </View>
-            );
-          })}
-        </View>
+              <View style={styles.cardStack}>{past.map(renderCard)}</View>
+            </View>
+          )}
+        </>
       ) : (
         <View style={[styles.emptyCard, { backgroundColor: appColors.surfaceLow }]}>
           <Calendar size={28} color={colors.primary} />
@@ -335,118 +447,133 @@ const styles = StyleSheet.create({
   loader: {
     marginVertical: spacing.xxl,
   },
-  reservationsSection: {
-    gap: spacing.md,
+
+  // Section grouping (Upcoming / Past)
+  sectionBlock: {
     marginBottom: spacing.xl,
   },
-  reservationCard: {
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    gap: spacing.md,
-    ...shadow.card,
-  },
-  reservationTop: {
+  sectionHeaderRow: {
     flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'center',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+    paddingHorizontal: 2,
   },
-  reservationIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary + '12',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  reservationCopy: {
-    flex: 1,
-  },
-  reservationName: {
+  sectionHeader: {
     fontSize: fontSize.md,
     fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
-  reservationMeta: {
-    marginTop: 2,
+  sectionCount: {
     fontSize: fontSize.xs,
     fontWeight: '800',
   },
-  reservationBadges: {
+  emptySectionText: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  cardStack: {
+    gap: spacing.md,
+  },
+
+  // Card
+  card: {
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    ...shadow.card,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  spotName: {
+    flex: 1,
+    fontSize: fontSize.md,
+    fontWeight: '900',
+  },
+  statusPill: {
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  statusPillText: {
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  typeLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  detailText: {
+    fontSize: fontSize.sm,
+    fontWeight: '800',
+  },
+  secondaryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.xs,
+    gap: spacing.md,
   },
-  statusBadge: {
-    color: colors.white,
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  typeBadge: {
-    color: colors.primary,
-    backgroundColor: colors.primary + '12',
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  paymentBadge: {
-    color: colors.onSurfaceVariant,
-    backgroundColor: colors.surfaceContainer,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
+  secondaryText: {
+    fontSize: fontSize.xs,
+    fontWeight: '700',
   },
   reasonText: {
     fontSize: fontSize.xs,
     lineHeight: 17,
-    fontWeight: '800',
+    fontWeight: '700',
   },
-  reservationActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginTop: 2,
   },
-  miniButton: {
-    flex: 1,
-    minHeight: 38,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary + '10',
+  actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
+    justifyContent: 'space-between',
   },
-  cancelButton: {
-    backgroundColor: colors.dangerContainer,
+  linkButton: {
+    paddingVertical: 6,
   },
-  miniButtonText: {
-    color: colors.primary,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  viewButton: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  viewText: {
-    color: colors.white,
+  linkButtonText: {
     fontSize: fontSize.xs,
     fontWeight: '900',
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
+    letterSpacing: 0.6,
+    textDecorationLine: 'underline',
   },
+  inlineActions: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+  },
+  iconTextButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  iconTextButtonLabel: {
+    color: colors.primary,
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+  },
+
   emptyCard: {
     borderRadius: radius.xxl,
     padding: spacing.xl,

@@ -18,12 +18,18 @@ export const profileService = {
 
   async ensureProfile(input: EnsureProfileInput): Promise<UserProfile> {
     const existing = await this.getProfile(input.id);
-    const role = getPrototypeRoleForEmail(input.email);
+    const prototypeRole = getPrototypeRoleForEmail(input.email);
     if (existing) {
-      if (existing.role === role) return existing;
+      const updates: Partial<UserProfile> = {};
+      if (prototypeRole !== 'user' && existing.role !== prototypeRole) updates.role = prototypeRole;
+      if (input.email && existing.email !== input.email) updates.email = input.email;
+      if (!existing.display_name && input.display_name) updates.display_name = input.display_name;
+      if (!existing.photo_url && input.photo_url) updates.photo_url = input.photo_url;
+      if (!Object.keys(updates).length) return existing;
+
       const { data, error } = await supabase
         .from('profiles')
-        .update({ role, updated_at: new Date().toISOString() })
+        .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', input.id)
         .select('*')
         .single();
@@ -34,7 +40,7 @@ export const profileService = {
     const profile = {
       id: input.id,
       email: input.email,
-      role,
+      role: prototypeRole,
       display_name: input.display_name,
       photo_url: input.photo_url,
       level: 1,

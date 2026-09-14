@@ -7,6 +7,9 @@ export const colors = {
   surfaceContainer: '#EBEAE4',
   surfaceHigh: '#E4E3DD',
   surfaceHighest: '#DDDCD5',
+  surfaceRaised: '#FFFFFF',
+  inputSurface: '#FFFFFF',
+  inputBorder: '#B8B09F',
   onSurface: '#1C1B17',
   onSurfaceVariant: '#4A463D',
   outline: '#7D7767',
@@ -26,10 +29,17 @@ export const darkColors = {
   surfaceContainer: '#1C1C1C',
   surfaceHigh: '#242424',
   surfaceHighest: '#2D2D2D',
+  surfaceRaised: '#1C1C1C',
+  inputSurface: '#181818',
+  inputBorder: '#5E5E5E',
   onSurface: '#F5F5F5',
   onSurfaceVariant: '#A0A0A0',
   outline: '#555555',
   outlineVariant: '#333333',
+  success: '#66BB6A',
+  successContainer: '#15371E',
+  danger: '#FF8A80',
+  dangerContainer: '#3A1717',
 };
 
 export type AppColors = typeof colors;

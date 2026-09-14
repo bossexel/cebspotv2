@@ -68,7 +68,7 @@ export function SupabaseConnectionPanel({
   const statusColor = connected ? colors.success : colors.danger;
 
   return (
-    <View style={[styles.panel, { backgroundColor: appColors.white }]}>
+    <View style={[styles.panel, { backgroundColor: appColors.surfaceRaised }]}>
       <View style={styles.header}>
         <View style={[styles.iconWrap, { backgroundColor: statusColor + '18' }]}>
           {loading ? (

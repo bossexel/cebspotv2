@@ -2,8 +2,8 @@
   "expo": {
     "name": "CebSpot",
     "slug": "cebspot",
-    "version": "1.0.1",
-    "orientation": "portrait",
+    "version": "1.0.3",
+    "orientation": "default",
     "icon": "./assets/cebspot-logo.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
