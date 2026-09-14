@@ -1,6 +1,6 @@
 export type AppRole = 'admin' | 'owner' | 'user';
 
-export const ADMIN_EMAIL = 'testadmin@cebspot.com';
+export const ADMIN_EMAIL = 'testadmin6000@gmail.com';
 export const OWNER_EMAIL = 'testowner@cebspot.com';
 export const USER_EMAIL = 'exielramen@gmail.com';
 

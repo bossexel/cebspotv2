@@ -44,7 +44,7 @@ create policy "spot_edit_suggestions_admin_select"
       from public.profiles profile
       where profile.id = auth.uid()
         and profile.role = 'admin'
-        and lower(profile.email) = 'testadmin@cebspot.com'
+        and lower(profile.email) = 'testadmin6000@gmail.com'
     )
   );
 
@@ -56,7 +56,7 @@ create policy "spot_edit_suggestions_admin_update"
       from public.profiles profile
       where profile.id = auth.uid()
         and profile.role = 'admin'
-        and lower(profile.email) = 'testadmin@cebspot.com'
+        and lower(profile.email) = 'testadmin6000@gmail.com'
     )
   )
   with check (
@@ -65,7 +65,7 @@ create policy "spot_edit_suggestions_admin_update"
       from public.profiles profile
       where profile.id = auth.uid()
         and profile.role = 'admin'
-        and lower(profile.email) = 'testadmin@cebspot.com'
+        and lower(profile.email) = 'testadmin6000@gmail.com'
     )
   );
 

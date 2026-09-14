@@ -114,7 +114,8 @@ alter table profiles
 
 update profiles
 set role = case
-  when lower(email) = 'testadmin@cebspot.com' then 'admin'
+  when lower(email) = 'testadmin6000@gmail.com' then 'admin'
+  when lower(email) = 'testadmin@cebspot.com' and role = 'admin' then 'user'
   when lower(email) = 'testowner@cebspot.com' then 'owner'
   else role
 end;
@@ -126,15 +127,17 @@ security definer
 set search_path = public
 as $$
 begin
-  if lower(coalesce(new.email, '')) = 'testadmin@cebspot.com' then
+  if lower(coalesce(new.email, '')) = 'testadmin6000@gmail.com' then
     new.role := 'admin';
+  elsif lower(coalesce(new.email, '')) = 'testadmin@cebspot.com' and new.role = 'admin' then
+    new.role := 'user';
   elsif tg_op = 'INSERT' and lower(coalesce(new.email, '')) = 'testowner@cebspot.com' then
     new.role := 'owner';
   elsif tg_op = 'INSERT' then
     new.role := coalesce(new.role, 'user');
   elsif new.email is distinct from old.email and lower(coalesce(new.email, '')) = 'testowner@cebspot.com' then
     new.role := 'owner';
-  elsif new.email is distinct from old.email and lower(coalesce(old.email, '')) = 'testowner@cebspot.com' then
+  elsif new.email is distinct from old.email and lower(coalesce(old.email, '')) in ('testowner@cebspot.com', 'testadmin6000@gmail.com') then
     new.role := 'user';
   elsif new.role is null then
     new.role := old.role;
@@ -902,7 +905,7 @@ create policy "owner_verification_documents_read_admin"
       from public.profiles profile
       where profile.id = auth.uid()
         and profile.role = 'admin'
-        and lower(profile.email) = 'testadmin@cebspot.com'
+        and lower(profile.email) = 'testadmin6000@gmail.com'
     )
   );
 
@@ -2323,7 +2326,7 @@ begin
     new.id,
     coalesce(new.email, ''),
     case
-      when lower(coalesce(new.email, '')) = 'testadmin@cebspot.com' then 'admin'
+      when lower(coalesce(new.email, '')) = 'testadmin6000@gmail.com' then 'admin'
       when lower(coalesce(new.email, '')) = 'testowner@cebspot.com' then 'owner'
       else 'user'
     end,
@@ -2342,7 +2345,8 @@ begin
   on conflict (id) do update set
     email = excluded.email,
       role = case
-        when lower(excluded.email) = 'testadmin@cebspot.com' then 'admin'
+        when lower(excluded.email) = 'testadmin6000@gmail.com' then 'admin'
+        when lower(excluded.email) = 'testadmin@cebspot.com' then 'user'
         when lower(excluded.email) = 'testowner@cebspot.com' then 'owner'
         else public.profiles.role
       end,
@@ -2372,7 +2376,7 @@ select
   auth_user.id,
   trim(auth_user.email),
   case
-    when lower(auth_user.email) = 'testadmin@cebspot.com' then 'admin'
+    when lower(auth_user.email) = 'testadmin6000@gmail.com' then 'admin'
     when lower(auth_user.email) = 'testowner@cebspot.com' then 'owner'
     else 'user'
   end,
@@ -2393,7 +2397,8 @@ where nullif(trim(coalesce(auth_user.email, '')), '') is not null
 on conflict (id) do update set
   email = excluded.email,
     role = case
-      when lower(excluded.email) = 'testadmin@cebspot.com' then 'admin'
+      when lower(excluded.email) = 'testadmin6000@gmail.com' then 'admin'
+      when lower(excluded.email) = 'testadmin@cebspot.com' then 'user'
       when lower(excluded.email) = 'testowner@cebspot.com' then 'owner'
       else public.profiles.role
     end,

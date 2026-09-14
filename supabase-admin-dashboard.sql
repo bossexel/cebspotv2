@@ -13,7 +13,7 @@ as $$
     from public.profiles profile
     where profile.id = auth.uid()
       and profile.role = 'admin'
-      and lower(profile.email) = 'testadmin@cebspot.com'
+      and lower(profile.email) = 'testadmin6000@gmail.com'
   );
 $$;
 

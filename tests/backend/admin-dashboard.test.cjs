@@ -23,7 +23,26 @@ test('admin identity is checked server-side by authenticated user, role, and ema
 
   assert.match(guard, /profile\.id\s*=\s*auth\.uid\(\)/i);
   assert.match(guard, /profile\.role\s*=\s*'admin'/i);
-  assert.match(guard, /lower\(profile\.email\)\s*=\s*'testadmin@cebspot\.com'/i);
+  assert.match(guard, /lower\(profile\.email\)\s*=\s*'testadmin6000@gmail\.com'/i);
+});
+
+test('admin identity cutover revokes the old role and promotes the new account', () => {
+  const migration = read('supabase/migrations/20260915000100_admin_identity_cutover.sql');
+  const roles = read('src/constants/authRoles.ts');
+
+  assert.match(roles, /ADMIN_EMAIL\s*=\s*'testadmin6000@gmail\.com'/i);
+  assert.match(migration, /set role = 'user'[\s\S]*testadmin@cebspot\.com/i);
+  assert.match(migration, /set role = 'admin'[\s\S]*testadmin6000@gmail\.com/i);
+  assert.match(sqlFunction(migration, 'is_current_user_admin'), /testadmin6000@gmail\.com/i);
+});
+
+test('admin login offers password visibility and recovery controls', () => {
+  const screen = read('app/admin.tsx');
+
+  assert.match(screen, /<PasswordInput/);
+  assert.match(screen, /Forgot password\?/);
+  assert.match(screen, /resetPasswordForEmail/);
+  assert.match(screen, /createURL\('\/reset-password'\)/);
 });
 
 test('every mutating admin RPC performs the server-side admin check', () => {

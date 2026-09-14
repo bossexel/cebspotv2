@@ -70,7 +70,7 @@ begin
     new.id,
     coalesce(new.email, ''),
     case
-      when lower(coalesce(new.email, '')) = 'testadmin@cebspot.com' then 'admin'
+      when lower(coalesce(new.email, '')) = 'testadmin6000@gmail.com' then 'admin'
       when lower(coalesce(new.email, '')) = 'testowner@cebspot.com' then 'owner'
       else 'user'
     end,
@@ -89,7 +89,8 @@ begin
   on conflict (id) do update set
     email = excluded.email,
     role = case
-      when lower(excluded.email) = 'testadmin@cebspot.com' then 'admin'
+      when lower(excluded.email) = 'testadmin6000@gmail.com' then 'admin'
+      when lower(excluded.email) = 'testadmin@cebspot.com' then 'user'
       when lower(excluded.email) = 'testowner@cebspot.com' then 'owner'
       else public.profiles.role
     end,
@@ -120,7 +121,7 @@ select
   auth_user.id,
   trim(auth_user.email),
   case
-    when lower(auth_user.email) = 'testadmin@cebspot.com' then 'admin'
+    when lower(auth_user.email) = 'testadmin6000@gmail.com' then 'admin'
     when lower(auth_user.email) = 'testowner@cebspot.com' then 'owner'
     else 'user'
   end,

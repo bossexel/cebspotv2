@@ -14,6 +14,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Svg, Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
+import * as ExpoLinking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -54,12 +55,14 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { SupabaseConnectionPanel } from '../src/components/SupabaseConnectionPanel';
+import { PasswordInput } from '../src/components/PasswordInput';
 import { TileMap } from '../src/components/TileMap';
 import { ADMIN_EMAIL, hasAdminAccess, normalizeAuthEmail } from '../src/constants/authRoles';
 import { colors } from '../src/constants/colors';
 import { shadow } from '../src/constants/design';
 import { REVIEW_REPORT_CATEGORIES } from '../src/constants/reportCategories';
 import { useScopedAuth } from '../src/hooks/useScopedAuth';
+import { getAuthErrorMessage } from '../src/utils/auth';
 import { ownerVerificationDocumentService } from '../src/services/ownerVerificationDocumentService';
 import {
   applySpotEditSuggestion,
@@ -492,7 +495,19 @@ export default function AdminConsoleScreen() {
   }
 
   if (!isSignedIn || !isAdmin) {
-    return <AdminLoginGate signedInEmail={profile?.email ?? null} onSignIn={signIn} onLogout={() => handleSignOut(false)} />;
+    return (
+      <AdminLoginGate
+        signedInEmail={profile?.email ?? null}
+        onSignIn={signIn}
+        onLogout={() => handleSignOut(false)}
+        onResetPassword={async (email) => {
+          const { error } = await client.auth.resetPasswordForEmail(normalizeAuthEmail(email), {
+            redirectTo: ExpoLinking.createURL('/reset-password'),
+          });
+          if (error) throw new Error(getAuthErrorMessage(error));
+        }}
+      />
+    );
   }
 
   return (
@@ -630,14 +645,17 @@ function AdminLoginGate({
   signedInEmail,
   onSignIn,
   onLogout,
+  onResetPassword,
 }: {
   signedInEmail: string | null;
   onSignIn: (email: string, password: string) => Promise<void>;
   onLogout: () => Promise<void>;
+  onResetPassword: (email: string) => Promise<void>;
 }) {
   const [email, setEmail] = useState(ADMIN_EMAIL);
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [requestingReset, setRequestingReset] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const hasWrongAccount = Boolean(signedInEmail && normalizeAuthEmail(signedInEmail) !== ADMIN_EMAIL);
 
@@ -674,6 +692,28 @@ function AdminLoginGate({
     }
   }
 
+  async function requestPasswordReset() {
+    const normalizedEmail = normalizeAuthEmail(email);
+    if (!normalizedEmail) {
+      Alert.alert('Email required', 'Enter the admin email first.');
+      return;
+    }
+    if (normalizedEmail !== ADMIN_EMAIL) {
+      Alert.alert('Admin only', `Password recovery is available for ${ADMIN_EMAIL}.`);
+      return;
+    }
+
+    try {
+      setRequestingReset(true);
+      await onResetPassword(normalizedEmail);
+      Alert.alert('Reset email sent', 'Check the admin inbox for a secure password reset link.');
+    } catch (error) {
+      Alert.alert('Unable to reset password', getAuthErrorMessage(error));
+    } finally {
+      setRequestingReset(false);
+    }
+  }
+
   return (
     <View style={styles.adminGateScreen}>
       <View style={styles.adminGateCard}>
@@ -706,15 +746,26 @@ function AdminLoginGate({
               placeholderTextColor={adminPalette.outline}
               style={styles.adminGateInput}
             />
-            <TextInput
+            <PasswordInput
               value={password}
               onChangeText={setPassword}
-              secureTextEntry
               placeholder="Password"
               placeholderTextColor={adminPalette.outline}
-              style={styles.adminGateInput}
+              containerStyle={styles.adminGatePasswordContainer}
+              style={styles.adminGatePasswordInput}
+              onSubmitEditing={submit}
             />
-            <Pressable disabled={submitting} onPress={submit} style={styles.adminGateButton}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={submitting || requestingReset}
+              onPress={requestPasswordReset}
+              style={styles.adminGateForgotButton}
+            >
+              <Text style={styles.adminGateForgotText}>
+                {requestingReset ? 'Sending reset email...' : 'Forgot password?'}
+              </Text>
+            </Pressable>
+            <Pressable disabled={submitting || requestingReset} onPress={submit} style={styles.adminGateButton}>
               <Text style={styles.adminGateButtonText}>{submitting ? 'Signing In...' : 'Sign In'}</Text>
             </Pressable>
           </>
@@ -2606,6 +2657,29 @@ const styles = StyleSheet.create({
     fontFamily: adminFontFamily,
     fontSize: 14,
     fontWeight: '700',
+  },
+  adminGatePasswordContainer: {
+    minHeight: 50,
+    borderRadius: 8,
+    borderColor: adminPalette.outlineVariant,
+    backgroundColor: adminPalette.surfaceBright,
+  },
+  adminGatePasswordInput: {
+    minHeight: 48,
+    paddingLeft: 14,
+    color: adminPalette.onSurface,
+    fontFamily: adminFontFamily,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  adminGateForgotButton: {
+    alignSelf: 'flex-end',
+    paddingVertical: 2,
+  },
+  adminGateForgotText: {
+    color: adminPalette.primary,
+    fontSize: 13,
+    fontWeight: '800',
   },
   adminGateButton: {
     minHeight: 50,
