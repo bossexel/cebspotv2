@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Updates from 'expo-updates';
 import { colors } from '../constants/colors';
 import { fontSize, radius, shadow, spacing } from '../constants/design';
@@ -8,6 +8,7 @@ import { useTheme } from '../hooks/useTheme';
 type UpdateState = 'idle' | 'available' | 'updating' | 'failed';
 
 const checkCooldownMs = 5 * 60 * 1000;
+const cebspotLogo = require('../../assets/cebspot-logo.png');
 
 export function AppUpdatePrompt() {
   const { appColors } = useTheme();
@@ -73,7 +74,18 @@ export function AppUpdatePrompt() {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={() => undefined}>
       <View style={styles.root}>
         <View style={styles.scrim} />
-        <View style={[styles.dialog, { backgroundColor: appColors.surfaceRaised, borderColor: appColors.outlineVariant }]}>
+        <View
+          style={[
+            styles.dialog,
+            { backgroundColor: appColors.surfaceRaised, borderColor: appColors.outlineVariant },
+          ]}
+        >
+          <Image
+            accessibilityLabel="CebSpot logo"
+            resizeMode="contain"
+            source={cebspotLogo}
+            style={styles.logo}
+          />
           <Text style={[styles.title, { color: appColors.onSurface }]}>
             {updating ? 'Updating CebSpot' : 'New update is available'}
           </Text>
@@ -121,6 +133,11 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     alignItems: 'center',
     ...shadow.lifted,
+  },
+  logo: {
+    width: 68,
+    height: 80,
+    marginBottom: spacing.md,
   },
   title: {
     fontSize: fontSize.xl,
