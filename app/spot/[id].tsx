@@ -294,6 +294,7 @@ export default function SpotDetailsScreen() {
     setHelpfulReviewIds([]);
     setReviewReplyTarget(null);
     setReviewReplyText('');
+    setReviewsLoading(true);
 
     async function loadReviews() {
       if (!id) return;
@@ -383,6 +384,10 @@ export default function SpotDetailsScreen() {
   const imageUrls = spot.images?.length ? spot.images : [fallbackImage];
   const visibleReviews = showAllReviews ? reviews : reviews.slice(0, reviewPreviewLimit);
   const hiddenReviewCount = Math.max(0, reviews.length - visibleReviews.length);
+  const ratedReviews = reviews.filter((review) => Number(review.rating) > 0);
+  const liveRating = ratedReviews.length
+    ? ratedReviews.reduce((sum, review) => sum + Number(review.rating), 0) / ratedReviews.length
+    : 0;
   const spotCategories = Array.from(new Set(spot.categories?.length ? spot.categories : [spot.category]));
   const reservationFee = calculateReservationFee(spot);
   const paymentRequired = isPaymentRequired(spot);
@@ -832,10 +837,10 @@ export default function SpotDetailsScreen() {
             <Text style={styles.heroMetaText} numberOfLines={1}>
               {spot.address}
             </Text>
-            {!!spot.rating && (
+            {liveRating > 0 && (
               <>
                 <Star size={14} color={colors.primaryContainer} fill={colors.primaryContainer} />
-                <Text style={styles.heroMetaText}>{spot.rating.toFixed(1)}</Text>
+                <Text style={styles.heroMetaText}>{liveRating.toFixed(1)}</Text>
               </>
             )}
           </View>
@@ -854,7 +859,7 @@ export default function SpotDetailsScreen() {
             <Star size={18} color={colors.primary} />
             <Text style={[styles.statLabel, { color: appColors.onSurfaceVariant }]}>Rating</Text>
             <Text style={[styles.statValue, { color: appColors.onSurface }]}>
-              {spot.rating ? `${spot.rating.toFixed(1)} / 5.0` : 'No rating yet'}
+              {liveRating > 0 ? `${liveRating.toFixed(1)} / 5.0` : 'No rating yet'}
             </Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: appColors.surfaceLow }]}>

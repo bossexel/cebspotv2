@@ -164,4 +164,25 @@ export const spotService = {
     }
     return normalizeSpot(data);
   },
+
+  async replaceTableInventory(
+    spotId: string,
+    tableInventory: TableInventoryUpdate,
+    client: SupabaseClient = supabase,
+  ): Promise<Spot> {
+    if (!hasSupabaseConfig) {
+      const sample = sampleSpots.find((spot) => spot.id === spotId);
+      if (!sample) throw new Error('Spot not found.');
+      return normalizeSpot({ ...sample, table_inventory: tableInventory, updated_at: new Date().toISOString() });
+    }
+
+    const { data, error } = await client
+      .from('spots')
+      .update({ table_inventory: tableInventory, updated_at: new Date().toISOString() })
+      .eq('id', spotId)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return normalizeSpot(data);
+  },
 };

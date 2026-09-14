@@ -34,6 +34,14 @@ export const defaultTableInventory: TableInventory = {
 
 const tableSlotIds: TableSlotId[] = ['sunset', 'prime', 'late'];
 
+export function createEmptyTableInventory(): TableInventory {
+  return {
+    sunset: [],
+    prime: [],
+    late: [],
+  };
+}
+
 function cloneTables(tables: TableInventoryItem[]) {
   return tables.map((table) => ({ ...table }));
 }
@@ -57,6 +65,42 @@ function normalizeTables(value: unknown, fallback: TableInventoryItem[]) {
     .filter(Boolean) as TableInventoryItem[];
 
   return tables.length ? tables : cloneTables(fallback);
+}
+
+function normalizeStoredTables(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((table, index) => {
+      if (!table || typeof table !== 'object') return null;
+      const record = table as Partial<TableInventoryItem>;
+      const tableId = typeof record.tableId === 'string' && record.tableId.trim()
+        ? record.tableId.trim()
+        : `t${index + 1}`;
+
+      return {
+        tableId,
+        capacity: Math.max(1, Number(record.capacity) || 1),
+        isReserved: Boolean(record.isReserved),
+      };
+    })
+    .filter(Boolean) as TableInventoryItem[];
+}
+
+/**
+ * Reads only the inventory stored for a venue. Unlike normalizeTableInventory,
+ * this never inserts demo tables when a venue has not configured any.
+ */
+export function normalizeStoredTableInventory(source: unknown): TableInventory {
+  const record = source && typeof source === 'object'
+    ? (source as Partial<Record<TableSlotId, unknown>>)
+    : {};
+
+  return {
+    sunset: normalizeStoredTables(record.sunset),
+    prime: normalizeStoredTables(record.prime),
+    late: normalizeStoredTables(record.late),
+  };
 }
 
 export function normalizeTableInventory(source: unknown): TableInventory {

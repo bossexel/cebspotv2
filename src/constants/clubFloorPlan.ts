@@ -1,5 +1,7 @@
 import type { TableInventory, TableInventoryItem, TableSlotId } from '../utils/tableInventory';
 
+export const testCebspotClubSpotId = '66666666-6666-4666-8666-666666666666';
+
 export type ClubTableKind = 'cocktail' | 'vvip-main' | 'vip-main' | 'vip-mezzanine' | 'owner-vip';
 
 export type ClubFloorTable = {

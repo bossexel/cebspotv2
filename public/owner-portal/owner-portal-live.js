@@ -5,6 +5,78 @@ const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhdGhrZHl4Z2Vlb2t4ZW9ieHFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNTA5NTEsImV4cCI6MjA4NjgyNjk1MX0.bmFK3oSm4-f6Yp3e39l1yDhT29GIkfW4tHXSc-vBXR8";
 
 let activeSpotId = null;
+let activeSpotProfile = null;
+const activeSpotStorageKey = "cebspot-owner-active-spot-id";
+const testCebspotClubSpotId = "66666666-6666-4666-8666-666666666666";
+
+function activateAssignedSpot(spotId) {
+  const nextSpotId = spotId ? String(spotId) : "";
+  const previousSpotId = window.localStorage.getItem(activeSpotStorageKey) || "";
+  activeSpotId = nextSpotId || null;
+
+  if (nextSpotId) window.localStorage.setItem(activeSpotStorageKey, nextSpotId);
+  else window.localStorage.removeItem(activeSpotStorageKey);
+  window.__setCebspotOwnerSpot?.(nextSpotId);
+
+  if (nextSpotId && previousSpotId !== nextSpotId) {
+    window.location.reload();
+  }
+}
+
+async function loadAssignedSpotProfile() {
+  if (!activeSpotId) {
+    activeSpotProfile = null;
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("spots")
+    .select("id,name,category,images,table_inventory")
+    .eq("id", activeSpotId)
+    .maybeSingle();
+  if (error) {
+    warn("Unable to load assigned venue identity.", error);
+    return;
+  }
+  activeSpotProfile = data || null;
+  const inheritedClubTemplate = activeSpotProfile
+    && activeSpotProfile.id !== testCebspotClubSpotId
+    && ["sunset", "prime", "late"].every(
+      (slotId) => Array.isArray(activeSpotProfile.table_inventory?.[slotId])
+        && activeSpotProfile.table_inventory[slotId].length === 62,
+    );
+  if (inheritedClubTemplate) {
+    const emptyInventory = { sunset: [], prime: [], late: [] };
+    const { error: cleanupError } = await supabase
+      .from("spots")
+      .update({ table_inventory: emptyInventory, updated_at: new Date().toISOString() })
+      .eq("id", activeSpotId);
+    if (cleanupError) warn("Unable to remove inherited table template from this venue.", cleanupError);
+    else activeSpotProfile.table_inventory = emptyInventory;
+    const storageKey = tablesStorageKey();
+    if (storageKey) window.localStorage.removeItem(storageKey);
+  }
+  applyAssignedSpotIdentity();
+}
+
+function applyAssignedSpotIdentity() {
+  if (!activeSpotProfile) return;
+
+  document.querySelectorAll('img[alt="Test Cebspot Restaurant"], img[alt="Test Cebspot Club"]').forEach((image) => {
+    image.alt = activeSpotProfile.name;
+    const identityCopy = image.parentElement?.nextElementSibling;
+    if (identityCopy?.children?.[0]) identityCopy.children[0].textContent = activeSpotProfile.name;
+    if (identityCopy?.children?.[1]) identityCopy.children[1].textContent = activeSpotProfile.category || "Venue";
+  });
+
+  document.querySelectorAll("h1,h2,h3,h4,p,span,div").forEach((element) => {
+    if (element.children.length) return;
+    const text = element.textContent?.trim();
+    if (text === "Test Cebspot Restaurant" || text === "Test Cebspot Club") {
+      element.textContent = activeSpotProfile.name;
+    }
+  });
+}
 
 function tablesStorageKey() {
   return activeSpotId ? `cebspot-owner-tables-${activeSpotId}` : null;
@@ -27,8 +99,10 @@ let spotChannel = null;
 let syncingTables = false;
 let reservationRows = new Map();
 let enhanceTimer = null;
+let reviewEnhanceTimer = null;
 let observerStarted = false;
 let renderingEnhancements = false;
+let renderingReviewEnhancements = false;
 
 function warn(message, detail) {
   console.warn(`[owner-portal-live] ${message}`, detail ?? "");
@@ -241,6 +315,70 @@ function installReservationEnhancementStyles() {
       font-weight: 700;
     }
 
+    .ceb-owner-review-tools {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    .ceb-owner-review-replies {
+      display: grid;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .ceb-owner-review-reply {
+      padding: 0.7rem 0.8rem;
+      border-left: 3px solid #f57c00;
+      border-radius: 0.75rem;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 0.75rem;
+      line-height: 1.45;
+    }
+
+    .ceb-owner-review-reply strong {
+      display: block;
+      margin-bottom: 0.2rem;
+      color: #9a4b00;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .ceb-owner-review-composer {
+      display: flex;
+      gap: 0.6rem;
+      align-items: flex-end;
+    }
+
+    .ceb-owner-review-composer textarea {
+      flex: 1;
+      min-height: 2.8rem;
+      max-height: 8rem;
+      resize: vertical;
+      padding: 0.7rem 0.8rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.8rem;
+      background: #f8fafc;
+      color: #0f172a;
+      font: inherit;
+      font-size: 0.78rem;
+    }
+
+    .ceb-owner-review-send {
+      min-height: 2.8rem;
+      padding: 0 1rem;
+      border: 0;
+      border-radius: 0.8rem;
+      background: #f57c00;
+      color: white;
+      cursor: pointer;
+      font-size: 0.72rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
     @media (max-width: 900px) {
       .ceb-payment-card {
         grid-template-columns: 1fr;
@@ -303,7 +441,10 @@ async function requireOwnerSession() {
   const { data: sessionData } = await supabase.auth.getSession();
   const user = sessionData.session?.user;
 
-  if (!user) return null;
+  if (!user) {
+    activateAssignedSpot(null);
+    return null;
+  }
 
   const { data: profile, error } = await supabase
     .from("profiles")
@@ -321,6 +462,7 @@ async function requireOwnerSession() {
   if (!isOwner) {
     warn("Signing out non-owner account from owner portal.", profile?.email || user.email);
     await supabase.auth.signOut();
+    activateAssignedSpot(null);
     return null;
   }
 
@@ -337,6 +479,7 @@ async function requireOwnerSession() {
   const primaryAccess = (accessRows || []).find((access) => access.role === "owner") || accessRows?.[0];
   if (primaryAccess?.spot_id) {
     activeSpotId = primaryAccess.spot_id;
+    activateAssignedSpot(activeSpotId);
     return user;
   }
 
@@ -351,7 +494,7 @@ async function requireOwnerSession() {
     warn("Unable to load this business account's venue.", ownedSpotError);
     return null;
   }
-  activeSpotId = ownedSpot?.id || null;
+  activateAssignedSpot(ownedSpot?.id || null);
   if (!activeSpotId) {
     warn("This owner account is not assigned to a venue.");
     return null;
@@ -775,13 +918,88 @@ function queueEnhanceReservationsPage() {
   enhanceTimer = window.setTimeout(enhanceReservationsPage, 80);
 }
 
+async function enhanceReviewsPage() {
+  if (renderingReviewEnhancements || !activeSpotId) return;
+  const heading = [...document.querySelectorAll("h1,h2,h3")].find(
+    (element) => element.textContent?.trim() === "Guest Reviews",
+  );
+  if (!heading) return;
+
+  const reviewRoot = heading.closest("div.space-y-10") || heading.parentElement?.parentElement;
+  const cards = reviewRoot ? [...reviewRoot.querySelectorAll("article")] : [];
+  if (!cards.length || cards.every((card) => card.querySelector(".ceb-owner-review-tools"))) return;
+
+  renderingReviewEnhancements = true;
+  try {
+    const [{ data: reviews, error: reviewsError }, { data: replies, error: repliesError }, { data: sessionData }] = await Promise.all([
+      supabase.from("reviews").select("id").eq("spot_id", activeSpotId).order("created_at", { ascending: false }),
+      supabase.from("review_replies").select("id,review_id,user_id,user_name,body,created_at").eq("spot_id", activeSpotId).order("created_at", { ascending: true }),
+      supabase.auth.getSession(),
+    ]);
+    if (reviewsError) throw reviewsError;
+    if (repliesError) throw repliesError;
+
+    const ownerId = sessionData.session?.user?.id;
+    cards.forEach((card, index) => {
+      const review = reviews?.[index];
+      if (!review || card.querySelector(".ceb-owner-review-tools")) return;
+      const tools = document.createElement("div");
+      tools.className = "ceb-owner-review-tools";
+      tools.dataset.cebReviewId = review.id;
+
+      const reviewReplies = (replies || []).filter((reply) => reply.review_id === review.id);
+      if (reviewReplies.length) {
+        const list = document.createElement("div");
+        list.className = "ceb-owner-review-replies";
+        reviewReplies.forEach((reply) => {
+          const item = document.createElement("div");
+          item.className = "ceb-owner-review-reply";
+          const author = document.createElement("strong");
+          author.textContent = reply.user_id === ownerId ? "Owner reply" : reply.user_name || "CebSpot user";
+          const body = document.createElement("span");
+          body.textContent = reply.body;
+          item.append(author, body);
+          list.append(item);
+        });
+        tools.append(list);
+      }
+
+      const composer = document.createElement("div");
+      composer.className = "ceb-owner-review-composer";
+      const input = document.createElement("textarea");
+      input.maxLength = 500;
+      input.placeholder = "Reply as the spot owner";
+      input.setAttribute("aria-label", "Reply to this guest review");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "ceb-owner-review-send";
+      button.dataset.cebOwnerReviewReply = review.id;
+      button.textContent = "Reply";
+      composer.append(input, button);
+      tools.append(composer);
+      card.append(tools);
+    });
+  } catch (error) {
+    warn("Unable to load owner review replies.", error);
+  } finally {
+    renderingReviewEnhancements = false;
+  }
+}
+
+function queueEnhanceReviewsPage() {
+  window.clearTimeout(reviewEnhanceTimer);
+  reviewEnhanceTimer = window.setTimeout(enhanceReviewsPage, 120);
+}
+
 function startReservationsDomObserver() {
   if (observerStarted) return;
   observerStarted = true;
 
   const observer = new MutationObserver(() => {
     if (renderingEnhancements) return;
+    applyAssignedSpotIdentity();
     queueEnhanceReservationsPage();
+    queueEnhanceReviewsPage();
   });
 
   observer.observe(document.body, {
@@ -960,6 +1178,33 @@ function wireDomEvents() {
         openPaymentProof(button.dataset.cebProofReservation);
         return;
       }
+      if (button?.dataset.cebOwnerReviewReply) {
+        event.preventDefault();
+        event.stopPropagation();
+        const tools = button.closest(".ceb-owner-review-tools");
+        const input = tools?.querySelector("textarea");
+        const body = input?.value.trim() || "";
+        if (!body || !activeSpotId) return;
+        button.disabled = true;
+        button.textContent = "Sending...";
+        supabase.rpc("add_review_reply", {
+          target_review_id: button.dataset.cebOwnerReviewReply,
+          target_spot_id: activeSpotId,
+          reply_body: body,
+          parent_reply_id: null,
+        }).then(({ error }) => {
+          if (error) throw error;
+          reviewRootCleanup();
+          queueEnhanceReviewsPage();
+        }).catch((error) => {
+          warn("Unable to send owner review reply.", error);
+          window.alert(error?.message || "The reply could not be sent.");
+        }).finally(() => {
+          button.disabled = false;
+          button.textContent = "Reply";
+        });
+        return;
+      }
       if (/confirm payment/i.test(text)) {
         window.setTimeout(async () => {
           await loadReservationRows();
@@ -985,14 +1230,19 @@ function wireDomEvents() {
   });
 }
 
+function reviewRootCleanup() {
+  document.querySelectorAll(".ceb-owner-review-tools").forEach((element) => element.remove());
+}
+
 async function boot() {
   installReservationEnhancementStyles();
   wireDomEvents();
   startReservationsDomObserver();
   await requireOwnerSession();
-  await syncTablesToSpot();
+  await loadAssignedSpotProfile();
   await loadReservationRows();
   queueEnhanceReservationsPage();
+  queueEnhanceReviewsPage();
   await scanRecentApprovals();
   setupRealtime();
 
@@ -1003,9 +1253,11 @@ async function boot() {
     spotChannel = null;
     activeSpotId = null;
     await requireOwnerSession();
-    await syncTablesToSpot();
+    await loadAssignedSpotProfile();
     await loadReservationRows();
     queueEnhanceReservationsPage();
+    reviewRootCleanup();
+    queueEnhanceReviewsPage();
     await scanRecentApprovals();
   });
 }

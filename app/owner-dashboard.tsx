@@ -26,12 +26,14 @@ import {
   LogOut,
   Mail,
   MapPin,
+  MessageCircle,
   MoreHorizontal,
   Phone,
   Plus,
   ReceiptText,
   RefreshCw,
   Search,
+  Send,
   Settings,
   ShieldCheck,
   Star,
@@ -50,7 +52,12 @@ import { ConfirmationModal } from '../src/components/ConfirmationModal';
 import { PasswordInput } from '../src/components/PasswordInput';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { hasOwnerAccess, normalizeAuthEmail } from '../src/constants/authRoles';
-import { clubBookableTables, clubTableDisplayName, normalizeClubTableInventory } from '../src/constants/clubFloorPlan';
+import {
+  clubBookableTables,
+  clubTableDisplayName,
+  normalizeClubTableInventory,
+  testCebspotClubSpotId,
+} from '../src/constants/clubFloorPlan';
 import { colors } from '../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../src/constants/design';
 import { useAuth } from '../src/hooks/useAuth';
@@ -62,7 +69,7 @@ import { paymentProofService } from '../src/services/paymentProofService';
 import { reservationService } from '../src/services/reservationService';
 import { reviewService } from '../src/services/reviewService';
 import { spotService } from '../src/services/spotService';
-import type { Reservation, Review, Spot, UserProfile } from '../src/types';
+import type { Reservation, Review, ReviewReply, Spot, UserProfile } from '../src/types';
 import {
   formatGuestCount,
   formatReservationDateTime,
@@ -72,7 +79,9 @@ import {
   getReservationUniqueId,
 } from '../src/utils/reservations';
 import {
+  createEmptyTableInventory,
   getTableInventoryTotals,
+  normalizeStoredTableInventory,
   type TableInventory,
   type TableSlotId,
 } from '../src/utils/tableInventory';
@@ -87,6 +96,30 @@ type OwnerGalleryItem = {
   source: 'owner' | 'community';
   createdAt: string;
 };
+
+const clubTableIds = new Set(clubBookableTables.map((table) => table.tableId));
+
+function isInheritedClubTemplate(spot: Spot) {
+  if (spot.id === testCebspotClubSpotId) return false;
+  const inventory = normalizeStoredTableInventory(spot.table_inventory);
+  return (['sunset', 'prime', 'late'] as TableSlotId[]).every(
+    (slotId) => inventory[slotId].length === clubBookableTables.length
+      && inventory[slotId].every((table) => clubTableIds.has(table.tableId)),
+  );
+}
+
+function getSpotTableInventory(spot: Spot | null): TableInventory {
+  if (!spot) return createEmptyTableInventory();
+  if (spot.id === testCebspotClubSpotId) return normalizeClubTableInventory(spot.table_inventory);
+  if (isInheritedClubTemplate(spot)) return createEmptyTableInventory();
+  return normalizeStoredTableInventory(spot.table_inventory);
+}
+
+function getReviewsRating(reviews: Review[]) {
+  const ratedReviews = reviews.filter((review) => Number(review.rating) > 0);
+  if (!ratedReviews.length) return 0;
+  return ratedReviews.reduce((sum, review) => sum + Number(review.rating), 0) / ratedReviews.length;
+}
 
 type PortalIcon = React.ComponentType<any>;
 type OwnerConfirmation =
@@ -274,6 +307,7 @@ export default function OwnerDashboardScreen() {
   const [spot, setSpot] = useState<Spot | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewReplies, setReviewReplies] = useState<ReviewReply[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [accessClaimed, setAccessClaimed] = useState<boolean | null>(null);
@@ -282,12 +316,12 @@ export default function OwnerDashboardScreen() {
   const [attendanceUpdatingId, setAttendanceUpdatingId] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutConfirmationOpen, setSignOutConfirmationOpen] = useState(false);
-  const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
+  const [sendingReplyId, setSendingReplyId] = useState<string | null>(null);
   const [ownerConfirmation, setOwnerConfirmation] = useState<OwnerConfirmation | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [draftFee, setDraftFee] = useState('150');
-  const [draftInventory, setDraftInventory] = useState<TableInventory>(() => normalizeClubTableInventory(null));
+  const [draftInventory, setDraftInventory] = useState<TableInventory>(createEmptyTableInventory);
   // Gate for manual GCash approval: an owner must open a reservation's payment
   // proof (and, implicitly, check it against their own GCash account) before
   // the Approve action becomes available for that reservation.
@@ -309,9 +343,9 @@ export default function OwnerDashboardScreen() {
     [paidReservations],
   );
   const tableSummaries = useMemo(() => getTableInventoryTotals(draftInventory), [draftInventory]);
-  const activeTables = clubBookableTables.length;
-  const totalTables = clubBookableTables.length;
-  const rating = Number(spot?.rating ?? 4.7);
+  const activeTables = useMemo(() => Math.max(0, ...tableSummaries.map((slot) => slot.openCount)), [tableSummaries]);
+  const totalTables = useMemo(() => Math.max(0, ...tableSummaries.map((slot) => slot.tableCount)), [tableSummaries]);
+  const rating = useMemo(() => getReviewsRating(reviews), [reviews]);
 
   useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.ALL).catch((error) => {
@@ -327,7 +361,7 @@ export default function OwnerDashboardScreen() {
     if (Platform.OS !== 'android' || !isOwner) return undefined;
 
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      setExitConfirmationOpen(true);
+      setSignOutConfirmationOpen(true);
       return true;
     });
 
@@ -337,8 +371,8 @@ export default function OwnerDashboardScreen() {
   useEffect(() => {
     if (!spot) return;
     setDraftFee(String(Number(spot.gcash_amount ?? spot.reservation_fee ?? 150)));
-    setDraftInventory(normalizeClubTableInventory(spot.table_inventory));
-  }, [spot?.gcash_amount, spot?.reservation_fee, spot?.table_inventory]);
+    setDraftInventory(getSpotTableInventory(spot));
+  }, [spot]);
 
   async function handleSignOut() {
     try {
@@ -358,6 +392,7 @@ export default function OwnerDashboardScreen() {
       setSpot(null);
       setReservations([]);
       setReviews([]);
+      setReviewReplies([]);
       setAccessClaimed(false);
       setManagedSpotId(null);
       setLoading(false);
@@ -374,16 +409,31 @@ export default function OwnerDashboardScreen() {
         setSpot(null);
         setReservations([]);
         setReviews([]);
+        setReviewReplies([]);
         return;
       }
-      const [nextSpot, nextReservations, nextReviews] = await Promise.all([
+      const [nextSpot, nextReservations, nextReviews, nextReviewReplies] = await Promise.all([
         spotService.getSpotById(assignedSpotId, ownerSupabase),
         reservationService.getSpotReservations(assignedSpotId, ownerSupabase),
         reviewService.getReviewsForSpot(assignedSpotId, ownerSupabase),
+        reviewService.getRepliesForSpot(assignedSpotId, ownerSupabase),
       ]);
-      setSpot(nextSpot);
+      let isolatedSpot = nextSpot;
+      if (nextSpot && isInheritedClubTemplate(nextSpot)) {
+        try {
+          isolatedSpot = await spotService.replaceTableInventory(
+            assignedSpotId,
+            createEmptyTableInventory(),
+            ownerSupabase,
+          );
+        } catch (error) {
+          console.warn('Unable to remove inherited table template from this venue:', error);
+        }
+      }
+      setSpot(isolatedSpot);
       setReservations(nextReservations);
       setReviews(nextReviews);
+      setReviewReplies(nextReviewReplies);
     } catch (error) {
       console.error('Unable to load owner dashboard:', error);
       setAccessClaimed(false);
@@ -399,6 +449,7 @@ export default function OwnerDashboardScreen() {
       setSpot(null);
       setReservations([]);
       setReviews([]);
+      setReviewReplies([]);
       setAccessClaimed(false);
       setManagedSpotId(null);
       setLoading(false);
@@ -496,7 +547,9 @@ export default function OwnerDashboardScreen() {
         managedSpotId,
         {
           reservationFee,
-          tableInventory: normalizeClubTableInventory(draftInventory),
+          tableInventory: spot?.id === testCebspotClubSpotId
+            ? normalizeClubTableInventory(draftInventory)
+            : draftInventory,
         },
         ownerSupabase,
       );
@@ -506,6 +559,32 @@ export default function OwnerDashboardScreen() {
       Alert.alert('Update failed', error.message ?? 'Please try again.');
     } finally {
       setSavingSettings(false);
+    }
+  }
+
+  async function replyToReview(review: Review, body: string) {
+    if (!spot || !profile) return false;
+    try {
+      setSendingReplyId(review.id);
+      const created = await reviewService.createReviewReply(
+        {
+          spot_id: spot.id,
+          review_id: review.id,
+          parent_reply_id: null,
+          user_id: profile.id,
+          user_name: profile.display_name || profile.email || 'CebSpot owner',
+          user_photo_url: profile.photo_url,
+          body,
+        },
+        ownerSupabase,
+      );
+      setReviewReplies((current) => [...current, created]);
+      return true;
+    } catch (error: any) {
+      Alert.alert('Reply failed', error.message ?? 'Please try again.');
+      return false;
+    } finally {
+      setSendingReplyId(null);
     }
   }
 
@@ -604,15 +683,6 @@ export default function OwnerDashboardScreen() {
     setOwnerConfirmation(null);
   }
 
-  function requestExit() {
-    setExitConfirmationOpen(true);
-  }
-
-  function confirmExit() {
-    setExitConfirmationOpen(false);
-    router.back();
-  }
-
   function confirmOwnerAction() {
     const confirmation = ownerConfirmation;
     if (!confirmation) return;
@@ -687,10 +757,12 @@ export default function OwnerDashboardScreen() {
     attendanceUpdatingId,
     approvedReservations,
     draftFee,
+    isClubFloorPlan: spot.id === testCebspotClubSpotId,
     onApproveReservation: requestApproveReservation,
     onRecordAttendance: requestRecordAttendance,
     onOpenPaymentProof: requestOpenPaymentProof,
     onPostOwnerPhotos: postOwnerPhotos,
+    onReplyToReview: replyToReview,
     onRefresh: loadDashboard,
     onSaveReservationSettings: requestSaveReservationSettings,
     paidReservations,
@@ -698,12 +770,15 @@ export default function OwnerDashboardScreen() {
     paymentReservations,
     pendingPayments,
     profileEmail: profile?.email ?? 'Owner account',
+    ownerProfileId: profile?.id ?? '',
     rating,
     refreshing,
     reservationFee,
     reservations,
     reviews,
+    reviewReplies,
     savingSettings,
+    sendingReplyId,
     setActiveTab,
     setDraftFee,
     spot,
@@ -735,7 +810,7 @@ export default function OwnerDashboardScreen() {
             <PortalHeader
               title={`Good Morning, ${profile?.display_name?.split(' ')[0] || 'Admin'}`}
               subtitle="Venue Performance Overview"
-              onBack={requestExit}
+              onSignOut={() => setSignOutConfirmationOpen(true)}
               onRefresh={loadDashboard}
               refreshing={refreshing}
             />
@@ -751,7 +826,7 @@ export default function OwnerDashboardScreen() {
           <PortalHeader
             title={`Good Morning, ${profile?.display_name?.split(' ')[0] || 'Admin'}`}
             subtitle={venueName}
-            onBack={requestExit}
+            onSignOut={() => setSignOutConfirmationOpen(true)}
             onRefresh={loadDashboard}
             refreshing={refreshing}
             compact
@@ -761,16 +836,6 @@ export default function OwnerDashboardScreen() {
         </ScrollView>
       )}
 
-      <ConfirmationModal
-        visible={exitConfirmationOpen}
-        title="Exit owner dashboard?"
-        message="Are you sure you want to exit the owner dashboard?"
-        onRequestClose={() => setExitConfirmationOpen(false)}
-        actions={[
-          { label: 'Stay here', onPress: () => setExitConfirmationOpen(false) },
-          { label: 'Exit', variant: 'destructive', onPress: confirmExit },
-        ]}
-      />
       <ConfirmationModal
         visible={signOutConfirmationOpen}
         title="Sign out of owner dashboard?"
@@ -823,10 +888,12 @@ type DashboardContentProps = {
   attendanceUpdatingId: string | null;
   approvedReservations: Reservation[];
   draftFee: string;
+  isClubFloorPlan: boolean;
   onApproveReservation: (reservation: Reservation) => void;
   onRecordAttendance: (reservation: Reservation, status: 'checked_in' | 'no_show') => void;
   onOpenPaymentProof: (reservation: Reservation) => void;
   onPostOwnerPhotos: () => void;
+  onReplyToReview: (review: Review, body: string) => Promise<boolean>;
   onRefresh: () => void;
   onSaveReservationSettings: () => void;
   paidReservations: Reservation[];
@@ -834,12 +901,15 @@ type DashboardContentProps = {
   paymentReservations: Reservation[];
   pendingPayments: Reservation[];
   profileEmail: string;
+  ownerProfileId: string;
   rating: number;
   refreshing: boolean;
   reservationFee: number;
   reservations: Reservation[];
   reviews: Review[];
+  reviewReplies: ReviewReply[];
   savingSettings: boolean;
+  sendingReplyId: string | null;
   setActiveTab: (tab: OwnerTab) => void;
   setDraftFee: (value: string) => void;
   spot: Spot | null;
@@ -854,7 +924,7 @@ type DashboardContentProps = {
 function DashboardContent(props: DashboardContentProps) {
   if (props.activeTab === 'Reservations') return <ReservationsView {...props} />;
   if (props.activeTab === 'Payments') return <PaymentsView {...props} />;
-  if (props.activeTab === 'Reviews') return <ReviewsView rating={props.rating} reservations={props.reservations} tabletLayout={props.tabletLayout} />;
+  if (props.activeTab === 'Reviews') return <ReviewsView {...props} />;
   if (props.activeTab === 'Tables & Pricing') return <TablesPricingView {...props} />;
   if (props.activeTab === 'Spot Profile') return <SpotProfileView {...props} />;
   return <OverviewView {...props} />;
@@ -863,14 +933,14 @@ function DashboardContent(props: DashboardContentProps) {
 function PortalHeader({
   title,
   subtitle,
-  onBack,
+  onSignOut,
   onRefresh,
   refreshing,
   compact,
 }: {
   title: string;
   subtitle: string;
-  onBack: () => void;
+  onSignOut: () => void;
   onRefresh: () => void;
   refreshing: boolean;
   compact?: boolean;
@@ -879,13 +949,13 @@ function PortalHeader({
       <View style={[styles.portalHeader, compact && styles.portalHeaderCompact]}>
       <View style={styles.headerIdentity}>
         <Pressable
-          accessibilityLabel="Exit owner dashboard"
+          accessibilityLabel="Sign out of owner dashboard"
           accessibilityRole="button"
           style={[styles.headerExitButton, compact && styles.headerExitButtonCompact]}
-          onPress={onBack}
+          onPress={onSignOut}
         >
           <LogOut size={compact ? 16 : 18} color={portalColors.ink} />
-          <Text style={[styles.headerExitText, compact && styles.headerExitTextCompact]}>Exit</Text>
+          <Text style={[styles.headerExitText, compact && styles.headerExitTextCompact]}>Sign Out</Text>
         </Pressable>
         <View style={[styles.trendIcon, compact && styles.trendIconCompact]}>
           <TrendingUp size={18} color={portalColors.primaryDark} />
@@ -1008,8 +1078,8 @@ function OverviewView(props: DashboardContentProps) {
       <View style={[styles.metricDeck, props.tabletLayout && styles.metricDeckTablet]}>
         <PortalMetric icon={WalletCards} iconTone="green" label="Total Revenue" value={formatPeso(props.paidTotal)} delta="+12.5%" compact={compact} />
         <PortalMetric icon={CalendarDays} iconTone="blue" label="Reservations" value={String(props.reservations.length)} delta="+4.2%" compact={compact} />
-        <PortalMetric icon={Star} iconTone="orange" label="Verified Rating" value={props.rating.toFixed(1)} delta="+0.1" compact={compact} />
-        <PortalMetric icon={Users} iconTone="amber" label="Active Tables" value={`${props.activeTables}/${props.totalTables || 1}`} live compact={compact} />
+        <PortalMetric icon={Star} iconTone="orange" label="Verified Rating" value={props.reviews.length ? props.rating.toFixed(1) : 'No ratings'} compact={compact} />
+        <PortalMetric icon={Users} iconTone="amber" label="Active Tables" value={`${props.activeTables}/${props.totalTables}`} live compact={compact} />
       </View>
 
       <View style={[styles.overviewGrid, props.tabletLayout && styles.overviewGridTablet]}>
@@ -1152,24 +1222,134 @@ function PaymentsView(props: DashboardContentProps) {
   );
 }
 
-function ReviewsView({ rating, reservations, tabletLayout }: { rating: number; reservations: Reservation[]; tabletLayout: boolean }) {
-  const compact = !tabletLayout;
+function formatReviewDate(createdAt: string) {
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return 'Recently';
+  return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function ReviewsView(props: DashboardContentProps) {
+  const compact = !props.tabletLayout;
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const repliesByReview = useMemo(
+    () => props.reviewReplies.reduce<Record<string, ReviewReply[]>>((grouped, reply) => {
+      grouped[reply.review_id] = [...(grouped[reply.review_id] ?? []), reply];
+      return grouped;
+    }, {}),
+    [props.reviewReplies],
+  );
+
+  async function sendReply(review: Review) {
+    const body = replyDrafts[review.id]?.trim() ?? '';
+    if (!body) return;
+    const sent = await props.onReplyToReview(review, body);
+    if (sent) setReplyDrafts((current) => ({ ...current, [review.id]: '' }));
+  }
+
   return (
     <View style={styles.viewStack}>
-      <SectionIntro title="Reviews" eyebrow="Guest Signal" detail="Verified rating and reservation volume" compact={compact} />
+      <SectionIntro
+        title="Reviews"
+        eyebrow="Guest feedback"
+        detail={`${props.reviews.length} ${props.reviews.length === 1 ? 'review' : 'reviews'} for ${props.venueName}`}
+        onRefresh={props.onRefresh}
+        refreshing={props.refreshing}
+        compact={compact}
+      />
       <View style={styles.reviewGrid}>
         <View style={[styles.reviewScorePanel, compact && styles.reviewScorePanelCompact]}>
           <Star size={compact ? 28 : 36} color={portalColors.primary} />
-          <Text style={[styles.reviewScore, compact && styles.reviewScoreCompact]}>{rating.toFixed(1)}</Text>
-          <Text style={styles.reviewCopy}>Verified Rating</Text>
+          <Text style={[styles.reviewScore, compact && styles.reviewScoreCompact]}>
+            {props.reviews.length ? props.rating.toFixed(1) : '—'}
+          </Text>
+          <Text style={styles.reviewCopy}>{props.reviews.length ? 'Average rating' : 'No ratings yet'}</Text>
         </View>
         <View style={[styles.reviewDetailPanel, compact && styles.reviewDetailPanelCompact]}>
           <Text style={[styles.panelTitle, compact && styles.panelTitleCompact]}>Recent Feedback</Text>
-          <Text style={styles.financeEmpty}>
-            Reservation activity is live with {reservations.length} records. Full review moderation can plug into this tab next.
-          </Text>
+          <Text style={styles.reviewPolicyCopy}>Reviews cannot be removed by spot owners. Reply to guest feedback here.</Text>
         </View>
       </View>
+
+      {props.reviews.length ? (
+        <View style={styles.ownerReviewList}>
+          {props.reviews.map((review) => {
+            const replies = repliesByReview[review.id] ?? [];
+            const draft = replyDrafts[review.id] ?? '';
+            const sending = props.sendingReplyId === review.id;
+            return (
+              <View key={review.id} style={styles.ownerReviewCard}>
+                <View style={styles.ownerReviewHeader}>
+                  <View style={styles.ownerReviewAvatar}>
+                    {review.user_photo_url ? (
+                      <Image source={{ uri: review.user_photo_url }} style={styles.ownerReviewAvatarImage} />
+                    ) : (
+                      <Text style={styles.ownerReviewAvatarText}>{(review.user_name || 'G').charAt(0).toUpperCase()}</Text>
+                    )}
+                  </View>
+                  <View style={styles.ownerReviewIdentity}>
+                    <Text style={styles.ownerReviewName}>{review.user_name || 'CebSpot guest'}</Text>
+                    <Text style={styles.ownerReviewDate}>{formatReviewDate(review.created_at)}</Text>
+                  </View>
+                  <View style={styles.ownerReviewStars}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        size={14}
+                        color={star <= Math.round(review.rating) ? portalColors.primary : portalColors.muted}
+                        fill={star <= Math.round(review.rating) ? portalColors.primary : 'transparent'}
+                      />
+                    ))}
+                  </View>
+                </View>
+                <Text style={styles.ownerReviewComment}>{review.comment?.trim() || 'Rating only'}</Text>
+
+                {replies.length ? (
+                  <View style={styles.ownerReplyThread}>
+                    {replies.map((reply) => (
+                      <View key={reply.id} style={styles.ownerReplyBubble}>
+                        <View style={styles.ownerReplyHeading}>
+                          <MessageCircle size={13} color={portalColors.primary} />
+                          <Text style={styles.ownerReplyName}>
+                            {reply.user_id === props.ownerProfileId ? 'Owner reply' : reply.user_name || 'CebSpot user'}
+                          </Text>
+                          <Text style={styles.ownerReplyDate}>{formatReviewDate(reply.created_at)}</Text>
+                        </View>
+                        <Text style={styles.ownerReplyBody}>{reply.body}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
+                <View style={styles.ownerReplyComposer}>
+                  <TextInput
+                    value={draft}
+                    onChangeText={(value) => setReplyDrafts((current) => ({ ...current, [review.id]: value }))}
+                    editable={!sending}
+                    multiline
+                    maxLength={500}
+                    placeholder="Reply as the spot owner"
+                    placeholderTextColor={portalColors.muted}
+                    selectionColor={portalColors.primary}
+                    style={styles.ownerReplyInput}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Reply to ${review.user_name || 'guest review'}`}
+                    disabled={sending || !draft.trim()}
+                    onPress={() => void sendReply(review)}
+                    style={[styles.ownerReplySend, (sending || !draft.trim()) && styles.disabledButton]}
+                  >
+                    {sending ? <ActivityIndicator size="small" color={colors.white} /> : <Send size={16} color={colors.white} />}
+                    <Text style={styles.ownerReplySendText}>{sending ? 'Sending' : 'Reply'}</Text>
+                  </Pressable>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      ) : (
+        <EmptyPanel title="No Reviews Yet" body="Guest ratings and comments for this spot will appear here." />
+      )}
     </View>
   );
 }
@@ -1183,7 +1363,12 @@ function TablesPricingView(props: DashboardContentProps) {
   };
   return (
     <View style={styles.viewStack}>
-      <SectionIntro title="Tables & Pricing" eyebrow="Club Floor Plan" detail="The mapped tables publish to guest booking screens." compact={compact} />
+      <SectionIntro
+        title="Tables & Pricing"
+        eyebrow={props.isClubFloorPlan ? 'Club floor plan' : 'Reservation setup'}
+        detail={props.isClubFloorPlan ? 'The mapped tables publish to guest booking screens.' : 'Only tables configured for this spot appear here.'}
+        compact={compact}
+      />
       <View style={[styles.tablesPanel, compact && styles.tablesPanelCompact]}>
         <View style={[styles.pricePanel, compact && styles.pricePanelCompact]}>
           <Text style={styles.fieldLabel}>Reservation Price</Text>
@@ -1200,27 +1385,36 @@ function TablesPricingView(props: DashboardContentProps) {
             />
           </View>
         </View>
-        <View style={styles.tableList}>
-          {props.tableSummaries.map((slot) => (
-            <View key={slot.slotId} style={[styles.tableRow, compact && styles.tableRowCompact]}>
-              <View style={styles.tableCopy}>
-                <Text style={[styles.tableTitle, compact && styles.tableTitleCompact]}>{clubSlotLabels[slot.slotId].label}</Text>
-                <Text style={styles.tableMeta}>{clubSlotLabels[slot.slotId].time} - {slot.tableCount} mapped tables</Text>
-              </View>
-              <View style={styles.tableStepper}>
-                <Table2 size={20} color={portalColors.primary} />
-                <Text style={styles.tableCount}>{slot.tableCount}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
+        {props.totalTables ? (
+          <View style={styles.tableList}>
+            {props.tableSummaries.map((slot) => {
+              const slotCopy = props.isClubFloorPlan ? clubSlotLabels[slot.slotId] : slot;
+              return (
+                <View key={slot.slotId} style={[styles.tableRow, compact && styles.tableRowCompact]}>
+                  <View style={styles.tableCopy}>
+                    <Text style={[styles.tableTitle, compact && styles.tableTitleCompact]}>{slotCopy.label}</Text>
+                    <Text style={styles.tableMeta}>{slotCopy.time} - {slot.tableCount} mapped tables</Text>
+                  </View>
+                  <View style={styles.tableStepper}>
+                    <Table2 size={20} color={portalColors.primary} />
+                    <Text style={styles.tableCount}>{slot.tableCount}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <EmptyPanel title="No Tables Configured" body="This spot has no table layout yet. CebSpot can add a venue-specific reservation layout after setup." />
+        )}
         <Pressable
           accessibilityRole="button"
           style={[styles.primaryPortalButton, props.savingSettings && styles.disabledButton]}
           disabled={props.savingSettings}
           onPress={props.onSaveReservationSettings}
         >
-          <Text style={styles.primaryPortalButtonText}>{props.savingSettings ? 'Publishing...' : 'Publish Price & Floor Plan'}</Text>
+          <Text style={styles.primaryPortalButtonText}>
+            {props.savingSettings ? 'Publishing...' : props.isClubFloorPlan ? 'Publish Price & Floor Plan' : 'Publish Reservation Settings'}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -2020,7 +2214,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   headerExitButtonCompact: {
-    minWidth: 58,
+    minWidth: 78,
     height: 38,
     borderRadius: radius.md,
     paddingHorizontal: spacing.sm,
@@ -2705,6 +2899,141 @@ const styles = StyleSheet.create({
   reviewDetailPanelCompact: {
     padding: spacing.lg,
     borderRadius: radius.xl,
+  },
+  reviewPolicyCopy: {
+    color: portalColors.muted,
+    fontSize: fontSize.sm,
+    lineHeight: 20,
+    fontWeight: '700',
+  },
+  ownerReviewList: {
+    gap: spacing.md,
+  },
+  ownerReviewCard: {
+    borderRadius: radius.xl,
+    backgroundColor: colors.white,
+    padding: spacing.lg,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: portalColors.line,
+    ...shadow.card,
+    shadowOpacity: 0.03,
+  },
+  ownerReviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  ownerReviewAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.pill,
+    backgroundColor: portalColors.orangeSoft,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ownerReviewAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  ownerReviewAvatarText: {
+    color: portalColors.primaryDark,
+    fontSize: fontSize.sm,
+    fontWeight: '900',
+  },
+  ownerReviewIdentity: {
+    flex: 1,
+    minWidth: 0,
+  },
+  ownerReviewName: {
+    color: portalColors.ink,
+    fontSize: fontSize.sm,
+    fontWeight: '900',
+  },
+  ownerReviewDate: {
+    color: portalColors.muted,
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  ownerReviewStars: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  ownerReviewComment: {
+    color: portalColors.brown,
+    fontSize: fontSize.sm,
+    lineHeight: 21,
+    fontWeight: '600',
+  },
+  ownerReplyThread: {
+    gap: spacing.sm,
+    borderLeftWidth: 2,
+    borderLeftColor: portalColors.orangeSoft,
+    paddingLeft: spacing.md,
+  },
+  ownerReplyBubble: {
+    borderRadius: radius.md,
+    backgroundColor: portalColors.background,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  ownerReplyHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  ownerReplyName: {
+    color: portalColors.primaryDark,
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+  },
+  ownerReplyDate: {
+    color: portalColors.muted,
+    fontSize: 9,
+    fontWeight: '700',
+    marginLeft: 'auto',
+  },
+  ownerReplyBody: {
+    color: portalColors.ink,
+    fontSize: fontSize.sm,
+    lineHeight: 20,
+    fontWeight: '600',
+  },
+  ownerReplyComposer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+  },
+  ownerReplyInput: {
+    flex: 1,
+    minHeight: 46,
+    maxHeight: 120,
+    borderRadius: radius.md,
+    backgroundColor: portalColors.surfaceLow,
+    color: portalColors.ink,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    textAlignVertical: 'top',
+  },
+  ownerReplySend: {
+    minHeight: 46,
+    borderRadius: radius.md,
+    backgroundColor: portalColors.primary,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  ownerReplySendText: {
+    color: colors.white,
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   tablesPanel: {
     borderRadius: radius.xxl,

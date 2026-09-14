@@ -34,8 +34,7 @@ export const reviewService = {
       .order('created_at', { ascending: false });
     if (error) throw error;
 
-    const reviews = (data ?? []).map(normalizeReview);
-    return reviews.length ? reviews : sample;
+    return (data ?? []).map(normalizeReview);
   },
 
   async createReview(review: NewReview): Promise<Review> {
@@ -72,10 +71,10 @@ export const reviewService = {
     return (data ?? []).map((row) => row.review_id).filter((reviewId): reviewId is string => Boolean(reviewId));
   },
 
-  async getRepliesForSpot(spotId: string): Promise<ReviewReply[]> {
+  async getRepliesForSpot(spotId: string, client: SupabaseClient = supabase): Promise<ReviewReply[]> {
     if (!hasSupabaseConfig) return [...(localReviewReplies.get(spotId) ?? [])];
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('review_replies')
       .select('*')
       .eq('spot_id', spotId)
@@ -90,7 +89,7 @@ export const reviewService = {
     return (data ?? []).map(normalizeReviewReply);
   },
 
-  async createReviewReply(reply: NewReviewReply): Promise<ReviewReply> {
+  async createReviewReply(reply: NewReviewReply, client: SupabaseClient = supabase): Promise<ReviewReply> {
     const normalizedBody = reply.body.trim();
     if (!normalizedBody) throw new Error('Write a reply before sending.');
     if (normalizedBody.length > 500) throw new Error('Replies can contain up to 500 characters.');
@@ -106,7 +105,7 @@ export const reviewService = {
       return created;
     }
 
-    const { data, error } = await supabase.rpc('add_review_reply', {
+    const { data, error } = await client.rpc('add_review_reply', {
       target_review_id: reply.review_id,
       target_spot_id: reply.spot_id,
       reply_body: normalizedBody,

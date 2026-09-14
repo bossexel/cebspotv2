@@ -85,11 +85,41 @@ test('signed-in roles are confined to their dedicated application surface', () =
 
 test('standalone owner portal derives its venue from owner_spot_access', () => {
   const portal = read('public/owner-portal/owner-portal-live.js');
+  const bundle = read('public/owner-portal/assets/index-DDZU9mtZ.js');
 
   assert.match(portal, /from\("owner_spot_access"\)/);
   assert.match(portal, /activeSpotId = primaryAccess\.spot_id/);
+  assert.match(bundle, /cebspot-owner-active-spot-id/);
+  assert.match(bundle, /__setCebspotOwnerSpot/);
+  assert.doesNotMatch(bundle, /const We="66666666-6666-4666-8666-666666666666"/);
   assert.doesNotMatch(portal, /testowner@cebspot\.com/i);
   assert.doesNotMatch(portal, /claim_test_cebspot_owner_access/i);
+});
+
+test('owner venue data does not inherit the Test Cebspot Club table template', () => {
+  const dashboard = read('app/owner-dashboard.tsx');
+  const portal = read('public/owner-portal/owner-portal-live.js');
+  const inventory = read('src/utils/tableInventory.ts');
+
+  assert.match(dashboard, /isInheritedClubTemplate/);
+  assert.match(dashboard, /replaceTableInventory/);
+  assert.match(dashboard, /createEmptyTableInventory/);
+  assert.match(inventory, /normalizeStoredTableInventory/);
+  assert.doesNotMatch(portal, /await syncTablesToSpot\(\);/);
+});
+
+test('owner logout and review replies are connected to the assigned venue', () => {
+  const dashboard = read('app/owner-dashboard.tsx');
+  const reviewService = read('src/services/reviewService.ts');
+  const portal = read('public/owner-portal/owner-portal-live.js');
+
+  assert.match(dashboard, /setSignOutConfirmationOpen\(true\)/);
+  assert.match(dashboard, /Sign out of owner dashboard/);
+  assert.match(dashboard, /onReplyToReview/);
+  assert.match(dashboard, /Reviews cannot be removed by spot owners/);
+  assert.match(reviewService, /getRepliesForSpot\(spotId: string, client:/);
+  assert.doesNotMatch(reviewService, /return reviews\.length \? reviews : sample/);
+  assert.match(portal, /target_spot_id: activeSpotId/);
 });
 
 test('master schema removes prototype-only owner assignment hooks', () => {
