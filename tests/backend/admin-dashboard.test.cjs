@@ -77,6 +77,10 @@ test('admin members are paged from the full profiles table instead of the 12-row
   assert.match(service, /users: normalizeAdminUserRows\(allProfileRows/);
   assert.match(service, /formatAdminUserLocation/);
   assert.match(screen, /if \(item === 'All'\) onClearQuery\(\)/);
+  assert.match(screen, /const usersPerPage = 7/);
+  assert.match(screen, /filteredUsers\.slice\(pageStart, pageStart \+ usersPerPage\)/);
+  assert.match(screen, /Show previous users/);
+  assert.match(screen, /Show next users/);
   assert.doesNotMatch(sql, /from public\.profiles[\s\S]{0,100}limit 12/i);
 });
 

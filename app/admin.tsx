@@ -29,6 +29,7 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   ChevronUp,
   Edit3,
@@ -1701,6 +1702,7 @@ function ExpandedReport({
 }
 
 const userRoleFilters = ['All', 'Spotter', 'Owner'] as const;
+const usersPerPage = 7;
 type UserRoleFilter = (typeof userRoleFilters)[number];
 // 'Spotter' in the UI maps to the 'user' role value stored on the record.
 const userRoleFilterValue: Record<Exclude<UserRoleFilter, 'All'>, string> = { Spotter: 'user', Owner: 'owner' };
@@ -1715,11 +1717,25 @@ function UsersSection({
   onClearQuery: () => void;
 }) {
   const [roleFilter, setRoleFilter] = useState<UserRoleFilter>('All');
-  const visibleUsers = filterUsers(dashboard.users, query).filter(
+  const [currentPage, setCurrentPage] = useState(0);
+  const filteredUsers = filterUsers(dashboard.users, query).filter(
     (user) => roleFilter === 'All' || user.role.toLowerCase() === userRoleFilterValue[roleFilter],
   );
+  const pageCount = Math.max(1, Math.ceil(filteredUsers.length / usersPerPage));
+  const safePage = Math.min(currentPage, pageCount - 1);
+  const pageStart = safePage * usersPerPage;
+  const visibleUsers = filteredUsers.slice(pageStart, pageStart + usersPerPage);
+  const pageEnd = pageStart + visibleUsers.length;
   const ownerCount = dashboard.users.filter((user) => user.role.toLowerCase() === 'owner').length;
   const spotterCount = dashboard.users.filter((user) => user.role.toLowerCase() === 'user').length;
+
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [query, roleFilter]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, pageCount - 1));
+  }, [pageCount]);
   return (
     <View>
       <PageIntro
@@ -1755,7 +1771,7 @@ function UsersSection({
           ))}
         </View>
         <Text style={styles.filterSummary}>
-          <Text style={styles.filterSummaryStrong}>{visibleUsers.length}</Text> shown - <Text style={styles.filterSummaryPrimary}>{spotterCount}</Text> spotters -{' '}
+          <Text style={styles.filterSummaryStrong}>{filteredUsers.length}</Text> matching - <Text style={styles.filterSummaryPrimary}>{spotterCount}</Text> spotters -{' '}
           <Text style={styles.filterSummaryPrimary}>{ownerCount}</Text> owners
         </Text>
       </View>
@@ -1823,7 +1839,17 @@ function UsersSection({
           data={visibleUsers}
           emptyCopy="No users match this search."
         />
-        <Pagination copy={`Showing ${visibleUsers.length} of ${dashboard.users.length} users`} />
+        <Pagination
+          copy={
+            filteredUsers.length
+              ? `Showing ${pageStart + 1}-${pageEnd} of ${filteredUsers.length} users`
+              : 'Showing 0 of 0 users'
+          }
+          previousDisabled={safePage === 0}
+          nextDisabled={safePage >= pageCount - 1}
+          onPrevious={() => setCurrentPage((page) => Math.max(0, page - 1))}
+          onNext={() => setCurrentPage((page) => Math.min(pageCount - 1, page + 1))}
+        />
       </DataPanel>
     </View>
   );
@@ -2565,14 +2591,48 @@ function ToolbarButton({ icon: Icon, label }: { icon: LucideIcon; label: string 
 }
 
 // Every row in these tables is already loaded and filtered client-side —
-// there's no real server-side paging behind this screen. Showing working-
-// looking chevrons and page numbers here would suggest more data is
-// reachable than actually is, so this intentionally renders as a plain
-// count rather than fake, non-functional page controls.
-function Pagination({ copy }: { copy: string }) {
+// Member controls page through the rows already loaded from Supabase. Other
+// dashboard sections keep the compact count-only footer.
+function Pagination({
+  copy,
+  onPrevious,
+  onNext,
+  previousDisabled = false,
+  nextDisabled = false,
+}: {
+  copy: string;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  previousDisabled?: boolean;
+  nextDisabled?: boolean;
+}) {
+  const hasControls = Boolean(onPrevious && onNext);
+
   return (
     <View style={styles.pagination}>
       <Text style={styles.paginationText}>{copy}</Text>
+      {hasControls ? (
+        <View style={styles.paginationActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Show previous users"
+            disabled={previousDisabled}
+            onPress={onPrevious}
+            style={[styles.paginationButton, previousDisabled && styles.paginationButtonDisabled]}
+          >
+            <ChevronLeft size={17} color={adminPalette.onSurface} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Show next users"
+            disabled={nextDisabled}
+            onPress={onNext}
+            style={[styles.paginationButton, nextDisabled && styles.paginationButtonDisabled]}
+          >
+            <ChevronRight size={17} color={adminPalette.onSurface} />
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -4720,6 +4780,9 @@ const styles = StyleSheet.create({
     backgroundColor: adminPalette.surfaceLowest,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  paginationButtonDisabled: {
+    opacity: 0.35,
   },
   pageNumberActive: {
     width: 34,
