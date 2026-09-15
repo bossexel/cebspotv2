@@ -35,6 +35,7 @@ const spotNotificationTypes = [
   'reservation_checked_in',
   'reservation_no_show',
 ];
+const exploreBackRoutes = new Set(['circle', 'activity', 'profile']);
 
 function AppNavigator() {
   const { user, isSignedIn, loading: authLoading, profile } = useAuth();
@@ -76,15 +77,23 @@ function AppNavigator() {
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
     const currentRoute = segments[0] ?? 'index';
-    const isRootRoute = ['index', 'circle', 'activity', 'profile', 'login'].includes(currentRoute) && segments.length <= 1;
-    if (!isRootRoute) return undefined;
+    const isTopLevelRoute = segments.length <= 1;
+    const returnsToExplore = isTopLevelRoute && exploreBackRoutes.has(currentRoute);
+    const exitsFromExplore = isTopLevelRoute && currentRoute === 'index';
+    if (!returnsToExplore && !exitsFromExplore) return undefined;
 
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (returnsToExplore) {
+        setExitConfirmationOpen(false);
+        router.replace('/');
+        return true;
+      }
+
       setExitConfirmationOpen(true);
       return true;
     });
     return () => subscription.remove();
-  }, [segments]);
+  }, [router, segments]);
 
   const routeFromNotification = useCallback((route: UserNotificationRoute) => {
     if (route.routeType === 'activity_post') {
