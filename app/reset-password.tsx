@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AlertCircle, ArrowLeft, Check, Circle, KeyRound, MailCheck, RotateCcw, ShieldCheck } from 'lucide-react-native';
 import { AppButton } from '../src/components/AppButton';
 import { PasswordInput } from '../src/components/PasswordInput';
@@ -32,6 +32,7 @@ const RESET_COOLDOWN_SECONDS = 60;
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ email?: string; requested?: string; returnTo?: string }>();
   const { appColors } = useTheme();
   const {
     completePasswordRecovery,
@@ -40,13 +41,20 @@ export default function ResetPasswordScreen() {
     passwordRecoveryError,
     passwordRecoveryStatus,
     resetPassword,
+    verifyPasswordRecoveryCode,
   } = useAuth();
-  const [email, setEmail] = useState('');
-  const [submittedEmail, setSubmittedEmail] = useState('');
-  const [emailSent, setEmailSent] = useState(false);
+  const initialEmail = normalizeEmail(typeof params.email === 'string' ? params.email : '');
+  const resetWasAlreadyRequested = params.requested === '1' && isValidEmail(initialEmail);
+  const returnToAdmin = params.returnTo === 'admin';
+  const [email, setEmail] = useState(initialEmail);
+  const [submittedEmail, setSubmittedEmail] = useState(resetWasAlreadyRequested ? initialEmail : '');
+  const [emailSent, setEmailSent] = useState(resetWasAlreadyRequested);
   const [requestAttempted, setRequestAttempted] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
-  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const [cooldownSeconds, setCooldownSeconds] = useState(resetWasAlreadyRequested ? RESET_COOLDOWN_SECONDS : 0);
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [codeAttempted, setCodeAttempted] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordAttempted, setPasswordAttempted] = useState(false);
@@ -57,6 +65,7 @@ export default function ResetPasswordScreen() {
   const normalizedEmail = normalizeEmail(email);
   const emailIsValid = isValidEmail(normalizedEmail);
   const resetRequestCoolingDown = cooldownSeconds > 0 && normalizedEmail === submittedEmail;
+  const recoveryCodeIsValid = /^\d{6}$/.test(recoveryCode);
   const passwordRequirements = useMemo(() => getPasswordRequirements(password), [password]);
   const passwordMeetsRequirements = isPasswordReady(password);
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
@@ -83,9 +92,30 @@ export default function ResetPasswordScreen() {
       setSubmittedEmail(normalizedEmail);
       setEmailSent(true);
       setRequestAttempted(false);
+      setRecoveryCode('');
+      setCodeAttempted(false);
+      setCodeError(null);
       setCooldownSeconds(RESET_COOLDOWN_SECONDS);
     } catch (error) {
       setRequestError(getAuthErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function verifyRecoveryCode() {
+    if (loading) return;
+
+    setCodeAttempted(true);
+    setCodeError(null);
+    if (!recoveryCodeIsValid || !submittedEmail) return;
+
+    try {
+      setLoading(true);
+      await verifyPasswordRecoveryCode(submittedEmail, recoveryCode);
+      setCodeAttempted(false);
+    } catch (error) {
+      setCodeError(getAuthErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -113,13 +143,16 @@ export default function ResetPasswordScreen() {
 
   async function returnToLogin() {
     if (isSignedIn) await logOut();
-    router.replace('/login');
+    router.replace(returnToAdmin ? '/admin' : '/login');
   }
 
   function useDifferentEmail() {
     setEmailSent(false);
     setRequestError(null);
     setRequestAttempted(false);
+    setRecoveryCode('');
+    setCodeAttempted(false);
+    setCodeError(null);
   }
 
   const isCheckingLink = passwordRecoveryStatus === 'processing';
@@ -128,22 +161,22 @@ export default function ResetPasswordScreen() {
   const heading = passwordUpdated
     ? 'Password changed'
     : isCheckingLink
-      ? 'Checking your link'
+      ? 'Checking your code'
       : isRecoveryReady
         ? 'Choose your account password'
         : emailSent
-          ? 'Check your inbox'
+          ? 'Enter verification code'
           : 'Forgot password?';
 
   const supportingCopy = passwordUpdated
     ? 'Your new password is ready to use.'
     : isCheckingLink
-      ? 'One moment while CebSpot validates your reset link.'
+      ? 'One moment while CebSpot validates your verification code.'
       : isRecoveryReady
         ? 'Create a secure password for this CebSpot account.'
         : emailSent
-          ? 'Use the secure link in your email to continue.'
-          : 'Enter your account email to receive a secure reset link.';
+          ? 'Enter the six-digit code sent to your email.'
+          : 'Enter your account email to receive a verification code.';
 
   return (
     <KeyboardAvoidingView
@@ -179,14 +212,14 @@ export default function ResetPasswordScreen() {
               <AppButton
                 label="Return to login"
                 icon={<ArrowLeft size={18} color={colors.white} />}
-                onPress={() => router.replace('/login')}
+                onPress={() => void returnToLogin()}
                 style={styles.fullWidthButton}
               />
             </View>
           ) : isCheckingLink ? (
             <View style={styles.centeredState}>
               <ActivityIndicator color={appColors.primary} size="large" />
-              <Text style={[styles.stateTitle, { color: appColors.onSurface }]}>Validating reset link</Text>
+              <Text style={[styles.stateTitle, { color: appColors.onSurface }]}>Validating code</Text>
               <Text style={[styles.stateCopy, { color: appColors.onSurfaceVariant }]}>This should only take a moment.</Text>
             </View>
           ) : isRecoveryReady ? (
@@ -272,8 +305,51 @@ export default function ResetPasswordScreen() {
               </View>
               <Text style={[styles.stateTitle, { color: appColors.onSurface }]}>Email requested</Text>
               <Text style={[styles.stateCopy, { color: appColors.onSurfaceVariant }]}>
-                If an account exists for {submittedEmail}, a password reset link is on its way.
+                If an account exists for {submittedEmail}, a six-digit verification code is on its way.
               </Text>
+              <View style={[styles.fieldGroup, styles.codeField]}>
+                <Text style={[styles.label, { color: appColors.onSurface }]}>Verification code</Text>
+                <TextInput
+                  value={recoveryCode}
+                  onChangeText={(value) => {
+                    setRecoveryCode(value.replace(/\D/g, '').slice(0, 6));
+                    setCodeError(null);
+                  }}
+                  autoComplete="one-time-code"
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  placeholder="000000"
+                  placeholderTextColor={appColors.onSurfaceVariant}
+                  selectionColor={appColors.primary}
+                  textContentType="oneTimeCode"
+                  editable={!loading}
+                  returnKeyType="done"
+                  onSubmitEditing={verifyRecoveryCode}
+                  style={[
+                    styles.input,
+                    styles.codeInput,
+                    {
+                      color: appColors.onSurface,
+                      backgroundColor: appColors.inputSurface,
+                      borderColor: codeAttempted && !recoveryCodeIsValid ? appColors.danger : appColors.inputBorder,
+                    },
+                  ]}
+                />
+                {codeAttempted && !recoveryCodeIsValid ? (
+                  <Text style={[styles.fieldError, { color: appColors.danger }]}>Enter the complete six-digit code.</Text>
+                ) : null}
+              </View>
+              {codeError ? (
+                <StatusMessage icon={<AlertCircle size={18} color={appColors.danger} />} message={codeError} />
+              ) : null}
+              <AppButton
+                label="Verify code"
+                icon={<ShieldCheck size={18} color={colors.white} />}
+                disabled={!recoveryCodeIsValid}
+                loading={loading}
+                onPress={verifyRecoveryCode}
+                style={styles.fullWidthButton}
+              />
               <Text style={[styles.privateNotice, { color: appColors.onSurfaceVariant }]}>
                 Check your spam folder if it does not appear after a few minutes.
               </Text>
@@ -281,7 +357,7 @@ export default function ResetPasswordScreen() {
                 <StatusMessage icon={<AlertCircle size={18} color={appColors.danger} />} message={requestError} />
               ) : null}
               <AppButton
-                label={cooldownSeconds > 0 ? `Resend in ${cooldownSeconds}s` : 'Resend reset link'}
+                label={cooldownSeconds > 0 ? `Resend in ${cooldownSeconds}s` : 'Resend verification code'}
                 icon={<RotateCcw size={18} color={appColors.primary} />}
                 variant="secondary"
                 disabled={cooldownSeconds > 0}
@@ -342,7 +418,7 @@ export default function ResetPasswordScreen() {
                 <StatusMessage icon={<AlertCircle size={18} color={appColors.danger} />} message={requestError} />
               ) : null}
               <AppButton
-                label={resetRequestCoolingDown ? `Try again in ${cooldownSeconds}s` : 'Send reset link'}
+                label={resetRequestCoolingDown ? `Try again in ${cooldownSeconds}s` : 'Send verification code'}
                 icon={<MailCheck size={18} color={colors.white} />}
                 disabled={resetRequestCoolingDown}
                 loading={loading}
@@ -426,6 +502,9 @@ const styles = StyleSheet.create({
   fieldGroup: {
     gap: spacing.sm,
   },
+  codeField: {
+    width: '100%',
+  },
   label: {
     fontSize: fontSize.sm,
     fontWeight: '800',
@@ -437,6 +516,12 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: '700',
     borderWidth: 1,
+  },
+  codeInput: {
+    textAlign: 'center',
+    fontSize: fontSize.xl,
+    fontWeight: '900',
+    letterSpacing: 10,
   },
   fieldError: {
     fontSize: fontSize.sm,

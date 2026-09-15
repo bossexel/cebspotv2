@@ -21,6 +21,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
   resendVerification: (email: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  verifyPasswordRecoveryCode: (email: string, code: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   completePasswordRecovery: (password: string) => Promise<void>;
   passwordRecoveryStatus: PasswordRecoveryStatus;
@@ -490,11 +491,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetPassword = useCallback(async (email: string) => {
     if (!hasSupabaseConfig) return;
 
-    const { error } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email), {
-      redirectTo: createAuthRedirectUrl('/reset-password'),
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email));
     if (error) throw new Error(getAuthErrorMessage(error));
   }, []);
+
+  const verifyPasswordRecoveryCode = useCallback(async (email: string, code: string) => {
+    if (!hasSupabaseConfig) return;
+
+    setPasswordRecoveryStatus('processing');
+    setPasswordRecoveryError(null);
+
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: normalizeEmail(email),
+      token: code.replace(/\D/g, ''),
+      type: 'recovery',
+    });
+
+    if (error) {
+      await setPasswordRecoveryMarker(false);
+      setPasswordRecoveryStatus('invalid');
+      throw new Error(getAuthErrorMessage(error));
+    }
+    if (!data.session || !data.user) {
+      await setPasswordRecoveryMarker(false);
+      setPasswordRecoveryStatus('invalid');
+      throw new Error('This verification code could not start a password recovery session. Request a new code.');
+    }
+
+    setSession(data.session);
+    setProfile(makeFallbackProfile(data.user));
+    try {
+      setProfile(await fetchProfile(data.user));
+    } catch (profileError) {
+      console.warn('Recovery code verified, but the profile could not be refreshed:', profileError);
+    }
+    await setPasswordRecoveryMarker(true);
+    setPasswordRecoveryStatus('ready');
+    setPasswordRecoveryError(null);
+  }, [fetchProfile]);
 
   const updatePassword = useCallback(async (password: string) => {
     if (!hasSupabaseConfig) return;
@@ -578,6 +612,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       resendVerification,
       resetPassword,
+      verifyPasswordRecoveryCode,
       updatePassword,
       completePasswordRecovery,
       passwordRecoveryStatus,
@@ -602,6 +637,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signInWithGoogle,
       signUp,
       updatePassword,
+      verifyPasswordRecoveryCode,
     ]
   );
 

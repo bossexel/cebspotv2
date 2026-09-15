@@ -24,19 +24,16 @@
                   <strong>Dear Spotter:</strong>
                 </p>
                 <p style="margin: 0 0 24px; color: #4a463d; font-size: 16px; line-height: 24px;">
-                  We received a request to reset your CebSpot password. Tap the button below to choose a new one.
+                  We received a request to reset your CebSpot password. Enter this verification code in CebSpot:
                 </p>
-                <p style="margin: 0 0 24px;">
-                  <a
-                    href="{{ .ConfirmationURL }}"
-                    style="display: inline-block; background: #fa5f00; color: #ffffff; padding: 14px 22px; text-decoration: none; font-size: 15px; font-weight: 700;"
-                  >Reset my password</a>
-                </p>
+                <p
+                  style="margin: 0 0 24px; background: #fff1e8; border: 1px solid #ffd2b5; color: #b84400; padding: 18px 22px; text-align: center; font-size: 32px; line-height: 40px; font-weight: 700; letter-spacing: 8px;"
+                >{{ .Token }}</p>
                 <p style="margin: 0 0 8px; color: #4a463d; font-size: 13px; line-height: 20px;">
-                  If the button cannot be clicked, copy the link below and open it directly in your browser:
+                  Return to the CebSpot app and enter this six-digit code. Do not share it with anyone.
                 </p>
-                <p style="margin: 0; overflow-wrap: anywhere; font-size: 12px; line-height: 18px;">
-                  <a href="{{ .ConfirmationURL }}" style="color: #b84400;">{{ .ConfirmationURL }}</a>
+                <p style="margin: 0; color: #7d7767; font-size: 12px; line-height: 18px;">
+                  This code expires according to your CebSpot account security settings and can only be used once.
                 </p>
                 <p style="margin: 24px 0 0; color: #4a463d; font-size: 16px; line-height: 24px;">
                   The CebSpot Team

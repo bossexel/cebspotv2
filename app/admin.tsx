@@ -14,7 +14,6 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Svg, Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
-import * as ExpoLinking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
@@ -502,10 +501,13 @@ export default function AdminConsoleScreen() {
         onSignIn={signIn}
         onLogout={() => handleSignOut(false)}
         onResetPassword={async (email) => {
-          const { error } = await client.auth.resetPasswordForEmail(normalizeAuthEmail(email), {
-            redirectTo: ExpoLinking.createURL('/reset-password'),
-          });
+          const normalizedEmail = normalizeAuthEmail(email);
+          const { error } = await client.auth.resetPasswordForEmail(normalizedEmail);
           if (error) throw new Error(getAuthErrorMessage(error));
+          router.push({
+            pathname: '/reset-password',
+            params: { email: normalizedEmail, requested: '1', returnTo: 'admin' },
+          });
         }}
       />
     );

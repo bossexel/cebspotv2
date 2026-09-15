@@ -92,7 +92,7 @@ export function getAuthErrorMessage(error: unknown) {
   }
 
   if (lowerMessage.includes('expired') || lowerMessage.includes('invalid token') || lowerMessage.includes('otp')) {
-    return 'This reset link is invalid or has expired. Request a new link to continue.';
+    return 'This verification code is invalid or has expired. Request a new code.';
   }
 
   return message || 'Something went wrong. Please try again.';
