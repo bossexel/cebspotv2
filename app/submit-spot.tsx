@@ -101,6 +101,7 @@ export default function SubmitSpotScreen() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
+  const [privacyNoticeAccepted, setPrivacyNoticeAccepted] = useState(false);
   const primaryCategory = selectedCategories[0] ?? null;
   const hasFormContent = useMemo(
     () =>
@@ -649,6 +650,24 @@ export default function SubmitSpotScreen() {
             variant: 'destructive',
             disabled: savingDraft,
             onPress: () => void exitWithoutSaving(),
+          },
+        ]}
+      />
+
+      <ConfirmationModal
+        visible={!privacyNoticeAccepted}
+        title="Privacy notice"
+        message="For compliance with the Data Privacy Act, any image containing a visible face will have the face automatically blurred before the spot is posted. Select I Agree to continue filling out the spot details."
+        onRequestClose={() => router.back()}
+        actions={[
+          {
+            label: 'Not Now',
+            onPress: () => router.back(),
+          },
+          {
+            label: 'I Agree',
+            variant: 'primary',
+            onPress: () => setPrivacyNoticeAccepted(true),
           },
         ]}
       />
