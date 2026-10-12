@@ -2,9 +2,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import type { NewOwnerAccessRequest, OwnerAccessRequest } from '../types';
 import { activityService } from './activityService';
-import { spotSubmissionService } from './spotSubmissionService';
-
-const localOwnerAccessRequests: OwnerAccessRequest[] = [];
 
 export type SpotClaimStatus = {
   spotId: string;
@@ -16,22 +13,6 @@ export type SpotClaimStatus = {
 
 export type OwnerBusinessEmailStatus = 'available' | 'registered' | 'pending' | 'invalid' | 'unknown';
 
-function looksLikeMissingTable(error: any) {
-  return /owner_access_requests|relation|schema cache|does not exist/i.test(error?.message ?? '');
-}
-
-function buildFallbackDescription(request: NewOwnerAccessRequest) {
-  return [
-    'Owner access request for CebSpot reservations.',
-    `Contact: ${request.contact_name} <${request.contact_email}>`,
-    request.contact_phone ? `Phone: ${request.contact_phone}` : null,
-    `Needs: ${request.access_needs.join(', ')}`,
-    request.message ? `Message: ${request.message}` : null,
-  ]
-    .filter(Boolean)
-    .join('\n');
-}
-
 function normalizeOwnerAccessRequest(row: any): OwnerAccessRequest {
   return {
     ...row,
@@ -41,6 +22,14 @@ function normalizeOwnerAccessRequest(row: any): OwnerAccessRequest {
 }
 
 export const ownerAccessService = {
+  async createDraft(businessEmail: string): Promise<string> {
+    if (!hasSupabaseConfig) throw new Error('A connected, signed-in account is required.');
+    const {data,error}=await supabase.rpc('create_owner_application_draft',{candidate_email:businessEmail.trim().toLowerCase()});
+    if(error)throw error;
+    const draft=Array.isArray(data)?data[0]:data;
+    if(!draft?.id)throw new Error('The server did not create an application draft.');
+    return draft.id;
+  },
   async getBusinessEmailStatus(
     email: string,
     client: SupabaseClient = supabase,
@@ -143,73 +132,14 @@ export const ownerAccessService = {
     return ownedSpot?.id ? String(ownedSpot.id) : null;
   },
 
-  async createRequest(request: NewOwnerAccessRequest, userName: string): Promise<OwnerAccessRequest> {
-    if (!hasSupabaseConfig) {
-      const created: OwnerAccessRequest = {
-        id: `local-owner-access-${Date.now()}`,
-        status: 'pending',
-        admin_notes: null,
-        created_at: new Date().toISOString(),
-        ...request,
-      };
-      localOwnerAccessRequests.unshift(created);
-      return created;
+  async createRequest(request: NewOwnerAccessRequest, userName: string, draftId?: string): Promise<OwnerAccessRequest> {
+    if (!hasSupabaseConfig || !request.requester_id || !draftId) {
+      throw new Error('Sign in and start an owned application draft before submitting.');
     }
-
-    if (!request.requester_id) {
-      const { error } = await supabase.from('owner_access_requests').insert(request);
-      if (error) {
-        if (!looksLikeMissingTable(error)) throw error;
-        throw new Error('Owner access requests are temporarily unavailable. Please try again later.');
-      }
-
-      return normalizeOwnerAccessRequest({
-        ...request,
-        id: `submitted-owner-access-${Date.now()}`,
-        status: 'pending',
-        admin_notes: null,
-        created_at: new Date().toISOString(),
-      });
-    }
-
-    const { data, error } = await supabase
-      .from('owner_access_requests')
-      .insert(request)
-      .select('*')
-      .single();
-
-    if (error) {
-      if (!looksLikeMissingTable(error)) throw error;
-
-      if (!request.requester_id) {
-        throw new Error('Owner access requests are temporarily unavailable. Please try again later.');
-      }
-
-      const fallback = await spotSubmissionService.createSubmission(
-        {
-          name: request.spot_name,
-          description: buildFallbackDescription(request),
-          address: request.spot_address,
-          category: request.category,
-          latitude: 10.3157,
-          longitude: 123.8854,
-          images: [],
-          reservation_fee: 0,
-          submitter_id: request.requester_id,
-        },
-        userName,
-      );
-
-      return {
-        id: `fallback-${fallback.id}`,
-        status: 'pending',
-        admin_notes: null,
-        created_at: fallback.created_at,
-        updated_at: fallback.updated_at,
-        ...request,
-      };
-    }
-
+    const {data:result,error}=await supabase.rpc('submit_owner_application',{draft_id:draftId,application:request});
+    if(error)throw error;
+    const data=Array.isArray(result)?result[0]:result;
+    if(!data?.id)throw new Error('The server did not confirm application submission.');
     const created = normalizeOwnerAccessRequest(data);
 
     if (!request.requester_id) return created;

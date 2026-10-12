@@ -34,7 +34,7 @@ exports.startPostgres = async function startPostgres(root) {
   return {
     query: (sql, parameters) => client.query(sql, parameters),
     exec: sql => client.query(sql),
-    async connect() { const connection = new Client(config); await connection.connect(); return connection; },
+    async connect() { const connection = new Client({ ...config, connectionTimeoutMillis: 5000 }); await connection.connect(); return connection; },
     async close() {
       await client.end();
       execFileSync(binaries.pg_ctl, ['-D', data, '-m', 'fast', '-w', 'stop'], { windowsHide: true, stdio: 'pipe' });

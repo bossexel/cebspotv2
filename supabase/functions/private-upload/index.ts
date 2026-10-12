@@ -2,8 +2,8 @@ import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import { getUserFromRequest, makeServiceClient } from '../_shared/paymongo.ts';
 import { readPrivateUpload, privateUploadExtension, UploadError } from '../_shared/privateUpload.ts';
 
-// This endpoint accepts bytes only after verifying a customer-owned, active
-// reservation. The service role remains here; clients cannot insert objects.
+// Accept bytes only after persistent admission for an owned active reservation
+// or owner application draft. The service role remains server-side.
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return jsonResponse({ error: 'Method not allowed.' }, 405);
@@ -14,24 +14,26 @@ Deno.serve(async (request: Request) => {
     catch { return jsonResponse({ error: 'Authentication required.' }, 401); }
     const url = new URL(request.url);
     const id = url.searchParams.get('resourceId') ?? '';
-    if (url.searchParams.get('kind') !== 'reservation_proof' || !/^[0-9a-f-]{36}$/i.test(id)) {
+    const kind = url.searchParams.get('kind');
+    if (!['reservation_proof','owner_document'].includes(kind ?? '') || !/^[0-9a-f-]{36}$/i.test(id)) {
       return jsonResponse({ error: 'Invalid upload request.' }, 400);
     }
-    const { data: reservation, error } = await client.from('reservations')
-      .select('id,user_id,status,payment_required,payment_status,payment_method,hold_expires_at')
-      .eq('id', id).eq('user_id', user.id).single();
-    if (error || !reservation) return jsonResponse({ error: 'Reservation unavailable.' }, 403);
-    if (!reservation.payment_required || !['pending','pending_payment','rescheduled'].includes(reservation.status)
-      || !['pending','unpaid','failed'].includes(reservation.payment_status)
-      || (reservation.payment_method && reservation.payment_method !== 'gcash')
-      || !(Date.parse(reservation.hold_expires_at) > Date.now())) {
-      return jsonResponse({ error: 'Reservation hold is no longer eligible for proof.' }, 409);
-    }
+    // Persistent admission runs before reading bytes; its profile row lock
+    // serializes quotas across Edge isolates and simultaneous requests.
+    const { data: admissionData, error: admissionError } = await client.rpc('claim_private_upload', {
+      customer_id:user.id,upload_kind:kind,target_resource_id:id,
+    });
+    if (admissionError) return jsonResponse({ error: 'Upload request unavailable or expired.' }, admissionError.code === '42501' ? 403 : 503);
+    const admission = Array.isArray(admissionData) ? admissionData[0] : admissionData;
+    if (!admission?.allowed) return new Response(JSON.stringify({error:'Private upload limit reached. Retry later.',retryAfter:admission?.retry_after ?? 60}), {
+      status:429,headers:{...corsHeaders,'Content-Type':'application/json','Retry-After':String(admission?.retry_after ?? 60)},
+    });
     const mime = (request.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
     const bytes = await readPrivateUpload(request);
     const extension = privateUploadExtension(bytes, mime);
-    const path = `${user.id}/${id}/${crypto.randomUUID()}.${extension}`;
-    const uploaded = await client.storage.from('payment-proofs').upload(path, bytes, { contentType: mime, upsert: false });
+    const path = `${user.id}/${id}/${admission.id}.${extension}`;
+    const bucket = kind === 'owner_document' ? 'owner-verification-documents' : 'payment-proofs';
+    const uploaded = await client.storage.from(bucket).upload(path, bytes, { contentType: mime, upsert: false });
     if (uploaded.error) return jsonResponse({ error: 'Private upload unavailable. Retry while your hold is active.' }, 503);
     return jsonResponse({ path }, 201);
   } catch (error) {

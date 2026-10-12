@@ -1,0 +1,12 @@
+{
+  "label": "phase-8-owner-typecheck",
+  "command": [
+    "npm",
+    "run",
+    "typecheck"
+  ],
+  "startedAt": "2026-10-12T19:26:54.840Z",
+  "finishedAt": "2026-10-12T19:27:26.668Z",
+  "exitCode": 0,
+  "output": "\n> cebspot@1.0.0 typecheck\n> tsc --noEmit\n\n"
+}

@@ -10,6 +10,14 @@ function fixture(options={}) {
   let handler;const writes=[];let reads=0;
   const record={id:resource,user_id:ids.a,status:'pending_payment',payment_required:true,payment_status:'pending',payment_method:null,hold_expires_at:new Date(Date.now()+300000).toISOString(),...options.record};
   const client={from(){let matches=true;return {select(){reads++;return this},eq(key,value){matches &&= record[key]===value;return this},async single(){return {data:matches?record:null,error:null}}}},storage:{from(bucket){return {async upload(path,bytes,settings){writes.push({bucket,path,bytes,settings});return {error:options.failStorage?{}:null}}}}}};
+  client.rpc=async(name,args)=>{
+    reads++;
+    if(options.rateLimited)return {data:{allowed:false,retry_after:60},error:null};
+    const valid=args.customer_id===record.user_id && args.target_resource_id===record.id && record.payment_required
+      && ['pending','pending_payment','rescheduled'].includes(record.status) && ['pending','unpaid','failed'].includes(record.payment_status)
+      && (!record.payment_method || record.payment_method==='gcash') && Date.parse(record.hold_expires_at)>Date.now();
+    return valid?{data:{allowed:true,id:webcrypto.randomUUID()},error:null}:{data:null,error:{code:'42501'}};
+  };
   load('supabase/functions/private-upload/index.ts',{
     '../_shared/cors.ts':{corsHeaders:{},jsonResponse(body,status=200){return new Response(JSON.stringify(body),{status})}},
     '../_shared/paymongo.ts':{makeServiceClient:()=>client,async getUserFromRequest(req){if(req.headers.get('authorization')!=='Bearer fixture-auth')throw Error('Auth');return {id:ids.a}}},
@@ -31,9 +39,12 @@ test('validated upload gets a private user/reservation/random-object path',async
   assert.equal(f.writes[0].bucket,'payment-proofs');assert.equal(f.writes[0].settings.upsert,false);assert.equal(f.writes[0].settings.contentType,'image/png');
 });
 test('MIME mismatch, empty files, excess bytes and unsupported request kinds do not write storage',async()=>{
-  for(const input of [{mime:'image/jpeg'},{body:new Uint8Array()},{body:new Uint8Array(5*1024*1024+1)},{mime:'text/html'},{kind:'owner_document'},{id:'../escape'}]) {
+  for(const input of [{mime:'image/jpeg'},{body:new Uint8Array()},{body:new Uint8Array(5*1024*1024+1)},{mime:'text/html'},{kind:'arbitrary_bucket'},{id:'../escape'}]) {
     const f=fixture();assert.ok([400,413,415].includes((await f.call(input)).status));assert.equal(f.writes.length,0);
   }
+});
+test('persistent admission refusal returns predictable 429 and Retry-After before storage writes',async()=>{
+  const f=fixture({rateLimited:true});const response=await f.call();assert.equal(response.status,429);assert.equal(response.headers.get('retry-after'),'60');assert.equal(f.writes.length,0);
 });
 test('storage failure has predictable 503 without exposing credentials or private content',async()=>{
   const f=fixture({failStorage:true});const response=await f.call();assert.equal(response.status,503);assert.deepEqual(Object.keys(await response.json()),['error']);

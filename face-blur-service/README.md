@@ -145,14 +145,14 @@ After changing a public Expo environment variable, create a new preview or produ
 
 The repository root contains `render.yaml`, and this service contains a production `Dockerfile`. The Docker build downloads and checksum-verifies both public MediaPipe models, while `.dockerignore` keeps the local virtual environment, temporary images, and local model copies out of the build context.
 
-1. Push this repository to the Git provider connected to Render.
-2. In Render, create a Blueprint from the root `render.yaml`.
-3. Enter the allowed web origins when prompted for `FACE_BLUR_ALLOWED_ORIGINS`. Native Android requests do not rely on browser CORS, but deployed web origins should be listed explicitly.
+1. Use an isolated staging Render service; production deployment is outside this remediation run.
+2. Use the face service configuration in the root `render.yaml`, retaining the existing admin service.
+3. Set server-only `SUPABASE_URL` and `SUPABASE_ANON_KEY` to the same isolated Auth project as Android. Set `FACE_BLUR_ALLOWED_ORIGINS` explicitly for any retained admin origin.
 4. Wait for `/health` to pass, then copy the generated HTTPS service URL.
-5. Set that URL as `EXPO_PUBLIC_FACE_BLUR_API_URL` for both the EAS `preview` and `production` environments.
+5. Set that URL as `EXPO_PUBLIC_FACE_BLUR_API_URL` for the isolated staging preview build.
 6. Rebuild the Android app.
 
-The container binds to Render's `PORT` value and runs one Uvicorn process. Keep one process per instance because anonymization job status is held in private process memory until its short TTL expires.
+The container binds to Render's `PORT` value. Run exactly **one Uvicorn worker and one Render replica**, with autoscaling disabled. A filesystem lock rejects a second worker on the same instance. Admission and ownership state are in memory; multiple replicas require shared admission/job storage first. A restart removes abandoned job files; the Android client may retry lost jobs.
 
 ## Health Check
 
@@ -163,15 +163,15 @@ curl http://localhost:8000/health
 Expected:
 
 ```json
-{"status":"ok","service":"cebspot-face-anonymizer","face_detector":"mediapipe-dual-range","min_detection_confidence":0.5,"tile_size":768,"max_tiles":64,"max_image_dimension":3072}
+{"status":"ok","service":"cebspot-face-anonymizer"}
 ```
 
 ## Upload Test
 
 ```bash
-curl -X POST http://localhost:8000/api/anonymize \
-  -F "image=@sample-face.jpg" \
-  --output anonymized-sample-face.jpg
+curl -X POST http://localhost:8000/api/anonymize-jobs \
+  -H "Authorization: Bearer $STAGING_ACCESS_TOKEN" \
+  -F "image=@synthetic-test.png"
 ```
 
 Expo mobile uploads use the asynchronous job endpoint below. It stores the original only in the private temporary directory and responds as soon as the upload is validated:
@@ -179,6 +179,7 @@ Expo mobile uploads use the asynchronous job endpoint below. It stores the origi
 ```text
 POST /api/anonymize-jobs
 Content-Type: multipart/form-data
+Authorization: Bearer <customer access token>
 Field: image
 ```
 
@@ -205,9 +206,13 @@ faces_detected
 processing_time_ms
 ```
 
-The binary `/api/anonymize` endpoint exposes the same values through `X-Faces-Detected` and `X-Processing-Time-Ms` headers.
+Polling and download require the same authenticated customer. Another customer receives 404, and anonymous requests receive 401 before reading an upload. The legacy `/api/anonymize`, `/api/anonymize-upload` and `/api/anonymize-base64` endpoints return 410 after authentication. Completed and failed jobs expire after 15 minutes (swept every 10 seconds).
 
-The older `/api/anonymize-upload` and `/api/anonymize-base64` endpoints remain available for direct testing. CebSpot uses jobs so long-running group photos do not exceed Expo Android's upload connection timeout. Completed and failed jobs expire after `FACE_BLUR_JOB_TTL_SECONDS`, default 15 minutes.
+Admission happens before multipart parsing: at most 2 pending jobs per user, 10 uploads per user per minute, a queue of 16, 1 processing child and 32 retained jobs. Rate tracking is capped at 1024 active users. Exhaustion returns 429 with `Retry-After: 60`; Auth verification has 8 bounded network slots and returns `Retry-After: 5` when full. Android stops automatic upload retries on 429.
+
+The total request is limited to the configured image limit plus 64 KiB multipart overhead. Upload reading times out after 30 seconds. A separate child process loads the detectors and processes one image with a 60-second deadline; timeout terminates and joins that child before the next job. Sources are removed on completion, and failure, interruption, result delivery, TTL and shutdown remove private temporary files. The parent does not log image data, credentials or raw worker exceptions. `/health` is public.
+
+Run local synthetic regression tests from the repository root: `python face-blur-service/tests/test_security.py`. These cover the ASGI boundary, quotas, private polling/results, actual detector blank-image smoke test, timeout termination and cleanup; real Android/device and container staging tests remain required.
 
 ## Safety Behavior
 
@@ -219,7 +224,7 @@ The older `/api/anonymize-upload` and `/api/anonymize-base64` endpoints remain a
 - Uses UUID-based temporary filenames.
 - Saves files under `FACE_BLUR_TEMP_DIR`.
 - Deletes both source and processed temporary files after success.
-- Deletes job originals immediately after processing and undownloaded results after the configured job TTL.
+- Deletes job originals immediately after processing and undownloaded results after 15 minutes.
 - Deletes partial files on processing failures.
 - Clamps face boxes to image boundaries.
 - Runs short-range and full-range detection on the complete image.

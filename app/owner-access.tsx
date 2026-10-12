@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -28,6 +28,7 @@ import { AppButton } from '../src/components/AppButton';
 import { colors } from '../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../src/constants/design';
 import { useTheme } from '../src/hooks/useTheme';
+import { useAuth } from '../src/hooks/useAuth';
 import { ownerAccessService } from '../src/services/ownerAccessService';
 import { ownerVerificationDocumentService, type VerificationDocument } from '../src/services/ownerVerificationDocumentService';
 import { isValidEmail, normalizeEmail } from '../src/utils/auth';
@@ -49,6 +50,9 @@ export default function OwnerAccessScreen() {
   }>();
   const { width } = useWindowDimensions();
   const { appColors } = useTheme();
+  const {profile}=useAuth();
+  const submissionInProgress=useRef(false);
+  const draft=useRef<{email:string,id:string,files:string[],uris:string}|null>(null);
   const wide = width >= 880;
   const selectedSpotId = firstParam(params.spotId);
 
@@ -119,7 +123,7 @@ export default function OwnerAccessScreen() {
 
   async function pickVerificationDocuments() {
     const result = await DocumentPicker.getDocumentAsync({
-      type: ['image/*', 'application/pdf'],
+      type: ['image/jpeg', 'image/png', 'application/pdf'],
       multiple: true,
       copyToCacheDirectory: true,
     });
@@ -142,6 +146,10 @@ export default function OwnerAccessScreen() {
   }
 
   async function submitRequest() {
+    if(submissionInProgress.current)return;
+    if(!profile){Alert.alert('Sign in required','Sign in to your personal CebSpot account before submitting a private owner application.',[
+      {text:'Cancel',style:'cancel'},{text:'Sign in',onPress:()=>router.push('/login')},
+    ]);return;}
     if (!contactName.trim() || !contactEmail.trim() || !spotName.trim() || !spotAddress.trim()) {
       Alert.alert('Missing details', 'Please complete your contact and spot details.');
       return;
@@ -155,9 +163,11 @@ export default function OwnerAccessScreen() {
       Alert.alert('Select access needs', 'Choose at least one owner portal area.');
       return;
     }
+    if(documents.length<1 || documents.length>3){Alert.alert('Documents required','Select 1 to 3 JPEG, PNG, or PDF documents, up to 5 MiB each.');return;}
 
     let uploadedDocuments: string[] = [];
     try {
+      submissionInProgress.current=true;
       setSubmitting(true);
       const emailStatus = await ownerAccessService.getBusinessEmailStatus(businessEmail);
       if (emailStatus === 'registered') {
@@ -179,11 +189,14 @@ export default function OwnerAccessScreen() {
         return;
       }
 
-      const requestKey = `owner-request-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      uploadedDocuments = await ownerVerificationDocumentService.upload(documents, requestKey);
+      if(draft.current?.email!==businessEmail)draft.current={email:businessEmail,id:await ownerAccessService.createDraft(businessEmail),files:[],uris:''};
+      const currentDraft=draft.current;
+      const uris=JSON.stringify(documents.map(document=>document.uri));
+      uploadedDocuments=currentDraft.uris===uris?currentDraft.files:await ownerVerificationDocumentService.upload(documents,currentDraft.id);
+      currentDraft.files=uploadedDocuments;currentDraft.uris=uris;
       await ownerAccessService.createRequest(
         {
-          requester_id: null,
+          requester_id: profile.id,
           spot_id: selectedSpotId ?? null,
           contact_name: contactName.trim(),
           contact_email: businessEmail,
@@ -196,6 +209,7 @@ export default function OwnerAccessScreen() {
           message: message.trim() || null,
         },
         contactName.trim() || 'Spot Owner',
+        currentDraft.id,
       );
       setSubmitted(true);
       Alert.alert(
@@ -203,10 +217,10 @@ export default function OwnerAccessScreen() {
         'CebSpot will review the documents. If approved, the unregistered business email will receive a secure account setup invitation.',
       );
     } catch (error: any) {
-      await ownerVerificationDocumentService.remove(uploadedDocuments).catch(() => undefined);
       console.error('Owner access request failed:', error);
       Alert.alert('Request failed', error.message ?? 'Please try again.');
     } finally {
+      submissionInProgress.current=false;
       setSubmitting(false);
     }
   }

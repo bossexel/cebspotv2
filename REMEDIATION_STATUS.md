@@ -26,7 +26,7 @@ Release decision: **NO-GO**. No audit finding is closed by a passing build alone
 | LA-07 indefinite holds | Local expiry/interruption/review tests pass; staging scheduler and device verification pending | Server timestamps/deadlines; availability/expiry/approval locking; service-only sweep RPC | Five-minute unattached hold expiry; interrupted upload; fixed 30-minute review; late approval rejection; inventory released before next claim |
 | LA-08 customer/owner web alerts | Outside Android v1 scope, not fixed; local distribution boundary verified | Separate Android/admin targets; unsupported native platforms denied; public owner portal/Vercel removed | 11 platform tests; default customer/owner web export rejected; actual exported admin route/login/recovery/alert checks pass; hosted deployment pending |
 | LA-09 customer/owner web uploads | Outside Android v1 scope, not fixed; local distribution boundary verified | Customer/owner web routes absent; retained admin document viewing and static Android payment handoff | Android Hermes/admin exports pass; removed URLs rejected in actual admin artifact; Auth/Storage/device verification remains open |
-| LA-10 upload abuse | Open P1 | Private request-bound upload; face worker authentication/admission | MIME/size/ownership; per-user/queue/concurrency/timeout/cleanup/429 |
+| LA-10 upload abuse | Local implementation verified; actual Auth/Storage/Render/device acceptance pending | `20261013000500_request_bound_private_uploads.sql`; protected owner drafts/submission; persistent private upload quotas; orphan cleanup; authenticated bounded face jobs and Android client | 20 SQL/manual workflows; 12 final owner/cleanup checks; 16 upload/client checks; 9 Python ASGI/process/detector checks; fresh replay and TypeScript pass. Counts overlap across runs. Staging limits and real Auth/Storage still require verification |
 
 ## Additional release checks
 
@@ -51,3 +51,7 @@ Open: truthful demo/offline states, contact/time validation, pre-signup privacy,
 ## Preservation and evidence
 
 Initial HEAD, status, and staged/unstaged binary diffs are retained privately in `.codex-tmp/remediation-baseline/`. Existing changes remain in place. New phase checks and acceptance evidence will be linked here and in `FINAL_AUDIT_CLOSURE.md`.
+
+## Phase 8 retained verification
+
+See `FINAL_AUDIT_CLOSURE.md` and the `phase-8-*` command reports for both failed and successful runs. Local six-role documents, concurrent quota admission, same-email submission races, protected proof workflows, private orphan cleanup and Android bearer transport pass. Nine Python tests use the actual ASGI boundary, terminate a hanging process, and run real MediaPipe on a generated blank image; they do not establish human-face blur quality or deployed capacity. Actual staging/Auth/Storage/device tests remain required. Apply migrations in lexical order through `20261013000500_request_bound_private_uploads.sql`; schedule cleanup and deploy the matching authenticated face service/client together in staging. No production actions occurred.

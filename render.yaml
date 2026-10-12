@@ -39,6 +39,10 @@ services:
     healthCheckPath: /health
     autoDeploy: true
     envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
       - key: FACE_BLUR_ALLOWED_ORIGINS
         sync: false
       - key: FACE_BLUR_MAX_IMAGE_BYTES
@@ -47,8 +51,6 @@ services:
         value: "3072"
       - key: FACE_BLUR_MAX_SOURCE_PIXELS
         value: "80000000"
-      - key: FACE_BLUR_JOB_TTL_SECONDS
-        value: "900"
       - key: FACE_DETECTION_MIN_CONFIDENCE
         value: "0.5"
       - key: FACE_PADDING_RATIO

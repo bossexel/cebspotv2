@@ -1,0 +1,11 @@
+{
+  "label": "phase-8-face-security",
+  "command": [
+    ".venv/Scripts/python.exe",
+    "face-blur-service/tests/test_security.py"
+  ],
+  "startedAt": "2026-10-12T21:16:25.121Z",
+  "finishedAt": "2026-10-12T21:16:25.620Z",
+  "exitCode": 101,
+  "output": "Unable to create process using '\"C:\\Users\\9real\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\python.exe\" face-blur-service/tests/test_security.py'\r\n"
+}

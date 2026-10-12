@@ -1,0 +1,12 @@
+{
+  "label": "phase-8-private-upload-migration",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/migrations.test.cjs"
+  ],
+  "startedAt": "2026-10-12T19:24:55.847Z",
+  "finishedAt": "2026-10-12T19:25:18.974Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: the complete timestamped migration chain creates required booking surfaces\nok 1 - the complete timestamped migration chain creates required booking surfaces\n  ---\n  duration_ms: 10480.1215\n  type: 'test'\n  ...\n# Subtest: fresh installation has no business/demo fixtures and does have required guards\nok 2 - fresh installation has no business/demo fixtures and does have required guards\n  ---\n  duration_ms: 19.7978\n  type: 'test'\n  ...\n# Subtest: migration version/checksum manifest is retained\nok 3 - migration version/checksum manifest is retained\n  ---\n  duration_ms: 4.1974\n  type: 'test'\n  ...\n# Subtest: an isolated previous-version fixture upgrades to the same schema without losing business rows\nok 4 - an isolated previous-version fixture upgrades to the same schema without losing business rows\n  ---\n  duration_ms: 11041.4236\n  type: 'test'\n  ...\n# Subtest: all six roles retain activity isolation after complete schema replay\nok 5 - all six roles retain activity isolation after complete schema replay\n  ---\n  duration_ms: 132.0545\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 22465.8494\n"
+}

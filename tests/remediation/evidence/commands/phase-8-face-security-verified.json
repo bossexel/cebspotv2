@@ -1,0 +1,11 @@
+{
+  "label": "phase-8-face-security-verified",
+  "command": [
+    ".venv/Scripts/python.exe",
+    "face-blur-service/tests/test_security.py"
+  ],
+  "startedAt": "2026-10-12T21:20:00.623Z",
+  "finishedAt": "2026-10-12T21:20:12.037Z",
+  "exitCode": 0,
+  "output": "test_auth_before_read_and_private_result (__main__.SecurityTests.test_auth_before_read_and_private_result) ... ok\r\ntest_mime_size_stream_limit_timeout_and_interruption_cleanup (__main__.SecurityTests.test_mime_size_stream_limit_timeout_and_interruption_cleanup) ... ok\r\ntest_process_timeout_terminates_child_before_return (__main__.SecurityTests.test_process_timeout_terminates_child_before_return) ... ok\r\ntest_queue_per_user_limits_and_single_concurrency (__main__.SecurityTests.test_queue_per_user_limits_and_single_concurrency) ... ok\r\ntest_rate_and_retained_state_are_bounded (__main__.SecurityTests.test_rate_and_retained_state_are_bounded) ... ok\r\ntest_real_detector_blank_image_smoke (__main__.SecurityTests.test_real_detector_blank_image_smoke) ... INFO: Created TensorFlow Lite XNNPACK delegate for CPU.\r\nW0000 00:00:1791840010.371708   37744 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.\r\nW0000 00:00:1791840010.397149   39116 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.\r\nok\r\ntest_second_worker_fails_and_cleanup_stays_in_job_root (__main__.SecurityTests.test_second_worker_fails_and_cleanup_stays_in_job_root) ... ok\r\ntest_worker_failure_cleanup_and_legacy_routes_retired (__main__.SecurityTests.test_worker_failure_cleanup_and_legacy_routes_retired) ... ok\r\n\r\n----------------------------------------------------------------------\r\nRan 8 tests in 5.594s\r\n\r\nOK\r\n"
+}

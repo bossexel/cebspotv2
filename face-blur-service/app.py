@@ -1,375 +1,157 @@
 import asyncio
-import base64
-import binascii
-import logging
-import os
-import threading
-import time
-from dataclasses import dataclass
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
-from starlette import status
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 
-from services.face_blur import AnonymizedImage, FaceBlurService, FaceBlurSettings, PreparedImage
+from services.face_blur import FaceBlurSettings, JPEG_SIGNATURES, PNG_SIGNATURE, SUPPORTED_TYPES
+from services.job_runtime import AdmissionError, JobRuntime, SupabaseVerifier
 
 load_dotenv()
 
-logger = logging.getLogger("cebspot-face-anonymizer")
-logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 
-settings = FaceBlurSettings.from_env()
-face_blur_service = FaceBlurService(settings)
-job_ttl_seconds = max(60, int(os.getenv("FACE_BLUR_JOB_TTL_SECONDS", "900")))
+class UploadBoundary:
+    """Authenticate and reserve capacity before multipart parsing or body reads."""
+    def __init__(self, app, runtime, verifier, upload_timeout=30):
+        self.app, self.runtime, self.verifier, self.upload_timeout = app, runtime, verifier, upload_timeout
 
-
-@dataclass
-class AnonymizationJob:
-    id: str
-    status: str
-    created_at: float
-    updated_at: float
-    result: AnonymizedImage | None = None
-    error: str | None = None
-
-
-anonymization_jobs: dict[str, AnonymizationJob] = {}
-anonymization_jobs_lock = threading.Lock()
-expiration_tasks: set[asyncio.Task] = set()
-
-app = FastAPI(title="CebSpot Face Anonymizer", version="1.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.allowed_origins,
-    allow_credentials=False,
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
-)
-
-
-class Base64AnonymizeRequest(BaseModel):
-    image_base64: str = Field(..., min_length=1)
-    media_type: str = Field(..., min_length=1)
-
-
-@app.on_event("startup")
-def startup_check() -> None:
-    face_blur_service.validate_startup()
-    logger.info("CebSpot face anonymizer ready")
-
-
-@app.on_event("shutdown")
-def shutdown_cleanup() -> None:
-    for task in list(expiration_tasks):
-        task.cancel()
-
-    with anonymization_jobs_lock:
-        jobs = list(anonymization_jobs.values())
-        anonymization_jobs.clear()
-
-    for job in jobs:
-        if job.result is not None:
-            for path in job.result.cleanup_paths:
-                _cleanup_file(path)
+    async def __call__(self, scope, receive, send):
+        if scope['type'] != 'http' or not scope['path'].startswith('/api/'):
+            return await self.app(scope, receive, send)
+        job = None
+        try:
+            header = dict(scope['headers']).get(b'authorization', b'').decode('ascii', errors='ignore')
+            if not header.startswith('Bearer ') or not 1 <= len(header[7:]) <= 8192:
+                raise AdmissionError(401, 'Sign in to privacy process photos.')
+            owner = await self.verifier(header[7:])
+            if not owner:
+                raise AdmissionError(401, 'Session expired. Sign in again.')
+            scope.setdefault('state', {})['owner'] = owner
+            if scope['method'] == 'POST' and scope['path'] == '/api/anonymize-jobs':
+                job = self.runtime.admit(owner)
+                scope['state']['job'] = job
+                limit = self.runtime.settings.max_image_bytes + 65536
+                length = dict(scope['headers']).get(b'content-length', b'')
+                if length and (not length.isdigit() or int(length) > limit):
+                    raise AdmissionError(413, 'Photo request is too large.')
+                body = bytearray()
+                try:
+                    async with asyncio.timeout(self.upload_timeout):
+                        while True:
+                            message = await receive()
+                            if message['type'] == 'http.disconnect':
+                                raise AdmissionError(400, 'Upload interrupted.')
+                            body.extend(message.get('body', b''))
+                            if len(body) > limit:
+                                raise AdmissionError(413, 'Photo request is too large.')
+                            if not message.get('more_body'):
+                                break
+                except TimeoutError:
+                    raise AdmissionError(408, 'Photo upload timed out.') from None
+                delivered = False
+                async def buffered_receive():
+                    nonlocal delivered
+                    if not delivered:
+                        delivered = True
+                        return {'type': 'http.request', 'body': bytes(body), 'more_body': False}
+                    return await receive()
+                await self.app(scope, buffered_receive, send)
+            else:
+                await self.app(scope, receive, send)
+        except AdmissionError as error:
+            await JSONResponse({'detail': error.detail}, status_code=error.status,
+                               headers={'Retry-After': str(error.retry)} if error.status == 429 else {})(scope, receive, send)
+        finally:
+            if job and job.status == 'uploading':
+                self.runtime.remove(job.id)
 
 
-@app.get("/health")
-def health() -> dict[str, str | float | int]:
-    return {
-        "status": "ok",
-        "service": "cebspot-face-anonymizer",
-        "face_detector": "mediapipe-dual-range",
-        "min_detection_confidence": settings.min_detection_confidence,
-        "tile_size": settings.tile_size,
-        "max_tiles": settings.max_tiles,
-        "max_image_dimension": settings.max_image_dimension,
-    }
+def create_app(settings=None, verifier=None, runtime=None, upload_timeout=30):
+    settings = settings or FaceBlurSettings.from_env()
+    runtime = runtime or JobRuntime(settings)
+    current_verifier = verifier
+    async def verify(token):
+        return await current_verifier(token)
+
+    @asynccontextmanager
+    async def lifespan(app):
+        nonlocal current_verifier
+        current_verifier = current_verifier or SupabaseVerifier()
+        if not 1 <= settings.max_image_bytes <= 10485760:
+            raise RuntimeError('Photo byte limit must be between 1 and 10485760.')
+        if not settings.short_model_path.is_file() or not settings.full_model_path.is_file():
+            raise RuntimeError('Both face models are required.')
+        await runtime.start()
+        try:
+            yield
+        finally:
+            await runtime.close()
+
+    app = FastAPI(title='CebSpot Face Anonymizer', version='2.0.0', lifespan=lifespan,
+                  docs_url=None, redoc_url=None, openapi_url=None)
+    app.state.runtime = runtime
+    app.add_middleware(UploadBoundary, runtime=runtime, verifier=verify, upload_timeout=upload_timeout)
+    app.add_middleware(CORSMiddleware, allow_origins=settings.allowed_origins, allow_methods=['GET', 'POST'],
+                       allow_headers=['Content-Type', 'Authorization'])
+
+    @app.get('/health')
+    async def health():
+        return {'status': 'ok', 'service': 'cebspot-face-anonymizer'}
+
+    @app.post('/api/anonymize-jobs', status_code=202)
+    async def create_job(request: Request, image: UploadFile = File(...)):
+        job = request.state.job
+        try:
+            mime = (image.content_type or '').lower().split(';')[0].strip()
+            if mime not in SUPPORTED_TYPES:
+                raise HTTPException(415, 'Only JPEG and PNG photos are supported.')
+            data = await image.read(settings.max_image_bytes + 1)
+            if not data or len(data) > settings.max_image_bytes:
+                raise HTTPException(413, 'Photo is empty or too large.')
+            if not (data.startswith(PNG_SIGNATURE) if mime == 'image/png' else any(data.startswith(s) for s in JPEG_SIGNATURES)):
+                raise HTTPException(415, 'Photo content does not match its declared type.')
+            runtime.enqueue(job, data, mime)
+            return {'job_id': job.id, 'status': job.status}
+        finally:
+            await image.close()
+
+    def owned_job(request, job_id):
+        job = runtime.jobs.get(job_id)
+        if not job or job.owner != request.state.owner:
+            raise HTTPException(404, 'Anonymization job not found.')
+        return job
+
+    @app.get('/api/anonymize-jobs/{job_id}')
+    async def poll(request: Request, job_id: str):
+        job = owned_job(request, job_id)
+        result = {'job_id': job.id, 'status': job.status}
+        if job.status == 'failed':
+            result['detail'] = 'Photo processing failed or timed out. Retry with a smaller photo.'
+        if job.result:
+            result.update({key: job.result[key] for key in ('faces_detected', 'processing_time_ms')})
+        return result
+
+    @app.get('/api/anonymize-jobs/{job_id}/result')
+    async def download(request: Request, job_id: str, background_tasks: BackgroundTasks):
+        job = owned_job(request, job_id)
+        if job.status != 'complete' or not job.result:
+            raise HTTPException(409, 'Anonymized photo is not ready.')
+        path = Path(job.result['output_path']).resolve()
+        if path.parent != job.directory.resolve() or not path.is_file():
+            raise HTTPException(410, 'Anonymized photo expired.')
+        job.status = 'delivering'
+        background_tasks.add_task(runtime.remove, job.id)
+        return FileResponse(path, media_type=job.result['media_type'], background=background_tasks,
+                            headers={'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'})
+
+    @app.post('/api/{legacy_path:path}')
+    async def retired():
+        raise HTTPException(410, 'Use the authenticated bounded anonymize-jobs API.')
+
+    return app
 
 
-@app.post("/api/anonymize-jobs", status_code=status.HTTP_202_ACCEPTED)
-async def create_anonymization_job(
-    background_tasks: BackgroundTasks,
-    image: UploadFile | None = File(default=None),
-) -> dict[str, str]:
-    if image is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image file is required.")
-
-    try:
-        prepared = await face_blur_service.prepare_upload(image)
-    except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    except Exception as error:
-        logger.exception("unable to prepare anonymization job")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="We couldn't prepare this photo for privacy protection. Please try again.",
-        ) from error
-
-    now = time.time()
-    job = AnonymizationJob(
-        id=prepared.request_id,
-        status="queued",
-        created_at=now,
-        updated_at=now,
-    )
-    with anonymization_jobs_lock:
-        anonymization_jobs[job.id] = job
-
-    background_tasks.add_task(_process_anonymization_job, job.id, prepared)
-    return {"job_id": job.id, "status": job.status}
-
-
-@app.get("/api/anonymize-jobs/{job_id}")
-def get_anonymization_job(job_id: str) -> dict[str, str | int]:
-    job = _get_job_or_404(job_id)
-    response: dict[str, str | int] = {"job_id": job.id, "status": job.status}
-
-    if job.error:
-        response["detail"] = job.error
-    if job.result is not None:
-        response["faces_detected"] = job.result.faces_detected
-        response["processing_time_ms"] = job.result.processing_time_ms
-
-    return response
-
-
-@app.get("/api/anonymize-jobs/{job_id}/result")
-def download_anonymization_job_result(
-    job_id: str,
-    background_tasks: BackgroundTasks,
-) -> FileResponse:
-    with anonymization_jobs_lock:
-        job = anonymization_jobs.get(job_id)
-        if job is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anonymization job not found.")
-        if job.status == "failed":
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=job.error or "Image anonymization failed.",
-            )
-        if job.status != "complete" or job.result is None:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Anonymized image is not ready yet.")
-        if not job.result.output_path.is_file():
-            raise HTTPException(status_code=status.HTTP_410_GONE, detail="Anonymized image has expired.")
-
-        job.status = "delivering"
-        job.updated_at = time.time()
-        result = job.result
-
-    background_tasks.add_task(_remove_anonymization_job, job_id)
-    return FileResponse(
-        result.output_path,
-        media_type=result.media_type,
-        filename=f"anonymized-{result.output_path.name}",
-        headers={
-            "Cache-Control": "no-store",
-            "X-Content-Type-Options": "nosniff",
-            "X-Faces-Detected": str(result.faces_detected),
-            "X-Processing-Time-Ms": str(result.processing_time_ms),
-        },
-        background=background_tasks,
-    )
-
-
-@app.post("/api/anonymize-base64")
-async def anonymize_image_base64(payload: Base64AnonymizeRequest) -> dict[str, str | int]:
-    result = None
-
-    try:
-        encoded_image = payload.image_base64.strip()
-        if encoded_image.lower().startswith("data:") and "," in encoded_image:
-            encoded_image = encoded_image.split(",", 1)[1]
-        max_base64_chars = ((settings.max_image_bytes + 2) // 3) * 4 + 1024
-        if len(encoded_image) > max_base64_chars:
-            raise ValueError("Image is too large.")
-
-        image_bytes = base64.b64decode(encoded_image, validate=True)
-        result = await face_blur_service.anonymize_bytes(image_bytes, payload.media_type)
-        anonymized_base64 = base64.b64encode(result.output_path.read_bytes()).decode("ascii")
-
-        return {
-            "image_base64": anonymized_base64,
-            "media_type": result.media_type,
-            "faces_detected": result.faces_detected,
-            "processing_time_ms": result.processing_time_ms,
-        }
-    except (ValueError, binascii.Error) as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    except TimeoutError as error:
-        logger.warning("anonymization failed: timeout")
-        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="Image processing timed out.") from error
-    except RuntimeError as error:
-        logger.warning("anonymization failed: %s", error)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="We couldn't process this photo for privacy protection. Please try again.",
-        ) from error
-    except Exception as error:
-        logger.exception("anonymization failed unexpectedly")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Image anonymization failed.") from error
-    finally:
-        if result is not None:
-            for path in result.cleanup_paths:
-                _cleanup_file(path)
-
-
-@app.post("/api/anonymize-upload")
-async def anonymize_image_upload_json(image: UploadFile | None = File(default=None)) -> dict[str, str | int]:
-    if image is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image file is required.")
-
-    result = None
-
-    try:
-        result = await face_blur_service.anonymize_upload(image)
-        anonymized_base64 = base64.b64encode(result.output_path.read_bytes()).decode("ascii")
-
-        return {
-            "image_base64": anonymized_base64,
-            "media_type": result.media_type,
-            "faces_detected": result.faces_detected,
-            "processing_time_ms": result.processing_time_ms,
-        }
-    except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    except TimeoutError as error:
-        logger.warning("anonymization failed: timeout")
-        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="Image processing timed out.") from error
-    except RuntimeError as error:
-        logger.warning("anonymization failed: %s", error)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="We couldn't process this photo for privacy protection. Please try again.",
-        ) from error
-    except Exception as error:
-        logger.exception("anonymization failed unexpectedly")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Image anonymization failed.") from error
-    finally:
-        if result is not None:
-            for path in result.cleanup_paths:
-                _cleanup_file(path)
-
-
-@app.post("/api/anonymize")
-async def anonymize_image(
-    background_tasks: BackgroundTasks,
-    image: UploadFile | None = File(default=None),
-) -> FileResponse:
-    if image is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image file is required.")
-
-    try:
-        result = await face_blur_service.anonymize_upload(image)
-    except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error)) from error
-    except TimeoutError as error:
-        logger.warning("anonymization failed: timeout")
-        raise HTTPException(status_code=status.HTTP_504_GATEWAY_TIMEOUT, detail="Image processing timed out.") from error
-    except RuntimeError as error:
-        logger.warning("anonymization failed: %s", error)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="We couldn't process this photo for privacy protection. Please try again.",
-        ) from error
-    except Exception as error:
-        logger.exception("anonymization failed unexpectedly")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Image anonymization failed.") from error
-
-    for path in result.cleanup_paths:
-        background_tasks.add_task(_cleanup_file, path)
-
-    return FileResponse(
-        result.output_path,
-        media_type=result.media_type,
-        filename=f"anonymized-{result.output_path.name}",
-        headers={
-            "X-Faces-Detected": str(result.faces_detected),
-            "X-Processing-Time-Ms": str(result.processing_time_ms),
-        },
-        background=background_tasks,
-    )
-
-
-def _cleanup_file(path: Path) -> None:
-    try:
-        path.unlink(missing_ok=True)
-    except Exception:
-        logger.warning("temporary cleanup failed for %s", path.name)
-
-
-def _get_job_or_404(job_id: str) -> AnonymizationJob:
-    with anonymization_jobs_lock:
-        job = anonymization_jobs.get(job_id)
-    if job is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anonymization job not found.")
-    return job
-
-
-async def _process_anonymization_job(job_id: str, prepared: PreparedImage) -> None:
-    with anonymization_jobs_lock:
-        job = anonymization_jobs.get(job_id)
-        if job is None:
-            _cleanup_file(prepared.source_path)
-            return
-        job.status = "processing"
-        job.updated_at = time.time()
-
-    try:
-        result = await face_blur_service.anonymize_prepared(prepared)
-        _cleanup_file(prepared.source_path)
-    except ValueError as error:
-        logger.warning("anonymization job %s rejected: %s", job_id, error)
-        _mark_anonymization_job_failed(job_id, str(error))
-    except Exception:
-        logger.exception("anonymization job %s failed", job_id)
-        _mark_anonymization_job_failed(
-            job_id,
-            "We couldn't process this photo for privacy protection. Please try again.",
-        )
-    else:
-        with anonymization_jobs_lock:
-            job = anonymization_jobs.get(job_id)
-            if job is None:
-                for path in result.cleanup_paths:
-                    _cleanup_file(path)
-                return
-            job.result = result
-            job.status = "complete"
-            job.updated_at = time.time()
-    finally:
-        _schedule_job_expiration(job_id)
-
-
-def _mark_anonymization_job_failed(job_id: str, detail: str) -> None:
-    with anonymization_jobs_lock:
-        job = anonymization_jobs.get(job_id)
-        if job is None:
-            return
-        job.status = "failed"
-        job.error = detail
-        job.updated_at = time.time()
-
-
-def _schedule_job_expiration(job_id: str) -> None:
-    task = asyncio.create_task(_expire_anonymization_job(job_id))
-    expiration_tasks.add(task)
-    task.add_done_callback(expiration_tasks.discard)
-
-
-async def _expire_anonymization_job(job_id: str) -> None:
-    await asyncio.sleep(job_ttl_seconds)
-    _remove_anonymization_job(job_id)
-
-
-def _remove_anonymization_job(job_id: str) -> None:
-    with anonymization_jobs_lock:
-        job = anonymization_jobs.pop(job_id, None)
-
-    if job is not None and job.result is not None:
-        for path in job.result.cleanup_paths:
-            _cleanup_file(path)
+app = create_app()

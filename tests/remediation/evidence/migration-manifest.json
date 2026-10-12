@@ -41,6 +41,10 @@
     {
       "name": "20261013000400_durable_checkout_and_payment_events.sql",
       "sha256": "e036813d1387a4f051898551332fc5f411b942823bbf4f01313cd1b01be1b0f6"
+    },
+    {
+      "name": "20261013000500_request_bound_private_uploads.sql",
+      "sha256": "9dd661e41712f77d408b5fc04e3781d135fa0a13477427b80d0b8af6710845c8"
     }
   ]
 }
