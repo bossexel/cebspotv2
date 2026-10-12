@@ -3,8 +3,9 @@ import { sampleSpots } from '../constants/sampleData';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import type { Spot } from '../types';
 import { calculateReservationFee, getSpotReservationType, isPaymentRequired } from '../utils/reservations';
+import { isReleaseReservable, reservationClientVenueId } from '../utils/tableInventory';
 
-type TableInventoryUpdate = Record<string, Array<{ tableId: string; capacity: number; isReserved?: boolean }>>;
+type TableInventoryUpdate = NonNullable<Spot['table_inventory']>;
 const discoverySpotLimit = 500;
 
 function normalizeSpot(row: any): Spot {
@@ -42,22 +43,24 @@ function normalizeSpot(row: any): Spot {
     gcash_amount: row.gcash_amount == null ? null : Number(row.gcash_amount),
     table_inventory: row.table_inventory && typeof row.table_inventory === 'object' ? row.table_inventory : null,
     is_public: Boolean(row.is_public),
-    is_reservable: Boolean(row.is_reservable),
+    is_reservable: isReleaseReservable(row),
   };
 }
 
-function withLocalTestSpots(spots: Spot[]) {
-  const testCebspotClub = sampleSpots.find((spot) => spot.id === '66666666-6666-4666-8666-666666666666');
-  if (
-    !testCebspotClub ||
-    spots.some((spot) => spot.id === testCebspotClub.id || spot.name === testCebspotClub.name)
-  ) {
-    return spots;
-  }
-  return [testCebspotClub, ...spots];
-}
-
 export const spotService = {
+  async setTableBookingPolicy(
+    spotId: string, tableId: string, policy: 'online_and_walk_ins' | 'walk_in_only', client: SupabaseClient = supabase,
+  ): Promise<Spot> {
+    const { data, error } = await client.rpc('owner_set_table_booking_policy', {
+      target_spot_id: spotId, target_table_id: tableId, booking_policy_input: policy,
+    });
+    if (error) throw error;
+    const saved = Array.isArray(data) ? data[0] : data;
+    if (saved?.id !== spotId || !saved.table_inventory || typeof saved.table_inventory !== 'object') {
+      throw new Error('The policy could not be saved. Refresh the table list and try again.');
+    }
+    return normalizeSpot(saved);
+  },
   async getSpots(limit = discoverySpotLimit): Promise<Spot[]> {
     if (!hasSupabaseConfig) return sampleSpots.slice(0, limit);
 
@@ -69,7 +72,34 @@ export const spotService = {
       .limit(limit);
     if (error) throw error;
     const spots = (data ?? []).map(normalizeSpot);
-    return spots.length ? withLocalTestSpots(spots).slice(0, limit) : sampleSpots;
+    return spots;
+  },
+
+  async getSpotsByIds(ids: string[]): Promise<Spot[]> {
+    if (!hasSupabaseConfig) {
+      const savedIds = new Set(ids);
+      return sampleSpots.filter((spot) => savedIds.has(spot.id));
+    }
+
+    const uniqueIds = [...new Set(ids.filter(Boolean))];
+    const batches: string[][] = [];
+    for (let index = 0; index < uniqueIds.length; index += 100) {
+      batches.push(uniqueIds.slice(index, index + 100));
+    }
+    const results = await Promise.all(batches.map(async (batch) => {
+      const { data, error } = await supabase
+        .from('spots')
+        .select('*')
+        .in('id', batch)
+        .eq('is_public', true);
+      if (error) throw error;
+      return (data ?? []).map(normalizeSpot);
+    }));
+    const spotsById = new Map(results.flat().map((spot) => [spot.id, spot]));
+    return uniqueIds.flatMap((id) => {
+      const spot = spotsById.get(id);
+      return spot ? [spot] : [];
+    });
   },
 
   async getSpotById(id: string, client: SupabaseClient = supabase): Promise<Spot | null> {
@@ -78,10 +108,10 @@ export const spotService = {
 
     const { data, error } = await client.from('spots').select('*').eq('id', id).maybeSingle();
     if (error) throw error;
-    return data ? normalizeSpot(data) : sample ?? null;
+    return data ? normalizeSpot(data) : null;
   },
 
-  subscribeToSpots(callback: (spots: Spot[]) => void) {
+  subscribeToSpots(callback: (spots: Spot[]) => void, onError?: (error: unknown) => void) {
     if (!hasSupabaseConfig) {
       callback(sampleSpots);
       return () => undefined;
@@ -91,7 +121,12 @@ export const spotService = {
     const channel = supabase
       .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'spots' }, async () => {
-        callback(await this.getSpots());
+        try {
+          callback(await this.getSpots());
+        } catch (error) {
+          if (onError) onError(error);
+          else console.error('Unable to refresh spots after a live update:', error);
+        }
       })
       .subscribe();
 
@@ -124,14 +159,17 @@ export const spotService = {
     updates: { reservationFee: number; tableInventory: TableInventoryUpdate },
     client: SupabaseClient = supabase,
   ): Promise<Spot> {
-    const reservationFee = Math.max(0, Number(updates.reservationFee) || 0);
+    const reservationFee = Number(updates.reservationFee);
+    if (!Number.isFinite(reservationFee) || reservationFee < 0) {
+      throw new Error('Enter a valid reservation amount.');
+    }
     const payload = {
       reservation_fee: reservationFee,
       gcash_amount: reservationFee,
       reservation_type: reservationFee > 0 ? 'paid' : 'free',
       payment_required: reservationFee > 0,
       table_inventory: updates.tableInventory,
-      is_reservable: true,
+      is_reservable: false,
       updated_at: new Date().toISOString(),
     };
 
@@ -147,22 +185,17 @@ export const spotService = {
       .eq('id', spotId)
       .select('*')
       .single();
-    if (error) {
-      const missingTableInventoryColumn = /table_inventory|schema cache|column/i.test(error.message ?? '');
-      if (!missingTableInventoryColumn) throw error;
-
-      const { table_inventory: _tableInventory, ...pricingPayload } = payload;
-      const { data: pricingData, error: pricingError } = await client
-        .from('spots')
-        .update(pricingPayload)
-        .eq('id', spotId)
-        .select('*')
-        .single();
-
-      if (pricingError) throw pricingError;
-      return normalizeSpot({ ...pricingData, table_inventory: updates.tableInventory });
-    }
+    if (error) throw error;
     return normalizeSpot(data);
+  },
+
+  async confirmReservationInventory(spot: Spot, client: SupabaseClient = supabase): Promise<Spot> {
+    if (spot.id !== reservationClientVenueId) throw new Error('This venue is discovery-only.');
+    const { data, error } = await client.rpc('confirm_client_venue_inventory', {
+      target_spot_id: spot.id, expected_inventory: spot.table_inventory,
+    });
+    if (error) throw error;
+    return normalizeSpot(Array.isArray(data) ? data[0] : data);
   },
 
   async replaceTableInventory(

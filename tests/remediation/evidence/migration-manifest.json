@@ -29,6 +29,10 @@
     {
       "name": "20261013000100_activity_privacy.sql",
       "sha256": "53d9513b16551b6b03772b2f7c1fa93a9b2dece93a2532874f1b0bb7f4e96cf5"
+    },
+    {
+      "name": "20261013000200_android_reservation_scope.sql",
+      "sha256": "85996c02fa4aab5b80564c816cfb6b6cf1850643e238711f22b637c2564338d6"
     }
   ]
 }

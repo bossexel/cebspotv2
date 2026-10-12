@@ -86,12 +86,14 @@ export interface Spot {
   gcash_wallet_name?: string | null;
   gcash_qr_url?: string | null;
   gcash_amount?: number | null;
-  table_inventory?: Record<string, Array<{ tableId: string; capacity: number; isReserved?: boolean }>> | null;
+  table_inventory?: Record<string, Array<{ tableId: string; capacity: number; isReserved?: boolean; bookingPolicy?: 'online_and_walk_ins' | 'walk_in_only' }>> | null;
   opening_hours?: string | null;
   website_url?: string | null;
   contact_number?: string | null;
   is_public: boolean;
   is_reservable: boolean;
+  reservation_inventory_verified_at?: string | null;
+  reservation_inventory_verified_by?: string | null;
   owner_id?: string | null;
   created_at: string;
   updated_at?: string;

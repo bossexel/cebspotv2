@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import {
   ActivityIndicator,
+  AppState,
   Alert,
   BackHandler,
+  FlatList,
   Image,
   Linking,
   Platform,
@@ -13,6 +15,7 @@ import {
   Text,
   TextInput,
   View,
+  type FlatListProps,
   useWindowDimensions,
 } from 'react-native';
 import {
@@ -28,6 +31,7 @@ import {
   MapPin,
   MessageCircle,
   MoreHorizontal,
+  Minus,
   Phone,
   Plus,
   ReceiptText,
@@ -49,6 +53,8 @@ import { useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ConfirmationModal } from '../src/components/ConfirmationModal';
+import { OwnerTableBookingPolicy } from '../src/components/OwnerTableBookingPolicy';
+import { formatPickerTime } from '../src/components/AdjustableTimePicker';
 import { PasswordInput } from '../src/components/PasswordInput';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { hasOwnerAccess, normalizeAuthEmail } from '../src/constants/authRoles';
@@ -69,6 +75,7 @@ import { paymentProofService } from '../src/services/paymentProofService';
 import { reservationService } from '../src/services/reservationService';
 import { reviewService } from '../src/services/reviewService';
 import { spotService } from '../src/services/spotService';
+import { venueTableService, type VenueTableAvailability } from '../src/services/venueTableService';
 import type { Reservation, Review, ReviewReply, Spot, UserProfile } from '../src/types';
 import {
   formatGuestCount,
@@ -80,7 +87,10 @@ import {
 } from '../src/utils/reservations';
 import {
   createEmptyTableInventory,
-  getTableInventoryTotals,
+  getPhysicalTables,
+  mergeTableInventoryDraft,
+  updatePhysicalTable,
+  addPhysicalTable,
   normalizeStoredTableInventory,
   type TableInventory,
   type TableSlotId,
@@ -110,7 +120,7 @@ function isInheritedClubTemplate(spot: Spot) {
 
 function getSpotTableInventory(spot: Spot | null): TableInventory {
   if (!spot) return createEmptyTableInventory();
-  if (spot.id === testCebspotClubSpotId) return normalizeClubTableInventory(spot.table_inventory);
+  if (spot.id === testCebspotClubSpotId) return normalizeStoredTableInventory(spot.table_inventory);
   if (isInheritedClubTemplate(spot)) return createEmptyTableInventory();
   return normalizeStoredTableInventory(spot.table_inventory);
 }
@@ -127,6 +137,7 @@ type OwnerConfirmation =
   | { kind: 'mark-arrived'; reservation: Reservation }
   | { kind: 'mark-no-show'; reservation: Reservation }
   | { kind: 'view-payment-proof'; reservation: Reservation }
+  | { kind: 'complete-visit'; reservation: Reservation }
   | { kind: 'publish-settings'; reservationFee: number };
 
 const ownerTabs: Array<{ label: OwnerTab; icon: PortalIcon }> = [
@@ -255,6 +266,7 @@ function getReservationGuestName(reservation: Reservation) {
 }
 
 function getOwnerConfirmationTitle(confirmation: OwnerConfirmation | null) {
+  if (confirmation?.kind === 'complete-visit') return 'Complete this visit?';
   if (confirmation?.kind === 'approve-reservation') return 'Approve this reservation?';
   if (confirmation?.kind === 'mark-arrived') return 'Confirm guest arrival?';
   if (confirmation?.kind === 'mark-no-show') return 'Mark this guest as no-show?';
@@ -264,6 +276,7 @@ function getOwnerConfirmationTitle(confirmation: OwnerConfirmation | null) {
 }
 
 function getOwnerConfirmationMessage(confirmation: OwnerConfirmation | null) {
+  if (confirmation?.kind === 'complete-visit') return `Complete ${getReservationGuestName(confirmation.reservation)}'s visit at ${confirmation.reservation.table_id ? clubTableDisplayName(confirmation.reservation.table_id) : 'their table'}? The table will move to cleaning and stay unavailable until you mark it ready in Tables & Pricing.`;
   if (confirmation?.kind === 'approve-reservation') {
     return `This confirms ${getReservationDisplayRef(confirmation.reservation)} for ${formatReservationDateTime(confirmation.reservation)} and marks it as paid. Make sure the amount and reference match what actually landed in your GCash account before proceeding — this can't be auto-reversed.`;
   }
@@ -277,7 +290,7 @@ function getOwnerConfirmationMessage(confirmation: OwnerConfirmation | null) {
     return `This opens the uploaded payment screenshot for ${getReservationDisplayRef(confirmation.reservation)}. Compare the amount and reference against your own GCash account activity before approving.`;
   }
   if (confirmation?.kind === 'publish-settings') {
-    return `This will publish the current table inventory and set the reservation price to ${formatPeso(confirmation.reservationFee)}.`;
+    return `Confirm that these table IDs and capacities match the actual venue. This will save the inventory and set the reservation price to ${formatPeso(confirmation.reservationFee)}. Only our client venue with active online tables can accept reservations.`;
   }
   return 'Please confirm before continuing.';
 }
@@ -288,6 +301,7 @@ function getOwnerConfirmationActionLabel(
   approvingReservation: boolean,
   updatingAttendance: boolean,
 ) {
+  if (confirmation?.kind === 'complete-visit') return updatingAttendance ? 'Completing...' : 'Complete visit';
   if (confirmation?.kind === 'approve-reservation') return approvingReservation ? 'Approving...' : 'Approve';
   if (confirmation?.kind === 'mark-arrived') return updatingAttendance ? 'Confirming...' : 'Guest Arrived';
   if (confirmation?.kind === 'mark-no-show') return updatingAttendance ? 'Updating...' : 'Mark No Show';
@@ -298,7 +312,6 @@ function getOwnerConfirmationActionLabel(
 
 export default function OwnerDashboardScreen() {
   const router = useRouter();
-  const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { appColors } = useTheme();
   const { profile, loading: authLoading, signIn, logOut } = useAuth();
@@ -310,8 +323,15 @@ export default function OwnerDashboardScreen() {
   const [reviewReplies, setReviewReplies] = useState<ReviewReply[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const dashboardLoading = useRef(false);
+  const dashboardLoadVersion = useRef(0);
+  const [loadError, setLoadError] = useState(false);
   const [accessClaimed, setAccessClaimed] = useState<boolean | null>(null);
   const [managedSpotId, setManagedSpotId] = useState<string | null>(null);
+  const [liveTables, setLiveTables] = useState<VenueTableAvailability[]>([]);
+  const [liveTablesLoading, setLiveTablesLoading] = useState(true);
+  const [liveTablesError, setLiveTablesError] = useState(false);
+  const liveTablesRequest = useRef(0);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [attendanceUpdatingId, setAttendanceUpdatingId] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
@@ -319,17 +339,16 @@ export default function OwnerDashboardScreen() {
   const [sendingReplyId, setSendingReplyId] = useState<string | null>(null);
   const [ownerConfirmation, setOwnerConfirmation] = useState<OwnerConfirmation | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [tablePolicySaves, setTablePolicySaves] = useState(0);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [draftFee, setDraftFee] = useState('150');
   const [draftInventory, setDraftInventory] = useState<TableInventory>(createEmptyTableInventory);
+  const previousSettings = useRef<{ ownerId: string | undefined; spot: Spot } | null>(null);
   // Gate for manual GCash approval: an owner must open a reservation's payment
   // proof (and, implicitly, check it against their own GCash account) before
   // the Approve action becomes available for that reservation.
   const [viewedProofIds, setViewedProofIds] = useState<Set<string>>(new Set());
   const isOwner = hasOwnerAccess(profile);
-  // NOTE: tablet threshold left as-is intentionally — the fix here is that the
-  // phone branch no longer reuses tablet-scale spacing/typography anymore.
-  const tabletLayout = width >= 900 && Math.min(width, height) >= 600;
 
   const pendingPayments = useMemo(() => reservations.filter(isPendingPayment), [reservations]);
   const approvedReservations = useMemo(() => reservations.filter(isApprovedReservation), [reservations]);
@@ -342,10 +361,64 @@ export default function OwnerDashboardScreen() {
     () => paidReservations.reduce((sum, reservation) => sum + Number(reservation.reservation_fee || reservation.fee || 0), 0),
     [paidReservations],
   );
-  const tableSummaries = useMemo(() => getTableInventoryTotals(draftInventory), [draftInventory]);
-  const activeTables = useMemo(() => Math.max(0, ...tableSummaries.map((slot) => slot.openCount)), [tableSummaries]);
-  const totalTables = useMemo(() => Math.max(0, ...tableSummaries.map((slot) => slot.tableCount)), [tableSummaries]);
+  const physicalTables = useMemo(() => getPhysicalTables(draftInventory), [draftInventory]);
+  const activeTables = physicalTables.filter((table) => !table.isReserved).length;
+  const totalTables = physicalTables.length;
   const rating = useMemo(() => getReviewsRating(reviews), [reviews]);
+
+  const refreshLiveTables = useCallback(async () => {
+    if (!managedSpotId) return;
+    const request = ++liveTablesRequest.current;
+    setLiveTablesLoading(true);
+    try {
+      const tables = await venueTableService.getAvailability(managedSpotId, null, null, ownerSupabase);
+      if (request !== liveTablesRequest.current) return;
+      setLiveTables(tables);
+      setLiveTablesError(false);
+    } catch (error) {
+      if (request !== liveTablesRequest.current) return;
+      console.warn('Unable to verify live venue tables:', error);
+      setLiveTablesError(true);
+    } finally {
+      if (request === liveTablesRequest.current) setLiveTablesLoading(false);
+    }
+  }, [managedSpotId, ownerSupabase]);
+
+  useEffect(() => {
+    setLiveTables([]);
+    setLiveTablesError(false);
+    if (!managedSpotId || !isOwner) return;
+    void refreshLiveTables();
+    const unsubscribe = venueTableService.subscribe(managedSpotId, () => void refreshLiveTables(), ownerSupabase);
+    const timer = setInterval(() => { if (AppState.currentState === 'active') void refreshLiveTables(); }, 30000);
+    const resume = AppState.addEventListener('change', state => { if (state === 'active') void refreshLiveTables(); });
+    return () => { liveTablesRequest.current += 1; unsubscribe(); clearInterval(timer); resume.remove(); };
+  }, [managedSpotId, isOwner, profile?.id, refreshLiveTables]);
+
+  function applyConfirmedTableChange(change: { tableId: string; state: 'cleaning' | 'free' }) {
+    // Called only AFTER an RPC confirms the transition, never on a tap.
+    setLiveTables(current => current.map(table => table.tableId === change.tableId ? {
+      ...table, state: change.state, walkInVisitId: null,
+      walkInPartySize: null,
+      // A ready runtime state can still have a due booking. Wait for the server
+      // availability refresh before advertising it for online reservations.
+      onlineAvailable: false,
+      policyLocked: true, // Recheck all existing bookings before unlocking policy.
+    } : table));
+  }
+
+  async function completeReservationVisit(reservation: Reservation) {
+    try {
+      setAttendanceUpdatingId(reservation.id);
+      await venueTableService.completeReservation(reservation.id, ownerSupabase);
+      setReservations(current => current.map(row => row.id === reservation.id ? { ...row, status: 'completed' } : row));
+      if (reservation.table_id) applyConfirmedTableChange({ tableId: reservation.table_id, state: 'cleaning' });
+      await refreshLiveTables();
+      Alert.alert('Visit completed', 'The table is cleaning. Mark it ready in Tables & Pricing after cleaning.');
+    } catch (error: any) {
+      Alert.alert('Visit not completed', error.message || 'Refresh the reservations and try again.');
+    } finally { setAttendanceUpdatingId(null); }
+  }
 
   useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.ALL).catch((error) => {
@@ -370,9 +443,19 @@ export default function OwnerDashboardScreen() {
 
   useEffect(() => {
     if (!spot) return;
-    setDraftFee(String(Number(spot.gcash_amount ?? spot.reservation_fee ?? 150)));
-    setDraftInventory(getSpotTableInventory(spot));
-  }, [spot]);
+    const previous = previousSettings.current;
+    previousSettings.current = { ownerId: profile?.id, spot };
+    const savedFee = String(Number(spot.gcash_amount ?? spot.reservation_fee ?? 150));
+    const savedInventory = getSpotTableInventory(spot);
+    if (previous && previous.ownerId === profile?.id && previous.spot.id === spot.id) {
+      const previousFee = String(Number(previous.spot.gcash_amount ?? previous.spot.reservation_fee ?? 150));
+      setDraftFee(current => current === previousFee ? savedFee : current);
+      setDraftInventory(current => mergeTableInventoryDraft(current, getSpotTableInventory(previous.spot), savedInventory));
+    } else {
+      setDraftFee(savedFee);
+      setDraftInventory(savedInventory);
+    }
+  }, [spot, profile?.id]);
 
   async function handleSignOut() {
     try {
@@ -400,12 +483,17 @@ export default function OwnerDashboardScreen() {
       return;
     }
 
+    if (dashboardLoading.current) return;
+    dashboardLoading.current = true;
+    const loadVersion = ++dashboardLoadVersion.current;
     try {
       setRefreshing(true);
+      setLoadError(false);
       const assignedSpotId = await ownerAccessService.getPrimaryManagedSpotId(ownerSupabase);
-      setManagedSpotId(assignedSpotId);
-      setAccessClaimed(Boolean(assignedSpotId));
+      if (loadVersion !== dashboardLoadVersion.current) return;
       if (!assignedSpotId) {
+        setManagedSpotId(null);
+        setAccessClaimed(false);
         setSpot(null);
         setReservations([]);
         setReviews([]);
@@ -418,6 +506,7 @@ export default function OwnerDashboardScreen() {
         reviewService.getReviewsForSpot(assignedSpotId, ownerSupabase),
         reviewService.getRepliesForSpot(assignedSpotId, ownerSupabase),
       ]);
+      if (loadVersion !== dashboardLoadVersion.current) return;
       let isolatedSpot = nextSpot;
       if (nextSpot && isInheritedClubTemplate(nextSpot)) {
         try {
@@ -430,17 +519,23 @@ export default function OwnerDashboardScreen() {
           console.warn('Unable to remove inherited table template from this venue:', error);
         }
       }
+      if (loadVersion !== dashboardLoadVersion.current) return;
       setSpot(isolatedSpot);
+      setManagedSpotId(assignedSpotId);
+      setAccessClaimed(true);
       setReservations(nextReservations);
       setReviews(nextReviews);
       setReviewReplies(nextReviewReplies);
     } catch (error) {
+      if (loadVersion !== dashboardLoadVersion.current) return;
       console.error('Unable to load owner dashboard:', error);
-      setAccessClaimed(false);
-      setManagedSpotId(null);
+      setLoadError(true);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (loadVersion === dashboardLoadVersion.current) {
+        dashboardLoading.current = false;
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }
 
@@ -456,9 +551,13 @@ export default function OwnerDashboardScreen() {
       return () => undefined;
     }
 
+    setLoading(true);
     void loadDashboard();
-    return () => undefined;
-  }, [isOwner]);
+    return () => {
+      dashboardLoadVersion.current += 1;
+      dashboardLoading.current = false;
+    };
+  }, [isOwner, profile?.id]);
 
   useEffect(() => {
     if (!isOwner || !managedSpotId) return () => undefined;
@@ -483,8 +582,9 @@ export default function OwnerDashboardScreen() {
   }, [isOwner, managedSpotId, ownerSupabase]);
 
   function requestSaveReservationSettings() {
+    if (savingSettings || tablePolicySaves > 0) return;
     const nextFee = Number(draftFee);
-    if (!Number.isFinite(nextFee) || nextFee < 0) {
+    if (!draftFee.trim() || !Number.isFinite(nextFee) || nextFee < 0 || nextFee > 999999.99 || Math.abs(nextFee * 100 - Math.round(nextFee * 100)) > 0.00001) {
       Alert.alert('Invalid price', 'Enter a valid reservation amount.');
       return;
     }
@@ -498,12 +598,10 @@ export default function OwnerDashboardScreen() {
     }
 
     try {
-      if (Platform.OS !== 'web') {
-        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!permission.granted) {
-          Alert.alert('Photo access needed', 'Allow photo access to post venue photos.');
-          return;
-        }
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Photo access needed', 'Allow photo access to post venue photos.');
+        return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -547,14 +645,18 @@ export default function OwnerDashboardScreen() {
         managedSpotId,
         {
           reservationFee,
-          tableInventory: spot?.id === testCebspotClubSpotId
-            ? normalizeClubTableInventory(draftInventory)
-            : draftInventory,
+          tableInventory: draftInventory,
         },
         ownerSupabase,
       );
       setSpot(updatedSpot);
-      Alert.alert('Updated', 'Guests will see the latest tables and reservation price in real time.');
+      if (updatedSpot.id === testCebspotClubSpotId) {
+        const confirmed = await spotService.confirmReservationInventory(updatedSpot, ownerSupabase);
+        setSpot(confirmed);
+        Alert.alert('Updated', 'Your actual table inventory is confirmed and reservations are enabled.');
+      } else {
+        Alert.alert('Updated', 'Your settings are saved. This venue remains discovery-only.');
+      }
     } catch (error: any) {
       Alert.alert('Update failed', error.message ?? 'Please try again.');
     } finally {
@@ -704,6 +806,10 @@ export default function OwnerDashboardScreen() {
       void openPaymentProof(confirmation.reservation);
       return;
     }
+    if (confirmation.kind === 'complete-visit') {
+      void completeReservationVisit(confirmation.reservation);
+      return;
+    }
     void saveReservationSettings(confirmation.reservationFee);
   }
 
@@ -738,7 +844,12 @@ export default function OwnerDashboardScreen() {
       <ScreenContainer appColors={appColors}>
         <View style={styles.center}>
           <ShieldCheck size={34} color={colors.primary} />
-          <Text style={styles.loadingText}>No venue is assigned to this owner account.</Text>
+          <Text style={styles.loadingText}>{loadError ? 'Unable to load your venue. Please try again.' : 'No venue is assigned to this owner account.'}</Text>
+          {loadError && (
+            <Pressable accessibilityRole="button" onPress={() => void loadDashboard()} style={styles.primaryPortalButton}>
+              <Text style={styles.primaryPortalButtonText}>Retry</Text>
+            </Pressable>
+          )}
           <Pressable style={styles.primaryPortalButton} onPress={() => void handleSignOut()}>
             <Text style={styles.primaryPortalButtonText}>Return to login</Text>
           </Pressable>
@@ -750,6 +861,19 @@ export default function OwnerDashboardScreen() {
   const venueName = spot.name;
   const reservationFee = Number(spot?.gcash_amount ?? spot?.reservation_fee ?? 150);
   const dashboardProps: DashboardContentProps = {
+    liveTables,
+    liveTablesLoading,
+    liveTablesError,
+    refreshLiveTables,
+    onTableReady: async (tableId) => {
+      if (!spot) throw new Error('Refresh your venue before marking a table ready.');
+      await venueTableService.markReady(spot.id, tableId, ownerSupabase);
+      applyConfirmedTableChange({ tableId, state: 'free' });
+      void refreshLiveTables();
+    },
+    onTablePolicySaved: (saved) => { setSpot(saved); void refreshLiveTables(); },
+    onTablePolicySavingChange: (saving) => setTablePolicySaves(current => Math.max(0, current + (saving ? 1 : -1))),
+    onCompleteReservation: (reservation) => setOwnerConfirmation({ kind: 'complete-visit', reservation }),
     activeTab,
     accessClaimed,
     activeTables,
@@ -757,6 +881,7 @@ export default function OwnerDashboardScreen() {
     attendanceUpdatingId,
     approvedReservations,
     draftFee,
+    physicalTables,
     isClubFloorPlan: spot.id === testCebspotClubSpotId,
     onApproveReservation: requestApproveReservation,
     onRecordAttendance: requestRecordAttendance,
@@ -777,13 +902,13 @@ export default function OwnerDashboardScreen() {
     reservations,
     reviews,
     reviewReplies,
-    savingSettings,
+    savingSettings: savingSettings || tablePolicySaves > 0,
     sendingReplyId,
     setActiveTab,
     setDraftFee,
+    onUpdateTable: (tableId, updates) => setDraftInventory((current) => updatePhysicalTable(current, tableId, updates)),
+    onAddTable: () => setDraftInventory((current) => addPhysicalTable(current)),
     spot,
-    tableSummaries,
-    tabletLayout,
     totalTables,
     uploadingPhotos,
     venueName,
@@ -791,38 +916,9 @@ export default function OwnerDashboardScreen() {
   };
 
   return (
-    <View style={styles.portalShell}>
-      {tabletLayout ? (
-        <View style={styles.tabletLayout}>
-          <OwnerSidebar
-            activeTab={activeTab}
-            profileEmail={profile?.email ?? 'Owner account'}
-            venueName={venueName}
-            category={spot?.category ?? 'Club'}
-            onTabChange={setActiveTab}
-            onSignOut={() => setSignOutConfirmationOpen(true)}
-          />
-          <ScrollView
-            style={styles.tabletMain}
-            contentContainerStyle={[styles.tabletMainContent, { paddingTop: Math.max(28, insets.top + spacing.sm) }]}
-            showsVerticalScrollIndicator={false}
-          >
-            <PortalHeader
-              title={`Good Morning, ${profile?.display_name?.split(' ')[0] || 'Admin'}`}
-              subtitle="Venue Performance Overview"
-              onSignOut={() => setSignOutConfirmationOpen(true)}
-              onRefresh={loadDashboard}
-              refreshing={refreshing}
-            />
-            <DashboardContent {...dashboardProps} />
-          </ScrollView>
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.phoneShell}
-          contentContainerStyle={[styles.phoneContent, { paddingTop: Math.max(spacing.md, insets.top + spacing.xs) }]}
-          showsVerticalScrollIndicator={false}
-        >
+    <View style={[styles.portalShell, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}>
+      <View style={styles.dashboardFrame}>
+        <View testID="owner-dashboard-chrome" style={styles.dashboardChrome}>
           <PortalHeader
             title={`Good Morning, ${profile?.display_name?.split(' ')[0] || 'Admin'}`}
             subtitle={venueName}
@@ -832,9 +928,12 @@ export default function OwnerDashboardScreen() {
             compact
           />
           <MobileTabs activeTab={activeTab} onTabChange={setActiveTab} />
-          <DashboardContent {...dashboardProps} />
-        </ScrollView>
-      )}
+          {loadError && <Text accessibilityRole="alert" style={styles.loadError}>Refresh failed. Your last loaded data is still shown. Tap refresh to retry.</Text>}
+        </View>
+        <View testID="owner-dashboard-body" style={styles.dashboardBody}>
+          <DashboardContent key={activeTab} {...dashboardProps} />
+        </View>
+      </View>
 
       <ConfirmationModal
         visible={signOutConfirmationOpen}
@@ -881,6 +980,14 @@ export default function OwnerDashboardScreen() {
 }
 
 type DashboardContentProps = {
+  liveTables: VenueTableAvailability[];
+  liveTablesLoading: boolean;
+  liveTablesError: boolean;
+  refreshLiveTables: () => Promise<void>;
+  onTableReady: (tableId: string) => Promise<void>;
+  onTablePolicySaved: (spot: Spot) => void;
+  onTablePolicySavingChange: (saving: boolean) => void;
+  onCompleteReservation: (reservation: Reservation) => void;
   activeTab: OwnerTab;
   accessClaimed: boolean | null;
   activeTables: number;
@@ -888,6 +995,9 @@ type DashboardContentProps = {
   attendanceUpdatingId: string | null;
   approvedReservations: Reservation[];
   draftFee: string;
+  physicalTables: ReturnType<typeof getPhysicalTables>;
+  onUpdateTable: (tableId: string, updates: { capacity?: number; isReserved?: boolean }) => void;
+  onAddTable: () => void;
   isClubFloorPlan: boolean;
   onApproveReservation: (reservation: Reservation) => void;
   onRecordAttendance: (reservation: Reservation, status: 'checked_in' | 'no_show') => void;
@@ -913,8 +1023,6 @@ type DashboardContentProps = {
   setActiveTab: (tab: OwnerTab) => void;
   setDraftFee: (value: string) => void;
   spot: Spot | null;
-  tableSummaries: ReturnType<typeof getTableInventoryTotals>;
-  tabletLayout: boolean;
   totalTables: number;
   uploadingPhotos: boolean;
   venueName: string;
@@ -926,8 +1034,33 @@ function DashboardContent(props: DashboardContentProps) {
   if (props.activeTab === 'Payments') return <PaymentsView {...props} />;
   if (props.activeTab === 'Reviews') return <ReviewsView {...props} />;
   if (props.activeTab === 'Tables & Pricing') return <TablesPricingView {...props} />;
-  if (props.activeTab === 'Spot Profile') return <SpotProfileView {...props} />;
-  return <OverviewView {...props} />;
+  return (
+    <ScrollView style={styles.dashboardBody} contentContainerStyle={styles.dashboardContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      {props.activeTab === 'Spot Profile' ? <SpotProfileView {...props} /> : <OverviewView {...props} />}
+    </ScrollView>
+  );
+}
+
+function DashboardList<ItemT>(props: FlatListProps<ItemT>) {
+  return (
+    <FlatList
+      initialNumToRender={4}
+      maxToRenderPerBatch={4}
+      windowSize={5}
+      updateCellsBatchingPeriod={32}
+      removeClippedSubviews={false}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      {...props}
+      style={[styles.dashboardBody, props.style]}
+      contentContainerStyle={[styles.dashboardContent, props.contentContainerStyle]}
+      ItemSeparatorComponent={DashboardListSeparator}
+    />
+  );
+}
+
+function DashboardListSeparator() {
+  return <View style={styles.dashboardListSeparator} />;
 }
 
 function PortalHeader({
@@ -961,7 +1094,7 @@ function PortalHeader({
           <TrendingUp size={18} color={portalColors.primaryDark} />
         </View>
         <View style={styles.headerCopy}>
-          <Text style={[styles.portalTitle, compact && styles.portalTitleCompact]} numberOfLines={1}>{title}</Text>
+          <Text style={[styles.portalTitle, compact && styles.portalTitleCompact]} numberOfLines={2}>{title}</Text>
           <Text style={[styles.portalSubtitle, compact && styles.portalSubtitleCompact]} numberOfLines={1}>{subtitle}</Text>
         </View>
       </View>
@@ -985,78 +1118,41 @@ function PortalHeader({
   );
 }
 
-function OwnerSidebar({
-  activeTab,
-  profileEmail,
-  venueName,
-  category,
-  onTabChange,
-  onSignOut,
-}: {
-  activeTab: OwnerTab;
-  profileEmail: string;
-  venueName: string;
-  category: string;
-  onTabChange: (tab: OwnerTab) => void;
-  onSignOut: () => void;
-}) {
+const MobileTabs = React.memo(function MobileTabs({ activeTab, onTabChange }: { activeTab: OwnerTab; onTabChange: (tab: OwnerTab) => void }) {
+  const rail = useRef<ScrollView>(null);
+  const tabLayouts = useRef<Partial<Record<OwnerTab, { x: number; width: number }>>>({});
+  const [railWidth, setRailWidth] = useState(0);
+  const revealSelected = () => {
+    const layout = tabLayouts.current[activeTab];
+    if (layout && railWidth) rail.current?.scrollTo({ x: Math.max(0, layout.x - (railWidth - layout.width) / 2), animated: true });
+  };
+  useEffect(revealSelected, [activeTab, railWidth]);
   return (
-    <View style={styles.sidebar}>
-      <Text style={styles.sidebarBrand}>CebSpot</Text>
-      <View style={styles.sidebarSpot}>
-        <Image source={cebspotLogo} resizeMode="contain" style={styles.sidebarLogo} />
-        <View style={styles.sidebarSpotCopy}>
-          <Text style={styles.sidebarSpotName} numberOfLines={1}>{venueName}</Text>
-          <Text style={styles.sidebarSpotMeta}>{category}</Text>
-        </View>
-      </View>
-      <View style={styles.sidebarNav}>
-        {ownerTabs.map((tab) => {
-          const selected = tab.label === activeTab;
-          const Icon = tab.icon;
-          return (
-            <Pressable
-              accessibilityRole="button"
-              key={tab.label}
-              style={[styles.sidebarNavItem, selected && styles.sidebarNavItemActive]}
-              onPress={() => onTabChange(tab.label)}
-            >
-              <Icon size={19} color={selected ? colors.white : portalColors.sidebarMuted} />
-              <Text style={[styles.sidebarNavText, selected && styles.sidebarNavTextActive]}>{tab.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      <View style={styles.sidebarFooter}>
-        <View style={styles.sidebarAccount}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{profileEmail.slice(0, 2).toUpperCase()}</Text>
-          </View>
-          <View style={styles.sidebarAccountCopy}>
-            <Text style={styles.sidebarEmail} numberOfLines={1}>{profileEmail}</Text>
-            <Text style={styles.sidebarRole}>Spot Owner</Text>
-          </View>
-          <Settings size={16} color={portalColors.sidebarMuted} />
-        </View>
-        <Pressable accessibilityRole="button" style={styles.sidebarSignOut} onPress={onSignOut}>
-          <LogOut size={17} color={portalColors.danger} />
-          <Text style={styles.sidebarSignOutText}>Sign Out</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function MobileTabs({ activeTab, onTabChange }: { activeTab: OwnerTab; onTabChange: (tab: OwnerTab) => void }) {
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mobileTabs}>
+    <ScrollView
+      ref={rail}
+      testID="owner-tab-rail"
+      horizontal
+      style={styles.mobileTabRail}
+      onLayout={(event) => setRailWidth(event.nativeEvent.layout.width)}
+      showsHorizontalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.mobileTabs}
+    >
       {ownerTabs.map((tab) => {
         const selected = tab.label === activeTab;
         const Icon = tab.icon;
         return (
           <Pressable
-            accessibilityRole="button"
+            accessibilityRole="tab"
+            accessibilityLabel={tab.label}
+            accessibilityState={{ selected }}
+            aria-selected={selected}
+            testID={`owner-tab-${tab.label}`}
             key={tab.label}
+            onLayout={(event) => {
+              tabLayouts.current[tab.label] = event.nativeEvent.layout;
+              if (selected) revealSelected();
+            }}
             style={[styles.mobileTab, selected && styles.mobileTabActive]}
             onPress={() => onTabChange(tab.label)}
           >
@@ -1067,22 +1163,22 @@ function MobileTabs({ activeTab, onTabChange }: { activeTab: OwnerTab; onTabChan
       })}
     </ScrollView>
   );
-}
+});
 
 function OverviewView(props: DashboardContentProps) {
   const incoming = props.reservations.slice(0, 3);
-  const compact = !props.tabletLayout;
+  const compact = true;
 
   return (
     <View style={styles.viewStack}>
-      <View style={[styles.metricDeck, props.tabletLayout && styles.metricDeckTablet]}>
+      <View style={styles.metricDeck}>
         <PortalMetric icon={WalletCards} iconTone="green" label="Total Revenue" value={formatPeso(props.paidTotal)} delta="+12.5%" compact={compact} />
         <PortalMetric icon={CalendarDays} iconTone="blue" label="Reservations" value={String(props.reservations.length)} delta="+4.2%" compact={compact} />
         <PortalMetric icon={Star} iconTone="orange" label="Verified Rating" value={props.reviews.length ? props.rating.toFixed(1) : 'No ratings'} compact={compact} />
         <PortalMetric icon={Users} iconTone="amber" label="Active Tables" value={`${props.activeTables}/${props.totalTables}`} live compact={compact} />
       </View>
 
-      <View style={[styles.overviewGrid, props.tabletLayout && styles.overviewGridTablet]}>
+      <View style={styles.overviewGrid}>
         <View style={styles.incomingPanel}>
           <View style={[styles.panelHeader, compact && styles.panelHeaderCompact]}>
             <View>
@@ -1105,6 +1201,7 @@ function OverviewView(props: DashboardContentProps) {
                   viewedProofIds={props.viewedProofIds}
                   onApprove={() => props.onApproveReservation(reservation)}
                   onRecordAttendance={(status) => props.onRecordAttendance(reservation, status)}
+                  onComplete={() => props.onCompleteReservation(reservation)}
                   onOpenPaymentProof={() => props.onOpenPaymentProof(reservation)}
                 />
               ))}
@@ -1154,20 +1251,25 @@ function OverviewView(props: DashboardContentProps) {
 
 function ReservationsView(props: DashboardContentProps) {
   return (
-    <View style={styles.viewStack}>
+    <DashboardList
+      testID="owner-reservations-list"
+      initialNumToRender={2}
+      maxToRenderPerBatch={2}
+      data={props.reservations}
+      extraData={props}
+      keyExtractor={(reservation) => reservation.id}
+      ListHeaderComponent={
       <SectionIntro
         title="Reservations"
         eyebrow="Live Queue"
         detail={`${props.pendingPayments.length} pending payments, ${props.approvedReservations.length} approved`}
         onRefresh={props.onRefresh}
         refreshing={props.refreshing}
-        compact={!props.tabletLayout}
+        compact
       />
-      <View style={styles.listPanel}>
-        {props.reservations.length ? (
-          props.reservations.map((reservation) => (
+      }
+      renderItem={({ item: reservation }) => (
             <ReservationRow
-              key={reservation.id}
               reservation={reservation}
               expanded
               approving={props.approvingId === reservation.id}
@@ -1175,21 +1277,25 @@ function ReservationsView(props: DashboardContentProps) {
               viewedProofIds={props.viewedProofIds}
               onApprove={() => props.onApproveReservation(reservation)}
               onRecordAttendance={(status) => props.onRecordAttendance(reservation, status)}
+              onComplete={() => props.onCompleteReservation(reservation)}
               onOpenPaymentProof={() => props.onOpenPaymentProof(reservation)}
             />
-          ))
-        ) : (
-          <EmptyPanel title="No Reservations" body="Reservations from guests will appear here." />
-        )}
-      </View>
-    </View>
+      )}
+      ListEmptyComponent={<EmptyPanel title="No Reservations" body="Reservations from guests will appear here." />}
+    />
   );
 }
 
 function PaymentsView(props: DashboardContentProps) {
-  const compact = !props.tabletLayout;
+  const compact = true;
   return (
-    <View style={styles.viewStack}>
+    <DashboardList
+      testID="owner-payments-list"
+      data={props.paymentReservations}
+      extraData={props}
+      keyExtractor={(reservation) => reservation.id}
+      ListHeaderComponent={
+      <View style={styles.viewStack}>
       <SectionIntro
         title="Payments"
         eyebrow="GCash Review"
@@ -1202,23 +1308,19 @@ function PaymentsView(props: DashboardContentProps) {
         <PortalMetric icon={WalletCards} iconTone="green" label="Collected" value={formatPeso(props.paidTotal)} compact={compact} />
         <PortalMetric icon={ReceiptText} iconTone="orange" label="Pending Review" value={String(props.pendingPayments.length)} compact={compact} />
       </View>
-      <View style={styles.listPanel}>
-        {props.paymentReservations.length ? (
-          props.paymentReservations.map((reservation) => (
+      </View>
+      }
+      renderItem={({ item: reservation }) => (
             <PaymentCard
-              key={reservation.id}
               reservation={reservation}
               approving={props.approvingId === reservation.id}
               viewedProofIds={props.viewedProofIds}
               onApprove={() => props.onApproveReservation(reservation)}
               onOpenPaymentProof={() => props.onOpenPaymentProof(reservation)}
             />
-          ))
-        ) : (
-          <EmptyPanel title="No Payments Recorded" body="Submitted payment references and screenshots will appear here." />
-        )}
-      </View>
-    </View>
+      )}
+      ListEmptyComponent={<EmptyPanel title="No Payments Recorded" body="Submitted payment references and screenshots will appear here." />}
+    />
   );
 }
 
@@ -1229,7 +1331,7 @@ function formatReviewDate(createdAt: string) {
 }
 
 function ReviewsView(props: DashboardContentProps) {
-  const compact = !props.tabletLayout;
+  const compact = true;
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const repliesByReview = useMemo(
     () => props.reviewReplies.reduce<Record<string, ReviewReply[]>>((grouped, reply) => {
@@ -1247,7 +1349,13 @@ function ReviewsView(props: DashboardContentProps) {
   }
 
   return (
-    <View style={styles.viewStack}>
+    <DashboardList
+      testID="owner-reviews-list"
+      data={props.reviews}
+      extraData={{ props, replyDrafts }}
+      keyExtractor={(review) => review.id}
+      ListHeaderComponent={
+      <View style={styles.viewStack}>
       <SectionIntro
         title="Reviews"
         eyebrow="Guest feedback"
@@ -1270,9 +1378,9 @@ function ReviewsView(props: DashboardContentProps) {
         </View>
       </View>
 
-      {props.reviews.length ? (
-        <View style={styles.ownerReviewList}>
-          {props.reviews.map((review) => {
+      </View>
+      }
+      renderItem={({ item: review }) => {
             const replies = repliesByReview[review.id] ?? [];
             const draft = replyDrafts[review.id] ?? '';
             const sending = props.sendingReplyId === review.id;
@@ -1345,70 +1453,198 @@ function ReviewsView(props: DashboardContentProps) {
                 </View>
               </View>
             );
-          })}
-        </View>
-      ) : (
-        <EmptyPanel title="No Reviews Yet" body="Guest ratings and comments for this spot will appear here." />
-      )}
-    </View>
+      }}
+      ListEmptyComponent={<EmptyPanel title="No Reviews Yet" body="Guest ratings and comments for this spot will appear here." />}
+    />
   );
 }
 
 function TablesPricingView(props: DashboardContentProps) {
-  const compact = !props.tabletLayout;
+  const { width } = useWindowDimensions();
+  const compact = width < 900;
+  const numColumns = width >= 1350 ? 4 : width >= 900 ? 3 : 2;
+  const [tableSearch, setTableSearch] = useState('');
+  const [tableFilter, setTableFilter] = useState<'all' | 'online' | 'walk-ins' | 'out-of-service'>('all');
   const clubSlotLabels: Record<TableSlotId, { label: string; time: string }> = {
     sunset: { label: 'Early Night', time: '20:00 - 22:30' },
     prime: { label: 'Prime', time: '23:00 - 01:30' },
     late: { label: 'Late Night', time: '02:00 - 04:00' },
   };
+  const filterOptions: Array<{ id: typeof tableFilter; label: string; count: number }> = [
+    { id: 'all', label: 'All tables', count: props.physicalTables.length },
+    { id: 'online', label: 'Online + walk-ins', count: props.physicalTables.filter((table) => !table.isReserved && (table.bookingPolicy || 'online_and_walk_ins') === 'online_and_walk_ins').length },
+    { id: 'walk-ins', label: 'Walk-ins only', count: props.physicalTables.filter((table) => !table.isReserved && table.bookingPolicy === 'walk_in_only').length },
+    { id: 'out-of-service', label: 'Out of service', count: props.physicalTables.filter((table) => table.isReserved).length },
+  ];
+  const visibleTables = useMemo(() => {
+    const query = tableSearch.trim().toLowerCase();
+    return props.physicalTables.filter((table) => {
+      const policy = table.bookingPolicy || 'online_and_walk_ins';
+      const matchesQuery = !query
+        || table.tableId.toLowerCase().includes(query)
+        || clubTableDisplayName(table.tableId).toLowerCase().includes(query);
+      const matchesFilter = tableFilter === 'all'
+        || (tableFilter === 'online' && !table.isReserved && policy === 'online_and_walk_ins')
+        || (tableFilter === 'walk-ins' && !table.isReserved && policy === 'walk_in_only')
+        || (tableFilter === 'out-of-service' && table.isReserved);
+      return matchesQuery && matchesFilter;
+    });
+  }, [props.physicalTables, tableFilter, tableSearch]);
+
+  const renderTableCard = ({ item: table }: { item: (typeof props.physicalTables)[number] }) => (
+    <View style={[styles.tableCard, compact && styles.tableCardCompact]}>
+      <View style={styles.tableCardHeading}>
+        <View style={styles.tableCopy}>
+          <Text style={[styles.tableTitle, compact && styles.tableTitleCompact]}>{clubTableDisplayName(table.tableId)}</Text>
+          <Text style={styles.tableMeta}>{table.capacity} guests maximum</Text>
+        </View>
+        <View style={[styles.tableModeBadge, table.isReserved ? styles.tableModeBadgeMuted : table.bookingPolicy === 'walk_in_only' ? styles.tableModeBadgeWalkIn : styles.tableModeBadgeOnline]}>
+          <Text style={[styles.tableModeBadgeText, table.isReserved ? styles.tableModeBadgeTextMuted : table.bookingPolicy === 'walk_in_only' ? styles.tableModeBadgeTextWalkIn : styles.tableModeBadgeTextOnline]}>
+            {table.isReserved ? 'Out of service' : table.bookingPolicy === 'walk_in_only' ? 'Walk-ins only' : 'Online + walk-ins'}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.tableCardCapacityRow}>
+        <Text style={styles.tableCardSectionLabel}>SEATING CAPACITY</Text>
+        <View style={styles.tableStepper}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Decrease capacity for ${table.tableId}`} accessibilityState={{ disabled: props.savingSettings || table.capacity <= 1 }} disabled={props.savingSettings || table.capacity <= 1} onPress={() => props.onUpdateTable(table.tableId, { capacity: table.capacity - 1 })} style={[styles.stepButton, (props.savingSettings || table.capacity <= 1) && styles.disabledButton]}>
+            <Minus size={18} color={portalColors.primary} />
+          </Pressable>
+          <Text style={styles.tableCount}>{table.capacity}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Increase capacity for ${table.tableId}`} accessibilityState={{ disabled: props.savingSettings || table.capacity >= 100 }} disabled={props.savingSettings || table.capacity >= 100} onPress={() => props.onUpdateTable(table.tableId, { capacity: table.capacity + 1 })} style={[styles.stepButton, (props.savingSettings || table.capacity >= 100) && styles.disabledButton]}>
+            <Plus size={18} color={portalColors.primary} />
+          </Pressable>
+        </View>
+      </View>
+      <Pressable accessibilityRole="switch" accessibilityLabel={`Enable table ${table.tableId} for service`} accessibilityState={{ checked: !table.isReserved, disabled: props.savingSettings }} disabled={props.savingSettings} onPress={() => props.onUpdateTable(table.tableId, { isReserved: !table.isReserved })} style={[styles.tableAvailability, styles.tableServiceControl, table.isReserved && styles.tableServiceControlOff, props.savingSettings && styles.disabledButton]}>
+        <View style={[styles.tableServiceDot, !table.isReserved && styles.tableServiceDotOn]} />
+        <Text style={styles.tableServiceText}>{table.isReserved ? 'Out of service' : 'In service'}</Text>
+      </Pressable>
+      {props.spot ? (
+        <View style={styles.tablePolicyControl}>
+          <Text style={styles.tableCardSectionLabel}>BOOKING POLICY</Text>
+          <OwnerTableBookingPolicy
+            spotId={props.spot.id}
+            tableId={table.tableId}
+            policy={table.bookingPolicy || 'online_and_walk_ins'}
+            liveTable={props.liveTables.find((live) => live.tableId === table.tableId)}
+            unavailable={props.liveTablesLoading || props.liveTablesError || props.savingSettings}
+            onSaved={props.onTablePolicySaved}
+            onSavingChange={props.onTablePolicySavingChange}
+            onReady={() => props.onTableReady(table.tableId)}
+          />
+        </View>
+      ) : null}
+    </View>
+  );
+
   return (
-    <View style={styles.viewStack}>
+    <View testID="owner-tables-list" style={[styles.dashboardBody, styles.dashboardContent, styles.tablesPricingScreen]}>
       <SectionIntro
         title="Tables & Pricing"
         eyebrow={props.isClubFloorPlan ? 'Club floor plan' : 'Reservation setup'}
         detail={props.isClubFloorPlan ? 'The mapped tables publish to guest booking screens.' : 'Only tables configured for this spot appear here.'}
         compact={compact}
       />
-      <View style={[styles.tablesPanel, compact && styles.tablesPanelCompact]}>
-        <View style={[styles.pricePanel, compact && styles.pricePanelCompact]}>
-          <Text style={styles.fieldLabel}>Reservation Price</Text>
-          <View style={styles.priceInputRow}>
-            <Text style={styles.currencyPrefix}>PHP</Text>
-            <TextInput
-              value={props.draftFee}
-              onChangeText={props.setDraftFee}
-              keyboardType="numeric"
-              placeholder="150"
-              placeholderTextColor={portalColors.muted}
-              selectionColor={portalColors.primary}
-              style={[styles.priceInput, compact && styles.priceInputCompact]}
-            />
+      <View style={[styles.tablesPanel, compact && styles.tablesPanelCompact, styles.tablesPanelExpanded]}>
+        <View style={[styles.pricingCards, !compact && styles.pricingCardsWide]}>
+          <View style={[styles.pricePanel, compact && styles.pricePanelCompact, styles.pricePanelTight]}>
+            <Text style={styles.fieldLabel}>Reservation Price</Text>
+            <View style={styles.priceInputRow}>
+              <Text style={styles.currencyPrefix}>PHP</Text>
+              <TextInput
+                value={props.draftFee}
+                accessibilityLabel="Reservation price in pesos"
+                editable={!props.savingSettings}
+                onChangeText={props.setDraftFee}
+                keyboardType="numeric"
+                placeholder="150"
+                placeholderTextColor={portalColors.muted}
+                selectionColor={portalColors.primary}
+                style={[styles.priceInput, compact && styles.priceInputCompact]}
+              />
+            </View>
+            <Text style={styles.tableMeta}>One fee for each online reservation across all tables and times.</Text>
+          </View>
+          <View style={[styles.pricePanel, compact && styles.pricePanelCompact, styles.pricePanelTight]}>
+            <Text style={styles.fieldLabel}>Experience Slot</Text>
+            <View style={styles.experienceSlotSummary}>
+              <Clock3 size={18} color={portalColors.primary} />
+              <Text style={styles.experienceSlotSummaryText}>Guests choose their preferred arrival time. The exact time appears on each reservation.</Text>
+            </View>
           </View>
         </View>
-        {props.totalTables ? (
-          <View style={styles.tableList}>
-            {props.tableSummaries.map((slot) => {
-              const slotCopy = props.isClubFloorPlan ? clubSlotLabels[slot.slotId] : slot;
+
+        <View style={styles.tableBrowser}>
+          <View style={styles.tableBrowserHeading}>
+            <View style={styles.tableBrowserTitleGroup}>
+              <Text style={styles.tableBrowserTitle}>Your tables</Text>
+              <Text style={styles.tableBrowserMeta}>{props.physicalTables.length} total · {props.physicalTables.filter((table) => !table.isReserved).length} in service</Text>
+            </View>
+            {props.liveTablesLoading ? (
+              <View style={styles.tableLiveStatus}><ActivityIndicator size="small" color={portalColors.primary} /><Text style={styles.tableBrowserMeta}>Checking live status</Text></View>
+            ) : null}
+          </View>
+          <View style={styles.tableSearchRow}>
+            <Search size={18} color={portalColors.muted} />
+            <TextInput
+              value={tableSearch}
+              onChangeText={setTableSearch}
+              accessibilityLabel="Search tables by name or number"
+              placeholder="Find a table by name or number"
+              placeholderTextColor={portalColors.muted}
+              selectionColor={portalColors.primary}
+              style={styles.tableSearchInput}
+              returnKeyType="search"
+            />
+            {tableSearch.length > 0 ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="Clear table search" onPress={() => setTableSearch('')} style={styles.clearTableSearch}>
+                <Text style={styles.clearTableSearchText}>Clear</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.tableFilterRow}>
+            {filterOptions.map((option) => {
+              const selected = tableFilter === option.id;
               return (
-                <View key={slot.slotId} style={[styles.tableRow, compact && styles.tableRowCompact]}>
-                  <View style={styles.tableCopy}>
-                    <Text style={[styles.tableTitle, compact && styles.tableTitleCompact]}>{slotCopy.label}</Text>
-                    <Text style={styles.tableMeta}>{slotCopy.time} - {slot.tableCount} mapped tables</Text>
-                  </View>
-                  <View style={styles.tableStepper}>
-                    <Table2 size={20} color={portalColors.primary} />
-                    <Text style={styles.tableCount}>{slot.tableCount}</Text>
-                  </View>
-                </View>
+                <Pressable key={option.id} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setTableFilter(option.id)} style={[styles.tableFilterChip, selected && styles.tableFilterChipSelected]}>
+                  <Text style={[styles.tableFilterText, selected && styles.tableFilterTextSelected]}>{option.label}</Text>
+                  <Text style={[styles.tableFilterCount, selected && styles.tableFilterCountSelected]}>{option.count}</Text>
+                </Pressable>
               );
             })}
-          </View>
-        ) : (
-          <EmptyPanel title="No Tables Configured" body="This spot has no table layout yet. CebSpot can add a venue-specific reservation layout after setup." />
-        )}
+          </ScrollView>
+          {props.liveTablesError ? <Text accessibilityRole="alert" style={styles.tableLiveError}>Live table status could not be checked. Refresh before changing table availability.</Text> : null}
+          <FlatList
+            key={`table-grid-${numColumns}`}
+            testID="owner-physical-table-grid"
+            data={visibleTables}
+            extraData={props}
+            numColumns={numColumns}
+            columnWrapperStyle={numColumns > 1 ? styles.tableGridRow : undefined}
+            keyExtractor={(table) => table.tableId}
+            renderItem={renderTableCard}
+            style={styles.tableGridList}
+            contentContainerStyle={styles.tableGridContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator
+            ListEmptyComponent={props.physicalTables.length === 0
+              ? <EmptyPanel title="No Tables Configured" body="Add your first table, then publish the reservation settings." />
+              : <EmptyPanel title="No Matching Tables" body="Try a different name or change the filter." />}
+          />
+        </View>
+      </View>
+      <View style={styles.tableFooterActions}>
+        {!props.isClubFloorPlan ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Add a table" disabled={props.savingSettings} onPress={props.onAddTable} style={[styles.tableAvailability, props.savingSettings && styles.disabledButton]}>
+            <Plus size={18} color={portalColors.primary} /><Text style={styles.tableMeta}>Add table</Text>
+          </Pressable>
+        ) : null}
         <Pressable
           accessibilityRole="button"
-          style={[styles.primaryPortalButton, props.savingSettings && styles.disabledButton]}
+          accessibilityLabel="Publish table and reservation settings"
+          accessibilityState={{ disabled: props.savingSettings, busy: props.savingSettings }}
+          style={[styles.primaryPortalButton, styles.publishTableSettingsButton, props.savingSettings && styles.disabledButton]}
           disabled={props.savingSettings}
           onPress={props.onSaveReservationSettings}
         >
@@ -1423,7 +1659,7 @@ function TablesPricingView(props: DashboardContentProps) {
 
 function SpotProfileView(props: DashboardContentProps) {
   const spot = props.spot;
-  const compact = !props.tabletLayout;
+  const compact = true;
   const [galleryExpanded, setGalleryExpanded] = useState(false);
   const [galleryFilter, setGalleryFilter] = useState<GalleryFilter>('all');
   const galleryItems = useMemo(() => buildOwnerGallery(spot, props.reviews), [props.reviews, spot]);
@@ -1601,6 +1837,7 @@ function ReservationRow({
   viewedProofIds,
   onApprove,
   onRecordAttendance,
+  onComplete,
   onOpenPaymentProof,
 }: {
   reservation: Reservation;
@@ -1610,6 +1847,7 @@ function ReservationRow({
   viewedProofIds: Set<string>;
   onApprove: () => void;
   onRecordAttendance: (status: 'checked_in' | 'no_show') => void;
+  onComplete: () => void;
   onOpenPaymentProof: () => void;
 }) {
   const isPaymongoReservationRecord = isPaymongoReservation(reservation);
@@ -1648,6 +1886,7 @@ function ReservationRow({
           <Detail label="Guest Email" value={reservation.guest_email || 'Not provided'} />
           <Detail label="Guest Phone" value={reservation.guest_phone || reservation.payer_gcash_number || 'Not provided'} />
           <Detail label="Table" value={reservation.table_id ? clubTableDisplayName(reservation.table_id) : 'Not provided'} />
+          <Detail label="Arrival time" value={reservation.reservation_time ? formatPickerTime(reservation.reservation_time) : 'Not provided'} />
           <Detail label="Deposit Terms" value={reservation.payment_terms_accepted ? 'Accepted' : 'Not recorded'} />
           <Detail label="Booking ID" value={getReservationBookingId(reservation)} />
           <Detail label="Unique ID" value={getReservationUniqueId(reservation)} />
@@ -1659,6 +1898,11 @@ function ReservationRow({
         </View>
       ) : null}
       <View style={styles.rowActions}>
+        {reservation.status === 'checked_in' && <Pressable accessibilityRole="button"
+          accessibilityLabel={`Complete visit for ${guestName}`} disabled={updatingAttendance}
+          onPress={onComplete} style={[styles.arrivedButton, updatingAttendance && styles.disabledButton]}>
+          <Text style={styles.arrivedButtonText}>{updatingAttendance ? 'Completing...' : 'Complete visit'}</Text>
+        </Pressable>}
         <Pressable
           accessibilityRole="button"
           style={[styles.proofButton, (!reservation.payment_proof_url || isPaymongoReservationRecord) && styles.disabledButton]}
@@ -1975,9 +2219,6 @@ const portalColors = {
   brown: '#574235',
   primary: '#F57C00',
   primaryDark: '#964900',
-  sidebar: '#050505',
-  sidebarCard: '#101010',
-  sidebarMuted: '#9CA3AF',
   success: '#16A34A',
   successSoft: '#EAFBF0',
   blue: '#2563EB',
@@ -2001,26 +2242,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: portalColors.background,
   },
-  tabletLayout: {
+  dashboardFrame: {
     flex: 1,
-    flexDirection: 'row',
+    width: '100%',
+    maxWidth: 1040,
+    alignSelf: 'center',
+    minHeight: 0,
   },
-  tabletMain: {
-    flex: 1,
-  },
-  tabletMainContent: {
-    paddingHorizontal: 42,
-    paddingTop: 28,
-    paddingBottom: 44,
-  },
-  phoneShell: {
-    flex: 1,
-  },
-  phoneContent: {
-    padding: spacing.md,
-    paddingBottom: spacing.xxl,
+  dashboardChrome: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
     gap: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: portalColors.line,
   },
+  dashboardBody: { flex: 1, minHeight: 0 },
+  dashboardContent: { padding: spacing.md, paddingBottom: spacing.xxl, gap: spacing.lg },
+  dashboardListSeparator: { height: spacing.lg },
+  loadError: { color: portalColors.danger, fontSize: fontSize.sm, lineHeight: 18 },
+
   center: {
     flex: 1,
     alignItems: 'center',
@@ -2032,85 +2273,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: '800',
   },
-  sidebar: {
-    width: 288,
-    backgroundColor: portalColors.sidebar,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xl,
-  },
-  sidebarBrand: {
-    color: colors.white,
-    fontSize: fontSize.xl,
-    fontWeight: '900',
-    marginBottom: spacing.xxl,
-  },
-  sidebarSpot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.xxl,
-  },
-  sidebarLogo: {
-    width: 42,
-    height: 42,
-    borderRadius: radius.md,
-    backgroundColor: colors.white,
-  },
-  sidebarSpotCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  sidebarSpotName: {
-    color: colors.white,
-    fontSize: fontSize.md,
-    fontWeight: '900',
-  },
-  sidebarSpotMeta: {
-    color: portalColors.sidebarMuted,
-    fontSize: fontSize.xs,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  sidebarNav: {
-    gap: spacing.md,
-  },
-  sidebarNavItem: {
-    minHeight: 48,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  sidebarNavItemActive: {
-    backgroundColor: portalColors.primary,
-  },
-  sidebarNavText: {
-    color: portalColors.sidebarMuted,
-    fontSize: fontSize.md,
-    fontWeight: '800',
-  },
-  sidebarNavTextActive: {
-    color: colors.white,
-    fontWeight: '900',
-  },
-  sidebarFooter: {
-    marginTop: 'auto',
-    borderTopWidth: 1,
-    borderTopColor: '#1F1F1F',
-    paddingTop: spacing.xl,
-    gap: spacing.xl,
-  },
-  sidebarAccount: {
-    minHeight: 64,
-    borderRadius: radius.xl,
-    backgroundColor: portalColors.sidebarCard,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
+
   avatar: {
     width: 38,
     height: 38,
@@ -2124,34 +2287,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     fontWeight: '900',
   },
-  sidebarAccountCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  sidebarEmail: {
-    color: colors.white,
-    fontSize: fontSize.xs,
-    fontWeight: '900',
-  },
-  sidebarRole: {
-    color: portalColors.sidebarMuted,
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  sidebarSignOut: {
-    minHeight: 42,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  sidebarSignOutText: {
-    color: portalColors.danger,
-    fontSize: fontSize.xs,
-    fontWeight: '900',
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-  },
+
   portalHeader: {
     minHeight: 72,
     borderBottomWidth: 1,
@@ -2193,8 +2329,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   headerIconButtonCompact: {
-    width: 38,
-    height: 38,
+    width: 48,
+    height: 48,
     borderRadius: radius.md,
   },
   headerExitButton: {
@@ -2215,7 +2351,8 @@ const styles = StyleSheet.create({
   },
   headerExitButtonCompact: {
     minWidth: 78,
-    height: 38,
+    minHeight: 48,
+    height: 'auto',
     borderRadius: radius.md,
     paddingHorizontal: spacing.sm,
   },
@@ -2290,11 +2427,15 @@ const styles = StyleSheet.create({
   mobileTabs: {
     gap: spacing.sm,
     paddingRight: spacing.lg,
+    paddingVertical: spacing.xs,
   },
+  mobileTabRail: { flexGrow: 0, flexShrink: 0 },
   mobileTab: {
-    minHeight: 38,
+    minHeight: 48,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
@@ -2308,7 +2449,7 @@ const styles = StyleSheet.create({
   },
   mobileTabText: {
     color: portalColors.muted,
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
     fontWeight: '900',
   },
   mobileTabTextActive: {
@@ -2323,9 +2464,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.md,
   },
-  metricDeckTablet: {
-    flexWrap: 'nowrap',
-  },
+
   metricCard: {
     flex: 1,
     minHeight: 150,
@@ -2337,8 +2476,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
   },
   metricCardCompact: {
-    flex: 0,
-    width: '48%',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: '46%',
+    minWidth: 120,
     minHeight: 108,
     borderRadius: radius.xl,
     padding: spacing.md,
@@ -2401,10 +2542,7 @@ const styles = StyleSheet.create({
   overviewGrid: {
     gap: spacing.lg,
   },
-  overviewGridTablet: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
+
   incomingPanel: {
     flex: 2.1,
     minHeight: 390,
@@ -3008,7 +3146,8 @@ const styles = StyleSheet.create({
   },
   ownerReplyInput: {
     flex: 1,
-    minHeight: 46,
+    minWidth: 0,
+    minHeight: 48,
     maxHeight: 120,
     borderRadius: radius.md,
     backgroundColor: portalColors.surfaceLow,
@@ -3020,7 +3159,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   ownerReplySend: {
-    minHeight: 46,
+    minHeight: 48,
     borderRadius: radius.md,
     backgroundColor: portalColors.primary,
     paddingHorizontal: spacing.md,
@@ -3047,6 +3186,257 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     borderRadius: radius.xl,
     gap: spacing.lg,
+  },
+  tablesPricingScreen: {
+    gap: spacing.md,
+  },
+  tablesPanelExpanded: {
+    flex: 1,
+    minHeight: 0,
+  },
+  pricingCards: {
+    gap: spacing.md,
+  },
+  pricingCardsWide: {
+    flexDirection: 'row',
+  },
+  pricePanelTight: {
+    flex: 1,
+    minHeight: 96,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  experienceSlotSummary: {
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  experienceSlotSummaryText: {
+    flex: 1,
+    color: portalColors.muted,
+    fontSize: fontSize.xs,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  tableBrowser: {
+    flex: 1,
+    minHeight: 0,
+    gap: spacing.sm,
+  },
+  tableBrowserHeading: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  tableBrowserTitleGroup: {
+    gap: 2,
+  },
+  tableBrowserTitle: {
+    color: portalColors.ink,
+    fontSize: fontSize.md,
+    fontWeight: '900',
+  },
+  tableBrowserMeta: {
+    color: portalColors.muted,
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+  },
+  tableLiveStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  tableSearchRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: portalColors.line,
+    borderRadius: radius.lg,
+    backgroundColor: portalColors.background,
+    paddingHorizontal: spacing.md,
+  },
+  tableSearchInput: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 46,
+    color: portalColors.ink,
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    paddingVertical: 0,
+  },
+  clearTableSearch: {
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xs,
+  },
+  clearTableSearchText: {
+    color: portalColors.primaryDark,
+    fontSize: fontSize.xs,
+    fontWeight: '900',
+  },
+  tableFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: 2,
+    paddingRight: spacing.sm,
+  },
+  tableFilterChip: {
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: portalColors.line,
+    borderRadius: radius.pill,
+    backgroundColor: portalColors.background,
+    paddingHorizontal: spacing.md,
+  },
+  tableFilterChipSelected: {
+    borderColor: portalColors.primary,
+    backgroundColor: portalColors.orangeSoft,
+  },
+  tableFilterText: {
+    color: portalColors.muted,
+    fontSize: fontSize.xs,
+    fontWeight: '800',
+  },
+  tableFilterTextSelected: {
+    color: portalColors.primaryDark,
+  },
+  tableFilterCount: {
+    minWidth: 18,
+    textAlign: 'center',
+    color: portalColors.muted,
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  tableFilterCountSelected: {
+    color: portalColors.primaryDark,
+  },
+  tableLiveError: {
+    color: portalColors.danger,
+    backgroundColor: colors.dangerContainer,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+  },
+  tableGridList: {
+    flex: 1,
+    minHeight: 0,
+  },
+  tableGridContent: {
+    gap: spacing.md,
+    paddingBottom: spacing.xs,
+  },
+  tableGridRow: {
+    gap: spacing.md,
+  },
+  tableCard: {
+    flex: 1,
+    minWidth: 0,
+    borderWidth: 1,
+    borderColor: portalColors.line,
+    borderRadius: radius.xl,
+    backgroundColor: portalColors.background,
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+  tableCardCompact: {
+    borderRadius: radius.lg,
+    padding: spacing.sm,
+    gap: spacing.sm,
+  },
+  tableCardHeading: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.xs,
+  },
+  tableModeBadge: {
+    maxWidth: '56%',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+  },
+  tableModeBadgeOnline: {
+    backgroundColor: portalColors.successSoft,
+  },
+  tableModeBadgeWalkIn: {
+    backgroundColor: portalColors.orangeSoft,
+  },
+  tableModeBadgeMuted: {
+    backgroundColor: portalColors.surfaceLow,
+  },
+  tableModeBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  tableModeBadgeTextOnline: {
+    color: portalColors.success,
+  },
+  tableModeBadgeTextWalkIn: {
+    color: portalColors.primaryDark,
+  },
+  tableModeBadgeTextMuted: {
+    color: portalColors.muted,
+  },
+  tableCardCapacityRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  tableCardSectionLabel: {
+    color: portalColors.muted,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+  },
+  tableServiceControl: {
+    minHeight: 42,
+    justifyContent: 'flex-start',
+    borderWidth: 1,
+    borderColor: portalColors.line,
+  },
+  tableServiceControlOff: {
+    backgroundColor: portalColors.surfaceLow,
+  },
+  tableServiceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.pill,
+    backgroundColor: portalColors.muted,
+  },
+  tableServiceDotOn: {
+    backgroundColor: portalColors.success,
+  },
+  tableServiceText: {
+    color: portalColors.ink,
+    fontSize: fontSize.xs,
+    fontWeight: '800',
+  },
+  tablePolicyControl: {
+    gap: spacing.xs,
+  },
+  tableFooterActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  publishTableSettingsButton: {
+    flex: 1,
+    minWidth: 220,
   },
   pricePanel: {
     minHeight: 132,
@@ -3081,6 +3471,8 @@ const styles = StyleSheet.create({
   },
   priceInput: {
     flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
     color: portalColors.ink,
     fontSize: 28,
     fontWeight: '900',
@@ -3106,6 +3498,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: radius.lg,
   },
+  physicalTableRow: { flexWrap: 'wrap' },
+  physicalTableCopy: { minWidth: 120, flexBasis: 120 },
+  tableAvailability: { minHeight: 48, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.lg, backgroundColor: portalColors.surfaceLow, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   tableCopy: {
     flex: 1,
     minWidth: 0,
@@ -3130,8 +3525,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   stepButton: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
     borderRadius: radius.lg,
     backgroundColor: portalColors.surfaceLow,
     alignItems: 'center',

@@ -50,6 +50,9 @@ test('all six roles retain activity isolation after complete schema replay',asyn
   for(const [i,id] of ids.entries()) await db.query('insert into auth.users(id,email,email_confirmed_at) values($1,$2,now())',[id,i===4?'testadmin6000@gmail.com':`fixture-${i}@example.test`]);
   await db.query("update profiles set role='owner' where id=any($1::uuid[])",[[ids[2],ids[3]]]);
   await db.query("insert into spots(id,name,category,address,latitude,longitude,owner_id,is_public,is_reservable,table_inventory) values($1,'Fixture venue','Cafe','Fixture address',10,123,$2,true,true,$3)",[venue,ids[2],JSON.stringify({prime:[{tableId:'T01',capacity:4}]})]);
+  await db.as(ids[2]);
+  await db.query('select confirm_client_venue_inventory($1,$2)',[venue,JSON.stringify({prime:[{tableId:'T01',capacity:4}]})]);
+  await db.exec('reset role');
   const booking=(await db.query("insert into reservations(user_id,spot_id,spot_name,reservation_date,reservation_time,table_id,slot_id,qr_code) values($1,$2,'Fixture venue',current_date+1,'21:10','T01','prime','fixture-qr') returning id",[ids[0],venue])).rows[0].id;
   await db.query("insert into activities(user_id,user_name,type,target_id,spot_id,content) values($1,'Fixture','reservation_approved',$2,$3,'Synthetic private event')",[ids[0],booking,venue]);
   await db.exec('create policy intentionally_overlapping_permissive_test on activities for select using(true)');

@@ -11,6 +11,7 @@ Updated: 2026-10-13 (Asia/Manila).
 | Phase 1 | Captured initial HEAD/status/staged and unstaged diffs without discarding edits; created approved local branch | Refreshed typecheck passed; backend/platform 146 passed, 5 skipped | Baseline complete; original map failure and external gates retained |
 | Phase 2 / LA-01 | Explicit public allowlist; restrictive activity guard; authoritative owner relation; forged-event and profile identity protection | 11 isolated SQL tests passed across six roles, including overlapping permissive policy | Local implementation verified in isolated fixture; full-schema/API/staging gate remains open |
 | Phase 3 / LA-02 | Added missing schema/feature foundations and complete replay harness; pinned local config; deprecated root deployment sequence | 16 tests passed: fresh native PostgreSQL replay, catalog-equivalent upgrade preserving fixture rows, six-role privacy | Full Supabase reset/API blocked by missing runtime; native SQL verification is complete for this group |
+| Phase 4 / LA-03 | Sole-venue database gate; protected owner inventory confirmation; edits invalidate confirmation; live booking/owner flows use only stored tables | 17 focused SQL/client/settings tests passed; TypeScript passed | Actual venue inventory still requires owner confirmation in isolated staging; no venue data was edited remotely |
 
 ## Command record
 
@@ -27,6 +28,13 @@ Read-only planning checks and their outcomes are recorded in REMEDIATION_STATUS.
 
 The phase 3 commit includes the two pre-existing untracked October migrations unchanged because fresh-checkout migration replay depends on them. Other pre-existing changes remain outside these commits.
 
+- `node scripts/remediation-check.cjs phase-4-inventory node --test tests/remediation/inventory.test.cjs tests/remediation/migrations.test.cjs tests/backend/owner-reservation-settings.test.cjs`: 17 passed / 3 failed because new rejection assertions did not include existing guard messages. Full migration/upgrade checks passed.
+- `node scripts/remediation-check.cjs phase-4-inventory-verified node --test tests/remediation/inventory.test.cjs tests/remediation/inventory-client.test.cjs tests/backend/owner-reservation-settings.test.cjs`: 16 passed / 1 failed on another pre-existing rejection message. No authorization was relaxed.
+- `node scripts/remediation-check.cjs phase-4-inventory-final node --test tests/remediation/inventory.test.cjs tests/remediation/inventory-client.test.cjs tests/backend/owner-reservation-settings.test.cjs`: 17 passed.
+- `node scripts/remediation-check.cjs phase-4-typecheck npm run typecheck`: passed.
+
+Phase 4 touches previously modified reservation/owner screens and inventory/spot/type modules. Their existing changes are preserved; focused path commits necessarily retain those in-scope dependencies. The initial snapshot remains available to distinguish pre-existing work.
+
 ## Deliverables pending
 
 LA-by-LA verified fixes, changed-file/commit manifest, migration order and checksums, regression outcomes, Android manual checklist, isolated staging instructions, rollback instructions, final artifact hashes, and final release recommendation.
@@ -34,3 +42,7 @@ LA-by-LA verified fixes, changed-file/commit manifest, migration order and check
 ## Unverified claims and boundaries
 
 No production deployment/data changes, real payment, refund, credential rotation, history rewrite, or existing database reset has been performed. Full-stack local, staging, test-provider and device verification remain blocked as documented in REMEDIATION_STATUS.md. LA-08/LA-09 are outside customer/owner Android v1 scope, not repaired web features.
+
+- Phase 4 broad backend initially failed an obsolete generated-inventory source assertion. Updated it to require stored inventory and protected confirmation; an initial correction used the wrong call signature and was corrected after inspecting the call. Failed evidence retained.
+- `node scripts/remediation-check.cjs phase-4-backend-final node --test tests/backend/*.test.cjs tests/platform/*.test.cjs`: 146 passed, 5 skipped.
+

@@ -96,10 +96,11 @@ test('booking requires an explicit club table and passes it through checkout', (
   assert.match(checkoutScreen, /table_id: tableId/);
 });
 
-test('owner dashboard preserves the fixed club inventory when publishing pricing', () => {
+test('owner dashboard publishes stored inventory only after protected owner confirmation', () => {
   const ownerDashboard = read('app/owner-dashboard.tsx');
 
-  assert.match(ownerDashboard, /normalizeClubTableInventory\(draftInventory\)/);
+  assert.doesNotMatch(ownerDashboard, /normalizeClubTableInventory\(draftInventory\)/);
+  assert.match(ownerDashboard, /confirmReservationInventory\(updatedSpot, ownerSupabase\)/);
   assert.doesNotMatch(ownerDashboard, /changeTableCount/);
-  assert.match(ownerDashboard, /mapped tables/);
+  assert.match(ownerDashboard, /Club floor plan/);
 });

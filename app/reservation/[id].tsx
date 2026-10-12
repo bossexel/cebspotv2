@@ -13,14 +13,12 @@ import {
   ChevronUp,
   Clock3,
   Info,
-  Moon,
   RefreshCw,
   ShieldCheck,
-  Sparkles,
-  Sun,
   XCircle,
   UsersRound,
 } from 'lucide-react-native';
+import { AdjustableTimePicker, formatPickerTime } from '../../src/components/AdjustableTimePicker';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
 import { colors } from '../../src/constants/colors';
 import {
@@ -43,64 +41,13 @@ import {
   getSpotReservationType,
   isPaymentRequired,
 } from '../../src/utils/reservations';
-import { defaultTableInventory, normalizeTableInventory } from '../../src/utils/tableInventory';
+import { createEmptyTableInventory, normalizeStoredTableInventory, type TableBookingPolicy } from '../../src/utils/tableInventory';
+import { venueTableService, type VenueTableAvailability } from '../../src/services/venueTableService';
+import { GuestTableChoices } from '../../src/components/GuestTableChoices';
+import { getReservationTimeSlot } from '../../src/utils/reservationTimeSlot';
 
 const testCebspotSpotId = '66666666-6666-4666-8666-666666666666';
 const tableHoldDurationSeconds = 5 * 60;
-
-const slots = [
-  {
-    id: 'sunset',
-    name: 'Sunset',
-    time: '17:00 - 19:30',
-    startTime: '17:00',
-    endTime: '19:30',
-    icon: 'sun',
-  },
-  {
-    id: 'prime',
-    name: 'Prime',
-    time: '20:00 - 22:30',
-    startTime: '20:00',
-    endTime: '22:30',
-    icon: 'moon',
-  },
-  {
-    id: 'late',
-    name: 'Late',
-    time: '23:00 - 02:00',
-    startTime: '23:00',
-    endTime: '02:00',
-    icon: 'sparkles',
-  },
-] as const;
-
-const clubSlots = [
-  {
-    id: 'sunset',
-    name: 'Early Night',
-    time: '20:00 - 22:30',
-    startTime: '20:00',
-    endTime: '22:30',
-    icon: 'sun',
-  },
-  {
-    id: 'prime',
-    name: 'Prime',
-    time: '23:00 - 01:30',
-    startTime: '23:00',
-    endTime: '01:30',
-    icon: 'moon',
-  },
-  {
-    id: 'late',
-    name: 'Late Night',
-    time: '02:00 - 04:00',
-    startTime: '02:00',
-    endTime: '04:00',
-    icon: 'sparkles',
-  },
-] as const;
 
 const groupSizes = [
   { id: 'solo', label: 'Solo', subtitle: '(1 person)', guests: 1 },
@@ -109,9 +56,9 @@ const groupSizes = [
   { id: 'big-group', label: 'Big Group', subtitle: '(6+ party)', guests: 6 },
 ] as const;
 
-type Slot = (typeof slots)[number] | (typeof clubSlots)[number];
+type Slot = { id: SlotId; name: string; time: string; startTime: string };
 type GroupSize = (typeof groupSizes)[number];
-type SlotId = Slot['id'];
+type SlotId = 'sunset' | 'prime' | 'late';
 type GroupSizeId = GroupSize['id'];
 type BookingSectionKey = 'date' | 'time' | 'group';
 
@@ -119,6 +66,7 @@ type TableOption = {
   tableId: string;
   capacity: number;
   isReserved: boolean;
+  bookingPolicy?: TableBookingPolicy;
 };
 
 type TableInventory = Record<SlotId, TableOption[]>;
@@ -166,7 +114,7 @@ function getCalendarDates(monthDate: Date) {
   return dates;
 }
 
-const tableInventory = defaultTableInventory as TableInventory;
+const tableInventory = createEmptyTableInventory() as TableInventory;
 
 function getGroupSizeLabel(groupSizeId: GroupSizeId) {
   return groupSizes.find((group) => group.id === groupSizeId)?.label ?? 'selected group size';
@@ -201,30 +149,8 @@ function reserveTables(inventory: TableInventory, slotId: SlotId, tableIds: stri
   );
 }
 
-function getTableInventoryForDate(date: string, baseInventory = tableInventory, simulateDemoAvailability = true): TableInventory {
-  const inventory = cloneInventory(baseInventory);
-  if (!simulateDemoAvailability) return inventory;
-  const dayNumber = Number(format(toLocalDate(date), 'd'));
-
-  if (dayNumber % 5 === 0) {
-    reserveTables(inventory, 'sunset', ['s1', 's2', 's3', 's4']);
-  } else if (dayNumber % 2 === 1) {
-    reserveTables(inventory, 'sunset', ['s1', 's2', 's3']);
-  }
-
-  if (dayNumber % 4 === 0) {
-    reserveTables(inventory, 'prime', ['p2']);
-  } else if (dayNumber % 3 === 0) {
-    inventory.prime = inventory.prime.map((table) =>
-      table.tableId === 'p3' ? { ...table, isReserved: false } : table
-    );
-  }
-
-  if (dayNumber % 6 === 0) {
-    reserveTables(inventory, 'late', ['l2']);
-  }
-
-  return inventory;
+function getTableInventoryForDate(_date: string, baseInventory = tableInventory, _simulateDemoAvailability = false): TableInventory {
+  return cloneInventory(baseInventory);
 }
 
 function getAvailableTablesForSlot(
@@ -237,7 +163,7 @@ function getAvailableTablesForSlot(
   const requiredCapacity = getRequiredCapacity(groupSizeId);
   const inventory = getTableInventoryForDate(date, baseInventory, simulateDemoAvailability);
 
-  return inventory[slotId].filter((table) => !table.isReserved && table.capacity >= requiredCapacity);
+  return inventory[slotId].filter((table) => !table.isReserved && table.bookingPolicy !== 'walk_in_only' && table.capacity >= requiredCapacity);
 }
 
 function formatHoldTime(seconds: number) {
@@ -267,9 +193,10 @@ function getAvailabilityLabel(
 ) {
   const inventory = getTableInventoryForDate(date, baseInventory, simulateDemoAvailability);
   const availableTables = getAvailableTablesForSlot(slotId, groupSizeId, date, baseInventory, simulateDemoAvailability);
-  const openTables = inventory[slotId].filter((table) => !table.isReserved);
+  const openTables = inventory[slotId].filter((table) => !table.isReserved && table.bookingPolicy !== 'walk_in_only');
   const count = availableTables.length;
 
+  if (inventory[slotId].length === 0) return 'No tables configured';
   if (count === 0 && openTables.length === 0) return 'Fully booked';
   if (count === 0) return `Not available for ${getGroupSizeLabel(groupSizeId)}`;
   if (count === 1) return 'Last table';
@@ -290,12 +217,6 @@ function getSlotAvailability(
     isAvailable: isSlotAvailable(slotId, groupSizeId, date, baseInventory, simulateDemoAvailability),
     label: getAvailabilityLabel(slotId, groupSizeId, date, baseInventory, simulateDemoAvailability),
   };
-}
-
-function SlotIcon({ icon, color }: { icon: Slot['icon']; color: string }) {
-  if (icon === 'moon') return <Moon size={22} color={color} fill={color} />;
-  if (icon === 'sparkles') return <Sparkles size={22} color={color} />;
-  return <Sun size={22} color={color} fill={color} />;
 }
 
 function SectionTitle({
@@ -443,91 +364,27 @@ function DateSelector({
   );
 }
 
-function ExperienceSlotCard({
-  slot,
-  selected,
-  availability,
-  onPress,
-  appColors,
-}: {
-  slot: Slot;
-  selected: boolean;
-  availability: SlotAvailability;
-  onPress: () => void;
-  appColors: AppColors;
-}) {
-  const disabled = !availability.isAvailable;
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected, disabled }}
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [
-        styles.slotCard,
-        {
-          backgroundColor: selected ? colors.primary + '08' : appColors.surfaceLow,
-          borderColor: selected ? colors.primary : appColors.surfaceLow,
-        },
-        disabled && styles.slotCardDisabled,
-        pressed && !disabled && styles.pressed,
-      ]}
-    >
-      <View style={styles.slotCopy}>
-        <Text style={[styles.slotName, { color: disabled ? appColors.onSurfaceVariant : appColors.onSurface }]}>
-          {slot.name}
-        </Text>
-        <Text style={[styles.slotTime, { color: appColors.onSurfaceVariant }]}>{slot.time}</Text>
-        <Text style={[styles.availability, disabled && styles.availabilityUnavailable]}>
-          {disabled ? availability.label : `+ ${availability.label}`}
-        </Text>
-      </View>
-      <View style={[styles.slotIcon, selected && styles.slotIconSelected]}>
-        <SlotIcon icon={slot.icon} color={selected ? colors.primary : appColors.onSurfaceVariant} />
-      </View>
-    </Pressable>
-  );
-}
-
 function ExperienceSlotSelector({
-  bookingSlots,
-  selectedSlotId,
-  slotAvailability,
-  notice,
-  onSelectSlot,
-  appColors,
+  time, onChangeTime, notice, appColors,
 }: {
-  bookingSlots: readonly Slot[];
-  selectedSlotId: SlotId | null;
-  slotAvailability: Record<SlotId, SlotAvailability>;
+  time: string;
+  onChangeTime: (time: string) => void;
   notice: string;
-  onSelectSlot: (slotId: SlotId) => void;
   appColors: AppColors;
 }) {
   return (
     <View style={styles.sectionBlock}>
-      <SectionTitle
-        title="Experience Slot"
-        appColors={appColors}
-        icon={
-          <View style={styles.filledSectionIcon}>
-            <Clock3 size={10} color={colors.white} />
-          </View>
-        }
-      />
-      <View style={styles.slotList}>
-        {bookingSlots.map((slot) => (
-          <ExperienceSlotCard
-            key={slot.id}
-            slot={slot}
-            selected={slot.id === selectedSlotId}
-            availability={slotAvailability[slot.id]}
-            onPress={() => onSelectSlot(slot.id)}
-            appColors={appColors}
-          />
-        ))}
+      <SectionTitle title="Experience Slot" appColors={appColors} icon={<Clock3 size={16} color={colors.primary} />} />
+      <Text style={[styles.timePickerHelp, { color: appColors.onSurfaceVariant }]}>
+        Adjust the hours and minutes with the arrows. Tap AM or PM to switch.
+      </Text>
+      <View style={[styles.timePickerPanel, { backgroundColor: appColors.surfaceRaised, borderColor: appColors.outlineVariant }]}>
+        <Text style={[styles.timePickerLabel, { color: appColors.onSurface }]}>Reservation time</Text>
+        <AdjustableTimePicker value={time} onChange={onChangeTime} appColors={appColors} />
       </View>
+      <Text accessibilityLiveRegion="polite" style={[styles.timePickerHelp, { color: appColors.onSurfaceVariant }]}>
+        Arrival time: {formatPickerTime(time)}
+      </Text>
       {!!notice && <Text style={styles.availabilityNotice}>{notice}</Text>}
     </View>
   );
@@ -683,7 +540,8 @@ function ClubFloorPlanSelector({
             {clubFloorTables.map((table) => {
               const savedTable = tableById.get(table.tableId);
               const reserved = Boolean(savedTable?.isReserved);
-              const unavailable = !table.bookable || !savedTable || reserved || savedTable.capacity < requiredCapacity;
+              const walkInOnly = savedTable?.bookingPolicy === 'walk_in_only';
+              const unavailable = !table.bookable || !savedTable || reserved || walkInOnly || savedTable.capacity < requiredCapacity;
               const selected = table.tableId === selectedTableId;
               const unavailableForGroup = Boolean(savedTable && !reserved && savedTable.capacity < requiredCapacity);
               const fill = reserved
@@ -697,6 +555,7 @@ function ClubFloorPlanSelector({
                 <G
                   key={table.tableId}
                   onPress={unavailable ? undefined : () => onSelectTable(table.tableId)}
+                  accessibilityLabel={`${clubTableDisplayName(table.tableId)}${walkInOnly ? ', Walk-ins only' : unavailable ? ', Unavailable' : ', Available online'}`}
                 >
                   <Rect
                     x={table.x - 5}
@@ -1006,14 +865,14 @@ function TableHoldTimer({
         <Clock3 size={19} color={expired ? colors.danger : colors.primary} />
       </View>
       <View style={styles.holdTimerCopy}>
-        <Text style={[styles.holdTimerLabel, { color: appColors.onSurfaceVariant }]}>TABLE HOLD</Text>
+        <Text style={[styles.holdTimerLabel, { color: appColors.onSurfaceVariant }]}>SELECTION TIMER</Text>
         <Text style={[styles.holdTimerValue, expired && styles.holdTimerExpiredText]}>
           {expired ? 'Expired' : formatHoldTime(secondsRemaining)}
         </Text>
         <Text style={[styles.holdTimerNote, { color: appColors.onSurfaceVariant }]}>
           {expired
-            ? 'Refresh the hold before confirming this reservation.'
-            : 'Complete the deposit within 5 minutes to keep this table selection.'}
+            ? 'Refresh the timer before continuing. This does not reserve the table.'
+            : 'This timer tracks your selection only; availability is checked again before booking.'}
         </Text>
       </View>
       {expired && (
@@ -1045,7 +904,7 @@ function ConfirmBookingButton({
         pressed && !loading && styles.confirmPressed,
       ]}
       onPress={onPress}
-      disabled={loading}
+      disabled={loading || unavailable}
     >
       {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.confirmText}>Confirm Booking</Text>}
     </Pressable>
@@ -1062,7 +921,8 @@ export default function ReservationScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [selectedSlotId, setSelectedSlotId] = useState<SlotId | null>('sunset');
+  const [startTime, setStartTime] = useState('20:00');
+  const availabilityRequest = useRef(0);
   const [selectedGroupId, setSelectedGroupId] = useState<GroupSizeId>('table-for-2');
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [reservedTableIdsBySlot, setReservedTableIdsBySlot] = useState<Record<SlotId, string[]>>({
@@ -1070,10 +930,12 @@ export default function ReservationScreen() {
     prime: [],
     late: [],
   });
-  const [loadingTableAvailability, setLoadingTableAvailability] = useState(false);
+  const [loadingTableAvailability, setLoadingTableAvailability] = useState(true);
   const [additionalInfo, setAdditionalInfo] = useState('');
   const [bookingStatus] = useState<ReservationStatus>('pending');
   const [availabilityNotice, setAvailabilityNotice] = useState('');
+  const [availabilityError, setAvailabilityError] = useState(false);
+  const [liveTablesBySlot, setLiveTablesBySlot] = useState<Partial<Record<SlotId, VenueTableAvailability[]>>>({});
   const [adjustmentAcknowledged, setAdjustmentAcknowledged] = useState(false);
   const [holdSecondsRemaining, setHoldSecondsRemaining] = useState(tableHoldDurationSeconds);
   const [holdExpired, setHoldExpired] = useState(false);
@@ -1081,82 +943,83 @@ export default function ReservationScreen() {
   const [bookingFormOffset, setBookingFormOffset] = useState(0);
 
   const dates = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(new Date(), index)), []);
-  const isClubBooking = spot?.id === testCebspotSpotId || spot?.category?.toLowerCase().includes('club') === true;
-  const bookingSlots = isClubBooking ? clubSlots : slots;
+  const isClubBooking = spot?.id === testCebspotSpotId;
+  const selectedSlotId = getReservationTimeSlot(startTime, isClubBooking);
   const liveTableInventory = useMemo(
-    () => isClubBooking
-      ? (normalizeClubTableInventory(spot?.table_inventory) as TableInventory)
-      : spot?.table_inventory
-        ? (normalizeTableInventory(spot.table_inventory) as TableInventory)
-        : tableInventory,
+    () => normalizeStoredTableInventory(spot?.table_inventory) as TableInventory,
     [isClubBooking, spot?.table_inventory],
   );
-  const availabilityInventory = useMemo(
-    () => (['sunset', 'prime', 'late'] as SlotId[]).reduce((inventory, slotId) => {
-      const reservedIds = new Set(reservedTableIdsBySlot[slotId]);
-      inventory[slotId] = liveTableInventory[slotId].map((table) => ({
+  const availabilityInventory = useMemo(() => {
+    const withReservations = (key: SlotId) => liveTableInventory[key].map((table) => {
+      const live = liveTablesBySlot[key]?.find(item => item.tableId === table.tableId);
+      return {
         ...table,
-        isReserved: table.isReserved || reservedIds.has(table.tableId),
-      }));
-      return inventory;
-    }, {} as TableInventory),
-    [liveTableInventory, reservedTableIdsBySlot],
-  );
-  const slotAvailability = useMemo(
-    () =>
-      bookingSlots.reduce(
-        (availability, slot) => ({
-          ...availability,
-          [slot.id]: getSlotAvailability(
-            slot.id,
-            selectedGroupId,
-            selectedDate,
-            availabilityInventory,
-            !isClubBooking,
-          ),
-        }),
-        {} as Record<SlotId, SlotAvailability>
-      ),
-    [availabilityInventory, bookingSlots, isClubBooking, selectedDate, selectedGroupId]
-  );
-  const selectedSlot = selectedSlotId ? bookingSlots.find((slot) => slot.id === selectedSlotId) ?? null : null;
+        capacity: live?.capacity ?? table.capacity,
+        bookingPolicy: live?.bookingPolicy ?? table.bookingPolicy,
+        isReserved: table.isReserved || !live?.onlineAvailable || reservedTableIdsBySlot[key].includes(table.tableId),
+      };
+    });
+    return { sunset: withReservations('sunset'), prime: withReservations('prime'), late: withReservations('late') };
+  }, [liveTableInventory, reservedTableIdsBySlot, liveTablesBySlot]);
   const selectedGroup = groupSizes.find((group) => group.id === selectedGroupId) ?? groupSizes[1];
-  const selectedSlotAvailability = selectedSlotId ? slotAvailability[selectedSlotId] : null;
-  const selectedTable = isClubBooking
-    ? selectedSlotAvailability?.availableTables.find((table) => table.tableId === selectedTableId) ?? null
-    : selectedSlotAvailability?.availableTables[0] ?? null;
-  const refreshClubAvailability = useCallback(async () => {
-    if (!spot || !isClubBooking) return;
-    setLoadingTableAvailability(true);
-    try {
-      const entries = await Promise.all(
-        clubSlots.map(async (slot) => [
-          slot.id,
-          await getReservedTableIds({
-            spotId: spot.id,
-            reservationDate: selectedDate,
-            slotId: slot.id,
-          }),
-        ] as const),
-      );
-      setReservedTableIdsBySlot(Object.fromEntries(entries) as Record<SlotId, string[]>);
-    } catch (error) {
-      console.warn('Unable to refresh club table availability:', error);
-    } finally {
+  const selectedSlotAvailability = useMemo(
+    () => getSlotAvailability(selectedSlotId, selectedGroupId, selectedDate, availabilityInventory, false),
+    [selectedSlotId, selectedGroupId, selectedDate, availabilityInventory],
+  );
+  const selectedTable = selectedTableId || isClubBooking
+    ? selectedSlotAvailability.availableTables.find((table) => table.tableId === selectedTableId) ?? null
+    : selectedSlotAvailability.availableTables[0] ?? null;
+  const selectedSlot: Slot = {
+    id: selectedSlotId,
+    name: 'Custom time',
+    startTime,
+    time: formatPickerTime(startTime),
+  };
+  const refreshAvailability = useCallback(async () => {
+    const requestId = ++availabilityRequest.current;
+    if (!spot) {
       setLoadingTableAvailability(false);
+      return;
     }
-  }, [isClubBooking, selectedDate, spot?.id]);
+    setLoadingTableAvailability(true);
+    setAvailabilityError(false);
+    try {
+      const [reservedIds, liveTables] = await Promise.all([
+        getReservedTableIds({ spotId: spot.id, reservationDate: selectedDate, slotId: selectedSlotId }),
+        venueTableService.getAvailability(spot.id, selectedDate, selectedSlotId),
+      ]);
+      if (requestId !== availabilityRequest.current) return;
+      setReservedTableIdsBySlot((current) => ({ ...current, [selectedSlotId]: reservedIds }));
+      setLiveTablesBySlot((current) => ({ ...current, [selectedSlotId]: liveTables }));
+      setAvailabilityNotice('');
+    } catch (error) {
+      if (requestId !== availabilityRequest.current) return;
+      console.warn('Unable to refresh table availability:', error);
+      setAvailabilityError(true);
+      setAvailabilityNotice('Live availability could not be verified. Retry before booking.');
+    } finally {
+      if (requestId === availabilityRequest.current) setLoadingTableAvailability(false);
+    }
+  }, [selectedDate, spot?.id, selectedSlotId, startTime]);
+  const updateStartTime = (time: string) => {
+    availabilityRequest.current += 1;
+    setLoadingTableAvailability(true);
+    setStartTime(time);
+    setAdjustmentAcknowledged(false);
+  };
   const resetTableHold = useCallback(() => {
     setHoldSecondsRemaining(tableHoldDurationSeconds);
     setHoldExpired(false);
   }, []);
   const canConfirm =
     Boolean(
-      selectedDate &&
+      spot?.is_reservable && selectedDate &&
         selectedSlot &&
         selectedGroup &&
         selectedSlotAvailability?.isAvailable &&
         selectedTable &&
+        !loadingTableAvailability &&
+        !availabilityError &&
         adjustmentAcknowledged &&
         !holdExpired &&
         holdSecondsRemaining > 0
@@ -1164,7 +1027,7 @@ export default function ReservationScreen() {
     !submitting;
   const selectedSummary =
     selectedSlot && selectedSlotAvailability
-      ? `${selectedSlot.name} - ${selectedGroup.label} - ${
+      ? `${selectedSlot.time} - ${selectedGroup.label} - ${
           selectedTable ? clubTableDisplayName(selectedTable.tableId) : selectedSlotAvailability.label
         }`
       : `${selectedGroup.label} - Choose an available time`;
@@ -1198,35 +1061,36 @@ export default function ReservationScreen() {
   }, [id]);
 
   useEffect(() => {
-    void refreshClubAvailability();
-  }, [refreshClubAvailability]);
+    setLoadingTableAvailability(true);
+    const timer = setTimeout(() => void refreshAvailability(), 250);
+    return () => {
+      clearTimeout(timer);
+      availabilityRequest.current += 1;
+    };
+  }, [refreshAvailability]);
 
   useEffect(() => {
-    const selectedIsAvailable = selectedSlotId ? slotAvailability[selectedSlotId].isAvailable : false;
-    if (selectedSlotId && selectedIsAvailable) {
-      setAvailabilityNotice('');
-      return;
-    }
+    if (!spot?.id) return;
+    const unsubscribe = venueTableService.subscribe(spot.id, () => void refreshAvailability());
+    const timer = setInterval(() => void refreshAvailability(), 30000);
+    return () => { unsubscribe(); clearInterval(timer); };
+  }, [spot?.id, refreshAvailability]);
 
-    const firstAvailableSlot = bookingSlots.find((slot) => slotAvailability[slot.id].isAvailable)?.id ?? null;
-    if (firstAvailableSlot !== selectedSlotId) {
-      if (selectedSlotId) {
-        setAvailabilityNotice('Selected time is not available for this group size.');
-      }
-      setSelectedSlotId(firstAvailableSlot);
-    }
-  }, [bookingSlots, selectedDate, selectedGroupId, selectedSlotId, slotAvailability]);
 
   useEffect(() => {
-    if (!isClubBooking || !selectedTableId || !selectedSlotAvailability) return;
+    if (!selectedTableId || !selectedSlotAvailability) return;
     const remainsAvailable = selectedSlotAvailability.availableTables.some((table) => table.tableId === selectedTableId);
-    if (!remainsAvailable) setSelectedTableId(null);
-  }, [isClubBooking, selectedSlotAvailability, selectedTableId]);
+    if (!remainsAvailable) {
+      setSelectedTableId(null);
+      setAdjustmentAcknowledged(false);
+      setAvailabilityNotice('Your selected table is no longer available online. Review the updated tables before continuing.');
+    }
+  }, [selectedSlotAvailability, selectedTableId]);
 
   useEffect(() => {
     if (!selectedTable) return;
     resetTableHold();
-  }, [resetTableHold, selectedDate, selectedGroupId, selectedSlotId, selectedTable?.tableId]);
+  }, [resetTableHold, selectedDate, selectedGroupId, startTime, selectedSlotId, selectedTable?.tableId]);
 
   useEffect(() => {
     if (!selectedTable || submitting || holdExpired) return;
@@ -1284,6 +1148,11 @@ export default function ReservationScreen() {
   }
 
   async function confirmBooking() {
+    if (submitting || loadingTableAvailability) return;
+    if (availabilityError) {
+      Alert.alert('Availability unavailable', 'Refresh table availability before booking.');
+      return;
+    }
     if (!spot || !selectedDate || !selectedSlot || !selectedGroup) {
       Alert.alert('Missing details', 'Please complete the booking details first.');
       return;
@@ -1313,28 +1182,36 @@ export default function ReservationScreen() {
     }
 
     if (holdExpired || holdSecondsRemaining <= 0) {
-      Alert.alert('Reservation timer expired', 'Your 5-minute table hold expired. Refresh the hold before confirming.', [
-        { text: 'Refresh hold', onPress: resetTableHold },
+      Alert.alert('Selection timer expired', 'Your selection timer expired. Availability will be checked again before booking.', [
+        { text: 'Continue', onPress: resetTableHold },
       ]);
       return;
     }
 
-    const available = await checkReservationAvailability({
-      spotId: spot.id,
-      reservationDate: selectedDate,
-      slotId: selectedSlot.id,
-      tableId: selectedTable.tableId,
-    });
+    let available: boolean;
+    try {
+      setSubmitting(true);
+      available = await checkReservationAvailability({
+        spotId: spot.id,
+        reservationDate: selectedDate,
+        slotId: selectedSlot.id,
+        tableId: selectedTable.tableId,
+      });
+    } catch (error: any) {
+      Alert.alert('Availability unavailable', error.message ?? 'Please try again.');
+      return;
+    } finally {
+      setSubmitting(false);
+    }
     if (!available) {
-      if (isClubBooking) {
-        setSelectedTableId(null);
-        void refreshClubAvailability();
-      }
+      setSelectedTableId(null);
+      setAdjustmentAcknowledged(false);
+      void refreshAvailability();
       Alert.alert(
         'Table unavailable',
         isClubBooking
-          ? 'This table was just booked by another guest. Choose another available table on the floor plan.'
-          : 'This slot is no longer available. Please choose another schedule.',
+          ? 'This table is no longer available online. It may be Walk-ins only, held, occupied, or cleaning. Choose another available table.'
+          : 'This table is no longer available online. Review the refreshed tables and choose another table.',
       );
       return;
     }
@@ -1356,7 +1233,7 @@ export default function ReservationScreen() {
           reservation_date: selectedDate,
           reservation_time: selectedSlot.startTime,
           reservation_time_start: selectedSlot.startTime,
-          reservation_time_end: selectedSlot.endTime,
+          reservation_time_end: null,
           guest_count: selectedGroup.guests,
           guests: selectedGroup.guests,
           table_id: selectedTable.tableId,
@@ -1380,6 +1257,9 @@ export default function ReservationScreen() {
         router.replace({ pathname: '/confirmed/[id]', params: { id: reservation.id } });
       } catch (error: any) {
         console.error('Reservation error:', error);
+        setSelectedTableId(null);
+        setAdjustmentAcknowledged(false);
+        void refreshAvailability();
         Alert.alert('Reservation failed', error.message ?? 'Please try again.');
       } finally {
         setSubmitting(false);
@@ -1398,7 +1278,6 @@ export default function ReservationScreen() {
         tableId: selectedTable.tableId,
         slotId: selectedSlot.id,
         groupSizeType: selectedGroup.id,
-        timeEnd: selectedSlot.endTime,
         adjustmentAcknowledged: 'true',
         adjustmentAcknowledgedAt: new Date().toISOString(),
         note: additionalInfo,
@@ -1425,6 +1304,9 @@ export default function ReservationScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
+      {!spot.is_reservable && <Text accessibilityRole="alert" style={{ color: appColors.onSurfaceVariant, padding: 16 }}>
+        Reservations are unavailable. This venue is discovery-only until its actual active table inventory is confirmed.
+      </Text>}
       <View style={styles.bookingForm} onLayout={trackBookingForm}>
         <View onLayout={trackSection('date')}>
           <DateSelector
@@ -1436,11 +1318,9 @@ export default function ReservationScreen() {
         </View>
         <View onLayout={trackSection('time')}>
           <ExperienceSlotSelector
-            bookingSlots={bookingSlots}
-            selectedSlotId={selectedSlotId}
-            slotAvailability={slotAvailability}
+            time={startTime}
+            onChangeTime={updateStartTime}
             notice={availabilityNotice}
-            onSelectSlot={setSelectedSlotId}
             appColors={appColors}
           />
         </View>
@@ -1459,10 +1339,13 @@ export default function ReservationScreen() {
             selectedGroupId={selectedGroupId}
             loadingAvailability={loadingTableAvailability}
             onSelectTable={setSelectedTableId}
-            onRefresh={() => void refreshClubAvailability()}
+            onRefresh={() => void refreshAvailability()}
             appColors={appColors}
           />
         ) : null}
+        <GuestTableChoices tables={liveTablesBySlot[selectedSlotId] || []} partySize={getRequiredCapacity(selectedGroupId)}
+          selectedId={selectedTable?.tableId || null} loading={loadingTableAvailability || availabilityError}
+          onSelect={setSelectedTableId} />
         <AdditionalInfoInput value={additionalInfo} onChangeText={setAdditionalInfo} appColors={appColors} />
         <ReservationAdjustmentsCard
           appColors={appColors}
@@ -1674,6 +1557,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
   },
+  timePickerPanel: { padding: spacing.md, borderWidth: 1, borderRadius: radius.lg, gap: spacing.sm, alignItems: 'center' },
+  timePickerLabel: { alignSelf: 'flex-start', fontSize: fontSize.sm, fontWeight: '800' },
+  timePickerHelp: { fontSize: fontSize.xs, lineHeight: 18 },
   slotList: {
     gap: spacing.sm,
   },
@@ -2089,4 +1975,3 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.99 }],
   },
 });
-
