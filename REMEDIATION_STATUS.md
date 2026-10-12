@@ -32,7 +32,7 @@ Final handoff: [Android release candidate verification, staging steps, manual ch
 
 ## Additional release checks
 
-Locally verified: map resume (11 runtime tests), server contacts/derived arrival slots and terms timestamp, no demo feed fallback, privacy route before signup, fail-closed missing Auth configuration. Cache/retry and responsive missing-page UI are implemented and typechecked; device verification pending. Open: account deletion, location sharing/leave, dependency advisory triage, final artifact/device verification.
+Locally verified: map resume (11 runtime tests), server contacts/derived arrival slots and terms timestamp, no demo feed fallback, privacy route before signup, fail-closed missing Auth configuration, guarded account deletion and private circle stop/leave. Cache/retry and responsive missing-page UI are implemented and typechecked. Final exports pass. Open: real Auth/Storage/provider/device acceptance, matching database-engine verification and residual dependency/history review. Earlier progress entries below are historical; latest final verification supersedes their local pending status.
 
 ## Baseline (read-only planning run, retained in chat)
 
@@ -84,4 +84,10 @@ The source-retention commit includes pre-existing Android source changes and req
 ## Account deletion assignment race follow-up
 
 Migration `20261013000900_block_deleting_owner_assignments.sql` follows 008. A retained failing regression demonstrated new venue responsibilities being attached to an account after deletion began. The guard now locks venue then profile, checks account activity after concurrent deletion commits, and rejects both direct venue assignment and delegated owner access. `deletion-assignment-concurrency`: **13 passed**, covering eight account checks plus complete migration replay/upgrade and role isolation. Matching-engine/Supabase/device gates remain open.
+
+## Final acceptance record
+
+Final remediation suite after migration 009: **130 passed, 0 failed, 0 skipped** (`final-remediation-after-owner-guard`). Final patched Python face environment: **12 passed** (`final-face-patched-environment`). Backend/platform: 127 passed / 5 optional legacy concurrency skips; new native policy/concurrency tests pass separately. TypeScript and repository lint pass (both invoke TypeScript, not a separate ESLint engine). Android Hermes, retained Render admin export/browser, map source/runtime and public-web denial pass. These are local results; the release decision remains **NO-GO** until the external gates in the handoff pass.
+
+Dependency triage patched the two critical npm findings and vulnerable Python upload packages without a forced SDK upgrade. Npm still reports **65 affected packages: 36 high, 29 moderate**; their Android/build reachability review remains open. The final Windows Python environment reports no known advisories; Linux container scanning is pending. The actual Expo archive extraction helpers pass against patched tar after an idempotent compatibility patch. Clean online `npm ci` passes; the earlier offline install failed for an uncached package and was superseded, with both reports retained. Release export/EAS hooks require explicit staging configuration; offline verification clears public backend values. No production or provider operation occurred.
 

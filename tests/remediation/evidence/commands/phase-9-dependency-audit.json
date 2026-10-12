@@ -1,0 +1,12 @@
+{
+  "label": "phase-9-dependency-audit",
+  "command": [
+    "npm",
+    "audit",
+    "--json"
+  ],
+  "startedAt": "2026-10-12T22:11:02.213Z",
+  "finishedAt": "2026-10-12T22:11:06.649Z",
+  "exitCode": 1,
+  "output": "npm warn audit request to https://registry.npmjs.org/-/npm/v1/security/audits/quick failed, reason: unable to verify the first certificate\nnpm error audit endpoint returned an error\n{\n  \"message\": \"request to https://registry.npmjs.org/-/npm/v1/security/audits/quick failed, reason: unable to verify the first certificate\",\n  \"error\": {\n    \"summary\": \"\",\n    \"detail\": \"\"\n  }\n}\nnpm error Log files were not written due to an error writing to the directory: C:\\Users\\9real\\AppData\\Local\\npm-cache\\_logs\nnpm error You can rerun the command with `--loglevel=verbose` to see the logs in your terminal\n"
+}

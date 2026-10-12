@@ -1,0 +1,11 @@
+{
+  "label": "phase-9-expo-extraction-patch",
+  "command": [
+    "node",
+    "scripts/patch-expo-tar.cjs"
+  ],
+  "startedAt": "2026-10-12T22:38:32.034Z",
+  "finishedAt": "2026-10-12T22:38:32.256Z",
+  "exitCode": 0,
+  "output": ""
+}

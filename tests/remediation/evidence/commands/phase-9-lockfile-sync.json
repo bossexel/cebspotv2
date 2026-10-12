@@ -1,0 +1,15 @@
+{
+  "label": "phase-9-lockfile-sync",
+  "command": [
+    "npm",
+    "install",
+    "--package-lock-only",
+    "--ignore-scripts",
+    "--offline",
+    "--no-audit"
+  ],
+  "startedAt": "2026-10-12T22:44:37.349Z",
+  "finishedAt": "2026-10-12T22:44:39.314Z",
+  "exitCode": 0,
+  "output": "\nup to date in 2s\n\n112 packages are looking for funding\n  run `npm fund` for details\n"
+}

@@ -22,7 +22,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip \
+RUN pip install --no-cache-dir --upgrade pip==26.2.0 setuptools==83.0.0 \
   && pip install --no-cache-dir -r requirements.txt
 
 RUN mkdir -p models \

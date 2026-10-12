@@ -1,0 +1,26 @@
+{
+  "label": "phase-9-targeted-npm-updates",
+  "command": [
+    "npm",
+    "update",
+    "shell-quote",
+    "@babel/core",
+    "js-yaml",
+    "nanoid",
+    "undici",
+    "compression",
+    "postcss",
+    "braces",
+    "brace-expansion",
+    "source-map-js",
+    "fast-uri",
+    "ws",
+    "browserslist",
+    "--ignore-scripts",
+    "--no-audit"
+  ],
+  "startedAt": "2026-10-12T22:26:25.525Z",
+  "finishedAt": "2026-10-12T22:26:57.789Z",
+  "exitCode": 0,
+  "output": "\nchanged 37 packages in 32s\n\n103 packages are looking for funding\n  run `npm fund` for details\n"
+}

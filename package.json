@@ -5,12 +5,15 @@
   "main": "index",
   "private": true,
   "scripts": {
+    "postinstall": "node scripts/patch-expo-tar.cjs",
     "start": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --go --lan --clear --port 8081",
     "start:usb": "adb reverse tcp:8081 tcp:8081 && set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --go --localhost --clear --port 8081",
     "android": "set EXPO_NO_DEPENDENCY_VALIDATION=1&& expo start --android --go --lan --clear --port 8081",
     "dev": "npm run start",
     "build": "node scripts/admin-web.cjs export --platform web",
     "build:android": "expo export --platform android",
+    "build:android:rc": "node scripts/release-env.cjs",
+    "eas-build-pre-install": "node scripts/release-env.cjs check-eas",
     "dev:admin": "node scripts/admin-web.cjs start --web --port 8084",
     "test:platform": "node --test tests/platform/android-only.test.cjs",
     "test:admin-web": "node tests/platform/admin-web.cjs",
@@ -75,6 +78,9 @@
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
     "tailwind-merge": "^3.5.0"
+  },
+  "overrides": {
+    "tar": "7.5.21"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",

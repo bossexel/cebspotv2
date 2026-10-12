@@ -1,0 +1,19 @@
+{
+  "label": "phase-9-python-tools-patched",
+  "command": [
+    ".venv/Scripts/python.exe",
+    "-m",
+    "pip",
+    "--use-feature=truststore",
+    "install",
+    "--disable-pip-version-check",
+    "--upgrade",
+    "pip==26.2.0",
+    "setuptools==83.0.0",
+    "python-dotenv==1.2.2"
+  ],
+  "startedAt": "2026-10-12T22:34:43.115Z",
+  "finishedAt": "2026-10-12T22:35:03.009Z",
+  "exitCode": 0,
+  "output": "Collecting pip==26.2.0\r\n  Downloading pip-26.2-py3-none-any.whl.metadata (4.6 kB)\r\nCollecting setuptools==83.0.0\r\n  Downloading setuptools-83.0.0-py3-none-any.whl.metadata (6.6 kB)\r\nCollecting python-dotenv==1.2.2\r\n  Downloading python_dotenv-1.2.2-py3-none-any.whl.metadata (27 kB)\r\nDownloading pip-26.2-py3-none-any.whl (1.8 MB)\r\n   ---------------------------------------- 1.8/1.8 MB 1.6 MB/s eta 0:00:00\r\nDownloading setuptools-83.0.0-py3-none-any.whl (1.0 MB)\r\n   ---------------------------------------- 1.0/1.0 MB 3.6 MB/s eta 0:00:00\r\nDownloading python_dotenv-1.2.2-py3-none-any.whl (22 kB)\r\nInstalling collected packages: setuptools, python-dotenv, pip\r\n  Attempting uninstall: setuptools\r\n    Found existing installation: setuptools 65.5.0\r\n    Uninstalling setuptools-65.5.0:\r\n      Successfully uninstalled setuptools-65.5.0\r\n  Attempting uninstall: python-dotenv\r\n    Found existing installation: python-dotenv 1.0.1\r\n    Uninstalling python-dotenv-1.0.1:\r\n      Successfully uninstalled python-dotenv-1.0.1\r\n  Attempting uninstall: pip\r\n    Found existing installation: pip 24.0\r\n    Uninstalling pip-24.0:\r\n      Successfully uninstalled pip-24.0\r\nSuccessfully installed pip-26.2 python-dotenv-1.2.2 setuptools-83.0.0\r\n"
+}

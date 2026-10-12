@@ -1,0 +1,14 @@
+{
+  "label": "phase-9-extraction-both-paths",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/dependency-compatibility.test.cjs",
+    "tests/remediation/secret-scan.test.cjs",
+    "tests/remediation/release-env.test.cjs"
+  ],
+  "startedAt": "2026-10-12T22:38:34.283Z",
+  "finishedAt": "2026-10-12T22:38:35.282Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: patched tar remains compatible with the actual Expo CLI archive extraction path\nok 1 - patched tar remains compatible with the actual Expo CLI archive extraction path\n  ---\n  duration_ms: 525.8087\n  type: 'test'\n  ...\n# Subtest: release export requires explicit isolated public-only staging configuration\nok 2 - release export requires explicit isolated public-only staging configuration\n  ---\n  duration_ms: 9.945\n  type: 'test'\n  ...\n# Subtest: scanner detects private bytes in binary artifacts without returning values\nok 3 - scanner detects private bytes in binary artifacts without returning values\n  ---\n  duration_ms: 10.6819\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 774.1763\n"
+}

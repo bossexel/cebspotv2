@@ -1,0 +1,12 @@
+{
+  "label": "phase-9-archive-compatibility",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/dependency-compatibility.test.cjs"
+  ],
+  "startedAt": "2026-10-12T22:36:18.067Z",
+  "finishedAt": "2026-10-12T22:36:18.478Z",
+  "exitCode": 1,
+  "output": "TAP version 13\n# Subtest: patched tar remains compatible with the actual Expo CLI archive extraction path\nnot ok 1 - patched tar remains compatible with the actual Expo CLI archive extraction path\n  ---\n  duration_ms: 103.757\n  type: 'test'\n  location: 'C:\\\\Users\\\\9real\\\\Downloads\\\\cebspotv3\\\\tests\\\\remediation\\\\dependency-compatibility.test.cjs:3:1'\n  failureType: 'testCodeFailure'\n  error: \"Cannot read properties of undefined (reading 'extract')\"\n  code: 'ERR_TEST_FAILURE'\n  name: 'TypeError'\n  stack: |-\n    Object.extractAsync (C:\\Users\\9real\\Downloads\\cebspotv3\\node_modules\\@expo\\cli\\build\\src\\utils\\tar.js:89:25)\n    TestContext.<anonymous> (C:\\Users\\9real\\Downloads\\cebspotv3\\tests\\remediation\\dependency-compatibility.test.cjs:10:49)\n    async Test.run (node:internal/test_runner/test:1054:7)\n    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 0\n# fail 1\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 261.055\n"
+}

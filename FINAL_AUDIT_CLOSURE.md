@@ -1,4 +1,4 @@
-# CebSpot final audit closure — work in progress
+# CebSpot audit closure — local verification and external gates
 
 Updated: 2026-10-13 (Asia/Manila).
 
@@ -15,7 +15,8 @@ Updated: 2026-10-13 (Asia/Manila).
 | Phase 5 / LA-04, LA-07 | Server-owned deadlines; protected manual proof RPC; private reservation-bound upload; direct customer updates denied; owner approval under venue lock | 23 SQL/handler/migration tests passed, including concurrency and injected transaction failure; TypeScript passed | Real Auth/Storage/API and Android tests remain pending; staging must schedule service-only expiry sweep |
 | Phase 6 / LA-05, LA-06 | Durable attempts and exact requests, unique webhook inbox, atomic payment transitions, retirement/reconciliation worker, HTTPS Android return bridge, synthetic-only manual proof instructions | 14 native payment transaction tests; 21 actual-handler/native-SQL regressions; broader backend/platform/upgrade 132 passed, 5 skipped; TypeScript passed | Real provider test-mode integration, Auth/Edge delivery and maintenance scheduling remain required; no real provider calls performed |
 | Phase 7 / LA-08, LA-09 | Retained existing Android/admin split, removed public web distribution and claims, documented static Android handoff | 11 platform tests; Android Hermes/admin exports pass; default customer/owner web export rejected; actual admin browser artifact passes route/auth-error/recovery/handoff checks | Both findings remain outside Android v1 scope, not fixed; Render was not deployed or disabled |
-| Phase 8 / LA-10 | Authenticated owner drafts/protected submission; persistent upload quotas and scoped private documents; orphan maintenance; authenticated face upload/poll/download, bounded admission/queue/state, killable timed worker, cleanup | 20 SQL/manual checks; 12 final owner/maintenance checks; 16 upload/client checks; 9 Python ASGI/process/detector checks; replay/upgrade 5 passed; backend/platform 127 passed / 5 skipped; TypeScript passed | Actual Auth/Storage, Render memory/queue behavior and Android photo quality/interruption remain staging/device gates. Exactly one face worker and one replica required; no hosted changes |
+| Phase 8 / LA-10 | Authenticated owner drafts/protected submission; persistent upload quotas and scoped private documents; orphan maintenance; authenticated face upload/poll/download, bounded admission/queue/state, killable timed worker, cleanup | Focused SQL/client checks pass; final patched face environment 12 passed; backend/platform 127 passed / 5 skipped; TypeScript passed | Actual Auth/Storage, Render memory/queue behavior and Android photo quality/interruption remain staging/device gates. Exactly one face worker and one replica required; no hosted changes |
+| Phase 9 / Android release defects | Map resume, truthful feeds/cache/retry, server contacts/slots, pre-signup privacy, narrow recovery, private circle consent/stop/leave, guarded resumable account deletion, dependency patches and staging build guard | Final remediation suite 130 passed; face 12 passed; existing backend/platform 127 passed / 5 skipped; isolated helpers 10 passed; typecheck/lint, Android Hermes, admin export/browser, web-denial checks pass | Offline export is not an APK. Real Auth/Storage/provider/device, matching PostgreSQL 17 and residual advisory/history review remain release gates |
 
 ## Command record
 
@@ -113,4 +114,8 @@ Generated browser/scratch tracking was removed in `a8f7d1d` without removing loc
 ## Final deletion concurrency correction
 
 The retained `deletion-assignment-race-red` test reproduced an owner assignment after deletion began. Migration `20261013000900_block_deleting_owner_assignments.sql` rejects assignments to inactive/deleting accounts and serializes assignments with deletion using venue-then-profile locks. `deletion-assignment-concurrency` passes all 13 account/replay checks, including a grant that started before the deletion transaction committed. This is a local PostgreSQL result, not deployed Auth acceptance. No existing account or hosted data was changed.
+
+## Final source verification
+
+`final-remediation-after-owner-guard`: **130 passed, 0 failed, 0 skipped**, including the complete final migration chain, transaction/policy/concurrency regressions, actual payment handlers with mocks, deletion races, upload clients, release configuration and archive compatibility. `final-face-patched-environment`: **12 passed** on the final installed Python dependency versions. The clean lockfile install, its postinstall compatibility patch, 14 focused tooling/platform checks and TypeScript pass. Npm audit still exits 1 with 65 affected packages (36 high, 29 moderate); Python installed-environment audit exits 0 with no known findings. Those are distinct security results, not a clean npm audit.
 

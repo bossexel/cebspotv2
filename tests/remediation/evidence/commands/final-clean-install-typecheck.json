@@ -1,0 +1,12 @@
+{
+  "label": "final-clean-install-typecheck",
+  "command": [
+    "npm",
+    "run",
+    "typecheck"
+  ],
+  "startedAt": "2026-10-12T23:13:54.988Z",
+  "finishedAt": "2026-10-12T23:14:21.212Z",
+  "exitCode": 0,
+  "output": "\n> cebspot@1.0.0 typecheck\n> tsc --noEmit\n\n"
+}
