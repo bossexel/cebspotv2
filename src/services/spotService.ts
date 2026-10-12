@@ -62,7 +62,7 @@ export const spotService = {
     return normalizeSpot(saved);
   },
   async getSpots(limit = discoverySpotLimit): Promise<Spot[]> {
-    if (!hasSupabaseConfig) return sampleSpots.slice(0, limit);
+    if (!hasSupabaseConfig) throw new Error('Discovery service is not configured.');
 
     const { data, error } = await supabase
       .from('spots')
@@ -113,7 +113,7 @@ export const spotService = {
 
   subscribeToSpots(callback: (spots: Spot[]) => void, onError?: (error: unknown) => void) {
     if (!hasSupabaseConfig) {
-      callback(sampleSpots);
+      onError?.(new Error('Discovery service is not configured.'));
       return () => undefined;
     }
 

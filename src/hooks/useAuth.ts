@@ -362,20 +362,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = useCallback(async (email: string, password: string) => {
     const normalizedEmail = normalizeEmail(email);
     if (!hasSupabaseConfig) {
-      const fakeUser = makeDemoUser(normalizedEmail, 'Demo Explorer');
-      const fakeProfile: UserProfile = {
-        id: fakeUser.id,
-        email: normalizedEmail,
-        role: getPrototypeRoleForEmail(normalizedEmail),
-        display_name: 'Demo Explorer',
-        photo_url: null,
-        level: 3,
-        points: 420,
-        friends: [],
-      };
-      setDemoUser(fakeUser);
-      setProfile(fakeProfile);
-      return fakeProfile;
+      throw new Error('Sign-in service is not configured. Please try a configured CebSpot build.');
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
@@ -427,19 +414,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const displayName = `${trimmedFirstName} ${trimmedLastName}`.trim();
 
     if (!hasSupabaseConfig) {
-      const fakeUser = makeDemoUser(normalizedEmail, displayName);
-      setDemoUser(fakeUser);
-      setProfile({
-        id: fakeUser.id,
-        email: normalizedEmail,
-        role: getPrototypeRoleForEmail(normalizedEmail),
-        display_name: displayName,
-        photo_url: null,
-        level: 1,
-        points: 0,
-        friends: [],
-      });
-      return;
+      throw new Error('Account registration is not configured. Please try a configured CebSpot build.');
     }
 
     const { data, error } = await supabase.auth.signUp({

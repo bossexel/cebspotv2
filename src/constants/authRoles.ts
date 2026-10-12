@@ -4,6 +4,11 @@ export const ADMIN_EMAIL = 'testadmin6000@gmail.com';
 export const OWNER_EMAIL = 'testowner@cebspot.com';
 export const USER_EMAIL = 'exielramen@gmail.com';
 
+export function isPublicAndroidRoute(rootRoute: string) {
+  return ['login', 'privacy', 'reset-password', 'auth', 'admin', 'owner-dashboard', 'owner-access', '+not-found'].includes(rootRoute)
+    || (__DEV__ && ['admin-sandbox', 'admin-studio'].includes(rootRoute));
+}
+
 type RoleProfile = {
   email?: string | null;
   role?: AppRole | string | null;
@@ -34,7 +39,8 @@ export function getRoleHome(role: AppRole): '/admin' | '/owner-dashboard' | '/' 
 }
 
 export function canAccessRootRoute(role: AppRole, rootRoute: string) {
-  if (rootRoute === 'auth' || rootRoute === 'reset-password') return true;
+  if (rootRoute === 'auth' || rootRoute === 'reset-password' || rootRoute === 'privacy') return true;
+  if (rootRoute === 'admin-sandbox' || rootRoute === 'admin-studio') return __DEV__;
   if (role === 'admin') return rootRoute === 'admin';
   if (role === 'owner') return rootRoute === 'owner-dashboard';
   return rootRoute !== 'admin' && rootRoute !== 'owner-dashboard';

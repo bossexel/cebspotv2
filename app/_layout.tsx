@@ -14,7 +14,7 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppUpdatePrompt } from '../src/components/AppUpdatePrompt';
 import { ConfirmationModal } from '../src/components/ConfirmationModal';
-import { canAccessRootRoute, getAppRole, getRoleHome } from '../src/constants/authRoles';
+import { canAccessRootRoute, getAppRole, getRoleHome, isPublicAndroidRoute } from '../src/constants/authRoles';
 import { AuthProvider, useAuth } from '../src/hooks/useAuth';
 import { ThemeProvider, useTheme } from '../src/hooks/useTheme';
 import { activityService } from '../src/services/activityService';
@@ -63,8 +63,7 @@ function AppNavigator() {
   useEffect(() => {
     if (authLoading || themeLoading) return;
 
-    const publicRoutes = ['login', 'reset-password', 'auth', 'admin', 'owner-dashboard', 'owner-access'];
-    const isPublicRoute = publicRoutes.includes(currentRoute);
+    const isPublicRoute = isPublicAndroidRoute(currentRoute);
     if (!isSignedIn && !isPublicRoute) {
       router.replace('/login');
       return;
@@ -148,7 +147,12 @@ function AppNavigator() {
   }, [isUserSession, routeFromNotification]);
 
   useEffect(() => {
-    if (!user?.id || !isUserSession) return undefined;
+    if (!user?.id || !isUserSession) {
+      void reservationReminderService.cancelAll().catch((error) => {
+        console.warn('Unable to clear reservation reminders for signed-out account:', error);
+      });
+      return undefined;
+    }
 
     let mounted = true;
     let running = false;
@@ -159,7 +163,7 @@ function AppNavigator() {
       try {
         const reservations = await reservationService.getUserReservations(user.id);
         if (!mounted) return;
-        await reservationReminderService.sync(reservations);
+        await reservationReminderService.sync(reservations, user.id);
         await reservationReminderService.processDueActivities(user.id, reservations);
       } catch (error) {
         console.warn('Unable to sync reservation reminders:', error);
@@ -237,6 +241,9 @@ function AppNavigator() {
         <Stack.Screen name="saved" />
         <Stack.Screen name="gamification" />
         <Stack.Screen name="profile" />
+        <Stack.Screen name="about" options={{ presentation: 'card' }} />
+        <Stack.Screen name="documentation" options={{ presentation: 'card' }} />
+        <Stack.Screen name="privacy" options={{ presentation: 'card' }} />
         <Stack.Screen name="admin" />
         <Stack.Screen name="owner-dashboard" options={{ gestureEnabled: false }} />
         <Stack.Screen name="owner-access" options={{ presentation: 'modal' }} />

@@ -1,13 +1,12 @@
-import { sampleActivities } from '../constants/sampleData';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import type { Activity, NewActivity, Reservation } from '../types';
 
-const localActivities: Activity[] = [...sampleActivities];
+const localActivities: Activity[] = [];
 
 export const activityService = {
   async getRecentActivities(limit = 20, userId?: string | null): Promise<Activity[]> {
     if (userId === null) return [];
-    if (!hasSupabaseConfig) return localActivities.slice(0, limit);
+    if (!hasSupabaseConfig) throw new Error('Activity service is not configured.');
 
     let query = supabase
       .from('activities')
@@ -86,14 +85,14 @@ export const activityService = {
     throw error;
   },
 
-  subscribeToActivities(callback: (activities: Activity[]) => void, userId?: string | null) {
+  subscribeToActivities(callback: (activities: Activity[]) => void, userId?: string | null, onError?: (error: unknown) => void) {
     if (userId === null) {
       callback([]);
       return () => undefined;
     }
 
     if (!hasSupabaseConfig) {
-      callback(localActivities);
+      onError?.(new Error('Activity service is not configured.'));
       return () => undefined;
     }
 
@@ -104,7 +103,7 @@ export const activityService = {
     const channel = supabase
       .channel(channelName)
       .on('postgres_changes', changeFilter, async () => {
-        callback(await this.getRecentActivities(20, userId));
+        try { callback(await this.getRecentActivities(20, userId)); } catch (error) { onError?.(error); }
       })
       .subscribe();
 

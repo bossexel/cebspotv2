@@ -184,6 +184,11 @@ export default function ActivityScreen() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [localUpdates, setLocalUpdates] = useState<LocalUpdate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [feedError, setFeedError] = useState<string | null>(null);
+  const [notificationError, setNotificationError] = useState<string | null>(null);
+  const [feedRetry, setFeedRetry] = useState(0);
+  const [notificationRetry, setNotificationRetry] = useState(0);
+  const activitiesOwner = useRef<string | null>(null);
   const [failedImageIds, setFailedImageIds] = useState<string[]>([]);
   const [failedAvatarIds, setFailedAvatarIds] = useState<string[]>([]);
   const [submissionVotes, setSubmissionVotes] = useState<Record<string, SpotVoteType>>({});
@@ -256,27 +261,46 @@ export default function ActivityScreen() {
     : params.openSubmissionId;
 
   useEffect(() => {
+    let mounted = true;
     let unsubscribe: (() => void) | undefined;
 
     async function loadLocalUpdates() {
+      setLoading(true);
       try {
         const updates = await localUpdateService.getLocalUpdates();
+        if (!mounted) return;
         setLocalUpdates(updates);
-        unsubscribe = localUpdateService.subscribeToLocalUpdates(setLocalUpdates);
+        setFeedError(null);
+        const nextUnsubscribe = localUpdateService.subscribeToLocalUpdates((next) => {
+          if (mounted) { setLocalUpdates(next); setFeedError(null); }
+        }, () => { if (mounted) setFeedError('Local updates could not be refreshed. Cached updates may be out of date.'); });
+        if (mounted) unsubscribe = nextUnsubscribe;
+        else nextUnsubscribe();
+      } catch (error) {
+        if (mounted) console.error('Unable to load local updates:', error);
+        if (mounted) setFeedError('Local updates are unavailable. Check your connection and retry.');
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
 
-    loadLocalUpdates();
-    return () => unsubscribe?.();
-  }, []);
+    void loadLocalUpdates();
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
+  }, [feedRetry]);
 
   useEffect(() => {
     let mounted = true;
     let unsubscribe: (() => void) | undefined;
 
     async function loadActivities() {
+      if (activitiesOwner.current !== (user?.id ?? null)) {
+        activitiesOwner.current = user?.id ?? null;
+        setActivities([]);
+        setNotificationError(null);
+      }
       if (!user?.id) {
         setActivities([]);
         return;
@@ -284,13 +308,17 @@ export default function ActivityScreen() {
 
       try {
         const recentActivities = await activityService.getRecentActivities(20, user.id);
-        if (mounted) setActivities(recentActivities);
-        unsubscribe = activityService.subscribeToActivities((nextActivities) => {
-          if (mounted) setActivities(nextActivities);
-        }, user.id);
+        if (!mounted) return;
+        setActivities(recentActivities);
+        setNotificationError(null);
+        const nextUnsubscribe = activityService.subscribeToActivities((nextActivities) => {
+          if (mounted) { setActivities(nextActivities); setNotificationError(null); }
+        }, user.id, () => { if (mounted) setNotificationError('Notifications could not be refreshed. Cached notifications may be out of date.'); });
+        if (mounted) unsubscribe = nextUnsubscribe;
+        else nextUnsubscribe();
       } catch (error) {
         console.error('Unable to load activity notifications:', error);
-        if (mounted) setActivities([]);
+        if (mounted) setNotificationError('Notifications are unavailable. Check your connection and retry.');
       }
     }
 
@@ -299,7 +327,7 @@ export default function ActivityScreen() {
       mounted = false;
       unsubscribe?.();
     };
-  }, [user?.id]);
+  }, [user?.id, notificationRetry]);
 
   useEffect(() => {
     let mounted = true;
@@ -636,6 +664,10 @@ export default function ActivityScreen() {
           <View style={styles.headerBalance} />
         </View>
 
+        {notificationError && <Pressable accessibilityRole="button" onPress={() => setNotificationRetry(value => value + 1)} style={styles.emptyNotificationState}>
+          <Text style={{ color: appColors.onSurface }}>{notificationError}</Text>
+          <Text style={{ color: colors.primary }}>Retry notifications</Text>
+        </Pressable>}
         {!isSignedIn ? (
           <View style={styles.emptyNotificationState}>
             <Bell size={22} color={colors.primary} />
@@ -734,9 +766,9 @@ export default function ActivityScreen() {
         ) : (
           <View style={styles.emptyNotificationState}>
             <Bell size={22} color={colors.primary} />
-            <Text style={[styles.emptyNotificationTitle, { color: appColors.onSurface }]}>No notifications yet</Text>
+            <Text style={[styles.emptyNotificationTitle, { color: appColors.onSurface }]}>{notificationError ? 'Notifications unavailable' : 'No notifications yet'}</Text>
             <Text style={[styles.emptyNotificationText, { color: appColors.onSurfaceVariant }]}>
-              Reservation approvals, alerts, circle activity, and spot updates will show up here.
+              {notificationError ? 'Retry to check for updates.' : 'Reservation approvals, alerts, circle activity, and spot updates will show up here.'}
             </Text>
           </View>
         )}
@@ -771,7 +803,7 @@ export default function ActivityScreen() {
       <View style={styles.sectionHeader}>
         <View style={styles.sectionHeading}>
           <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Local Updates</Text>
-          <View style={styles.liveDot} />
+          {!feedError && <View style={styles.liveDot} />}
         </View>
         <Pressable
           accessible
@@ -793,7 +825,11 @@ export default function ActivityScreen() {
         </Pressable>
       </View>
 
-      {loading ? (
+      {feedError && <Pressable accessibilityRole="button" onPress={() => setFeedRetry(value => value + 1)} style={styles.emptyNotificationState}>
+        <Text style={{ color: appColors.onSurface }}>{feedError}</Text>
+        <Text style={{ color: colors.primary }}>Retry local updates</Text>
+      </Pressable>}
+      {loading && !localUpdates.length ? (
         <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
       ) : (
         <View style={styles.feed}>

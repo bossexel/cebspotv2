@@ -11,6 +11,7 @@ async function seed(db,{confirm=true,fee=150}={}) {
 async function booking(db,overrides={}) {
   const defaults={user_id:ids.a,spot_id:ids.venue,spot_name:'Untrusted name',reservation_time:'23:10',slot_id:'prime',table_id:'C01',guests:2,guest_count:2,guest_name:'Synthetic Guest',guest_email:'guest@fixture.example.test',guest_phone:'09171234567',payment_terms_accepted:true,qr_code:require('node:crypto').randomUUID()};
   const row={...defaults,...overrides};
+  if(overrides.slot_id && !overrides.reservation_time)row.reservation_time={sunset:'20:10',prime:'23:10',late:'18:10'}[overrides.slot_id]??defaults.reservation_time;
   const keys=Object.keys(row);
   const extra=keys.includes('reservation_date')?'':',reservation_date';
   const dateValue=keys.includes('reservation_date')?'':",(now() at time zone 'Asia/Manila')::date+1";

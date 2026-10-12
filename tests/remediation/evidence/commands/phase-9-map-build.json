@@ -1,0 +1,12 @@
+{
+  "label": "phase-9-map-build",
+  "command": [
+    "npm",
+    "run",
+    "map:build"
+  ],
+  "startedAt": "2026-10-12T21:28:41.287Z",
+  "finishedAt": "2026-10-12T21:28:43.239Z",
+  "exitCode": 0,
+  "output": "\n> cebspot@1.0.0 map:build\n> node scripts/build-map.cjs\n\nBundled Leaflet 1.9.4 and map runtime (181999 bytes).\n"
+}

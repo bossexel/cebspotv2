@@ -45,6 +45,10 @@
     {
       "name": "20261013000500_request_bound_private_uploads.sql",
       "sha256": "9dd661e41712f77d408b5fc04e3781d135fa0a13477427b80d0b8af6710845c8"
+    },
+    {
+      "name": "20261013000600_server_reservation_details.sql",
+      "sha256": "77f9f46dc49f961a1f0aece0658aca2da5154ea87759d71c9451afb126713549"
     }
   ]
 }

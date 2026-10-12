@@ -21,10 +21,6 @@ import type { NewReservation, Reservation, Spot } from '../../src/types';
 import { checkReservationAvailability } from '../../src/utils/reservations';
 import { venueTableService } from '../../src/services/venueTableService';
 
-const testCebspotPaymentDetails = {
-  amount: 150,
-};
-
 const testCebspotSpotId = '66666666-6666-4666-8666-666666666666';
 const paymongoGcashEnabled = process.env.EXPO_PUBLIC_PAYMONGO_GCASH_ENABLED === 'true';
 const paymongoQrphEnabled = process.env.EXPO_PUBLIC_PAYMONGO_QRPH_ENABLED !== 'false';
@@ -32,10 +28,6 @@ const paymongoQrphEnabled = process.env.EXPO_PUBLIC_PAYMONGO_QRPH_ENABLED !== 'f
 type PaymentMode = 'qrph' | 'gcash_direct' | 'manual_gcash';
 
 const depositTerms = 'By continuing with your booking, you agree and understand you must provide a 50%, non refundable down payment immediately after making a reservation to secure and guarantee booking. Guests not arriving at their assigned show up time will forfeit their table and deposit.';
-
-function isTestCebspotSpot(name: string) {
-  return name.toLowerCase().includes('test cebspot');
-}
 
 function formatPeso(amount: number) {
   return `PHP ${amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -106,7 +98,6 @@ export default function CheckoutScreen() {
   const parsedReservationFee = Number(params.fee ?? 0);
   const reservationFee = Number.isFinite(parsedReservationFee) ? parsedReservationFee : 0;
   const note = params.note?.trim() || null;
-  const usingTestDetails = isTestCebspotSpot(spotName);
   const parsedHoldExpiresAt = Number(params.holdExpiresAt ?? 0);
   const holdExpiresAt = serverHoldDeadline ?? (Number.isFinite(parsedHoldExpiresAt) ? parsedHoldExpiresAt : 0);
   const [holdSecondsRemaining, setHoldSecondsRemaining] = useState(() => getHoldSecondsRemaining(holdExpiresAt));
@@ -118,31 +109,26 @@ export default function CheckoutScreen() {
   const customerEmail = profile?.email?.trim() || 'Profile email unavailable';
   const normalizedGuestPhone = guestPhone.replace(/[^0-9+]/g, '');
   const contactDetailsComplete = Boolean(
-    profile && customerName !== 'Profile name unavailable' && customerEmail !== 'Profile email unavailable' && normalizedGuestPhone.replace(/\D/g, '').length >= 10,
+    profile && customerName !== 'Profile name unavailable' && customerEmail !== 'Profile email unavailable' && /^(09\d{9}|\+639\d{9})$/.test(normalizedGuestPhone),
   );
   const paymentAccessGranted = contactDetailsComplete && paymentTermsAccepted;
 
   const paymentDetails = useMemo(
     () => {
-      const fallbackAmount = usingTestDetails ? testCebspotPaymentDetails.amount : 0;
-      const configuredAmount = Number(spot?.gcash_amount ?? spot?.reservation_fee ?? reservationFee ?? fallbackAmount);
-      const amount = configuredAmount > 0 ? configuredAmount : fallbackAmount;
+      const amount = Number(spot?.gcash_amount ?? spot?.reservation_fee ?? reservationFee);
 
       return {
-        walletNumber: spot?.gcash_wallet_number ?? null,
-        walletName: spot?.gcash_wallet_name ?? null,
         amount: Math.max(0, Number.isFinite(amount) ? amount : 0),
       };
     },
-    [reservationFee, spot, usingTestDetails]
+    [reservationFee, spot]
   );
   const total = paymentDetails.amount;
-  const hasOwnerPaymentDetails = Boolean(paymentDetails.walletNumber && paymentDetails.walletName);
   const qrphEnabled =
     paymongoQrphEnabled &&
     total >= 1 &&
-    (usingTestDetails || params.paymentRequired === 'true' || params.reservationType === 'paid');
-  const gcashDirectEnabled = paymongoGcashEnabled && usingTestDetails;
+    Boolean(spot?.payment_required || spot?.reservation_type === 'paid');
+  const gcashDirectEnabled = paymongoGcashEnabled && total >= 1 && Boolean(spot?.payment_required || spot?.reservation_type === 'paid');
   const isQrphPayment = paymentMode === 'qrph' && qrphEnabled;
   const isGcashDirectPayment = paymentMode === 'gcash_direct' && gcashDirectEnabled;
   const isAutomatedPayment = isQrphPayment || isGcashDirectPayment;

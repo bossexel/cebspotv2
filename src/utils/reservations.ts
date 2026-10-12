@@ -2,7 +2,6 @@ import type { PaymentStatus, Reservation, ReservationStatus, ReservationType, Sp
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 
 export const testCebspotSpotId = '66666666-6666-4666-8666-666666666666';
-export const testCebspotReservationFee = 150;
 
 type ReservationPricingSource = Partial<
   Pick<Spot, 'id' | 'name' | 'reservation_fee' | 'reservation_type' | 'payment_required' | 'gcash_amount' | 'gcash_wallet_name'>
@@ -28,13 +27,15 @@ export function isTestCebspotRecord(record?: ReservationPricingSource | null) {
 export function calculateReservationFee(record: Pick<Spot, 'reservation_fee'> | ReservationPricingSource) {
   const source = record as ReservationPricingSource;
   const amount = Math.max(0, Number(source.reservation_fee ?? 0), Number(source.gcash_amount ?? 0), Number(source.fee ?? 0));
-  return amount > 0 ? amount : isTestCebspotRecord(record as ReservationPricingSource) ? testCebspotReservationFee : 0;
+  if (amount === 0 && source.reservation_type === 'free' && !source.payment_required) return 0;
+  return Number.isFinite(amount) ? amount : 0;
 }
 
 export function getSpotReservationType(
   spot: Pick<Spot, 'reservation_fee' | 'reservation_type' | 'payment_required'> | ReservationPricingSource,
 ): ReservationType {
-  if (isTestCebspotRecord(spot as ReservationPricingSource)) return 'paid';
+  const source = spot as ReservationPricingSource;
+  if (source.reservation_type === 'free' && !source.payment_required && calculateReservationFee(source) === 0) return 'free';
   if ((spot as ReservationPricingSource).reservation_type === 'paid') return 'paid';
   return (spot as ReservationPricingSource).payment_required || calculateReservationFee(spot) > 0 ? 'paid' : 'free';
 }
@@ -190,7 +191,7 @@ export async function getReservedTableIds(input: ReservedTableIdsInput = {}) {
     reservedTableIdsRpcWarningShown = true;
     console.warn('Reserved-table RPC is missing. Run the latest club floor-plan SQL to show live table availability.');
   }
-  return [];
+  throw new Error('Live table availability is unavailable. Update the database before accepting reservations.');
 }
 
 export async function checkReservationAvailability(input: ReservationAvailabilityInput = {}) {
@@ -217,5 +218,5 @@ export async function checkReservationAvailability(input: ReservationAvailabilit
     reservationAvailabilityRpcWarningShown = true;
     console.warn('Reservation availability RPC is missing. Run the latest supabase-schema.sql to enforce table locking.');
   }
-  return true;
+  throw new Error('Reservation availability could not be verified. Update the database before accepting reservations.');
 }

@@ -29,10 +29,10 @@ import { ScreenContainer } from '../src/components/ScreenContainer';
 import { TileMap } from '../src/components/TileMap';
 import { AppColors, colors } from '../src/constants/colors';
 import { bottomNavLayout, fontSize, radius, shadow, spacing } from '../src/constants/design';
-import { sampleSpots } from '../src/constants/sampleData';
 import { useLocation } from '../src/hooks/useLocation';
 import { useTheme } from '../src/hooks/useTheme';
 import { savedSpotService } from '../src/services/savedSpotService';
+import { hasSupabaseConfig, supabase } from '../src/lib/supabase';
 import { spotService } from '../src/services/spotService';
 import type { Spot } from '../src/types';
 import { calculateHaversineDistanceKm, type GeoCoordinate } from '../src/utils/distance';
@@ -55,9 +55,8 @@ const ratingOptions = [0, 3, 3.5, 4, 4.5];
 const distanceOptions = [1, 5, 10, 25, 50];
 
 function enhanceSpots(spots: Spot[], origin: GeoCoordinate = cebuRegion): EnhancedSpot[] {
-  return spots.map((spot, index) => ({
+  return spots.map((spot) => ({
     ...spot,
-    rating: spot.rating ?? 4.2 + (index % 5) * 0.13,
     distanceValue: calculateHaversineDistanceKm(origin, {
       latitude: spot.latitude,
       longitude: spot.longitude,
@@ -98,11 +97,13 @@ export default function ExploreScreen() {
   const distanceOriginRef = useRef<GeoCoordinate>(cebuRegion);
   const requestedInitialLocationRef = useRef(false);
   const openedFocusSpotRef = useRef<string | null>(null);
-  const [spots, setSpots] = useState<EnhancedSpot[]>(enhanceSpots(sampleSpots));
+  const [spots, setSpots] = useState<EnhancedSpot[]>([]);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [search, setSearch] = useState('');
   const [zoomedOnce, setZoomedOnce] = useState(false);
   const [initialLocationChecked, setInitialLocationChecked] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [spotLoadError, setSpotLoadError] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedSpot, setSelectedSpot] = useState<EnhancedSpot | null>(spots[0] ?? null);
@@ -132,20 +133,21 @@ export default function ExploreScreen() {
     let mounted = true;
 
     async function load() {
+      setLoading(true);
       try {
         const fetchedSpots = await spotService.getSpots();
-        const nextSpots = enhanceSpots(fetchedSpots.length ? fetchedSpots : sampleSpots, distanceOriginRef.current);
+        const nextSpots = enhanceSpots(
+          fetchedSpots,
+          distanceOriginRef.current,
+        );
         if (!mounted) return;
+        setSpotLoadError(null);
         setSpots(nextSpots);
-        setSelectedSpot(nextSpots[0] ?? null);
-        setActiveIndex(0);
+        setSelectedSpot(current => nextSpots.find(spot => spot.id === current?.id) ?? nextSpots[0] ?? null);
       } catch (error) {
-        console.warn('Unable to load live spots; using fallback data:', error);
-        const nextSpots = enhanceSpots(sampleSpots, distanceOriginRef.current);
+        console.error('Unable to load live spots:', error);
         if (!mounted) return;
-        setSpots(nextSpots);
-        setSelectedSpot(nextSpots[0] ?? null);
-        setActiveIndex(0);
+        setSpotLoadError('Live spots could not be loaded. Check your connection and try again.');
       } finally {
         if (mounted) setLoading(false);
       }
@@ -153,21 +155,31 @@ export default function ExploreScreen() {
 
     load();
 
-    const unsubscribe = spotService.subscribeToSpots((nextRows) => {
-      if (!mounted) return;
-      const nextSpots = enhanceSpots(nextRows.length ? nextRows : sampleSpots, distanceOriginRef.current);
-      setSpots(nextSpots);
-      setSelectedSpot((current) => {
-        if (!current) return nextSpots[0] ?? null;
-        return nextSpots.find((spot) => spot.id === current.id) ?? nextSpots[0] ?? null;
-      });
-    });
+    const unsubscribe = spotService.subscribeToSpots(
+      (nextRows) => {
+        if (!mounted) return;
+        const nextSpots = enhanceSpots(
+          nextRows,
+          distanceOriginRef.current,
+        );
+        setSpotLoadError(null);
+        setSpots(nextSpots);
+        setSelectedSpot((current) => {
+          if (!current) return nextSpots[0] ?? null;
+          return nextSpots.find((spot) => spot.id === current.id) ?? nextSpots[0] ?? null;
+        });
+      },
+      (error) => {
+        console.error('Unable to refresh live spots:', error);
+        if (mounted) setSpotLoadError('Live spots could not be refreshed. Check your connection.');
+      },
+    );
 
     return () => {
       mounted = false;
       unsubscribe();
     };
-  }, []);
+  }, [refreshVersion]);
 
   useEffect(() => {
     distanceOriginRef.current = distanceOrigin;
@@ -188,9 +200,16 @@ export default function ExploreScreen() {
       }
     }
 
-    loadFavorites();
+    void loadFavorites();
+    const { data: authState } = supabase.auth.onAuthStateChange(() => {
+      if (!mounted) return;
+      setFavoritesLoaded(false);
+      setFavoriteSpotIds([]);
+      void loadFavorites();
+    });
     return () => {
       mounted = false;
+      authState.subscription.unsubscribe();
     };
   }, []);
 
@@ -489,6 +508,15 @@ export default function ExploreScreen() {
               />
             </Pressable>
           </View>
+          {!hasSupabaseConfig ? (
+            <Text style={[styles.dataNotice, { color: appColors.onSurfaceVariant, backgroundColor: appColors.surfaceHighest }]}>
+              Discovery service is not configured. Please use a configured CebSpot build.
+            </Text>
+          ) : spotLoadError ? (
+            <Text style={[styles.dataNotice, { color: appColors.onSurfaceVariant, backgroundColor: appColors.surfaceHighest }]}>
+              {spotLoadError}
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.mapActions}>
@@ -510,12 +538,16 @@ export default function ExploreScreen() {
             <View>
               <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Nearby Spots</Text>
               <Text style={[styles.sectionSub, { color: appColors.onSurfaceVariant }]}>
-                {filteredSpots.length} places matching your vibe
+                {spotLoadError ? (spots.length ? 'Showing cached spots; refresh unavailable' : 'Spots are currently unavailable') : `${filteredSpots.length} spots found near you`}
               </Text>
             </View>
           </View>
 
-          {loading ? (
+          {spotLoadError && <Pressable accessibilityRole="button" accessibilityLabel="Retry loading spots" onPress={() => setRefreshVersion(value => value + 1)} style={[styles.emptyCard, { backgroundColor: appColors.surfaceLow }]}>
+            <Text style={{ color: appColors.onSurface }}>{spotLoadError}</Text>
+            <Text style={styles.clearFilters}>Retry</Text>
+          </Pressable>}
+          {loading && !spots.length ? (
             <ActivityIndicator color={colors.primary} style={styles.loader} />
           ) : filteredSpots.length ? (
             <FlatList
@@ -555,10 +587,10 @@ export default function ExploreScreen() {
                 },
               ]}
             >
-              <Text style={[styles.emptyTitle, { color: appColors.onSurface }]}>No matches found</Text>
-              <Pressable onPress={resetFilters}>
+              <Text style={[styles.emptyTitle, { color: appColors.onSurface }]}>{spotLoadError ? 'Spots unavailable' : 'No matches found'}</Text>
+              {!spotLoadError && <Pressable onPress={resetFilters}>
                 <Text style={styles.clearFilters}>Clear filters</Text>
-              </Pressable>
+              </Pressable>}
             </View>
           )}
         </View>
@@ -885,6 +917,15 @@ const styles = StyleSheet.create({
     left: spacing.md,
     right: spacing.md,
     top: spacing.md,
+  },
+  dataNotice: {
+    alignSelf: 'flex-start',
+    borderRadius: radius.md,
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    overflow: 'hidden',
+    fontSize: fontSize.xs,
   },
   searchBar: {
     minHeight: 52,

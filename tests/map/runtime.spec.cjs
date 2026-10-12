@@ -68,11 +68,15 @@ test('camera updates while the screen is hidden resume without invalid coordinat
   await select(page, 'c', 1, { zoom: 17 });
   await page.waitForTimeout(100);
   await page.evaluate(() => { document.getElementById('map').style.display = ''; });
-  await page.waitForTimeout(300);
+  await expect.poll(() => page.evaluate(() => {
+    const point = window.__map.getCenter();
+    return Math.abs(point.lat - window.__payload.center.latitude) + Math.abs(point.lng - window.__payload.center.longitude);
+  })).toBeLessThan(0.00001);
   const center = await page.evaluate(() => window.__map.getCenter());
   expect(Number.isFinite(center.lat) && Number.isFinite(center.lng)).toBe(true);
   expect(center.lat).toBeCloseTo(initial.markers[2].latitude, 5);
   expect(center.lng).toBeCloseTo(initial.markers[2].longitude, 5);
+  expect(await page.evaluate(() => window.__map.getZoom())).toBe(17);
   expect(errors).toEqual([]);
 });
 

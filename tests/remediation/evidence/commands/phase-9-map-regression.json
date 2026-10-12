@@ -1,0 +1,12 @@
+{
+  "label": "phase-9-map-regression",
+  "command": [
+    "npm",
+    "run",
+    "test:map"
+  ],
+  "startedAt": "2026-10-12T21:28:45.766Z",
+  "finishedAt": "2026-10-12T21:29:21.289Z",
+  "exitCode": 0,
+  "output": "\n> cebspot@1.0.0 test:map\n> npm run map:check && playwright test --config playwright.map.config.cjs\n\n\n> cebspot@1.0.0 map:check\n> node scripts/build-map.cjs --check\n\n\nRunning 11 tests using 1 worker\n\n(node:25548) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n  ok  1 tests\\map\\runtime.spec.cjs:62:1 › camera updates while the screen is hidden resume without invalid coordinates (2.4s)\n  ok  2 tests\\map\\runtime.spec.cjs:83:1 › viewport tiles stay mounted across marker updates; no extra network requests (1.4s)\n  ok  3 tests\\map\\runtime.spec.cjs:100:1 › drag loads exposed tiles before release and preserves momentum (3.2s)\n  ok  4 tests\\map\\runtime.spec.cjs:129:1 › selection travels through intermediate positions, reuses pins and does not wait for tiles (1.2s)\n  ok  5 tests\\map\\runtime.spec.cjs:145:1 › rapid selections cancel earlier flights and a touch interrupts the camera (2.8s)\n  ok  6 tests\\map\\runtime.spec.cjs:164:1 › gesture echoes and unrelated marker updates preserve the user viewport (2.8s)\n  ok  7 tests\\map\\runtime.spec.cjs:180:1 › pin clicks and coordinate picking emit the expected callbacks (1.0s)\n  ok  8 tests\\map\\runtime.spec.cjs:189:1 › provider failure tries fallback once and reports complete failure without looping (1.7s)\n  ok  9 tests\\map\\runtime.spec.cjs:203:1 › working fallback displays tiles and no failure overlay (740ms)\n  ok 10 tests\\map\\runtime.spec.cjs:211:1 › reduced motion, routes, resizing, and untrusted marker text (1.2s)\n  ok 11 tests\\map\\runtime.spec.cjs:227:1 › two-finger pinch zoom is continuous and keeps the pin aligned (2.6s)\n\n  11 passed (28.8s)\n"
+}

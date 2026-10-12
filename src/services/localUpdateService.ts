@@ -38,7 +38,7 @@ const fallbackLocalUpdates: LocalUpdate[] = [
   },
 ];
 
-const localUpdates: LocalUpdate[] = [...fallbackLocalUpdates];
+const localUpdates: LocalUpdate[] = [];
 const localComments = new Map<string, LocalUpdateComment[]>();
 const localVotes = new Map<string, SpotVoteType>();
 
@@ -87,20 +87,17 @@ function normalizeComment(row: any): LocalUpdateComment {
 
 export const localUpdateService = {
   async getLocalUpdates(limit = 20): Promise<LocalUpdate[]> {
-    if (!hasSupabaseConfig) return localUpdates.slice(0, limit);
+    if (!hasSupabaseConfig) throw new Error('Local updates service is not configured.');
 
     const { data, error } = await supabase
       .from('local_updates')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(limit);
-    if (error) {
-      console.error('Unable to load local updates:', error);
-      return localUpdates.slice(0, limit);
-    }
+    if (error) throw error;
 
     const updates = (data ?? []).map(normalizeLocalUpdate);
-    return updates.length ? updates : localUpdates.slice(0, limit);
+    return updates;
   },
 
   async getLocalUpdateForSpotSubmission(submissionId: string): Promise<LocalUpdate | null> {
@@ -361,9 +358,9 @@ export const localUpdateService = {
     return normalizeComment(comment);
   },
 
-  subscribeToLocalUpdates(callback: (updates: LocalUpdate[]) => void) {
+  subscribeToLocalUpdates(callback: (updates: LocalUpdate[]) => void, onError?: (error: unknown) => void) {
     if (!hasSupabaseConfig) {
-      callback(localUpdates);
+      onError?.(new Error('Local updates service is not configured.'));
       return () => undefined;
     }
 
@@ -371,7 +368,7 @@ export const localUpdateService = {
     const channel = supabase
       .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'local_updates' }, async () => {
-        callback(await this.getLocalUpdates());
+        try { callback(await this.getLocalUpdates()); } catch (error) { onError?.(error); }
       })
       .subscribe();
 

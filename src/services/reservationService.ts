@@ -6,7 +6,6 @@ import {
   allowsSelfServiceReservationChanges,
   calculateReservationFee,
   getSpotReservationType,
-  isTestCebspotRecord,
 } from '../utils/reservations';
 import { activityService } from './activityService';
 
@@ -248,18 +247,8 @@ export const reservationService = {
     return normalizeReservation(Array.isArray(data) ? data[0] : data);
   },
   async createReservation(reservation: NewReservation): Promise<Reservation> {
-    const isDirectDemoPayment = reservation.payment_method === 'gcash_direct_demo';
-    const reservationToCreate: NewReservation = isTestCebspotRecord(reservation)
-      ? {
-          ...reservation,
-          fee: calculateReservationFee(reservation),
-          reservation_type: 'paid',
-          reservation_fee: calculateReservationFee(reservation),
-          payment_required: true,
-          status: reservation.status === 'confirmed' && !isDirectDemoPayment ? 'pending_payment' : reservation.status,
-          payment_status: reservation.payment_status === 'not_required' ? 'pending' : reservation.payment_status,
-        }
-      : reservation;
+    // The database owns price and payment state for every venue.
+    const reservationToCreate: NewReservation = reservation;
 
     if (!hasSupabaseConfig) {
       const created: Reservation = {

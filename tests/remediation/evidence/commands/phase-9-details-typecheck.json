@@ -1,0 +1,12 @@
+{
+  "label": "phase-9-details-typecheck",
+  "command": [
+    "npm",
+    "run",
+    "typecheck"
+  ],
+  "startedAt": "2026-10-12T21:33:43.027Z",
+  "finishedAt": "2026-10-12T21:34:25.976Z",
+  "exitCode": 2,
+  "output": "\n> cebspot@1.0.0 typecheck\n> tsc --noEmit\n\napp/+not-found.tsx(12,97): error TS2339: Property 'background' does not exist on type '{ primary: string; primaryContainer: string; secondary: string; surface: string; surfaceLow: string; surfaceContainer: string; surfaceHigh: string; surfaceHighest: string; surfaceRaised: string; ... 11 more ...; dangerContainer: string; }'.\r\napp/checkout/[id].tsx(133,6): error TS2304: Cannot find name 'usingTestDetails'.\r\napp/checkout/[id].tsx(134,54): error TS2304: Cannot find name 'usingTestDetails'.\r\n"
+}

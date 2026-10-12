@@ -1,0 +1,15 @@
+{
+  "label": "phase-9-details-replay-regression",
+  "command": [
+    "node",
+    "--test",
+    "--test-concurrency=1",
+    "tests/backend/audit-remediation.test.cjs",
+    "tests/remediation/migrations.test.cjs",
+    "tests/remediation/android-recovery.test.cjs"
+  ],
+  "startedAt": "2026-10-12T21:38:08.646Z",
+  "finishedAt": "2026-10-12T21:38:26.445Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: live discovery does not replace empty or failed backend results with sample listings\nok 1 - live discovery does not replace empty or failed backend results with sample listings\n  ---\n  duration_ms: 2.2969\n  type: 'test'\n  ...\n# Subtest: a failed review write is reported as a failure rather than inserted as session-only content\nok 2 - a failed review write is reported as a failure rather than inserted as session-only content\n  ---\n  duration_ms: 2.3802\n  type: 'test'\n  ...\n# Subtest: booking insertion rejects null slots and requires the selected table to exist in venue inventory\nok 3 - booking insertion rejects null slots and requires the selected table to exist in venue inventory\n  ---\n  duration_ms: 1.4378\n  type: 'test'\n  ...\n# Subtest: privacy and missing-page recovery are available before signup without opening booking or circle routes\nok 4 - privacy and missing-page recovery are available before signup without opening booking or circle routes\n  ---\n  duration_ms: 1.8485\n  type: 'test'\n  ...\n# Subtest: the complete timestamped migration chain creates required booking surfaces\nok 5 - the complete timestamped migration chain creates required booking surfaces\n  ---\n  duration_ms: 6841.5006\n  type: 'test'\n  ...\n# Subtest: fresh installation has no business/demo fixtures and does have required guards\nok 6 - fresh installation has no business/demo fixtures and does have required guards\n  ---\n  duration_ms: 14.3949\n  type: 'test'\n  ...\n# Subtest: migration version/checksum manifest is retained\nok 7 - migration version/checksum manifest is retained\n  ---\n  duration_ms: 2.8012\n  type: 'test'\n  ...\n# Subtest: an isolated previous-version fixture upgrades to the same schema without losing business rows\nok 8 - an isolated previous-version fixture upgrades to the same schema without losing business rows\n  ---\n  duration_ms: 8757.6761\n  type: 'test'\n  ...\n# Subtest: all six roles retain activity isolation after complete schema replay\nok 9 - all six roles retain activity isolation after complete schema replay\n  ---\n  duration_ms: 129.3562\n  type: 'test'\n  ...\n1..9\n# tests 9\n# suites 0\n# pass 9\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 17602.9469\n"
+}

@@ -30,7 +30,7 @@ Release decision: **NO-GO**. No audit finding is closed by a passing build alone
 
 ## Additional release checks
 
-Open: truthful demo/offline states, contact/time validation, pre-signup privacy, account deletion, location sharing/leave, narrow-screen recovery, map resume regression, dependency advisory triage, final artifact/device verification.
+Locally verified: map resume (11 runtime tests), server contacts/derived arrival slots and terms timestamp, no demo feed fallback, privacy route before signup, fail-closed missing Auth configuration. Cache/retry and responsive missing-page UI are implemented and typechecked; device verification pending. Open: account deletion, location sharing/leave, dependency advisory triage, final artifact/device verification.
 
 ## Baseline (read-only planning run, retained in chat)
 
@@ -55,3 +55,7 @@ Initial HEAD, status, and staged/unstaged binary diffs are retained privately in
 ## Phase 8 retained verification
 
 See `FINAL_AUDIT_CLOSURE.md` and the `phase-8-*` command reports for both failed and successful runs. Local six-role documents, concurrent quota admission, same-email submission races, protected proof workflows, private orphan cleanup and Android bearer transport pass. Nine Python tests use the actual ASGI boundary, terminate a hanging process, and run real MediaPipe on a generated blank image; they do not establish human-face blur quality or deployed capacity. Actual staging/Auth/Storage/device tests remain required. Apply migrations in lexical order through `20261013000500_request_bound_private_uploads.sql`; schedule cleanup and deploy the matching authenticated face service/client together in staging. No production actions occurred.
+
+## Phase 9 in progress
+
+Map hidden-screen resume is corrected by resetting Leaflet's measured pixel origin after visibility returns; all 11 map runtime regressions pass. New migration `20261013000600_server_reservation_details.sql` derives inventory slot keys from exact arrival minutes before booking guards, validates contacts and future arrivals, and owns the terms timestamp. Thirty-one SQL/payment/manual/feed checks pass. Demo feed fallback on backend error is removed, retries preserve useful cached rows, missing service configuration cannot create a demo sign-in, and Privacy Policy is linked before signup. The new recovery route uses a scrollable narrow-screen layout. TypeScript passed after correcting the surface color and removing leftover test-payment flags. Account deletion, location sharing/leave, dependency/security scan and final artifact validation remain open.

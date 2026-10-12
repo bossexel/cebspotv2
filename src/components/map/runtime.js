@@ -72,7 +72,9 @@
         // A retained navigation screen can briefly report an intermediate size
         // while becoming visible. Re-measure before applying its queued camera.
         map.invalidateSize({ pan: false, animate: false });
-        map.setView(latLng(pending.center), pending.zoom, { animate: false });
+        // Hidden Leaflet views can retain a pixel origin measured at zero size.
+        // Reset that origin after re-measuring instead of panning from it.
+        map.setView(latLng(pending.center), pending.zoom, { animate: false, reset: true });
       });
     });
   }

@@ -248,6 +248,10 @@ export default function LoginScreen() {
             onPress={submit}
           />
 
+          <Pressable accessibilityRole="link" onPress={() => router.push('/privacy')} style={styles.forgotButton}>
+            <Text style={styles.forgotText}>Read Privacy Policy</Text>
+          </Pressable>
+
           <Pressable
             disabled={isBusy}
             onPress={() => {
