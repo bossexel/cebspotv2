@@ -10,6 +10,8 @@
     }
   },
   "include": [
+    "admin-app/**/*.ts",
+    "admin-app/**/*.tsx",
     "app/**/*.ts",
     "app/**/*.tsx",
     "src/**/*.ts",

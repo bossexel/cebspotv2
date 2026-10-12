@@ -1,6 +1,6 @@
 # CebSpot
 
-Expo React Native mobile app for discovering Cebu spots, reserving venues, and sharing local activity.
+Expo React Native app for discovering Cebu spots, reserving venues, and sharing local activity. Customers and owners use Android; the admin console stays hosted on Render.
 
 ## Run
 
@@ -9,10 +9,9 @@ npm install
 npm.cmd start
 ```
 
-The native app, user web app, and admin console run from the same Expo server on one port. Start one server on `8081`, then open the route you need:
+Open the project in Expo Go on Android, or press `a` to launch an Android emulator. Use `npm.cmd run android` to launch Android directly, or `npm.cmd run start:usb` with a USB-connected Android device. The Expo server uses port `8081` to deliver the Android app.
 
-- User app: `http://localhost:8081/`
-- Admin console: `http://localhost:8081/admin`
+Customer/owner browser screens and the standalone browser owner portal are removed. iOS is unsupported. `npm run build:android` exports Android. Render keeps `npm ci && npm run build`, its `dist` output, and `/admin` URL; this web build uses the separate `admin-app` route root. `npm run dev:admin` previews admin on port `8084`. See [platform scope and LA-08/LA-09](docs/android-only.md).
 
 The `npm.cmd start` script skips Expo's online dependency validation so the local server can boot even when Expo's metadata request fails.
 
@@ -60,8 +59,7 @@ eas build --platform android --profile preview
 After that build is installed, JavaScript and asset changes that do not add or change native dependencies can be sent to it without rebuilding:
 
 ```bash
-eas update --channel preview --environment preview --message "Describe the update"
+eas update --platform android --channel preview --environment preview --message "Describe the update"
 ```
 
 Production updates use `--channel production --environment production`. The update runtime follows the Expo app version, so increment `expo.version` before building whenever native dependencies or native configuration change.
-"# cebspotv2" 

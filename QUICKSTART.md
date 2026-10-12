@@ -1,4 +1,4 @@
-# CebSpot Expo Quickstart
+# CebSpot Android Quickstart
 
 ## 1. Install
 
@@ -25,12 +25,9 @@ If these variables are missing, the app still opens in local demo mode with samp
 npm.cmd start
 ```
 
-The native app, user web app, and admin console share one Expo server port. Start one server on `8081`, then open the route you need:
+Open the QR code in Expo Go on Android or press `a` for an Android emulator. Use `npm.cmd run android` to launch Android directly, or `npm.cmd run start:usb` for USB. Customers and owners use Android. The admin console stays hosted on Render.
 
-- User app: `http://localhost:8081/`
-- Admin console: `http://localhost:8081/admin`
-
-For native testing, open the QR code in Expo Go or press `a` for an Android emulator from the same server.
+Customer/owner web and iOS are unsupported. The browser owner portal and Vercel configuration were removed. `npm.cmd run build:android` exports Android; `npm.cmd run test:platform` checks platform isolation. Render keeps `npm ci && npm run build` and publishes the separate `admin-app` web export to `dist`. Use `npm.cmd run dev:admin` for local admin browser testing.
 
 The `npm.cmd start` script skips Expo's online dependency validation so the local server can boot even when Expo's metadata request fails.
 
@@ -44,11 +41,11 @@ npm.cmd run start:tunnel
 
 ## App Flow
 
-- `app/explore.tsx` - Explore
+- `app/index.tsx` - Explore
 - `app/spot/[id].tsx` - Spot details
 - `app/reservation/[id].tsx` - Reservation
 - `app/checkout/[id].tsx` - Demo checkout
 - `app/confirmed/[id].tsx` - QR confirmation
 - `app/circle.tsx`, `app/activity.tsx`, `app/profile.tsx` - Bottom navigation tabs
 - `app/submit-spot.tsx` - Spot submission
-- `app/admin.tsx` - Admin console on the same app server
+- `app/admin.tsx` - Admin console inside the Android app

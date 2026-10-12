@@ -23,9 +23,9 @@ popularity_score =
 **Status: NO COMPARATIVE BASELINE EVIDENCE FOUND**
 
 The codebase contains:
-- ✓ No A/B testing framework
-- ✓ No user engagement metrics (CTR, conversion, dwell time)
-- ✓ No performance benchmarks comparing this against:
+-  No A/B testing framework
+-  No user engagement metrics (CTR, conversion, dwell time)
+-  No performance benchmarks comparing this against:
   - Simple rating average (baseline)
   - Random ordering
   - Most recent submissions
@@ -124,7 +124,7 @@ const filters = {
 
 | Scale | Hundreds | Thousands | Millions |
 |-------|----------|-----------|----------|
-| **Current Approach** | ✓ Fast | ⚠️ Slow | ✗ Unacceptable |
+| **Current Approach** |  Fast |  Slow |  Unacceptable |
 | **Query Pattern** | All spots + client-side distance calc | All venues loaded, distances computed in-app | Would timeout |
 | **Database Burden** | SELECT spots WHERE is_public=true (indexed) | Same query, but 1000x more rows | Same query, but 1,000,000x rows |
 
@@ -331,7 +331,7 @@ User B: INSERT succeeds → Reservation ALSO confirmed ← DOUBLE BOOKING!
 
 ### Prevention Strategies NOT Implemented
 
-**❌ Advisory Locks** (PostgreSQL feature not used):
+** Advisory Locks** (PostgreSQL feature not used):
 ```sql
 SELECT pg_advisory_lock(
   hashtext(spot_id || '::' || reservation_date || '::' || reservation_time)
@@ -339,7 +339,7 @@ SELECT pg_advisory_lock(
 -- Then safely check & insert
 ```
 
-**❌ Pessimistic Locking**:
+** Pessimistic Locking**:
 ```sql
 BEGIN;
   SELECT * FROM reservations 
@@ -352,16 +352,16 @@ BEGIN;
 COMMIT;
 ```
 
-**❌ Optimistic Locking** (version numbers):
+** Optimistic Locking** (version numbers):
 ```sql
 UPDATE reservations SET reserved_slot_v2 = v2 + 1
 WHERE spot_id=$1 AND v = v2 - 1;  -- Only update if version matches
 ```
 
 **Current Status**: 
-- ✓ Reservations are inserted
-- ✗ **Double-booking is POSSIBLE during race conditions**
-- ⚠️ Dependent on payment status workflow to reject one later
+-  Reservations are inserted
+-  **Double-booking is POSSIBLE during race conditions**
+-  Dependent on payment status workflow to reject one later
 
 ### Effective Workaround (if using Supabase)
 Use the `approve_paid_reservation` RPC function:
@@ -415,13 +415,13 @@ CREATE POLICY "profiles_select_owned_reservation_guests"
 
 | Aspect | Implementation | Risk Level |
 |--------|---|---|
-| **Location data exposure** | RLS: only user can see own location | ✓ Low |
-| **Owner sees guest location?** | NO - only email/name visible | ✓ Low |
-| **Historical location tracking** | `last_location_update` timestamp only, no trail | ✓ Low |
-| **Location-based advertising** | NOT implemented | ✓ Safe |
-| **Third-party location sharing** | NOT integrated | ✓ Safe |
-| **Device geofencing** | NOT implemented | ✓ Safe |
-| **Location stalking prevention** | NO rate-limiting on location queries | ⚠️ Possible risk |
+| **Location data exposure** | RLS: only user can see own location |  Low |
+| **Owner sees guest location?** | NO - only email/name visible |  Low |
+| **Historical location tracking** | `last_location_update` timestamp only, no trail |  Low |
+| **Location-based advertising** | NOT implemented |  Safe |
+| **Third-party location sharing** | NOT integrated |  Safe |
+| **Device geofencing** | NOT implemented |  Safe |
+| **Location stalking prevention** | NO rate-limiting on location queries |  Possible risk |
 
 ### Gaps in Privacy Protection
 
@@ -440,17 +440,17 @@ CREATE POLICY "profiles_select_owned_reservation_guests"
 
 | Requirement | Implemented? | Evidence |
 |---|---|---|
-| **Lawful basis for processing** | ❌ No | No consent collection in code |
-| **Right to be informed** | ❌ No | No privacy policy, no data notice |
-| **Right to access** | ✓ Partial | RLS policies prevent unauthorized access |
-| **Right to correct** | ✓ Partial | Users can update own profile |
-| **Right to erasure** | ❌ No | No delete mechanism visible |
-| **Right to restrict** | ❌ No | All data processing uncontrolled |
-| **Data minimization** | ⚠️ Partial | Stores more than necessary (JSONB location) |
-| **Purpose limitation** | ❌ No | No documentation of data use |
-| **Storage limitation** | ❌ No | Indefinite retention |
-| **Integrity & confidentiality** | ✓ Partial | RLS + Auth enabled |
-| **Accountability** | ❌ No | No audit log, no DPA |
+| **Lawful basis for processing** |  No | No consent collection in code |
+| **Right to be informed** |  No | No privacy policy, no data notice |
+| **Right to access** |  Partial | RLS policies prevent unauthorized access |
+| **Right to correct** |  Partial | Users can update own profile |
+| **Right to erasure** |  No | No delete mechanism visible |
+| **Right to restrict** |  No | All data processing uncontrolled |
+| **Data minimization** |  Partial | Stores more than necessary (JSONB location) |
+| **Purpose limitation** |  No | No documentation of data use |
+| **Storage limitation** |  No | Indefinite retention |
+| **Integrity & confidentiality** |  Partial | RLS + Auth enabled |
+| **Accountability** |  No | No audit log, no DPA |
 
 ### Specific DPA 2012 Gaps
 
@@ -498,12 +498,12 @@ Cannot find:
 
 **Implemented Protections**:
 
-1. **Authentication attacks** ✓
+1. **Authentication attacks** 
    - Supabase Auth (email + password or social login)
    - JWT session tokens (auto-refresh)
    - RLS policies prevent unauthorized access
 
-2. **Authorization attacks** ✓
+2. **Authorization attacks** 
    - Role-based access control (admin, owner, user)
    ```sql
    -- Role assignment via email
@@ -515,38 +515,38 @@ Cannot find:
      - Users can only modify own reservations
      - Owners can only modify own spots
 
-3. **Data injection attacks** ✓
+3. **Data injection attacks** 
    - Using Supabase parameterized queries (no raw SQL)
    - TypeScript typing prevents most injection
 
-4. **Payment fraud** ⚠️
+4. **Payment fraud** 
    - GCash QR codes stored in database (not recommended)
    - Manual payment proof review (no automated verification)
    - No payment provider SDK (GCash API not integrated)
 
 **NOT Protected Against**:
 
-1. **DDoS attacks** ❌
+1. **DDoS attacks** 
    - No rate limiting on API calls
    - No request throttling per user
    - Supabase free tier has no DDoS protection
 
-2. **Account takeover via email** ❌
+2. **Account takeover via email** 
    - No 2FA/MFA
    - No device fingerprinting
    - No unusual login alerts
 
-3. **Fake reviews at scale** ❌
+3. **Fake reviews at scale** 
    - No ML-based content moderation
    - No rate limiting on review creation
    - No bot detection
 
-4. **Location data harvesting** ❌
+4. **Location data harvesting** 
    - No rate limiting on location API calls
    - No detection of scraping patterns
    - Could enumerate all user locations
 
-5. **SQL injection in stored procedures** ⚠️
+5. **SQL injection in stored procedures** 
    - RLS policies use dynamic column values:
    ```sql
    CREATE POLICY "profiles_select_owned_reservation_guests"
@@ -625,12 +625,12 @@ try {
 
 | Failure Scenario | Current Behavior | Impact |
 |---|---|---|
-| **Supabase auth service down** | Error thrown, app crashes | ✗ Critical |
-| **Network timeout on spot query** | Error thrown, user sees nothing | ✗ Bad UX |
-| **Google Maps API quota exceeded** | Route not shown | ✗ Feature unavailable |
-| **Payment proof upload fails** | Exception thrown | ✗ Reservation incomplete |
-| **Maps tile service fails** | Map blank | ⚠️ App still works but no map |
-| **Realtime subscriptions fail** | No live updates | ✓ Acceptable (not critical) |
+| **Supabase auth service down** | Error thrown, app crashes |  Critical |
+| **Network timeout on spot query** | Error thrown, user sees nothing |  Bad UX |
+| **Google Maps API quota exceeded** | Route not shown |  Feature unavailable |
+| **Payment proof upload fails** | Exception thrown |  Reservation incomplete |
+| **Maps tile service fails** | Map blank |  App still works but no map |
+| **Realtime subscriptions fail** | No live updates |  Acceptable (not critical) |
 
 ### Recommended Improvements
 
@@ -757,14 +757,14 @@ CREATE POLICY "reservations_select_own"
 
 | Layer | Status | Strength |
 |---|---|---|
-| **Authentication** | ✓ | Supabase Auth (strong) |
-| **Session validation** | ✓ | JWT + auto-refresh |
-| **Application-level checks** | ✓ | Email-based role verification |
-| **Database-level enforcement** | ✓ | RLS policies comprehensive |
-| **Cross-cutting concern (admin)** | ⚠️ | Admin access not restricted at DB layer |
-| **Delegation (owner→manager)** | ✓ | `owner_spot_access` table supports managers |
-| **Audit of access** | ❌ | No audit logs |
-| **Dynamic role changes** | ✓ | Database trigger on email change |
+| **Authentication** |  | Supabase Auth (strong) |
+| **Session validation** |  | JWT + auto-refresh |
+| **Application-level checks** |  | Email-based role verification |
+| **Database-level enforcement** |  | RLS policies comprehensive |
+| **Cross-cutting concern (admin)** |  | Admin access not restricted at DB layer |
+| **Delegation (owner→manager)** |  | `owner_spot_access` table supports managers |
+| **Audit of access** |  | No audit logs |
+| **Dynamic role changes** |  | Database trigger on email change |
 
 **Score**: 7/10 - Strong database layer, weak admin isolation
 
@@ -784,8 +784,8 @@ CREATE TABLE spot_search_events (
 );
 ```
 This allows measuring:
-- How often submissions are searched ✓
-- Which submissions are most found ✓
+- How often submissions are searched 
+- Which submissions are most found 
 
 **Activity feed** (limited):
 ```sql
@@ -795,8 +795,8 @@ CREATE TABLE activities (
 );
 ```
 Possible metrics:
-- User reservations per week ✓
-- Review submission rate ✓
+- User reservations per week 
+- Review submission rate 
 
 ### Missing Metrics
 
@@ -827,26 +827,26 @@ IF api_response_time > 500ms THEN alert
 
 | Feature | CebSpot | Google Maps | Differentiator |
 |---|---|---|---|
-| **Reservation booking** | ✓ In-app | ✗ External | CebSpot = **all-in-one** |
-| **Payment processing** | ✓ GCash QR | ✓ Multiple | CebSpot = **mobile-pay** |
-| **Community submissions** | ✓ Venue crowdsourcing | ✗ Edit suggestions only | CebSpot = **bottom-up content** |
-| **Social circles** | ✓ Friend groups | ✗ Not native | CebSpot = **social discovery** |
-| **Spot search by keyword** | ✓ Text search | ✓ Powerful | Google Maps = **more refined** |
-| **Map tiles** | ✓ OSM/Mapbox | ✓ Google's own | CebSpot = **cheaper** |
-| **Real-time queue info** | ✗ | ✓ | Google Maps = **superior** |
-| **Offline maps** | ✗ | ✓ | Google Maps = **offline capability** |
+| **Reservation booking** |  In-app |  External | CebSpot = **all-in-one** |
+| **Payment processing** |  GCash QR |  Multiple | CebSpot = **mobile-pay** |
+| **Community submissions** |  Venue crowdsourcing |  Edit suggestions only | CebSpot = **bottom-up content** |
+| **Social circles** |  Friend groups |  Not native | CebSpot = **social discovery** |
+| **Spot search by keyword** |  Text search |  Powerful | Google Maps = **more refined** |
+| **Map tiles** |  OSM/Mapbox |  Google's own | CebSpot = **cheaper** |
+| **Real-time queue info** |  |  | Google Maps = **superior** |
+| **Offline maps** |  |  | Google Maps = **offline capability** |
 
 ### CebSpot vs. Yelp
 
 | Feature | CebSpot | Yelp | Differentiator |
 |---|---|---|---|
-| **Instant reservation** | ✓ GCash/QR code | ✗ Call/external | CebSpot = **frictionless booking** |
-| **User reputation** | ✓ Points, levels, friends | ✓ Badges, lists | CebSpot = **gamified** |
-| **Review authenticity** | ⚠️ Manual reports only | ✓ Yelp's ML models | Yelp = **anti-fake** |
-| **Business management** | ✓ Owner portal | ✓ Comprehensive | Yelp = **more features** |
-| **Price range filter** | ✗ | ✓ | Yelp = **better filtering** |
-| **Reservation integration** | ✓ Built-in | ✗ External (Resy, OpenTable) | CebSpot = **integrated** |
-| **Geographic scope** | ✓ Cebu-first | ✗ Global | CebSpot = **localized focus** |
+| **Instant reservation** |  GCash/QR code |  Call/external | CebSpot = **frictionless booking** |
+| **User reputation** |  Points, levels, friends |  Badges, lists | CebSpot = **gamified** |
+| **Review authenticity** |  Manual reports only |  Yelp's ML models | Yelp = **anti-fake** |
+| **Business management** |  Owner portal |  Comprehensive | Yelp = **more features** |
+| **Price range filter** |  |  | Yelp = **better filtering** |
+| **Reservation integration** |  Built-in |  External (Resy, OpenTable) | CebSpot = **integrated** |
+| **Geographic scope** |  Cebu-first |  Global | CebSpot = **localized focus** |
 
 ### Unique CebSpot Positioning
 
@@ -858,12 +858,12 @@ IF api_response_time > 500ms THEN alert
 
 ### Technical Gaps Preventing Dominance
 
-- ❌ Yelp-level review authenticity (no ML fake review detection)
-- ❌ Google Maps-level offline capability
-- ❌ Real-time data (queue times, wait lists)
-- ❌ API for third-party integrations
-- ❌ Customizable price filters
-- ❌ Photo organization (Yelp/Google better)
+-  Yelp-level review authenticity (no ML fake review detection)
+-  Google Maps-level offline capability
+-  Real-time data (queue times, wait lists)
+-  API for third-party integrations
+-  Customizable price filters
+-  Photo organization (Yelp/Google better)
 
 ---
 
@@ -941,12 +941,12 @@ CREATE INDEX spots_city_idx ON spots(city);
 ### Current Readiness
 
 **Multi-city score**: 3/10
-- ✓ Database schema supports arbitrary lat/lon (could be any city)
-- ✓ Distance calculations city-agnostic
-- ❌ Hardcoded defaults to Cebu only
-- ❌ No city selector UI
-- ❌ No city context in data model
-- ❌ No deployment strategy for regional infrastructure
+-  Database schema supports arbitrary lat/lon (could be any city)
+-  Distance calculations city-agnostic
+-  Hardcoded defaults to Cebu only
+-  No city selector UI
+-  No city context in data model
+-  No deployment strategy for regional infrastructure
 
 **Timeline to enable**: 4-6 weeks
 1. Week 1: Add city_id to schema, migrate data

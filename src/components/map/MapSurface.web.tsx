@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { mapHtml } from './mapDocument.generated';
 import type { MapSurfaceProps } from './types';
 
+// Used by the Render admin console for report evidence maps.
 export function MapSurface({ payload, onMessage }: MapSurfaceProps) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [generation, setGeneration] = useState(0);

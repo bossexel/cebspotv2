@@ -1,0 +1,42 @@
+{
+  "label": "phase-7",
+  "createdAt": "2026-10-12T19:14:37.543Z",
+  "limitations": "Export verification only; not an installed APK, device result, deployed artifact or participant acceptance.",
+  "files": [
+    {
+      "path": ".codex-tmp/remediation-android-phase7/metadata.json",
+      "bytes": 4245,
+      "sha256": "be1e9daaa3650ef6738aaa134119c2abc9c850522076a61d1bf91fe3474729fc"
+    },
+    {
+      "path": ".codex-tmp/remediation-android-phase7/payment-return.html",
+      "bytes": 886,
+      "sha256": "f13f2bf5264461619420289929dcd658b7c8b42f0a7d67462b473cc59f182ccd"
+    },
+    {
+      "path": ".codex-tmp/remediation-android-phase7/_expo/static/js/android/index-3824e6d7b0fa1bf1662834632886807d.hbc",
+      "bytes": 8275318,
+      "sha256": "617af67f83a673ae85c8243a40dcb9bb0a8a4d639cb617e9ea64e872a9bf6b4c"
+    },
+    {
+      "path": ".codex-tmp/remediation-admin-phase7/index.html",
+      "bytes": 3350,
+      "sha256": "1ae1335a4ed04d74ae15aa9ffab5f04e3b8dffc7e455a8cfbe54e4d8963c2088"
+    },
+    {
+      "path": ".codex-tmp/remediation-admin-phase7/metadata.json",
+      "bytes": 49,
+      "sha256": "aa5f19cc84d41c0f8c70ececb2bc82e863227ea1e121632aca879eb616056991"
+    },
+    {
+      "path": ".codex-tmp/remediation-admin-phase7/payment-return.html",
+      "bytes": 886,
+      "sha256": "f13f2bf5264461619420289929dcd658b7c8b42f0a7d67462b473cc59f182ccd"
+    },
+    {
+      "path": ".codex-tmp/remediation-admin-phase7/_expo/static/js/web/index-b2003220f4a9a1260e27876ffbb482e0.js",
+      "bytes": 4031936,
+      "sha256": "14dec203743143444f0deeed30dfd2ec10dc3a449874741b048879dad9249a02"
+    }
+  ]
+}

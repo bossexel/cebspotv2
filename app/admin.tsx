@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Linking,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -63,6 +63,7 @@ import { shadow } from '../src/constants/design';
 import { REVIEW_REPORT_CATEGORIES } from '../src/constants/reportCategories';
 import { useScopedAuth } from '../src/hooks/useScopedAuth';
 import { getAuthErrorMessage } from '../src/utils/auth';
+import { platformAlert as Alert } from '../src/utils/platformAlert';
 import { ownerVerificationDocumentService } from '../src/services/ownerVerificationDocumentService';
 import {
   applySpotEditSuggestion,
@@ -482,7 +483,7 @@ export default function AdminConsoleScreen() {
       Alert.alert('Spot unavailable', 'This report is not linked to a spot record.');
       return;
     }
-    router.push(`/spot/${report.spotId}`);
+    router.push(Platform.OS === 'web' ? `/admin/spot/${report.spotId}` : `/spot/${report.spotId}`);
   }
 
   if (authLoading || !adminFontsLoaded) {

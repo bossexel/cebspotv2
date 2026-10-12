@@ -32,11 +32,6 @@
         "READ_MEDIA_VIDEO"
       ]
     },
-    "web": {
-      "bundler": "metro",
-      "output": "single",
-      "favicon": "./assets/cebspot-logo.png"
-    },
     "plugins": [
       "expo-router",
       [
@@ -85,8 +80,7 @@
       "policy": "appVersion"
     },
     "platforms": [
-      "android",
-      "web"
+      "android"
     ],
     "extra": {
       "router": {

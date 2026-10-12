@@ -7,6 +7,7 @@ coverage/
 .env*
 !.env.example
 .chrome-debug-profile/
+.chrome-video-review/
 .expo/
 .expo-web-check/
 .codex-tmp/
@@ -16,3 +17,12 @@ assets/test-cebspot-club/
 .vscode/
 *.code-workspace
 supabase/.temp/
+
+# Performance test results (may contain tokens)
+tests/performance/results/
+
+# Credentials, fixture journals, generated local services, and device traces.
+tests/performance/.private/
+tests/performance/local-stack/
+tests/performance/device-artifacts/
+# Sanitized evidence under tests/performance/evidence/ is intentionally reviewable.

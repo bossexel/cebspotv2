@@ -14,6 +14,7 @@ Updated: 2026-10-13 (Asia/Manila).
 | Phase 4 / LA-03 | Sole-venue database gate; protected owner inventory confirmation; edits invalidate confirmation; live booking/owner flows use only stored tables | 17 focused SQL/client/settings tests passed; TypeScript passed | Actual venue inventory still requires owner confirmation in isolated staging; no venue data was edited remotely |
 | Phase 5 / LA-04, LA-07 | Server-owned deadlines; protected manual proof RPC; private reservation-bound upload; direct customer updates denied; owner approval under venue lock | 23 SQL/handler/migration tests passed, including concurrency and injected transaction failure; TypeScript passed | Real Auth/Storage/API and Android tests remain pending; staging must schedule service-only expiry sweep |
 | Phase 6 / LA-05, LA-06 | Durable attempts and exact requests, unique webhook inbox, atomic payment transitions, retirement/reconciliation worker, HTTPS Android return bridge, synthetic-only manual proof instructions | 14 native payment transaction tests; 21 actual-handler/native-SQL regressions; broader backend/platform/upgrade 132 passed, 5 skipped; TypeScript passed | Real provider test-mode integration, Auth/Edge delivery and maintenance scheduling remain required; no real provider calls performed |
+| Phase 7 / LA-08, LA-09 | Retained existing Android/admin split, removed public web distribution and claims, documented static Android handoff | 11 platform tests; Android Hermes/admin exports pass; default customer/owner web export rejected; actual admin browser artifact passes route/auth-error/recovery/handoff checks | Both findings remain outside Android v1 scope, not fixed; Render was not deployed or disabled |
 
 ## Command record
 
@@ -68,4 +69,13 @@ No production deployment/data changes, real payment, refund, credential rotation
 - `phase-6-handler-recovery-boundaries`: 3 passed (targeted scheduler recovery, full database outage, and stale-key boundary).
 - `node scripts/remediation-check.cjs phase-6-backend-and-upgrade node --test tests/backend/*.test.cjs tests/platform/*.test.cjs tests/remediation/migrations.test.cjs`: 132 passed / 5 skipped, including all 21 current payment handler tests and fresh/upgrade schema checks. Counts overlap targeted runs and must not be summed as unique tests.
 - Payment staging configuration, test journeys, exact reconciliation steps for stale unknown outcomes, provider references and rollback boundary: `docs/payment-release-verification.md`. No provider or production call occurred. The existing payment test command now executes actual handlers against native SQL rather than the obsolete split-write fixture.
+
+
+- `node scripts/remediation-check.cjs phase-7-platform node --test tests/platform/android-only.test.cjs`: 11 passed.
+- `node scripts/remediation-check.cjs phase-7-android-export npm run build:android -- --output-dir .codex-tmp/remediation-android-phase7 --max-workers 1`: passed, Android Hermes bytecode retained locally.
+- `node scripts/remediation-check.cjs phase-7-admin-export npm run build -- --output-dir .codex-tmp/remediation-admin-phase7 --max-workers 1`: passed.
+- `node scripts/remediation-check.cjs phase-7-denied-customer-web node tests/platform/deny-customer-web.cjs`: passed; child default web export was rejected as required.
+- With `ADMIN_WEB_EXPORT_DIR=.codex-tmp/remediation-admin-phase7`, `node scripts/remediation-check.cjs phase-7-admin-artifact npm run test:admin-web`: passed; all backend and external traffic intercepted.
+- `node scripts/remediation-artifact-manifest.cjs phase-7 .codex-tmp/remediation-android-phase7 .codex-tmp/remediation-admin-phase7`: artifact hashes retained in `tests/remediation/evidence/phase-7-artifacts.json`. These exports precede the remaining upload/account/privacy fixes and are not the final candidate.
+- Phase 7 commits retained pre-existing platform-boundary work and its in-scope docs/configuration, including the required package lock. Original browser/scratch deletions remain staged separately.
 

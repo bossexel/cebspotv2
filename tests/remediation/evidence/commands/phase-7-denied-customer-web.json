@@ -1,0 +1,11 @@
+{
+  "label": "phase-7-denied-customer-web",
+  "command": [
+    "node",
+    "tests/platform/deny-customer-web.cjs"
+  ],
+  "startedAt": "2026-10-12T19:12:01.678Z",
+  "finishedAt": "2026-10-12T19:12:14.584Z",
+  "exitCode": 0,
+  "output": "PASS default customer/owner web export is rejected; only explicit admin target is supported.\n"
+}

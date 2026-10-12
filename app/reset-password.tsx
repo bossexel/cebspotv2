@@ -16,6 +16,7 @@ import { AlertCircle, ArrowLeft, Check, Circle, KeyRound, MailCheck, RotateCcw, 
 import { AppButton } from '../src/components/AppButton';
 import { PasswordInput } from '../src/components/PasswordInput';
 import { colors } from '../src/constants/colors';
+import { ADMIN_EMAIL, normalizeAuthEmail } from '../src/constants/authRoles';
 import { fontSize, radius, shadow, spacing } from '../src/constants/design';
 import { useAuth } from '../src/hooks/useAuth';
 import { useTheme } from '../src/hooks/useTheme';
@@ -30,7 +31,7 @@ import {
 const cebspotLogo = require('../assets/cebspot-logo.png');
 const RESET_COOLDOWN_SECONDS = 60;
 
-export default function ResetPasswordScreen() {
+export default function ResetPasswordScreen({ adminOnly = false }: { adminOnly?: boolean } = {}) {
   const router = useRouter();
   const params = useLocalSearchParams<{ email?: string; requested?: string; returnTo?: string }>();
   const { appColors } = useTheme();
@@ -42,10 +43,11 @@ export default function ResetPasswordScreen() {
     passwordRecoveryStatus,
     resetPassword,
     verifyPasswordRecoveryCode,
+    user,
   } = useAuth();
   const initialEmail = normalizeEmail(typeof params.email === 'string' ? params.email : '');
   const resetWasAlreadyRequested = params.requested === '1' && isValidEmail(initialEmail);
-  const returnToAdmin = params.returnTo === 'admin';
+  const returnToAdmin = adminOnly || params.returnTo === 'admin';
   const [email, setEmail] = useState(initialEmail);
   const [submittedEmail, setSubmittedEmail] = useState(resetWasAlreadyRequested ? initialEmail : '');
   const [emailSent, setEmailSent] = useState(resetWasAlreadyRequested);
@@ -85,6 +87,10 @@ export default function ResetPasswordScreen() {
     setRequestAttempted(true);
     setRequestError(null);
     if (!normalizedEmail || !emailIsValid) return;
+    if (adminOnly && normalizedEmail !== ADMIN_EMAIL) {
+      setRequestError('Use the CebSpot admin email. Customers and owners recover access in the Android app.');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -109,6 +115,10 @@ export default function ResetPasswordScreen() {
     setCodeAttempted(true);
     setCodeError(null);
     if (!recoveryCodeIsValid || !submittedEmail) return;
+    if (adminOnly && submittedEmail !== ADMIN_EMAIL) {
+      setCodeError('Password recovery on this site is available for the admin account only.');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -127,6 +137,10 @@ export default function ResetPasswordScreen() {
     setPasswordAttempted(true);
     setUpdateError(null);
     if (!canUpdatePassword) return;
+    if (adminOnly && normalizeAuthEmail(user?.email) !== ADMIN_EMAIL) {
+      setUpdateError('Password recovery on this site is available for the admin account only.');
+      return;
+    }
 
     try {
       setLoading(true);
