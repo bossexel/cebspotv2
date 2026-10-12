@@ -69,9 +69,15 @@ export function AppUpdatePrompt() {
 
   const visible = state === 'available' || state === 'updating' || state === 'failed';
   const updating = state === 'updating';
+  const dismissPrompt = () => {
+    if (!updating) {
+      setErrorMessage(null);
+      setState('idle');
+    }
+  };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={() => undefined}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={dismissPrompt}>
       <View style={styles.root}>
         <View style={styles.scrim} />
         <View
@@ -108,6 +114,16 @@ export function AppUpdatePrompt() {
               <Text style={styles.updateText}>Update</Text>
             )}
           </Pressable>
+          {!updating && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Later"
+              onPress={dismissPrompt}
+              style={({ pressed }) => [styles.laterButton, pressed && styles.pressed]}
+            >
+              <Text style={[styles.laterText, { color: appColors.onSurfaceVariant }]}>Later</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </Modal>
@@ -173,6 +189,17 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: '900',
     textTransform: 'uppercase',
+  },
+  laterButton: {
+    minHeight: 44,
+    minWidth: 88,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+  },
+  laterText: {
+    fontSize: fontSize.sm,
+    fontWeight: '800',
   },
   disabled: {
     opacity: 0.72,

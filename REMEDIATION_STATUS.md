@@ -73,3 +73,9 @@ Migration `20261013000800_account_erasure.sql` adds a resumable service-only cle
 
 `phase-9-account-race-verified`: 6 passed, including booking queued behind the deletion transaction and retained paid-ledger fields. `phase-9-face-deletion-final`: 12 passed, including authoritative active-profile verification, server-only cleanup, running-job cancellation and real detector smoke. Earlier race fixture retained an already-deleted JWT claim after `RESET ROLE`; fixed the fixture to explicitly reset claims before creating its new synthetic customer. No deployed acceptance is claimed.
 
+# Final local validation and source retention
+
+Final native remediation suite: **127 passed, 0 failed** (`final-remediation`). Existing backend/platform suite: **127 passed, 5 skipped** (`final-backend-and-platform`). Existing isolated performance helpers: 10 passed. The patched face stack passes 12 tests; its installed Windows environment advisory scan reports no known vulnerabilities. Android Hermes (8.3 MB) and isolated admin (4.01 MB) exports pass; the final admin browser artifact passes intercepted-traffic checks. The Android export is explicitly **offline verification only**, with backend configuration removed, not an installable/staging-approved release candidate.
+
+The source-retention commit includes pre-existing Android source changes and required table/time/dev-route dependencies used by these exports. It preserves those changes rather than recreating a different source state. Initial diffs remain in the ignored baseline snapshot. Generated browser/scratch files and Expo device settings were removed from tracking in a separate hygiene commit; local files and Git history were not rewritten. Remaining unrelated user documents, tools and obsolete payment fixture changes are retained outside focused commits.
+

@@ -34,6 +34,22 @@ function isLocalFileUri(uri: string) {
   return uri.startsWith('file:') || uri.startsWith('content:') || uri.startsWith('ph:');
 }
 
+function isBrowserBlobUri(uri: string) {
+  return /^(blob|data):/i.test(uri);
+}
+
+async function readProcessedImage(uri: string) {
+  if (isLocalFileUri(uri)) {
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    return base64ToArrayBuffer(base64);
+  }
+  const response = await fetch(uri);
+  if (!response.ok) throw new Error('Unable to read the privacy-processed review photo.');
+  return response.arrayBuffer();
+}
+
 export const reviewMediaService = {
   async anonymizeAndUpload(assets: ReviewMediaAsset[], userId: string, spotId: string) {
     if (!assets.length) return [];
@@ -46,17 +62,14 @@ export const reviewMediaService = {
 
     try {
       for (const [index, asset] of assets.entries()) {
-        if (asset.type !== 'image' || !isLocalFileUri(asset.uri)) {
-          throw new Error('Only local photos can be privacy processed before posting a review.');
+        if (asset.type !== 'image' || (!isLocalFileUri(asset.uri) && !isBrowserBlobUri(asset.uri))) {
+          throw new Error('This review photo source cannot be privacy processed, so it was not uploaded.');
         }
 
         const processedUri = await imageAnonymizationService.anonymizeImage(asset.uri);
         try {
-          const base64 = await FileSystem.readAsStringAsync(processedUri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
           const path = `${userId}/reviews/${spotId}-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}.jpg`;
-          const { error } = await supabase.storage.from(reviewMediaBucket).upload(path, base64ToArrayBuffer(base64), {
+          const { error } = await supabase.storage.from(reviewMediaBucket).upload(path, await readProcessedImage(processedUri), {
             contentType: 'image/jpeg',
             cacheControl: '3600',
             upsert: false,
@@ -68,16 +81,19 @@ export const reviewMediaService = {
           const { data } = supabase.storage.from(reviewMediaBucket).getPublicUrl(path);
           uploadedUrls.push(data.publicUrl);
         } finally {
-          if (processedUri !== asset.uri && processedUri.startsWith('file:')) {
-            await FileSystem.deleteAsync(processedUri, { idempotent: true }).catch(() => undefined);
-          }
+          await imageAnonymizationService.cleanupProcessedImage(processedUri, asset.uri);
         }
       }
 
       return uploadedUrls;
     } catch (error) {
       if (uploadedPaths.length) {
-        await supabase.storage.from(reviewMediaBucket).remove(uploadedPaths).catch(() => undefined);
+        try {
+          const { error: cleanupError } = await supabase.storage.from(reviewMediaBucket).remove(uploadedPaths);
+          if (cleanupError) console.error('Unable to clean up uncommitted review photos:', cleanupError);
+        } catch (cleanupError) {
+          console.error('Review photo cleanup request failed:', cleanupError);
+        }
       }
       throw error;
     }

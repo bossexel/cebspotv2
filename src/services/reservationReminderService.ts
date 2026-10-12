@@ -80,11 +80,11 @@ function getReminderDate(reservation: Pick<Reservation, 'reservation_date' | 're
 function isEligibleReservation(reservation: Reservation) {
   if (['cancelled', 'checked_in', 'completed', 'no_show'].includes(reservation.status)) return false;
   if (reservation.payment_required && reservation.payment_status !== 'paid') return false;
-  return reservation.status === 'confirmed' || reservation.payment_status === 'paid';
+  return ['confirmed', 'rescheduled'].includes(reservation.status) || reservation.payment_status === 'paid';
 }
 
-function getNotificationId(reservationId: string) {
-  return `${notificationIdPrefix}${reservationId}`;
+function getNotificationId(userId: string, reservationId: string) {
+  return `${notificationIdPrefix}${userId}:${reservationId}`;
 }
 
 function getNotificationBody(reservation: Reservation) {
@@ -92,12 +92,12 @@ function getNotificationBody(reservation: Reservation) {
   return `Your reservation at ${reservation.spot_name} is in 1 hour at ${time}.`;
 }
 
-async function scheduleReservationReminder(reservation: Reservation) {
+async function scheduleReservationReminder(userId: string, reservation: Reservation) {
   if (!isEligibleReservation(reservation)) return;
 
   const reminderDate = getReminderDate(reservation);
   const reservationDate = getReservationDate(reservation);
-  if (!reminderDate || !reservationDate || reservationDate.getTime() <= Date.now()) return;
+  if (!reminderDate || !reservationDate || reminderDate.getTime() <= Date.now() || reservationDate.getTime() <= Date.now()) return;
 
   const module = await prepareNotifyKit();
   if (!module) return;
@@ -105,12 +105,13 @@ async function scheduleReservationReminder(reservation: Reservation) {
   const timestamp = Math.max(reminderDate.getTime(), Date.now() + 1000);
   await module.default.createTriggerNotification(
     {
-      id: getNotificationId(reservation.id),
+      id: getNotificationId(userId, reservation.id),
       title: 'Reservation reminder',
       body: getNotificationBody(reservation),
       data: {
         routeType: 'reservation',
         reservationId: reservation.id,
+        userId,
         activityType: 'reservation_reminder',
       },
       android: {
@@ -131,29 +132,47 @@ async function scheduleReservationReminder(reservation: Reservation) {
 }
 
 export const reservationReminderService = {
-  async schedule(reservation: Reservation) {
+  async schedule(userId: string, reservation: Reservation) {
     try {
-      await scheduleReservationReminder(reservation);
+      await scheduleReservationReminder(userId, reservation);
     } catch (error) {
       console.warn('Unable to schedule reservation reminder:', error);
     }
   },
 
-  async sync(reservations: Reservation[]) {
+  async sync(reservations: Reservation[], userId: string) {
     if (Platform.OS !== 'android') return;
 
     const module = await prepareNotifyKit();
     if (!module) return;
 
     const eligibleReservations = reservations.filter(isEligibleReservation);
-    await Promise.all(eligibleReservations.map((reservation) => scheduleReservationReminder(reservation)));
+    await Promise.all(eligibleReservations.map((reservation) => scheduleReservationReminder(userId, reservation)));
 
-    const activeIds = new Set(eligibleReservations.map((reservation) => getNotificationId(reservation.id)));
+    const now = Date.now();
+    const activeIds = new Set(
+      eligibleReservations
+        .filter((reservation) => {
+          const reminderDate = getReminderDate(reservation);
+          const reservationDate = getReservationDate(reservation);
+          return reminderDate && reservationDate && reminderDate.getTime() > now && reservationDate.getTime() > now;
+        })
+        .map((reservation) => getNotificationId(userId, reservation.id)),
+    );
     const scheduledIds = await module.default.getTriggerNotificationIds();
     const staleIds = scheduledIds.filter(
       (id) => id.startsWith(notificationIdPrefix) && !activeIds.has(id),
     );
     if (staleIds.length) await module.default.cancelTriggerNotifications(staleIds);
+  },
+
+  async cancelAll() {
+    if (Platform.OS !== 'android') return;
+    const module = await prepareNotifyKit();
+    if (!module) return;
+    const scheduledIds = await module.default.getTriggerNotificationIds();
+    const reminderIds = scheduledIds.filter((id) => id.startsWith(notificationIdPrefix));
+    if (reminderIds.length) await module.default.cancelTriggerNotifications(reminderIds);
   },
 
   async processDueActivities(userId: string, reservations: Reservation[]) {

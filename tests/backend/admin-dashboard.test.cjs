@@ -42,7 +42,8 @@ test('admin login offers password visibility and recovery controls', () => {
   assert.match(screen, /<PasswordInput/);
   assert.match(screen, /Forgot password\?/);
   assert.match(screen, /resetPasswordForEmail/);
-  assert.match(screen, /createURL\('\/reset-password'\)/);
+  assert.match(screen, /pathname:\s*'\/reset-password'/);
+  assert.match(screen, /requested:\s*'1'/);
 });
 
 test('every mutating admin RPC performs the server-side admin check', () => {

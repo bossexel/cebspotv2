@@ -941,7 +941,16 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
   const { data: rpcData, error: rpcError } = await client.rpc('get_admin_dashboard');
   if (!rpcError && rpcData) {
     const rows = rpcData as any;
-    const data = sampleDashboard();
+    const data = buildDashboardFromRows({
+      source: 'live',
+      spots: [],
+      reservations: [],
+      activities: [],
+      users: [],
+      ownerRequests: [],
+      pendingSubmissions: [],
+      reports: [],
+    });
     const [submissionResult, profilesResult] = await Promise.all([
       client
         .from('pending_spot_submission_popularity')
@@ -986,7 +995,7 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
       newSpotBarLabels: dailyInsights.length
         ? dailyInsights.map((item) => item.label).filter(Boolean).slice(-3)
         : spotRows.map((item: any) => item.label).filter(Boolean).slice(-3),
-      dailyInsights: dailyInsights.length ? dailyInsights : data.dailyInsights,
+      dailyInsights,
       categories: rows.categories ?? data.categories,
       barangays: rows.barangays ?? data.barangays,
       recentListings: rows.recentListings ?? data.recentListings,
@@ -1149,18 +1158,18 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
     }));
 
   const dashboard = buildDashboardFromRows({
-    source: spots.length || reservations.length || profileRows.length ? 'live' : 'sample',
-    spots: spots.length ? spots : sampleSpots.map(normalizeSpot),
-    reservations: reservations.length ? reservations : sampleSpots.slice(0, 8).map(makeSampleReservation),
+    source: 'live',
+    spots,
+    reservations,
     activities: activityRows,
     users: profileRows,
     ownerRequests: ownerRequestRows,
     pendingSubmissions: submissionRows.map(normalizeSubmission),
-    reports: reports.length ? normalizeAdminReportRows(reports) : sampleDashboard().reports,
+    reports: normalizeAdminReportRows(reports),
     errors,
   });
 
-  return dashboard.source === 'sample' ? { ...sampleDashboard(), errors } : dashboard;
+  return dashboard;
 }
 
 export async function approveSpotSubmission(submissionId: string, client: SupabaseClient = supabase) {

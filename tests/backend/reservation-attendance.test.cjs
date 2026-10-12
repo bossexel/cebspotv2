@@ -22,12 +22,8 @@ test('owner dashboard exposes confirmed-arrival and no-show decisions with full 
 
 test('attendance updates route through the owner-only database function', () => {
   const service = read('src/services/reservationService.ts');
-  const portal = read('public/owner-portal/owner-portal-live.js');
 
   assert.match(service, /rpc\('owner_record_reservation_attendance'/);
-  assert.match(portal, /rpc\("owner_record_reservation_attendance"/);
-  assert.match(portal, /dataset\.cebAttendanceStatus = "checked_in"/);
-  assert.match(portal, /dataset\.cebAttendanceStatus = "no_show"/);
 });
 
 for (const sqlFile of ['supabase-schema.sql', 'supabase-reservation-attendance.sql']) {

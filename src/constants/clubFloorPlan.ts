@@ -181,6 +181,7 @@ export function normalizeClubTableInventory(source: unknown): TableInventory {
         tableId: table.tableId,
         capacity: Math.max(1, Number(saved?.capacity) || table.capacity),
         isReserved: Boolean(saved?.isReserved),
+        bookingPolicy: saved?.bookingPolicy === 'walk_in_only' ? 'walk_in_only' : 'online_and_walk_ins',
       };
     });
     return inventory;

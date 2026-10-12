@@ -56,23 +56,33 @@ export default function ReservationsScreen() {
   const rescheduleDates = Array.from({ length: 14 }, (_, index) => addDays(new Date(), index));
 
   useEffect(() => {
+    let mounted = true;
     let unsubscribeReservations: (() => void) | undefined;
 
     async function load() {
       try {
         if (profile?.id) {
-          setReservations(await reservationService.getUserReservations(profile.id));
-          unsubscribeReservations = reservationService.subscribeToUserReservations(profile.id, setReservations);
+          const initialReservations = await reservationService.getUserReservations(profile.id);
+          if (!mounted) return;
+          setReservations(initialReservations);
+          const unsubscribe = reservationService.subscribeToUserReservations(profile.id, (next) => {
+            if (mounted) setReservations(next);
+          });
+          if (mounted) unsubscribeReservations = unsubscribe;
+          else unsubscribe();
         }
       } catch (error) {
-        console.error('Unable to load reservations:', error);
+        if (mounted) console.error('Unable to load reservations:', error);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
 
-    load();
-    return () => unsubscribeReservations?.();
+    void load();
+    return () => {
+      mounted = false;
+      unsubscribeReservations?.();
+    };
   }, [profile?.id]);
 
   // Split into Upcoming / Past so a long history doesn't bury what's next.

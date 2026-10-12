@@ -64,6 +64,20 @@ function isLocalFileUri(uri: string) {
   return uri.startsWith('file:') || uri.startsWith('content:') || uri.startsWith('ph:');
 }
 
+function isBrowserBlobUri(uri: string) {
+  return /^(blob|data):/i.test(uri);
+}
+
+async function readMediaBody(uri: string) {
+  if (isLocalFileUri(uri)) {
+    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+    return base64ToArrayBuffer(base64);
+  }
+  const response = await fetch(uri);
+  if (!response.ok) throw new Error('Unable to read the privacy-processed photo.');
+  return response.arrayBuffer();
+}
+
 function getMediaExtension(asset: SpotSubmissionMediaAsset, uri: string) {
   const fileNameExtension = asset.fileName?.split('.').pop();
   const cleanUri = uri.split('?')[0] ?? '';
@@ -111,12 +125,18 @@ async function uploadMedia(
   submitterId: string,
   index: number,
   totalMedia: number,
+  uploadedPaths: string[],
   onProgress?: SpotSubmissionProgressHandler
 ) {
   const mediaLabel = asset.type === 'video' ? 'video' : 'photo';
   const progressAt = (fraction: number) => 5 + ((index + fraction) / totalMedia) * 75;
 
-  if (!isLocalFileUri(asset.uri)) {
+  const localFile = isLocalFileUri(asset.uri);
+  const browserBlob = isBrowserBlobUri(asset.uri);
+  if (asset.type === 'image' && !localFile && !browserBlob) {
+    throw new Error('This photo source cannot be privacy processed, so it was not uploaded.');
+  }
+  if (asset.type === 'video' && !localFile) {
     await reportProgress(onProgress, progressAt(1), uploadProgressMessage);
     return asset.uri;
   }
@@ -129,13 +149,11 @@ async function uploadMedia(
 
   try {
     await reportProgress(onProgress, progressAt(0.65), uploadProgressMessage);
-    const extension = getMediaExtension(asset, processedUri);
-    const base64 = await FileSystem.readAsStringAsync(processedUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    const fileBody = base64ToArrayBuffer(base64);
+    const wasProcessed = asset.type === 'image';
+    const extension = wasProcessed ? 'jpg' : getMediaExtension(asset, processedUri);
+    const fileBody = await readMediaBody(processedUri);
     const path = `${submitterId}/${Date.now()}-${index}.${extension}`;
-    const contentType = getMediaContentType(asset, extension);
+    const contentType = wasProcessed ? 'image/jpeg' : getMediaContentType(asset, extension);
     const { error } = await supabase.storage.from(spotImagesBucket).upload(path, fileBody, {
       contentType,
       upsert: false,
@@ -143,14 +161,13 @@ async function uploadMedia(
     if (error) {
       throw new Error(`Unable to upload selected ${mediaLabel} ${index + 1}: ${error.message}`);
     }
+    uploadedPaths.push(path);
 
     const { data } = supabase.storage.from(spotImagesBucket).getPublicUrl(path);
     await reportProgress(onProgress, progressAt(1), uploadProgressMessage);
     return data.publicUrl;
   } finally {
-    if (processedUri !== asset.uri && processedUri.startsWith('file:')) {
-      await FileSystem.deleteAsync(processedUri, { idempotent: true }).catch(() => undefined);
-    }
+    await imageAnonymizationService.cleanupProcessedImage(processedUri, asset.uri);
   }
 }
 
@@ -200,23 +217,39 @@ async function publishSubmissionLocalUpdate(
 
 async function uploadSubmissionMedia(
   submission: NewSpotSubmissionUpload,
+  uploadedPaths: string[],
   onProgress?: SpotSubmissionProgressHandler
 ): Promise<NewSpotSubmission> {
   const databaseSubmission = toDatabaseSubmission(submission);
   const media = submissionMedia(submission);
   if (!hasSupabaseConfig || !media.length) return databaseSubmission;
 
-  const uploadedMedia: string[] = [];
-  for (const [index, asset] of media.entries()) {
-    uploadedMedia.push(
-      await uploadMedia(asset, submission.submitter_id, index, media.length, onProgress)
-    );
-  }
+  try {
+    const uploadedMedia: string[] = [];
+    for (const [index, asset] of media.entries()) {
+      uploadedMedia.push(
+        await uploadMedia(asset, submission.submitter_id, index, media.length, uploadedPaths, onProgress)
+      );
+    }
 
-  return {
-    ...databaseSubmission,
-    images: uploadedMedia,
-  };
+    return {
+      ...databaseSubmission,
+      images: uploadedMedia,
+    };
+  } catch (error) {
+    await removeUncommittedSubmissionMedia(uploadedPaths);
+    throw error;
+  }
+}
+
+async function removeUncommittedSubmissionMedia(paths: string[]) {
+  if (!paths.length) return;
+  try {
+    const { error } = await supabase.storage.from(spotImagesBucket).remove(paths);
+    if (error) console.error('Unable to clean up uncommitted submission photos:', error);
+  } catch (error) {
+    console.error('Submission photo cleanup request failed:', error);
+  }
 }
 
 export const spotSubmissionService = {
@@ -253,38 +286,51 @@ export const spotSubmissionService = {
       return created;
     }
 
-    const submissionWithUploadedImages = await uploadSubmissionMedia(submission, options.onProgress);
+    const uploadedPaths: string[] = [];
+    const submissionWithUploadedImages = await uploadSubmissionMedia(submission, uploadedPaths, options.onProgress);
     if (!submissionMedia(submission).length) {
       await reportProgress(options.onProgress, 80, uploadProgressMessage);
     }
 
     await reportProgress(options.onProgress, 84, uploadProgressMessage);
-    let { data, error } = await supabase
-      .from('spot_submissions')
-      .insert(submissionWithUploadedImages)
-      .select('*')
-      .single();
-    if (error && looksLikeSubmissionSchemaGap(error)) {
-      const retry = await supabase
+    let insertResult;
+    try {
+      insertResult = await supabase
         .from('spot_submissions')
-        .insert(toLegacySubmission(submissionWithUploadedImages))
+        .insert(submissionWithUploadedImages)
         .select('*')
         .single();
-      data = retry.data;
-      error = retry.error;
+      if (insertResult.error && looksLikeSubmissionSchemaGap(insertResult.error)) {
+        insertResult = await supabase
+          .from('spot_submissions')
+          .insert(toLegacySubmission(submissionWithUploadedImages))
+          .select('*')
+          .single();
+      }
+    } catch (insertError) {
+      await removeUncommittedSubmissionMedia(uploadedPaths);
+      throw insertError;
     }
-    if (error) throw error;
+    if (insertResult.error) {
+      await removeUncommittedSubmissionMedia(uploadedPaths);
+      throw insertResult.error;
+    }
+    const data = insertResult.data;
 
     await reportProgress(options.onProgress, 91, uploadProgressMessage);
-    await activityService.logActivity({
-      user_id: submission.submitter_id,
-      user_name: userName || 'Explorer',
-      action: 'submitted',
-      target_id: data.id,
-      target_name: submission.name,
-      type: 'submission',
-      spot_name: submission.name,
-    });
+    try {
+      await activityService.logActivity({
+        user_id: submission.submitter_id,
+        user_name: userName || 'Explorer',
+        action: 'submitted',
+        target_id: data.id,
+        target_name: submission.name,
+        type: 'submission',
+        spot_name: submission.name,
+      });
+    } catch (activityError) {
+      console.error('Submission was saved, but its activity could not be published:', activityError);
+    }
 
     await reportProgress(options.onProgress, 96, uploadProgressMessage);
     try {

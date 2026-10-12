@@ -102,3 +102,11 @@ Account/payment/upload regressions: 34 passed. Handler interruption/retry suite:
 
 Latest focused SQL race suite passed 6 checks and face service passed 12 checks; handler suite passed 6. These implement and verify the local account deletion group. Native Auth/Storage contracts and mocked HTTP do not close actual deployed deletion, timeout/late-write, reauthentication or device acceptance. All failed runs remain in evidence. Migration 008 follows circle migration 007 and keeps financial identifiers while erasing direct personal fields.
 
+# Final local verification update
+
+`final-remediation`: 127 passed. `final-backend-and-platform`: 127 passed, 5 skipped. `final-existing-isolated-tests`: 10 passed. TypeScript/lint passed. Final Android Hermes and separate admin exports passed, and final admin browser routing/auth feedback/recovery/return-bridge checks passed with all external traffic intercepted. Customer/owner web export is still denied. New release environment validation refuses the existing hosted targets and public private credentials; no isolated staging configuration has been supplied, so the Android export is offline verification only.
+
+Dependency updates reduce npm findings from 77 (2 critical) to 65 (0 critical). A real Expo Windows extraction test caught tar 7's removed default export; a narrow idempotent postinstall patch supports both affected Expo archive paths, verified against each actual helper. The Python upload stack and local installer tools were patched; final installed-environment audit reports no known vulnerabilities. Container/Linux and native APK dependency acceptance remain unverified. No forced SDK upgrade was used.
+
+Generated browser/scratch tracking was removed in `a8f7d1d` without removing local files or rewriting history. The original staging deletions were committed separately after checking that the index contained only the intended generated directories. Required existing Android source/test dependencies are retained as their own reviewable group; unrelated user work remains untouched.
+

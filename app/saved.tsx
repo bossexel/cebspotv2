@@ -23,9 +23,8 @@ export default function SavedSpotsScreen() {
     try {
       setLoading(true);
       const savedIds = await savedSpotService.getSavedSpotIds();
-      const spots = await spotService.getSpots(150);
-      const savedIdSet = new Set(savedIds);
-      setSavedSpots(spots.filter((spot) => savedIdSet.has(spot.id)));
+      const spots = await spotService.getSpotsByIds(savedIds);
+      setSavedSpots(spots);
     } catch (error) {
       console.error('Unable to load saved spots:', error);
       setSavedSpots([]);

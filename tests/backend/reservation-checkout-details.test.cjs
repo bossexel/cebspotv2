@@ -64,7 +64,18 @@ test('owner and confirmation views expose the saved verification details', () =>
 
   assert.match(ownerDashboard, /Guest Phone/);
   assert.match(ownerDashboard, /Deposit Terms/);
+  assert.match(ownerDashboard, /label="Arrival time" value=\{reservation\.reservation_time \? formatPickerTime\(reservation\.reservation_time\)/);
   assert.match(confirmation, /reservation\.guest_phone/);
   assert.match(confirmation, /reservation\.guest_name/);
   assert.match(confirmation, /reservation\.guest_email/);
+});
+
+test('manual reservation time is saved without calculating a departure time', () => {
+  const reservation = read('app/reservation/[id].tsx');
+  const checkout = read('app/checkout/[id].tsx');
+  assert.match(reservation, /reservation_time: selectedSlot\.startTime/);
+  assert.match(reservation, /reservation_time_end: null/);
+  assert.match(checkout, /reservation_time: time/);
+  assert.match(checkout, /reservation_time_end: null/);
+  assert.doesNotMatch(reservation + checkout, /getReservationDurationMinutes|durationMinutes|timeEnd:/);
 });

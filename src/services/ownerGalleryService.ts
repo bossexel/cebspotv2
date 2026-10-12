@@ -40,12 +40,19 @@ function isDeviceFile(uri: string) {
   return uri.startsWith('file:') || uri.startsWith('content:') || uri.startsWith('ph:');
 }
 
+function isBrowserBlob(uri: string) {
+  return /^(blob|data):/i.test(uri);
+}
+
 async function readUploadBody(uri: string) {
   if (isDeviceFile(uri)) {
     const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
     return base64ToArrayBuffer(base64);
   }
 
+  if (!isBrowserBlob(uri)) {
+    throw new Error('This photo source cannot be privacy processed, so it was not uploaded.');
+  }
   const response = await fetch(uri);
   if (!response.ok) throw new Error('Unable to read one of the selected photos.');
   return response.arrayBuffer();
@@ -101,13 +108,12 @@ export const ownerGalleryService = {
 
         const processedUri = await imageAnonymizationService.anonymizeImage(asset.uri);
         try {
-          const wasProcessed = processedUri !== asset.uri;
-          const extension = uploadExtension(asset, wasProcessed);
+          const extension = uploadExtension(asset, true);
           const objectPath = `${userId}/owner-gallery/${spot.id}/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
           const { error: uploadError } = await client.storage
             .from(spotImagesBucket)
             .upload(objectPath, await readUploadBody(processedUri), {
-              contentType: wasProcessed ? 'image/jpeg' : asset.mimeType || 'image/jpeg',
+              contentType: 'image/jpeg',
               cacheControl: '31536000',
               upsert: false,
             });
@@ -116,9 +122,7 @@ export const ownerGalleryService = {
           uploadedPaths.push(objectPath);
           uploadedUrls.push(client.storage.from(spotImagesBucket).getPublicUrl(objectPath).data.publicUrl);
         } finally {
-          if (processedUri !== asset.uri && processedUri.startsWith('file:')) {
-            await FileSystem.deleteAsync(processedUri, { idempotent: true }).catch(() => undefined);
-          }
+          await imageAnonymizationService.cleanupProcessedImage(processedUri, asset.uri);
         }
       }
 
@@ -144,7 +148,12 @@ export const ownerGalleryService = {
       return updatedSpot as Spot;
     } catch (error) {
       if (uploadedPaths.length) {
-        await client.storage.from(spotImagesBucket).remove(uploadedPaths).catch(() => undefined);
+        try {
+          const { error: cleanupError } = await client.storage.from(spotImagesBucket).remove(uploadedPaths);
+          if (cleanupError) console.error('Unable to clean up uncommitted gallery photos:', cleanupError);
+        } catch (cleanupError) {
+          console.error('Gallery photo cleanup request failed:', cleanupError);
+        }
       }
       throw error;
     }

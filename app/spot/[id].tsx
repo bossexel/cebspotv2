@@ -56,6 +56,7 @@ import { reviewService } from '../../src/services/reviewService';
 import { reviewMediaService } from '../../src/services/reviewMediaService';
 import { spotEditSuggestionService } from '../../src/services/spotEditSuggestionService';
 import { spotService } from '../../src/services/spotService';
+import { hasSupabaseConfig } from '../../src/lib/supabase';
 import type { Review, ReviewReply, Spot } from '../../src/types';
 import { calculateReservationFee, isPaymentRequired } from '../../src/utils/reservations';
 import { rankSimilarSpots } from '../../src/utils/similarSpots';
@@ -206,6 +207,7 @@ export default function SpotDetailsScreen() {
   const heroGalleryRef = useRef<FlatList<string> | null>(null);
   const [spot, setSpot] = useState<Spot | null>(null);
   const [availableSpots, setAvailableSpots] = useState<Spot[]>([]);
+  const [spotLoadError, setSpotLoadError] = useState<string | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [helpfulReviewIds, setHelpfulReviewIds] = useState<string[]>([]);
   const [reviewRepliesByReviewId, setReviewRepliesByReviewId] = useState<Record<string, ReviewReply[]>>({});
@@ -258,19 +260,21 @@ export default function SpotDetailsScreen() {
         const [nextSpot, nextSpots] = await Promise.all([
           spotService.getSpotById(id),
           spotService.getSpots().catch((error) => {
-            console.warn('Unable to load similar spots; using local spots:', error);
-            return sampleSpots;
+            console.error('Unable to load similar live spots:', error);
+            return hasSupabaseConfig ? [] : sampleSpots;
           }),
         ]);
         if (active) {
           setSpot(nextSpot);
           setAvailableSpots(nextSpots);
+          setSpotLoadError(null);
         }
       } catch (error) {
         console.error('Unable to load spot:', error);
         if (active) {
-          setSpot(sampleSpots.find((sample) => sample.id === id) ?? null);
-          setAvailableSpots(sampleSpots);
+          setSpot(null);
+          setAvailableSpots([]);
+          setSpotLoadError('This spot could not be loaded from the live service. Check your connection and try again.');
         }
       } finally {
         if (active) setLoading(false);
@@ -374,7 +378,7 @@ export default function SpotDetailsScreen() {
     return (
       <ScreenContainer appColors={appColors}>
         <View style={styles.center}>
-          <Text style={[styles.title, { color: appColors.onSurface }]}>Spot not found</Text>
+          <Text style={[styles.title, { color: appColors.onSurface }]}>{spotLoadError ?? 'Spot not found'}</Text>
           <AppButton label="Back to Explore" onPress={() => router.replace('/')} />
         </View>
       </ScreenContainer>
@@ -498,35 +502,12 @@ export default function SpotDetailsScreen() {
     } catch (error: any) {
       console.error('Create review error:', error);
       setReviewStatusOverlay(null);
-      if (reviewMedia.length) {
-        Alert.alert(
-          'Review not posted',
-          error?.message ?? 'We could not privacy-process the selected photo. The original photo was not uploaded.'
-        );
-        return;
-      }
-
-      Alert.alert('Review saved locally', 'Supabase reviews table may need the updated schema. Showing it in this session.');
-      setReviews((current) => [
-        {
-          id: `local-review-${Date.now()}`,
-          spot_id: spot.id,
-          user_id: profile.id,
-          user_name: profile.display_name || profile.email || 'CebSpot user',
-          user_photo_url: profile.photo_url,
-          rating: reviewRating,
-          comment: reviewText.trim(),
-          media_urls: reviewMedia.map((media) => media.uri),
-          media_types: reviewMedia.map((media) => media.type),
-          likes_count: 0,
-          reports_count: 0,
-          created_at: new Date().toISOString(),
-        },
-        ...current,
-      ]);
-      setReviewText('');
-      setReviewRating(0);
-      setReviewMedia([]);
+      Alert.alert(
+        'Review not posted',
+        error?.message ?? (reviewMedia.length
+          ? 'We could not privacy-process the selected photo. The original photo was not uploaded.'
+          : 'We could not save your review. Please try again.'),
+      );
     } finally {
       setSubmittingReview(false);
     }
@@ -794,6 +775,11 @@ export default function SpotDetailsScreen() {
 
   return (
     <ScreenContainer appColors={appColors} scroll scrollRef={screenScrollRef} padded={false}>
+      {!hasSupabaseConfig && (
+        <Text style={[styles.demoDataNotice, { color: appColors.onSurfaceVariant }]}>
+          Demo spot — updates and reviews are not saved to a live service.
+        </Text>
+      )}
       <View style={styles.hero}>
         <FlatList
           ref={heroGalleryRef}
@@ -1762,6 +1748,12 @@ export default function SpotDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
+  demoDataNotice: {
+    alignSelf: 'center',
+    fontSize: fontSize.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
   center: {
     flex: 1,
     alignItems: 'center',
