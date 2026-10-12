@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Return to CebSpot</title></head>
+<body><main><h1>Return to CebSpot</h1><p>Open the Android app to check your reservation. Payment status is verified by the server.</p>
+<p><a id="open" hidden>Open CebSpot</a></p><p id="invalid" hidden>Open CebSpot from your Android home screen to check your reservation.</p></main>
+<script>
+const reservation=new URLSearchParams(location.search).get('reservation');
+if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reservation||'')) {
+ const link=document.getElementById('open');link.href='cebspot://confirmed/'+reservation+'?paymentReturn=pending';link.hidden=false;
+} else document.getElementById('invalid').hidden=false;
+</script></body></html>

@@ -13,7 +13,9 @@ async function catalog(database) {
     "select p.proname,pg_get_function_identity_arguments(p.oid) args,pg_get_functiondef(p.oid) definition from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind='f' order by p.proname,args",
     "select c.relname,t.tgname,pg_get_triggerdef(t.oid) definition from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and not t.tgisinternal order by c.relname,t.tgname"
   ];
-  return Promise.all(statements.map(async sql=>(await database.query(sql)).rows));
+  const result=[];
+  for(const sql of statements) result.push((await database.query(sql)).rows);
+  return result;
 }
 test('the complete timestamped migration chain creates required booking surfaces',async()=>{
   for(const table of ['profiles','spots','reservations','reservation_payments','activities','owner_spot_access','walk_in_visits','venue_table_states','review_helpful_votes','point_transactions','spot_edit_suggestions']) {

@@ -1,0 +1,13 @@
+{
+  "label": "phase-6-handler-recovery-boundaries",
+  "command": [
+    "node",
+    "--test",
+    "--test-name-pattern=complete database outage|older than provider|scheduled maintenance",
+    "tests/remediation/payment-handlers.test.cjs"
+  ],
+  "startedAt": "2026-10-12T18:27:31.479Z",
+  "finishedAt": "2026-10-12T18:27:46.803Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: scheduled maintenance recovers unknown provider outcome, reconciles payment and retires cancelled sessions\nok 1 - scheduled maintenance recovers unknown provider outcome, reconciles payment and retires cancelled sessions\n  ---\n  duration_ms: 12293.2961\n  type: 'test'\n  ...\n# Subtest: complete database outage after provider creation is recovered by the scheduled worker\nok 2 - complete database outage after provider creation is recovered by the scheduled worker\n  ---\n  duration_ms: 1062.1711\n  type: 'test'\n  ...\n# Subtest: unknown attempts older than provider key retention require manual reconciliation and never create again\nok 3 - unknown attempts older than provider key retention require manual reconciliation and never create again\n  ---\n  duration_ms: 727.8578\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 15156.642\n"
+}

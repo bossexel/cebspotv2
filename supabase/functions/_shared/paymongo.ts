@@ -43,9 +43,11 @@ export function paymongoPublicAuthHeader() {
 }
 
 export async function paymongoRequest(path: string, init: RequestInit = {}) {
+  if (!getRequiredEnv('PAYMONGO_SECRET_KEY').startsWith('sk_test_')) throw new Error('PayMongo test mode is required.');
   const normalizedPath = path.startsWith('/v') ? path : `/v1${path}`;
   const response = await fetch(`https://api.paymongo.com${normalizedPath}`, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(20000),
     headers: {
       'Content-Type': 'application/json',
       Authorization: paymongoAuthHeader(),
@@ -87,153 +89,15 @@ export async function getReservationForUser(reservationId: string, userId: strin
   return data;
 }
 
-export function mapIntentStatus(status?: string | null): ReservationPaymentStatus {
-  switch (status) {
-    case 'succeeded':
-    case 'paid':
-      return 'paid';
-    case 'payment_failed':
-    case 'failed':
-    case 'cancelled':
-      return 'failed';
-    case 'expired':
-      return 'expired';
-    default:
-      return 'pending';
+// Use the saved booking contact snapshot, never identity supplied in the request.
+export function getReservationBilling(reservation: Record<string, unknown>) {
+  const clean = (value: unknown) => typeof value === 'string' ? value.trim() : '';
+  const name = clean(reservation.guest_name);
+  const email = clean(reservation.guest_email);
+  const phone = clean(reservation.guest_phone);
+  if (!name || !email || !phone) {
+    throw new Error('Reservation guest name, email, and phone are required for payment billing. Please complete your reservation contact details.');
   }
+  return { name, email, phone };
 }
 
-export function reservationUpdatesForPaymentStatus(status: ReservationPaymentStatus) {
-  if (status === 'paid') {
-    return {
-      status: 'confirmed',
-      payment_status: 'paid',
-      updated_at: new Date().toISOString(),
-    };
-  }
-
-  if (status === 'failed' || status === 'expired') {
-    return {
-      status: 'cancelled',
-      payment_status: 'failed',
-      updated_at: new Date().toISOString(),
-    };
-  }
-
-  return {
-    status: 'pending_payment',
-    payment_status: 'pending',
-    updated_at: new Date().toISOString(),
-  };
-}
-
-export async function upsertReservationPayment(
-  payload: {
-    reservationId: string;
-    userId?: string | null;
-    spotId?: string | null;
-    providerCheckoutSessionId?: string | null;
-    providerPaymentIntentId?: string | null;
-    providerPaymentMethodId?: string | null;
-    providerPaymentId?: string | null;
-    paymentMethod?: string;
-    reservationPaymentMethod?: string;
-    checkoutUrl?: string | null;
-    amount: number;
-    currency?: string;
-    status: ReservationPaymentStatus;
-    qrImageUrl?: string | null;
-    expiresAt?: string | null;
-    rawPayload?: unknown;
-  },
-  supabase = makeServiceClient(),
-) {
-  if (!payload.providerPaymentIntentId && !payload.providerCheckoutSessionId) {
-    throw new Error('A PayMongo payment intent id or checkout session id is required.');
-  }
-
-  const now = new Date().toISOString();
-  const conflictColumn = payload.providerCheckoutSessionId ? 'provider_checkout_session_id' : 'provider_payment_intent_id';
-  const paymentRow = {
-    reservation_id: payload.reservationId,
-    user_id: payload.userId ?? null,
-    spot_id: payload.spotId ?? null,
-    provider: 'paymongo',
-    payment_method: payload.paymentMethod ?? 'paymongo',
-    provider_checkout_session_id: payload.providerCheckoutSessionId ?? null,
-    provider_payment_intent_id: payload.providerPaymentIntentId,
-    provider_payment_method_id: payload.providerPaymentMethodId ?? null,
-    provider_payment_id: payload.providerPaymentId ?? null,
-    amount: payload.amount,
-    currency: payload.currency ?? 'PHP',
-    status: payload.status,
-    qr_image_url: payload.qrImageUrl ?? null,
-    checkout_url: payload.checkoutUrl ?? null,
-    expires_at: payload.expiresAt ?? null,
-    raw_payload: payload.rawPayload ?? {},
-    updated_at: now,
-    paid_at: payload.status === 'paid' ? now : null,
-  };
-  const { error } = await supabase.from('reservation_payments').upsert(paymentRow, { onConflict: conflictColumn });
-  if (error) {
-    const message = getErrorMessage(error, 'Unable to save PayMongo payment.');
-    if (/checkout_url|schema cache/i.test(message)) {
-      const { checkout_url, ...legacyPaymentRow } = paymentRow;
-      const { error: retryError } = await supabase
-        .from('reservation_payments')
-        .upsert(legacyPaymentRow, { onConflict: conflictColumn });
-      if (retryError) throw new Error(getErrorMessage(retryError, 'Unable to save PayMongo payment.'));
-    } else {
-      throw new Error(message);
-    }
-  }
-
-  let reservationUpdate = supabase
-    .from('reservations')
-    .update({
-      ...reservationUpdatesForPaymentStatus(payload.status),
-      payment_method: payload.reservationPaymentMethod ?? 'paymongo',
-      payment_reference: payload.providerPaymentIntentId ?? payload.providerCheckoutSessionId,
-    })
-    .eq('id', payload.reservationId);
-
-  // Preserve terminal reservation and payment states when PayMongo delivers
-  // duplicated or out-of-order events.
-  if (payload.status === 'paid') {
-    reservationUpdate = reservationUpdate
-      .neq('status', 'cancelled')
-      .neq('status', 'completed')
-      .neq('status', 'no_show');
-  } else if (payload.status === 'failed' || payload.status === 'expired') {
-    reservationUpdate = reservationUpdate
-      .neq('payment_status', 'paid')
-      .neq('status', 'cancelled')
-      .neq('status', 'completed')
-      .neq('status', 'no_show');
-  }
-
-  const { error: reservationError } = await reservationUpdate;
-  if (reservationError) throw new Error(getErrorMessage(reservationError, 'Unable to update reservation payment status.'));
-}
-
-export async function findPaymentByIntent(paymentIntentId: string, supabase = makeServiceClient()) {
-  const { data, error } = await supabase
-    .from('reservation_payments')
-    .select('*')
-    .eq('provider_payment_intent_id', paymentIntentId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function findPaymentByCheckoutSession(checkoutSessionId: string, supabase = makeServiceClient()) {
-  const { data, error } = await supabase
-    .from('reservation_payments')
-    .select('*')
-    .eq('provider_checkout_session_id', checkoutSessionId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data;
-}

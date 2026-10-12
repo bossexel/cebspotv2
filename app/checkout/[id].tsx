@@ -22,8 +22,6 @@ import { checkReservationAvailability } from '../../src/utils/reservations';
 import { venueTableService } from '../../src/services/venueTableService';
 
 const testCebspotPaymentDetails = {
-  walletNumber: '0917 555 0198',
-  walletName: 'Test Cebspot Club',
   amount: 150,
 };
 
@@ -82,6 +80,7 @@ export default function CheckoutScreen() {
   const [loadingSpot, setLoadingSpot] = useState(true);
   const [loading, setLoading] = useState(false);
   const pendingReservation = useRef<Reservation | null>(null);
+  const paymentInProgress = useRef(false);
   const [serverHoldDeadline, setServerHoldDeadline] = useState<number | null>(null);
   const [paymentMode, setPaymentMode] = useState<PaymentMode | null>(null);
   const [guestPhone, setGuestPhone] = useState('');
@@ -130,8 +129,8 @@ export default function CheckoutScreen() {
       const amount = configuredAmount > 0 ? configuredAmount : fallbackAmount;
 
       return {
-        walletNumber: spot?.gcash_wallet_number ?? (usingTestDetails ? testCebspotPaymentDetails.walletNumber : null),
-        walletName: spot?.gcash_wallet_name ?? (usingTestDetails ? testCebspotPaymentDetails.walletName : null),
+        walletNumber: spot?.gcash_wallet_number ?? null,
+        walletName: spot?.gcash_wallet_name ?? null,
         amount: Math.max(0, Number.isFinite(amount) ? amount : 0),
       };
     },
@@ -264,26 +263,18 @@ export default function CheckoutScreen() {
   function validatePaymentDetails() {
     if (!validateCheckoutBase()) return false;
 
-    if (!hasOwnerPaymentDetails) {
-      Alert.alert(
-        'GCash details unavailable',
-        'This spot has not published owner GCash payment details yet. Please contact the venue before booking.'
-      );
-      return false;
-    }
-
     if (!payerGcashNumber.trim()) {
-      Alert.alert('GCash account number required', 'Enter the GCash account number you used for the payment.');
+      Alert.alert('Test payer number required', 'Use a synthetic Philippine mobile number for this release test.');
       return false;
     }
 
     if (!paymentScreenshot) {
-      Alert.alert('Payment screenshot required', 'Upload a screenshot of your completed GCash transfer.');
+      Alert.alert('Synthetic proof required', 'Upload a synthetic proof image. Do not make a wallet transfer.');
       return false;
     }
 
     if (!transactionReference.trim()) {
-      Alert.alert('Transaction reference required', 'Enter the GCash reference number from your receipt.');
+      Alert.alert('Synthetic reference required', 'Enter the synthetic reference from your test proof.');
       return false;
     }
 
@@ -376,7 +367,6 @@ export default function CheckoutScreen() {
   async function confirmDirectPayment() {
     if (!validateCheckoutBase() || !profile) return;
 
-    let createdReservationId: string | null = null;
     try {
       setLoading(true);
       const reservation = await createPaidReservation({
@@ -385,7 +375,6 @@ export default function CheckoutScreen() {
         payment_proof_url: null,
         payer_gcash_number: null,
       });
-      createdReservationId = reservation.id;
       const successUrl = ExpoLinking.createURL(`/confirmed/${reservation.id}`, {
         queryParams: { paymentReturn: 'success' },
       });
@@ -402,13 +391,6 @@ export default function CheckoutScreen() {
       router.replace({ pathname: '/confirmed/[id]', params: { id: reservation.id, paymentReturn: 'pending' } });
     } catch (error: any) {
       console.error('PayMongo GCash checkout error:', error);
-      if (createdReservationId) {
-        try {
-          await reservationService.voidUnpaidReservation(createdReservationId, 'PayMongo checkout was not completed.');
-        } catch (voidError) {
-          console.error('Unable to void failed GCash checkout reservation:', voidError);
-        }
-      }
       await showCheckoutError('GCash checkout failed', error);
     } finally {
       setLoading(false);
@@ -418,7 +400,6 @@ export default function CheckoutScreen() {
   async function confirmQrphPayment() {
     if (!validateCheckoutBase() || !profile) return;
 
-    let createdReservationId: string | null = null;
     try {
       setLoading(true);
       const reservation = await createPaidReservation({
@@ -427,7 +408,6 @@ export default function CheckoutScreen() {
         payment_proof_url: null,
         payer_gcash_number: null,
       });
-      createdReservationId = reservation.id;
       const successUrl = ExpoLinking.createURL(`/confirmed/${reservation.id}`, {
         queryParams: { paymentReturn: 'success' },
       });
@@ -444,13 +424,6 @@ export default function CheckoutScreen() {
       router.replace({ pathname: '/confirmed/[id]', params: { id: reservation.id, paymentReturn: 'pending' } });
     } catch (error: any) {
       console.error('PayMongo checkout error:', error);
-      if (createdReservationId) {
-        try {
-          await reservationService.voidUnpaidReservation(createdReservationId, 'PayMongo checkout was not completed.');
-        } catch (voidError) {
-          console.error('Unable to void failed QR Ph checkout reservation:', voidError);
-        }
-      }
       await showCheckoutError('QR Ph checkout failed', error);
     } finally {
       setLoading(false);
@@ -477,18 +450,14 @@ export default function CheckoutScreen() {
     }
   }
 
-  function confirmPayment() {
-    if (isGcashDirectPayment) {
-      confirmDirectPayment();
-      return;
-    }
-
-    if (isQrphPayment) {
-      confirmQrphPayment();
-      return;
-    }
-
-    confirmManualPayment();
+  async function confirmPayment() {
+    if (paymentInProgress.current) return;
+    paymentInProgress.current = true;
+    try {
+      if (isGcashDirectPayment) await confirmDirectPayment();
+      else if (isQrphPayment) await confirmQrphPayment();
+      else await confirmManualPayment();
+    } finally { paymentInProgress.current = false; }
   }
 
   function requestPaymentConfirmation() {
@@ -743,32 +712,17 @@ export default function CheckoutScreen() {
       ) : (
         <>
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Owner GCash Details</Text>
+            <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Manual Proof Simulation</Text>
             <View style={[styles.gcashCard, { backgroundColor: appColors.surfaceRaised }]}>
               <Text style={styles.gcashBrand}>GCash</Text>
 
               <View style={styles.noticeStack}>
                 <Text style={styles.noticeText}>
-                  Transfer the exact reservation amount before confirming your request.
+                  Test release: do not transfer money to a GCash wallet.
                 </Text>
                 <Text style={styles.noticeText}>
-                  Use the wallet details below, then upload the completed payment receipt for owner verification.
+                  Upload a synthetic receipt and reference. The owner has 30 minutes to review it; expiry releases the table.
                 </Text>
-              </View>
-
-              <View style={styles.ownerRows}>
-                <View style={styles.ownerRow}>
-                  <Text style={[styles.ownerLabel, { color: appColors.onSurfaceVariant }]}>Wallet Number</Text>
-                  <Text style={[styles.ownerValue, { color: appColors.onSurface }]}>
-                    {paymentDetails.walletNumber ?? 'Not provided'}
-                  </Text>
-                </View>
-                <View style={styles.ownerRow}>
-                  <Text style={[styles.ownerLabel, { color: appColors.onSurfaceVariant }]}>Wallet Name</Text>
-                  <Text style={[styles.ownerValue, { color: appColors.onSurface }]}>
-                    {paymentDetails.walletName ?? 'Not provided'}
-                  </Text>
-                </View>
               </View>
 
               <View style={[styles.amountBox, { backgroundColor: colors.primary + '10' }]}>
@@ -782,7 +736,7 @@ export default function CheckoutScreen() {
             <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Your Payment Details</Text>
             <View style={[styles.formCard, { backgroundColor: appColors.surfaceRaised }]}>
               <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: appColors.onSurface }]}>Your GCash Account Number</Text>
+                <Text style={[styles.fieldLabel, { color: appColors.onSurface }]}>Synthetic Payer Number</Text>
                 <TextInput
                   value={payerGcashNumber}
                   onChangeText={setPayerGcashNumber}
@@ -801,7 +755,7 @@ export default function CheckoutScreen() {
               </View>
 
               <View style={styles.field}>
-                <Text style={[styles.fieldLabel, { color: appColors.onSurface }]}>Payment Screenshot</Text>
+                <Text style={[styles.fieldLabel, { color: appColors.onSurface }]}>Synthetic Proof Image</Text>
                 <Pressable
                   style={[styles.uploadBox, { borderColor: appColors.outlineVariant, backgroundColor: appColors.surfaceLow }]}
                   onPress={selectPaymentScreenshot}

@@ -37,6 +37,10 @@
     {
       "name": "20261013000300_manual_proof_and_bounded_holds.sql",
       "sha256": "1318b9dea61f9598100e2e7a0a569b7917c226dcaa080a6f1bcb92594c9224e9"
+    },
+    {
+      "name": "20261013000400_durable_checkout_and_payment_events.sql",
+      "sha256": "e036813d1387a4f051898551332fc5f411b942823bbf4f01313cd1b01be1b0f6"
     }
   ]
 }

@@ -1,194 +1,57 @@
-import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
-import {
-  findPaymentByIntent,
-  findPaymentByCheckoutSession,
-  getErrorMessage,
-  getRequiredEnv,
-  makeServiceClient,
-  type ReservationPaymentStatus,
-  upsertReservationPayment,
-} from '../_shared/paymongo.ts';
+﻿import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
+import { makeServiceClient, paymongoRequest } from '../_shared/paymongo.ts';
+import { paymentRpc, PaymentDatabaseError } from '../_shared/durableCheckout.ts';
+import { readPrivateUpload, UploadError } from '../_shared/privateUpload.ts';
+import { verifyTestPaymentSignature, sha256 } from '../_shared/paymentSignature.ts';
+import { paymentSnapshot } from '../_shared/paymentSnapshot.ts';
 
-const webhookReplayToleranceSeconds = 5 * 60;
-
-function parseSignature(header: string) {
-  return Object.fromEntries(
-    header
-      .split(',')
-      .map((part) => part.trim().split('='))
-      .filter(([key, value]) => key && value),
-  );
-}
-
-function toHex(bytes: ArrayBuffer) {
-  return Array.from(new Uint8Array(bytes))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-async function hmacSha256Hex(secret: string, payload: string) {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
-  return toHex(signature);
-}
-
-function constantTimeEqual(a: string, b: string) {
-  if (a.length !== b.length) return false;
-
-  let mismatch = 0;
-  for (let index = 0; index < a.length; index += 1) {
-    mismatch |= a.charCodeAt(index) ^ b.charCodeAt(index);
-  }
-
-  return mismatch === 0;
-}
-
-async function verifyPaymongoSignature(request: Request, rawBody: string, livemode: boolean) {
-  const header = request.headers.get('paymongo-signature') ?? request.headers.get('x-paymongo-signature') ?? '';
-  if (!header) throw new Error('Missing PayMongo signature.');
-
-  const parts = parseSignature(header);
-  const timestamp = parts.t;
-  const providedSignature = livemode ? parts.li : parts.te;
-  if (!timestamp || !providedSignature) throw new Error('Invalid PayMongo signature.');
-
-  const timestampSeconds = Number(timestamp);
-  if (!Number.isFinite(timestampSeconds)) throw new Error('Invalid PayMongo signature timestamp.');
-
-  const ageSeconds = Math.abs(Date.now() / 1000 - timestampSeconds);
-  if (ageSeconds > webhookReplayToleranceSeconds) throw new Error('PayMongo signature timestamp is outside the replay window.');
-
-  const expectedSignature = await hmacSha256Hex(getRequiredEnv('PAYMONGO_WEBHOOK_SECRET'), `${timestamp}.${rawBody}`);
-  if (!constantTimeEqual(expectedSignature, providedSignature)) throw new Error('PayMongo signature mismatch.');
-}
-
-function findNestedValue(value: unknown, keys: string[]): string | null {
-  if (!value || typeof value !== 'object') return null;
-  const record = value as Record<string, unknown>;
-
-  for (const key of keys) {
-    const direct = record[key];
-    if (typeof direct === 'string' && direct) return direct;
-  }
-
-  const paymentIntent = record.payment_intent;
-  if (typeof paymentIntent === 'string' && paymentIntent) return paymentIntent;
-  if (paymentIntent && typeof paymentIntent === 'object') {
-    const id = (paymentIntent as Record<string, unknown>).id;
-    if (typeof id === 'string' && id) return id;
-  }
-
-  for (const child of Object.values(record)) {
-    const found = findNestedValue(child, keys);
-    if (found) return found;
-  }
-
-  return null;
-}
-
-function statusFromEvent(eventType: string): ReservationPaymentStatus {
-  switch (eventType) {
-    case 'checkout_session.payment.paid':
-    case 'payment.paid':
-    case 'payment_intent.succeeded':
-      return 'paid';
-    case 'checkout_session.payment.failed':
-    case 'checkout_session.expired':
-    case 'payment.failed':
-    case 'qrph.expired':
-      return 'failed';
-    default:
-      return 'pending';
-  }
-}
-
-function getResourceId(value: unknown) {
-  if (!value || typeof value !== 'object') return null;
-  const id = (value as Record<string, unknown>).id;
-  return typeof id === 'string' && id ? id : null;
-}
-
-function getCheckoutSessionId(eventData: unknown) {
-  if (!eventData || typeof eventData !== 'object') return null;
-  const record = eventData as Record<string, unknown>;
-  if (record.type === 'checkout_session') return getResourceId(record);
-  return findNestedValue(record, ['checkout_session_id', 'checkoutSessionId']);
-}
-
-Deno.serve(async (request) => {
-  if (request.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
-
-  if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed.' }, 405);
-  }
-
+Deno.serve(async (request: Request) => {
+  if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (request.method !== 'POST') return jsonResponse({ error: 'Method not allowed.' },405);
   try {
-    const rawBody = await request.text();
-    const event = JSON.parse(rawBody);
-    const eventType = event?.data?.attributes?.type ?? event?.data?.type ?? '';
-    const livemode = Boolean(event?.data?.attributes?.livemode);
-
-    await verifyPaymongoSignature(request, rawBody, livemode);
-
-    const eventData = event?.data?.attributes?.data ?? event?.data;
-    const checkoutSessionId = getCheckoutSessionId(eventData);
-    const paymentIntentId = findNestedValue(eventData, ['payment_intent_id', 'paymentIntentId']);
-    if (!paymentIntentId && !checkoutSessionId) {
-      return jsonResponse({ received: true, ignored: true, reason: 'No PayMongo reference id.' });
+    const raw = new TextDecoder().decode(await readPrivateUpload(request,5000,262144));
+    try { await verifyTestPaymentSignature(request,raw); }
+    catch { return jsonResponse({ error: 'Invalid test-mode webhook signature.' },401); }
+    const event = JSON.parse(raw)?.data;
+    if (event?.attributes?.livemode !== false) return jsonResponse({ error: 'Only explicit test-mode events are accepted.' },400);
+    const type = event.attributes.type;
+    if (!['checkout_session.payment.paid','checkout_session.payment.failed','checkout_session.expired'].includes(type)) {
+      return jsonResponse({ received:true,ignored:true });
     }
-
-    const supabase = makeServiceClient();
-    const existingPayment =
-      (paymentIntentId ? await findPaymentByIntent(paymentIntentId, supabase) : null) ??
-      (checkoutSessionId ? await findPaymentByCheckoutSession(checkoutSessionId, supabase) : null);
-    if (!existingPayment) {
-      return jsonResponse({ received: true, ignored: true, reason: 'PayMongo payment is not tracked by CebSpot.' });
+    const resource = event.attributes.data;
+    const sessionId = resource?.id;
+    if (resource?.type !== 'checkout_session' || typeof sessionId !== 'string' || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) {
+      return jsonResponse({ error:'A checkout-session reference is required.' },400);
     }
-
-    const incomingStatus = statusFromEvent(eventType);
-    if (incomingStatus === 'pending') {
-      return jsonResponse({ received: true, ignored: true, reason: 'Event does not change payment status.' });
+    const uuid = (value: unknown) => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value) ? value : null;
+    const client = makeServiceClient();
+    const attemptId = uuid(resource.attributes?.metadata?.checkout_attempt_id);
+    const reservationId = uuid(resource.attributes?.metadata?.reservation_id);
+    const inbox = await paymentRpc(client,'ingest_paymongo_event',{
+      incoming_event_id:event.id,payload_hash:await sha256(raw),incoming_type:type,
+      incoming_session_id:sessionId,incoming_attempt_id:attemptId,incoming_reservation_id:reservationId,
+    });
+    if (inbox.state === 'processed') return jsonResponse({ received:true,duplicate:true });
+    // Retrieve the authoritative test-mode session. Redirect query parameters
+    // and unverified event amounts never authorize a financial transition.
+    const response = await paymongoRequest(`/checkout_sessions/${encodeURIComponent(sessionId)}`);
+    const snapshot = paymentSnapshot(response?.data);
+    if (snapshot.id !== sessionId) return jsonResponse({ error:'Provider reference mismatch.' },422);
+    const authoritativeAttempt = uuid(snapshot.attributes.metadata?.checkout_attempt_id);
+    if (!authoritativeAttempt) return jsonResponse({ error:'Untracked checkout requires reconciliation.' },422);
+    const total = snapshot.attributes.line_items.reduce((sum: number,item: any)=>sum+item.amount*item.quantity,0);
+    if ((resource.attributes?.amount !== undefined && resource.attributes.amount !== total)
+      || (resource.attributes?.currency !== undefined && resource.attributes.currency !== 'PHP')) {
+      return jsonResponse({ error:'Event amount or currency mismatch.' },422);
     }
-    if (existingPayment.status === 'paid' && incomingStatus !== 'paid') {
-      return jsonResponse({ received: true, ignored: true, reason: 'A paid transaction cannot be downgraded.' });
-    }
-    if (existingPayment.status === 'expired' && incomingStatus !== 'paid') {
-      return jsonResponse({ received: true, ignored: true, reason: 'This payment attempt was already replaced or expired.' });
-    }
-
-    await upsertReservationPayment(
-      {
-        reservationId: existingPayment.reservation_id,
-        userId: existingPayment.user_id,
-        spotId: existingPayment.spot_id,
-        providerCheckoutSessionId: checkoutSessionId ?? existingPayment.provider_checkout_session_id,
-        providerPaymentIntentId: paymentIntentId ?? existingPayment.provider_payment_intent_id,
-        providerPaymentMethodId: existingPayment.provider_payment_method_id,
-        providerPaymentId: findNestedValue(eventData, ['payment_id']) ?? getResourceId(eventData) ?? existingPayment.provider_payment_id,
-        paymentMethod: existingPayment.payment_method ?? 'qrph',
-        reservationPaymentMethod: existingPayment.payment_method === 'qrph' ? 'paymongo_qrph' : 'paymongo_gcash',
-        checkoutUrl: existingPayment.checkout_url,
-        amount: Number(existingPayment.amount),
-        status: incomingStatus,
-        qrImageUrl: existingPayment.qr_image_url,
-        expiresAt: existingPayment.expires_at,
-        rawPayload: event,
-      },
-      supabase,
-    );
-
-    return jsonResponse({ received: true });
+    const result = await paymentRpc(client,'apply_paymongo_snapshot',{
+      incoming_event_id:event.id,target_attempt_id:authoritativeAttempt,session_snapshot:snapshot,
+    });
+    return jsonResponse({ received:true,result });
   } catch (error) {
-    const message = getErrorMessage(error, 'Unable to process PayMongo webhook.');
-    console.error('paymongo-webhook:', error);
-    return jsonResponse({ error: message }, 400);
+    if (error instanceof UploadError) return jsonResponse({ error:'Webhook body rejected.' },error.status);
+    if (error instanceof SyntaxError) return jsonResponse({ error:'Invalid event JSON.' },400);
+    if (error instanceof PaymentDatabaseError && error.code === '22023') return jsonResponse({ error:'Financial validation failed; reconciliation required.' },422);
+    return jsonResponse({ error:'Webhook persistence or reconciliation unavailable. Retry delivery.' },503);
   }
 });

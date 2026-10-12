@@ -245,7 +245,7 @@ export const reservationService = {
       reservation_id: reservationId, proof_path: proofPath, reference, payer_number: payerNumber,
     });
     if (error) throw error;
-    return normalizeReservation(data);
+    return normalizeReservation(Array.isArray(data) ? data[0] : data);
   },
   async createReservation(reservation: NewReservation): Promise<Reservation> {
     const isDirectDemoPayment = reservation.payment_method === 'gcash_direct_demo';

@@ -139,6 +139,7 @@ export interface Reservation {
   proof_submitted_at?: string | null;
   paid_at?: string | null;
   approved_by?: string | null;
+  financial_resolution?: 'resolution_required' | 'resolved' | null;
   created_at: string;
   updated_at?: string;
 }

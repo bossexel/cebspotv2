@@ -12,6 +12,8 @@ async function booking(db,overrides={}) {
   const defaults={user_id:ids.a,spot_id:ids.venue,spot_name:'Untrusted name',reservation_time:'23:10',slot_id:'prime',table_id:'C01',guests:2,guest_count:2,guest_name:'Synthetic Guest',guest_email:'guest@fixture.example.test',guest_phone:'09171234567',payment_terms_accepted:true,qr_code:require('node:crypto').randomUUID()};
   const row={...defaults,...overrides};
   const keys=Object.keys(row);
-  return (await db.query(`insert into reservations(${keys.join(',')},reservation_date) values(${keys.map((_,i)=>'$'+(i+1)).join(',')},(now() at time zone 'Asia/Manila')::date+1) returning *`,Object.values(row))).rows[0];
+  const extra=keys.includes('reservation_date')?'':',reservation_date';
+  const dateValue=keys.includes('reservation_date')?'':",(now() at time zone 'Asia/Manila')::date+1";
+  return (await db.query(`insert into reservations(${keys.join(',')}${extra}) values(${keys.map((_,i)=>'$'+(i+1)).join(',')}${dateValue}) returning *`,Object.values(row))).rows[0];
 }
 module.exports={ids,inventory,seed,booking};

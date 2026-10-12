@@ -4,8 +4,8 @@ export class UploadError extends Error {
   constructor(message: string, public status: number) { super(message); }
 }
 
-export async function readPrivateUpload(request: Request, timeoutMs = 15000) {
-  if (Number(request.headers.get('content-length')) > privateUploadLimit) {
+export async function readPrivateUpload(request: Request, timeoutMs = 15000, maxBytes = privateUploadLimit) {
+  if (Number(request.headers.get('content-length')) > maxBytes) {
     throw new UploadError('File exceeds the 5 MiB limit.', 413);
   }
   const reader = request.body?.getReader();
@@ -20,7 +20,7 @@ export async function readPrivateUpload(request: Request, timeoutMs = 15000) {
       const { value, done } = await Promise.race([reader.read(), timeout]);
       if (done) break;
       length += value.byteLength;
-      if (length > privateUploadLimit) throw new UploadError('File exceeds the 5 MiB limit.', 413);
+      if (length > maxBytes) throw new UploadError('File exceeds the request limit.', 413);
       chunks.push(value);
     }
     const bytes = new Uint8Array(length); let offset = 0;

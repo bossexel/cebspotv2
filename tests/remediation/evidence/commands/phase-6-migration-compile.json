@@ -1,0 +1,12 @@
+{
+  "label": "phase-6-migration-compile",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/migrations.test.cjs"
+  ],
+  "startedAt": "2026-10-12T18:08:47.278Z",
+  "finishedAt": "2026-10-12T18:09:05.831Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: the complete timestamped migration chain creates required booking surfaces\nok 1 - the complete timestamped migration chain creates required booking surfaces\n  ---\n  duration_ms: 7644.8746\n  type: 'test'\n  ...\n# Subtest: fresh installation has no business/demo fixtures and does have required guards\nok 2 - fresh installation has no business/demo fixtures and does have required guards\n  ---\n  duration_ms: 13.4711\n  type: 'test'\n  ...\n# Subtest: migration version/checksum manifest is retained\nok 3 - migration version/checksum manifest is retained\n  ---\n  duration_ms: 1.9798\n  type: 'test'\n  ...\n# (node:22572) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.\n# (Use `node --trace-deprecation ...` to show where the warning was created)\n# Subtest: an isolated previous-version fixture upgrades to the same schema without losing business rows\nok 4 - an isolated previous-version fixture upgrades to the same schema without losing business rows\n  ---\n  duration_ms: 9944.7005\n  type: 'test'\n  ...\n# Subtest: all six roles retain activity isolation after complete schema replay\nok 5 - all six roles retain activity isolation after complete schema replay\n  ---\n  duration_ms: 101.6586\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 18369.5762\n"
+}

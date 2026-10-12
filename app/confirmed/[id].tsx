@@ -65,20 +65,7 @@ export default function BookingConfirmedScreen() {
     async function load() {
       if (!id) return;
       try {
-        let nextReservation = await reservationService.getReservationById(id);
-        if (
-          paymentReturn === 'cancel' &&
-          nextReservation &&
-          ['paymongo_gcash', 'paymongo_qrph'].includes(nextReservation.payment_method ?? '') &&
-          nextReservation.payment_status !== 'paid'
-        ) {
-          try {
-            await reservationService.voidUnpaidReservation(id, 'PayMongo checkout was cancelled or abandoned.');
-            nextReservation = await reservationService.getReservationById(id);
-          } catch (error) {
-            console.error('Unable to void cancelled PayMongo reservation:', error);
-          }
-        }
+        const nextReservation = await reservationService.getReservationById(id);
         setReservation(nextReservation);
       } catch (error) {
         console.error('Unable to load reservation:', error);
@@ -125,6 +112,7 @@ export default function BookingConfirmedScreen() {
   }
 
   const requiresPayment = reservation.payment_required || reservation.reservation_type === 'paid';
+  const needsResolution = reservation.financial_resolution === 'resolution_required' || reservation.payment_status === 'refund_pending';
   const isPaid = reservation.payment_status === 'paid';
   const isCancelled = reservation.status === 'cancelled';
   const isCheckedIn = reservation.status === 'checked_in';
@@ -140,7 +128,7 @@ export default function BookingConfirmedScreen() {
   const uniqueId = getReservationUniqueId(reservation);
   const guestCount = formatGuestCount(reservation.guest_count ?? reservation.guests);
   const dateTime = formatReservationDateTime(reservation);
-  const title = isNoShow
+  const title = needsResolution ? 'Payment Needs Review' : isNoShow
     ? 'Marked as No Show'
     : isCheckedIn
     ? 'Guest Arrived'
@@ -155,7 +143,9 @@ export default function BookingConfirmedScreen() {
       ? 'Payment Under Review'
       : 'Reservation Pending Payment'
     : 'Reservation Confirmed';
-  const subtitle = isNoShow
+  const subtitle = needsResolution
+    ? 'A payment arrived after this booking changed or its hold expired. The venue must resolve it; the payment does not restore your table.'
+    : isNoShow
     ? `The spot marked this reservation as a no-show. The table has been released under the spot's reservation policy.`
     : isCheckedIn
     ? 'The spot confirmed your arrival. Your table remains assigned to this reservation.'
@@ -172,7 +162,7 @@ export default function BookingConfirmedScreen() {
     : 'Your booking is confirmed. Keep these reservation details for your visit.';
 
   async function cancelPaymentAndReleaseTable() {
-    if (!id || isCancelled || isPaid) return;
+    if (!id || isCancelled || isPaid || needsResolution) return;
 
     try {
       setVoidingPayment(true);
@@ -222,7 +212,9 @@ export default function BookingConfirmedScreen() {
           {requiresPayment && (
             <View style={styles.paymentNotice}>
               <Text style={[styles.paymentNoticeText, { color: appColors.onSurfaceVariant }]}>
-                {isNoShow
+                {needsResolution
+                  ? 'Payment recorded for resolution. A refund review is pending; no refund has been issued automatically.'
+                  : isNoShow
                   ? 'The owner marked this reservation as a no-show. The deposit remains subject to the accepted reservation terms.'
                   : isCancelled
                   ? 'No payment was recorded. This reservation no longer holds the table.'
