@@ -1,0 +1,5980 @@
+{
+  "baseline": "eb839e6",
+  "head": "ae9b0241ac6a663083f9e806891c7610a1741ece",
+  "trackedChanges": [
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Crashpad/metadata"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Crashpad/settings.dat"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Account Web Data"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Account Web Data-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Affiliation Database"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Affiliation Database-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/AutofillAiModelCache/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/AutofillAiModelCache/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/AutofillStrikeDatabase/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/AutofillStrikeDatabase/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/BookmarkMergedSurfaceOrdering"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/BrowsingTopicsSiteData"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/BrowsingTopicsSiteData-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/BrowsingTopicsState"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/BudgetDatabase/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/BudgetDatabase/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Cache/Cache_Data/data_0"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Cache/Cache_Data/data_1"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Cache/Cache_Data/data_2"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Cache/Cache_Data/data_3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Cache/Cache_Data/index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Cache/No_Vary_Search/journal.baj"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Cache/No_Vary_Search/snapshot.baf"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/ClientCertificates/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/ClientCertificates/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Code Cache/js/ba678a2fbd8c358c_0"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Code Cache/js/index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Code Cache/js/index-dir/the-real-index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Code Cache/wasm/index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Code Cache/wasm/index-dir/the-real-index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/DIPS"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/DIPS-wal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/DawnGraphiteCache/data_0"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/DawnGraphiteCache/data_1"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/DawnGraphiteCache/data_2"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/DawnGraphiteCache/data_3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/DawnGraphiteCache/index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/DawnWebGPUCache/data_0"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/DawnWebGPUCache/data_1"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/DawnWebGPUCache/data_2"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/DawnWebGPUCache/data_3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/DawnWebGPUCache/index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Extension Rules/CURRENT"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Extension Rules/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Extension Rules/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Extension Rules/MANIFEST-000001"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Extension Scripts/CURRENT"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Extension Scripts/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Extension Scripts/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Extension Scripts/MANIFEST-000001"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Extension State/CURRENT"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Extension State/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Extension State/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Extension State/MANIFEST-000001"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Favicons"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Favicons-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/GCM Store/CURRENT"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/GCM Store/Encryption/CURRENT"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/GCM Store/Encryption/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/GCM Store/Encryption/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/GCM Store/Encryption/MANIFEST-000001"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/GCM Store/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/GCM Store/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/GCM Store/MANIFEST-000001"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/GPUCache/data_0"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/GPUCache/data_1"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/GPUCache/data_2"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/GPUCache/data_3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/GPUCache/index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/History"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/History-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Local Storage/leveldb/CURRENT"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Local Storage/leveldb/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Local Storage/leveldb/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Local Storage/leveldb/MANIFEST-000001"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Login Data"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Login Data For Account"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Login Data For Account-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Login Data-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Network Action Predictor"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Network Action Predictor-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Network/Cookies"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Network/Cookies-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Network/Device Bound Sessions"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Network/Device Bound Sessions-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Network/Network Persistent State"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Network/NetworkDataMigrated"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Network/Reporting and NEL"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Network/Reporting and NEL-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Network/TransportSecurity"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Network/Trust Tokens"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Network/Trust Tokens-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/PersistentOriginTrials/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/PersistentOriginTrials/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Preferences"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/PreferredApps"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/README"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Safe Browsing Network/NetworkDataMigrated"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Secure Preferences"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Segmentation Platform/SegmentInfoDB/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Segmentation Platform/SegmentInfoDB/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Segmentation Platform/SignalDB/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Segmentation Platform/SignalDB/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Segmentation Platform/SignalStorageConfigDB/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Segmentation Platform/SignalStorageConfigDB/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/ServerCertificate"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/ServerCertificate-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Service Worker/Database/CURRENT"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Service Worker/Database/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Service Worker/Database/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Service Worker/Database/MANIFEST-000001"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Service Worker/ScriptCache/2cc80dabc69f58b6_0"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Service Worker/ScriptCache/4cb013792b196a35_0"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Service Worker/ScriptCache/4cb013792b196a35_1"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Service Worker/ScriptCache/index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Service Worker/ScriptCache/index-dir/the-real-index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Session Storage/CURRENT"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Session Storage/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Session Storage/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Session Storage/MANIFEST-000001"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Sessions/Session_13431370527503240"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Sessions/Tabs_13431370534331988"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Shared Dictionary/cache/index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Shared Dictionary/cache/index-dir/the-real-index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Shared Dictionary/db"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Shared Dictionary/db-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Shortcuts"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Shortcuts-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Site Characteristics Database/CURRENT"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Site Characteristics Database/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Site Characteristics Database/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Site Characteristics Database/MANIFEST-000001"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Sync Data/LevelDB/CURRENT"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Sync Data/LevelDB/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Sync Data/LevelDB/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Sync Data/LevelDB/MANIFEST-000001"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Top Sites"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Top Sites-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Icons/128.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Icons/192.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Icons/256.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Icons/32.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Icons/48.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Icons/64.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Icons/96.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Trusted Icons/Icons/128.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Trusted Icons/Icons/192.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Trusted Icons/Icons/256.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Trusted Icons/Icons/32.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Trusted Icons/Icons/48.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Trusted Icons/Icons/64.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/aghbiahbpaijignceidepookljebhfak/Trusted Icons/Icons/96.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Icons/128.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Icons/192.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Icons/256.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Icons/32.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Icons/48.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Icons/64.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Icons/96.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Trusted Icons/Icons/128.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Trusted Icons/Icons/192.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Trusted Icons/Icons/256.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Trusted Icons/Icons/32.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Trusted Icons/Icons/48.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Trusted Icons/Icons/64.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fhihpiojkbmbpdjeoajapmgkhlnakfjf/Trusted Icons/Icons/96.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Icons/128.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Icons/192.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Icons/256.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Icons/32.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Icons/48.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Icons/64.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Icons/96.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Trusted Icons/Icons/128.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Trusted Icons/Icons/192.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Trusted Icons/Icons/256.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Trusted Icons/Icons/32.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Trusted Icons/Icons/48.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Trusted Icons/Icons/64.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/fmgjjmmmlfnkbppncabfkddbjimcfncm/Trusted Icons/Icons/96.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Icons/128.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Icons/192.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Icons/256.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Icons/32.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Icons/48.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Icons/64.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Icons/96.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Trusted Icons/Icons/128.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Trusted Icons/Icons/192.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Trusted Icons/Icons/256.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Trusted Icons/Icons/32.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Trusted Icons/Icons/48.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Trusted Icons/Icons/64.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/kefjledonklijopmnomlcbpllchaibag/Trusted Icons/Icons/96.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Icons/128.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Icons/192.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Icons/256.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Icons/32.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Icons/48.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Icons/64.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Icons/96.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Trusted Icons/Icons/128.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Trusted Icons/Icons/192.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Trusted Icons/Icons/256.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Trusted Icons/Icons/32.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Trusted Icons/Icons/48.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Trusted Icons/Icons/64.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Applications/Manifest Resources/mpnpojknpmmopombnjdcgaaiekajbnjb/Trusted Icons/Icons/96.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Data"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/Web Data-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/WebStorage/QuotaManager"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/WebStorage/QuotaManager-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/chrome_cart_db/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/chrome_cart_db/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/commerce_subscription_db/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/commerce_subscription_db/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/declarative_performance_observer.db"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/declarative_performance_observer.db-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/discount_infos_db/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/discount_infos_db/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/discounts_db/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/discounts_db/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/engine_allowlist.bf"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/heavy_ad_intervention_opt_out.db"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/heavy_ad_intervention_opt_out.db-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/optimization_guide_hint_cache_store/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/optimization_guide_hint_cache_store/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/parcel_tracking_db/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/parcel_tracking_db/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/shared_proto_db/CURRENT"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/shared_proto_db/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/shared_proto_db/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/shared_proto_db/MANIFEST-000001"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/shared_proto_db/metadata/CURRENT"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/shared_proto_db/metadata/LOCK"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/shared_proto_db/metadata/LOG"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/shared_proto_db/metadata/MANIFEST-000001"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Default/trusted_vault.pb"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/GPUPersistentCache/DawnGraphiteCache/3NKWE443ILY3OIX46HBRH4ISRJW4UKAH/cache.db"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/GPUPersistentCache/DawnGraphiteCache/3NKWE443ILY3OIX46HBRH4ISRJW4UKAH/cache.db-wal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/GPUPersistentCache/DawnGraphiteCache/3NKWE443ILY3OIX46HBRH4ISRJW4UKAH/cache.journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/GrShaderCache/data_0"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/GrShaderCache/data_1"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/GrShaderCache/data_2"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/GrShaderCache/data_3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/GrShaderCache/index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Last Browser"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Last Version"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Local State"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/ShaderCache/data_0"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/ShaderCache/data_1"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/ShaderCache/data_2"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/ShaderCache/data_3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/ShaderCache/index"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/Variations"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/VariationsSafeSeedV2"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/VariationsSeedV2"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/component_crx_cache/metadata.json"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/extensions_crx_cache/metadata.json"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/first_party_sets.db"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/first_party_sets.db-journal"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".chrome-video-review/segmentation_platform/ukm_db"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/aligned-ready-extract.txt"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/[Content_Types].xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/_rels/.rels"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/customXML/_rels/item1.xml.rels"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/customXML/item1.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/customXML/itemProps1.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/_rels/document.xml.rels"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/_rels/fontTable.xml.rels"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/document.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/fontTable.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/fonts/NotoSansSymbols-bold.ttf"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/fonts/NotoSansSymbols-regular.ttf"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer1.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer10.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer100.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer101.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer102.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer103.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer104.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer105.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer106.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer107.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer108.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer109.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer11.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer110.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer111.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer112.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer113.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer114.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer115.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer116.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer117.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer118.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer12.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer13.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer14.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer15.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer16.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer17.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer18.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer19.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer2.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer20.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer21.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer22.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer23.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer24.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer25.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer26.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer27.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer28.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer29.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer3.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer30.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer31.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer32.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer33.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer34.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer35.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer36.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer37.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer38.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer39.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer4.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer40.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer41.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer42.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer43.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer44.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer45.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer46.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer47.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer48.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer49.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer5.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer50.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer51.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer52.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer53.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer54.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer55.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer56.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer57.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer58.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer59.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer6.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer60.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer61.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer62.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer63.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer64.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer65.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer66.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer67.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer68.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer69.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer7.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer70.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer71.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer72.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer73.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer74.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer75.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer76.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer77.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer78.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer79.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer8.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer80.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer81.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer82.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer83.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer84.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer85.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer86.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer87.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer88.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer89.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer9.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer90.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer91.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer92.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer93.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer94.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer95.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer96.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer97.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer98.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/footer99.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header1.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header10.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header11.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header12.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header13.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header14.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header15.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header16.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header17.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header18.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header19.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header2.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header20.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header21.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header22.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header23.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header24.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header25.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header26.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header27.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header28.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header29.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header3.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header30.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header31.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header32.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header33.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header34.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header35.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header36.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header37.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header38.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header39.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header4.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header40.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header41.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header42.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header43.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header44.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header45.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header46.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header47.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header48.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header49.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header5.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header50.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header51.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header52.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header53.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header54.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header55.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header56.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header57.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header58.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header59.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header6.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header60.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header61.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header62.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header63.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header64.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header65.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header66.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header67.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header68.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header69.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header7.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header70.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header71.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header72.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header73.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header74.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header75.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header76.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header77.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header78.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header79.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header8.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header80.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header81.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header82.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header83.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header84.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/header9.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image1.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image10.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image11.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image12.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image13.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image14.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image15.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image16.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image17.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image18.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image19.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image2.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image20.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image22.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image23.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image24.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image25.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image26.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image27.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image28.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image29.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image3.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image30.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image31.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image32.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image33.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image34.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image35.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image36.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image37.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image38.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image4.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image5.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image6.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image7.png"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image8.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/media/image9.jpg"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/numbering.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/settings.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/styles.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/pkg/word/theme/theme1.xml"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/docx-rebuild-20260601-201900/source.docx"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/_expo/static/js/android/index-e97873823851e69b9ad7c50aee79adb1.hbc"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/02bc1fa7c0313217bde2d65ccbff40c9"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/069d99eb1fa6712c0b9034a58c6b57dd"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/0747a1317bbe9c6fc340b889ef8ab3ae"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/0a328cd9c1afd0afe8e3b1ec5165b1b4"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/1190ab078c57159f4245a328118fcd9a"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/19eeb73b9593a38f8e9f418337fc7d10"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/1e928a19babcb4c39dc17e946e7413a3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/203d753a80557746c23ce95191fbf013"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/20e71bdf79e3a97bf55fd9e164041578"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/286d67d3f74808a60a78d3ebf1a5fb57"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/2ea0576ae2d6795e7786b364f39e54fe"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/35ba0eaec5a4f5ed12ca16fabeae451d"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/3cd68ccdb8938e3711da2e8831b85493"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/412dd9275b6b48ad28f5e3d81bb1f626"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/426a2f39048d24a78a94737908603fe3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/4403c6117ec30c859bc95d70ce4a71d3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/4a2d6e65e13b83c26996da3990d4fcd0"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/4eacf0be3abf18d7e743598b0991554e"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/5cbf5cdcf7ec24681e0ea4adeadc2822"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/61ca7e64b7d605716c57706cef640b9a"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/778ffc9fe8773a878e9c30a6304784de"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/78c625386b4d0690b421eb0fc78f7b9c"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/7e5c023c68d940a51ea9f9fcaeb711a7"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/8a50619755ab4ca7bc9433d892f43d49"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/8a84aafae4cb52c75074e12636fed0ca"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/985b2147a6b955ceea74741f3d70885f"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/9d496514aedf5c9bb3f689de8b094cd8"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/ab19f4cbc543357183a20571f68380a3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/aff2c65b39a296d4f7e96d0f58169170"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/ba6062606d5a7342cbce5a5d4b391bc4"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/c1bd726715a688ead84c2dbf4c82f88d"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/c300fff4e4ae0ca994c58ac9f6639b19"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/c3273c9e5321f20d1e42c2efae2578c4"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/c79c3606a1cf168006ad3979763c7e0c"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/d1ea1496f9057eb392d5bbf3732a61b7"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/d414a87f1942b9c4ae40ef793f171dae"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/d84e297c3b3e49a614248143d53e40ca"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/d8b800c443b8972542883e0b9de2bdc6"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/d8e7601e3df962f83c62371ac14964d8"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/da2373e271b755f87874ba215a117b4a"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/dd32ff005624322e7286df4c83ab9200"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/assets/e11421af6f75c947f1d2837f4e534611"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/metadata.json"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/owner-portal/assets/browser--ppeub0C.js"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/owner-portal/assets/index-BOjg_oNY.css"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/owner-portal/assets/index-DDZU9mtZ.js"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/owner-portal/index.html"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/expo-updates-android/owner-portal/owner-portal-live.js"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/manuscript.txt"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/_expo/static/js/android/entry-f433fed8de05017dbf42cdeb2f348029.hbc"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/02bc1fa7c0313217bde2d65ccbff40c9"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/069d99eb1fa6712c0b9034a58c6b57dd"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/0747a1317bbe9c6fc340b889ef8ab3ae"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/0a328cd9c1afd0afe8e3b1ec5165b1b4"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/1190ab078c57159f4245a328118fcd9a"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/19eeb73b9593a38f8e9f418337fc7d10"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/1e928a19babcb4c39dc17e946e7413a3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/203d753a80557746c23ce95191fbf013"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/20e71bdf79e3a97bf55fd9e164041578"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/286d67d3f74808a60a78d3ebf1a5fb57"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/2ea0576ae2d6795e7786b364f39e54fe"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/35ba0eaec5a4f5ed12ca16fabeae451d"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/3cd68ccdb8938e3711da2e8831b85493"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/412dd9275b6b48ad28f5e3d81bb1f626"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/426a2f39048d24a78a94737908603fe3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/4403c6117ec30c859bc95d70ce4a71d3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/4a2d6e65e13b83c26996da3990d4fcd0"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/4eacf0be3abf18d7e743598b0991554e"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/5cbf5cdcf7ec24681e0ea4adeadc2822"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/61ca7e64b7d605716c57706cef640b9a"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/778ffc9fe8773a878e9c30a6304784de"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/78c625386b4d0690b421eb0fc78f7b9c"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/7e5c023c68d940a51ea9f9fcaeb711a7"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/8a50619755ab4ca7bc9433d892f43d49"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/8a84aafae4cb52c75074e12636fed0ca"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/985b2147a6b955ceea74741f3d70885f"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/9d496514aedf5c9bb3f689de8b094cd8"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/ab19f4cbc543357183a20571f68380a3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/aff2c65b39a296d4f7e96d0f58169170"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/ba6062606d5a7342cbce5a5d4b391bc4"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/c1bd726715a688ead84c2dbf4c82f88d"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/c300fff4e4ae0ca994c58ac9f6639b19"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/c3273c9e5321f20d1e42c2efae2578c4"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/c79c3606a1cf168006ad3979763c7e0c"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/d1ea1496f9057eb392d5bbf3732a61b7"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/d414a87f1942b9c4ae40ef793f171dae"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/d84e297c3b3e49a614248143d53e40ca"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/d8b800c443b8972542883e0b9de2bdc6"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/d8e7601e3df962f83c62371ac14964d8"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/da2373e271b755f87874ba215a117b4a"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/dd32ff005624322e7286df4c83ab9200"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/assets/e11421af6f75c947f1d2837f4e534611"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/metadata.json"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/owner-portal/assets/browser--ppeub0C.js"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/owner-portal/assets/index-BOjg_oNY.css"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/owner-portal/assets/index-DDZU9mtZ.js"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/owner-portal/index.html"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/spot-progress-export/owner-portal/owner-portal-live.js"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/_expo/static/js/android/entry-b718d03e2b5d49f6b0e5e3976b1890f7.hbc"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/02bc1fa7c0313217bde2d65ccbff40c9"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/069d99eb1fa6712c0b9034a58c6b57dd"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/0747a1317bbe9c6fc340b889ef8ab3ae"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/0a328cd9c1afd0afe8e3b1ec5165b1b4"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/1190ab078c57159f4245a328118fcd9a"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/19eeb73b9593a38f8e9f418337fc7d10"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/1e928a19babcb4c39dc17e946e7413a3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/203d753a80557746c23ce95191fbf013"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/20e71bdf79e3a97bf55fd9e164041578"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/286d67d3f74808a60a78d3ebf1a5fb57"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/2ea0576ae2d6795e7786b364f39e54fe"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/35ba0eaec5a4f5ed12ca16fabeae451d"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/3cd68ccdb8938e3711da2e8831b85493"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/412dd9275b6b48ad28f5e3d81bb1f626"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/426a2f39048d24a78a94737908603fe3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/4403c6117ec30c859bc95d70ce4a71d3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/4a2d6e65e13b83c26996da3990d4fcd0"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/4eacf0be3abf18d7e743598b0991554e"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/5cbf5cdcf7ec24681e0ea4adeadc2822"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/61ca7e64b7d605716c57706cef640b9a"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/778ffc9fe8773a878e9c30a6304784de"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/78c625386b4d0690b421eb0fc78f7b9c"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/7e5c023c68d940a51ea9f9fcaeb711a7"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/8a50619755ab4ca7bc9433d892f43d49"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/8a84aafae4cb52c75074e12636fed0ca"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/985b2147a6b955ceea74741f3d70885f"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/9d496514aedf5c9bb3f689de8b094cd8"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/ab19f4cbc543357183a20571f68380a3"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/aff2c65b39a296d4f7e96d0f58169170"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/ba6062606d5a7342cbce5a5d4b391bc4"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/c1bd726715a688ead84c2dbf4c82f88d"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/c300fff4e4ae0ca994c58ac9f6639b19"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/c3273c9e5321f20d1e42c2efae2578c4"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/c79c3606a1cf168006ad3979763c7e0c"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/d1ea1496f9057eb392d5bbf3732a61b7"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/d414a87f1942b9c4ae40ef793f171dae"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/d84e297c3b3e49a614248143d53e40ca"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/d8b800c443b8972542883e0b9de2bdc6"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/d8e7601e3df962f83c62371ac14964d8"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/da2373e271b755f87874ba215a117b4a"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/dd32ff005624322e7286df4c83ab9200"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/assets/e11421af6f75c947f1d2837f4e534611"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/metadata.json"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/owner-portal/assets/browser--ppeub0C.js"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/owner-portal/assets/index-BOjg_oNY.css"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/owner-portal/assets/index-DDZU9mtZ.js"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/owner-portal/index.html"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".codex-tmp/timeout-job-export/owner-portal/owner-portal-live.js"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        ".env.example"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".expo/devices.json"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        ".expo/settings.json"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        ".gitignore"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "ARCHITECTURE_ANALYSIS.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "FINAL_AUDIT_CLOSURE.md"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "QUICKSTART.md"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "REMEDIATION_STATUS.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "admin-app/+not-found.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "admin-app/_layout.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "admin-app/admin.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "admin-app/admin/spot/[id].tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "admin-app/auth/callback.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "admin-app/index.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "admin-app/login.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "admin-app/reset-password.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app.config.js"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "app/+native-intent.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "app/+not-found.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/_layout.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "app/about.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "app/account-deletion.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/activity.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "app/admin-sandbox.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "app/admin-studio/dashboard.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "app/admin-studio/index.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "app/admin-studio/login.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/admin.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/checkout/[id].tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/circle.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/circle/[id].tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/confirmed/[id].tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "app/documentation.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/index.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/login.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/owner-access.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/owner-dashboard.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "app/privacy.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/profile.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/reservation/[id].tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/reservations.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/reset-password.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/saved.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "app/spot/[id].tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "config/staging-public.env.example"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/account-deletion-verification.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/android-only.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/dependency-release-triage.md"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "docs/map-performance.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/payment-release-verification.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/upload-release-verification.md"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "face-blur-service/.env.example"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "face-blur-service/Dockerfile"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "face-blur-service/README.md"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "face-blur-service/app.py"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "face-blur-service/requirements.txt"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "face-blur-service/services/job_runtime.py"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "face-blur-service/tests/test_security.py"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "index.js"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "index.web.js"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "metro.config.js"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "package-lock.json"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "package.json"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        "public/owner-portal/assets/browser--ppeub0C.js"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        "public/owner-portal/assets/index-BOjg_oNY.css"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        "public/owner-portal/assets/index-DDZU9mtZ.js"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        "public/owner-portal/index.html"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        "public/owner-portal/owner-portal-live.js"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "public/payment-return.html"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "render.yaml"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "scripts/admin-web.cjs"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "scripts/check-paymongo-sandbox.mjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "scripts/patch-expo-tar.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "scripts/python-audit.py"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "scripts/release-env.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "scripts/remediation-artifact-manifest.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "scripts/remediation-check.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "scripts/remediation-release-report.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "scripts/remediation-secret-scan.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/components/AdjustableTimePicker.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/components/AppUpdatePrompt.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/components/CirclePrivacyControls.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/components/GuestTableChoices.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/components/InformationContent.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/components/InformationScreen.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/components/OwnerTableBookingPolicy.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/components/admin-sandbox/AdminSandboxScreen.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/components/admin-studio/AdminStudioScreens.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/components/map/MapSurface.web.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/components/map/mapDocument.generated.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/components/map/runtime.js"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/constants/about.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/constants/authRoles.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/constants/clubFloorPlan.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/constants/documentation.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/constants/informationContent.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/constants/tarakapePrivacy.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/hooks/useAuth.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/services/accountDeletionService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/activityService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/adminDashboardService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/circleService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/imageAnonymization.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/localUpdateService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/ownerAccessService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/ownerGalleryService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/ownerVerificationDocumentService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/paymentProofService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/reservationReminderService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/reservationService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/reviewMediaService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/savedSpotService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/spotService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/spotSubmissionService.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/services/venueTableService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/types/index.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/utils/externalLinks.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/utils/platformAlert.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/utils/reservationTimeSlot.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/utils/reservations.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/utils/tableInventory.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/MIGRATIONS.md"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "supabase/config.toml"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/functions/_shared/durableCheckout.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/functions/_shared/paymentSignature.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/functions/_shared/paymentSnapshot.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "supabase/functions/_shared/paymongo.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/functions/_shared/privateUpload.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/functions/delete-account/index.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/functions/payment-maintenance/index.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "supabase/functions/paymongo-create-gcash-checkout/index.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "supabase/functions/paymongo-create-qrph-checkout/index.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "supabase/functions/paymongo-webhook/index.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/functions/private-upload-maintenance/index.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/functions/private-upload/index.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20260901000000_schema_foundation.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20260901000100_feature_foundation.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261006000100_audit_authorization_hardening.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261011000100_table_booking_policy_and_walk_ins.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261013000100_activity_privacy.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261013000200_android_reservation_scope.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261013000300_manual_proof_and_bounded_holds.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261013000400_durable_checkout_and_payment_events.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261013000500_request_bound_private_uploads.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261013000600_server_reservation_details.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261013000700_circle_location_controls.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261013000800_account_erasure.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261013000900_block_deleting_owner_assignments.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/backend/adjustable-reservation-times.test.cjs"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "tests/backend/admin-dashboard.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/backend/audit-remediation.test.cjs"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "tests/backend/club-floor-plan.test.cjs"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "tests/backend/owner-branding.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/backend/owner-reservation-settings.test.cjs"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "tests/backend/payment-harness.cjs"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "tests/backend/payments.test.cjs"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "tests/backend/reservation-attendance.test.cjs"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "tests/backend/reservation-checkout-details.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/backend/walk-ins-database.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/backend/walk-ins-policy.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/backend/walk-ins-postgres.cjs"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "tests/map/runtime.spec.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/platform/admin-web.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/platform/android-only.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/platform/deny-customer-web.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/account-deletion-handler.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/account-deletion.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/activity-privacy.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/android-recovery.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/circle-privacy.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/database.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/dependency-compatibility.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/durable-payments.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/deletion-assignment-concurrency.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/deletion-assignment-race-red.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/deletion-assignment-race-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-android-hermes-link-guard.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-clean-install-regression.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-clean-install-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-lockfile-install-online.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-lockfile-install.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-native-link-guard.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-native-link-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-public-credential-guard.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-1-backend.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-1-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-2-activity-privacy-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-2-activity-privacy.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-3-complete-migrations-and-roles.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-3-complete-migrations-bom-corrected.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-3-complete-migrations.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-3-replay-upgrade-and-roles.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-4-backend-final.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-4-existing-backend.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-4-floor-plan.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-4-inventory-final.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-4-inventory-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-4-inventory.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-4-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-5-existing-backend.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-5-manual-proof.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-5-proof-client.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-5-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-5-workflows.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-6-backend-and-upgrade.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-6-handler-recovery-boundaries.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-6-migration-compile.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-6-payment-handlers-final.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-6-payment-handlers-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-6-payment-handlers.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-6-payment-transactions-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-6-payment-transactions.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-6-typecheck-final.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-6-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-7-admin-artifact.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-7-admin-export.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-7-android-export.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-7-denied-customer-web.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-7-platform.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-authenticated-face-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-backend-regression.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-face-complete.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-face-security-runtime.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-face-security-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-face-security.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-owner-private-database-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-owner-private-database.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-owner-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-private-upload-handlers.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-private-upload-migration.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-typecheck-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-upload-acceptance-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-upload-acceptance.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-8-upload-client-coverage.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-account-and-uploads.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-account-database-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-account-database.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-account-migration.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-account-race-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-account-race.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-account-replay-and-policies.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-account-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-archive-compatibility-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-archive-compatibility.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-circle-privacy.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-circle-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-deletion-handlers-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-deletion-handlers.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-dependency-audit-after-updates.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-dependency-audit-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-dependency-audit.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-details-and-feed.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-details-replay-regression.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-details-typecheck-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-details-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-expo-extraction-patch.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-expo-tar-patch.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-extraction-both-paths.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-face-deletion-final.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-face-deletion.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-face-patched-stack.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-lockfile-sync.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-map-build.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-map-regression.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-npm-audit-final.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-python-audit-final.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-python-dependency-audit.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-python-security-updates-system-ca.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-python-security-updates.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-python-tools-patched.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-release-environment.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-route-regression.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-scanner-regression.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-source-secret-scan.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-targeted-npm-final.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-targeted-npm-updates.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-ui-backend-regression.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/phase-9-ui-typecheck-complete.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/final-android-export.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/final-artifacts.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/foundation-sources.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/migration-manifest.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/phase-7-artifacts.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/fixtures.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/inventory-client.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/inventory.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/load-client.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/manual-proof.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/migrations.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/native-links.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/owner-private-uploads.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/payment-handler-harness.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/payment-handlers.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/postgres.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/private-upload.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/proof-client.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/release-env.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/reservation-details.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/secret-scan.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/truthful-feed.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/upload-clients.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/upload-maintenance.test.cjs"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "tsconfig.json"
+      ]
+    },
+    {
+      "status": "D",
+      "files": [
+        "vercel.json"
+      ]
+    }
+  ],
+  "untrackedUserOrPendingFiles": [
+    "AUDIT.md",
+    "LAUNCH_AUDIT_2026-10-12.md",
+    "docs/about-cebspot.md",
+    "docs/adjustable-reservation-times.md",
+    "docs/android-release-candidate.md",
+    "docs/documentation-privacy.md",
+    "docs/owner-dashboard-compatibility.md",
+    "docs/paper-alignment-review.md",
+    "docs/paymongo-billing-fix.md",
+    "docs/privacy-reference.md",
+    "docs/remediation-command-record.md",
+    "docs/remediation-migrations.md",
+    "docs/technical-documentation.md",
+    "docs/uat-audit-alignment-2026-10-13.md",
+    "docs/uat-plan-review.md",
+    "docs/walk-in-table-policy.md",
+    "scripts/check-paymongo-billing.mjs",
+    "src/constants/privacy.ts",
+    "tests/about/about.cjs",
+    "tests/about/documentation-screen.cjs",
+    "tests/about/documentation.cjs",
+    "tests/about/privacy-reference.cjs",
+    "tests/about/privacy-reference.txt",
+    "tests/launch-audit/browser-errors.cjs",
+    "tests/launch-audit/browser.cjs",
+    "tests/launch-audit/database-probes.cjs",
+    "tests/launch-audit/evidence/browser-errors.json",
+    "tests/launch-audit/evidence/browser.json",
+    "tests/launch-audit/evidence/database-probes.json",
+    "tests/launch-audit/evidence/face-health-retry.json",
+    "tests/launch-audit/evidence/face-local.json",
+    "tests/launch-audit/evidence/live-readonly.json",
+    "tests/launch-audit/evidence/media-probes.json",
+    "tests/launch-audit/evidence/npm-audit.json",
+    "tests/launch-audit/evidence/offline-17-seconds.png",
+    "tests/launch-audit/evidence/payment-probes.json",
+    "tests/launch-audit/evidence/routes.json",
+    "tests/launch-audit/evidence/secret-scan.json",
+    "tests/launch-audit/evidence/web-320-missing-audit-page.png",
+    "tests/launch-audit/evidence/web-320-profile.png",
+    "tests/launch-audit/evidence/web-320-reservation.png",
+    "tests/launch-audit/evidence/web-offline.png",
+    "tests/launch-audit/evidence/web-slow.png",
+    "tests/launch-audit/face-local.py",
+    "tests/launch-audit/live-readonly.cjs",
+    "tests/launch-audit/media-probes.cjs",
+    "tests/launch-audit/owner-browser-followup.cjs",
+    "tests/launch-audit/payment-probes.cjs",
+    "tests/launch-audit/routes.cjs",
+    "tests/launch-audit/secret-scan.cjs",
+    "tests/owner-dashboard/browser.cjs",
+    "tests/performance/ANDROID.md",
+    "tests/performance/ASSESSMENT.md",
+    "tests/performance/README.md",
+    "tests/performance/concurrency-booking.cjs",
+    "tests/performance/evidence/execution-blockers.json",
+    "tests/performance/evidence/face-1791407815966.json",
+    "tests/performance/evidence/face-server-snapshot.json",
+    "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/algorithm-samples.jsonl",
+    "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/backend-regression.tap",
+    "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/mock-replay-samples.jsonl",
+    "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/source-manifest.json",
+    "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/suite-self-tests.tap",
+    "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/summary.json",
+    "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/algorithm-samples.jsonl",
+    "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/backend-regression.tap",
+    "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/mock-replay-samples.jsonl",
+    "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/source-manifest.json",
+    "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/suite-self-tests.tap",
+    "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/summary.json",
+    "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/algorithm-samples.jsonl",
+    "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/backend-regression.tap",
+    "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/mock-replay-samples.jsonl",
+    "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/source-manifest.json",
+    "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/suite-self-tests.tap",
+    "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/summary.json",
+    "tests/performance/evidence/map-2026-10-07T21-18-36-512Z.json",
+    "tests/performance/evidence/map-initial-error-context.md",
+    "tests/performance/evidence/map-initial-observation.json",
+    "tests/performance/evidence/prerequisites.json",
+    "tests/performance/evidence/sanitization.json",
+    "tests/performance/evidence/source-final.json",
+    "tests/performance/evidence/suite-final.tap",
+    "tests/performance/isolated/app-logic.cjs",
+    "tests/performance/isolated/browser-evidence.cjs",
+    "tests/performance/isolated/client.cjs",
+    "tests/performance/isolated/concurrency.cjs",
+    "tests/performance/isolated/config.cjs",
+    "tests/performance/isolated/face-check.cjs",
+    "tests/performance/isolated/fixtures.cjs",
+    "tests/performance/isolated/journeys.cjs",
+    "tests/performance/isolated/load.cjs",
+    "tests/performance/isolated/local-evidence.cjs",
+    "tests/performance/isolated/make-media.ps1",
+    "tests/performance/isolated/preflight.cjs",
+    "tests/performance/isolated/prepare-local.cjs",
+    "tests/performance/isolated/prerequisites.cjs",
+    "tests/performance/isolated/report.cjs",
+    "tests/performance/isolated/sanitize-evidence.cjs",
+    "tests/performance/isolated/stats.cjs",
+    "tests/performance/isolated/suite.test.cjs",
+    "tests/performance/isolated/verify-source.cjs",
+    "tests/performance/perf.env.example",
+    "tests/performance/report-generator.cjs",
+    "tests/performance/run-suite.cjs",
+    "tests/performance/supabase-client.cjs",
+    "tests/remediation/evidence/changed-files.json",
+    "tests/remediation/evidence/commands/final-admin-browser.json",
+    "tests/remediation/evidence/commands/final-admin-export.json",
+    "tests/remediation/evidence/commands/final-android-hermes.json",
+    "tests/remediation/evidence/commands/final-backend-and-platform.json",
+    "tests/remediation/evidence/commands/final-closure-secret-scan.json",
+    "tests/remediation/evidence/commands/final-existing-isolated-tests.json",
+    "tests/remediation/evidence/commands/final-face-patched-environment.json",
+    "tests/remediation/evidence/commands/final-lint-after-dependencies.json",
+    "tests/remediation/evidence/commands/final-lint.json",
+    "tests/remediation/evidence/commands/final-map-source.json",
+    "tests/remediation/evidence/commands/final-remediation-after-owner-guard.json",
+    "tests/remediation/evidence/commands/final-remediation.json",
+    "tests/remediation/evidence/commands/final-secret-scan.json",
+    "tests/remediation/evidence/commands/final-source-and-export-secret-scan.json",
+    "tests/remediation/evidence/commands/final-typecheck-after-dependencies.json",
+    "tests/remediation/evidence/commands/final-typecheck.json",
+    "tests/remediation/evidence/commands/final-web-distribution-denied.json",
+    "tests/remediation/evidence/dependency-triage.json",
+    "tests/remediation/evidence/final-secret-scan.json",
+    "tests/remediation/evidence/release-source-manifest.json"
+  ],
+  "limitation": "Includes inherited user changes retained in focused commits; initial diff snapshots distinguish authorship. Generated-file removals are included, not hidden."
+}

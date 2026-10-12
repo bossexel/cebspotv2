@@ -1,0 +1,11 @@
+{
+  "label": "final-web-distribution-denied",
+  "command": [
+    "node",
+    "tests/platform/deny-customer-web.cjs"
+  ],
+  "startedAt": "2026-10-12T22:43:14.173Z",
+  "finishedAt": "2026-10-12T22:43:25.903Z",
+  "exitCode": 0,
+  "output": "PASS default customer/owner web export is rejected; only explicit admin target is supported.\n"
+}

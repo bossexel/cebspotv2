@@ -123,3 +123,9 @@ Final dependency root-path review identified Expo Router's legacy decoder on And
 
 `final-native-link-typecheck` and `final-android-hermes-link-guard` pass. The final rebuild contains 3407 modules and an 8.3 MB Hermes bundle; `final-artifacts.json` is refreshed against that output. This supersedes the earlier Android bundle hash while retaining its original command evidence. Backend configuration remains deliberately absent.
 
+## Handoff state
+
+Verified runtime source commit: `ae9b024` (193 retained source hashes; 15 ordered migrations). Final `final-closure-secret-scan` passes: 551 current files and 106 exported files scanned, zero matches, zero oversized omissions, zero generated browser/scratch files tracked in HEAD. Five historical sensitive filenames remain inventoried; this does not clear historical credential/session exposure. No rotation or history rewrite was performed.
+
+All safe local groups are committed with regressions. The evidence/handoff commit follows the source commit without changing runtime sources. Remaining original user modifications and unrelated untracked work are intentionally preserved. Release recommendation remains **NO-GO**: missing isolated staging/matching PostgreSQL/Auth/Storage, provider test delivery, real inventory confirmation, APK/device/container acceptance and residual security review are listed with exact next steps in the handoff. No production deployment, existing database reset, real payment, account erasure, credential rotation or history rewrite occurred.
+

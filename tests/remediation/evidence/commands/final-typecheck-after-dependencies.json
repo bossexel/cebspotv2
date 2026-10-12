@@ -1,0 +1,12 @@
+{
+  "label": "final-typecheck-after-dependencies",
+  "command": [
+    "npm",
+    "run",
+    "typecheck"
+  ],
+  "startedAt": "2026-10-12T22:44:40.448Z",
+  "finishedAt": "2026-10-12T22:44:57.246Z",
+  "exitCode": 0,
+  "output": "\n> cebspot@1.0.0 typecheck\n> tsc --noEmit\n\n"
+}

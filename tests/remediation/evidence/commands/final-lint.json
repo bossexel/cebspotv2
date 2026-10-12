@@ -1,0 +1,12 @@
+{
+  "label": "final-lint",
+  "command": [
+    "npm",
+    "run",
+    "lint"
+  ],
+  "startedAt": "2026-10-12T22:30:51.822Z",
+  "finishedAt": "2026-10-12T22:32:07.203Z",
+  "exitCode": 0,
+  "output": "\n> cebspot@1.0.0 lint\n> tsc --noEmit\n\n"
+}

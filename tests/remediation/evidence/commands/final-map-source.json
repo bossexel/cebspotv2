@@ -1,0 +1,12 @@
+{
+  "label": "final-map-source",
+  "command": [
+    "npm",
+    "run",
+    "map:check"
+  ],
+  "startedAt": "2026-10-12T22:43:43.952Z",
+  "finishedAt": "2026-10-12T22:43:44.861Z",
+  "exitCode": 0,
+  "output": "\n> cebspot@1.0.0 map:check\n> node scripts/build-map.cjs --check\n\n"
+}

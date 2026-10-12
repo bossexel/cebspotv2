@@ -95,3 +95,7 @@ The [remaining root-package triage](docs/dependency-release-triage.md) records n
 
 Final native-link TypeScript and rebuilt Android Hermes export both pass. The final Android bundle is `index-0cb0408e5312afce9edd14865e91c231.hbc` (8.3 MB), built from 3407 modules with public backend variables cleared. Artifact hashes are refreshed; this remains offline verification, not an installed APK. No source change occurred after the relevant regression/build checks.
 
+## Final handoff boundary
+
+Runtime source commit `ae9b024`; final source manifest contains 193 hashes and all 15 ordered migration checksums. `final-closure-secret-scan` passes with 551 current files and 106 exported files, zero matches/oversized omissions and zero HEAD-tracked browser/scratch artifacts. Five historical sensitive filenames still require private investigation; no historical-clearance claim, rotation or rewrite was made. The final evidence/documentation commit changes no runtime source. Original unrelated user changes remain preserved. Exact external next steps and Android acceptance/rollback are in the linked handoff; **NO-GO** remains in effect.
+
