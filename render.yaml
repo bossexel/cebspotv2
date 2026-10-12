@@ -43,6 +43,8 @@ services:
         sync: false
       - key: SUPABASE_ANON_KEY
         sync: false
+      - key: ACCOUNT_DELETION_WORKER_TOKEN
+        sync: false
       - key: FACE_BLUR_ALLOWED_ORIGINS
         sync: false
       - key: FACE_BLUR_MAX_IMAGE_BYTES

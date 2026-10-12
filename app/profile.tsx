@@ -8,6 +8,7 @@ import {
   Bookmark,
   Calendar,
   ChevronRight,
+  Info,
   LogOut,
   MapPin,
   Moon,
@@ -353,6 +354,21 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Quick Actions</Text>
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="About CebSpot"
+          style={({ pressed }) => [styles.listItem, { backgroundColor: appColors.surfaceLow }, pressed && styles.pressed]}
+          onPress={() => router.push('/about')}
+        >
+          <View style={styles.settingIcon}>
+            <Info size={20} color={colors.primary} />
+          </View>
+          <View style={styles.listCopy}>
+            <Text style={[styles.listTitle, { color: appColors.onSurface }]}>About</Text>
+            <Text style={[styles.listSub, { color: appColors.onSurfaceVariant }]}>Our story, features, and common questions</Text>
+          </View>
+          <ChevronRight size={20} color={appColors.onSurfaceVariant} />
+        </Pressable>
+        <Pressable
           style={({ pressed }) => [styles.listItem, { backgroundColor: appColors.surfaceLow }, pressed && styles.pressed]}
           onPress={() => router.push('/gamification')}
         >
@@ -407,6 +423,10 @@ export default function ProfileScreen() {
           <ChevronRight size={20} color={appColors.onSurfaceVariant} />
         </Pressable>
       </View>
+
+      <Pressable accessibilityRole="button" style={styles.listItem} onPress={() => router.push('/account-deletion')}>
+        <Text style={[styles.listTitle, { color: colors.danger }]}>Delete account</Text>
+      </Pressable>
 
       <Pressable style={styles.logout} onPress={() => setLogoutConfirmationOpen(true)}>
         <LogOut size={20} color={colors.white} />

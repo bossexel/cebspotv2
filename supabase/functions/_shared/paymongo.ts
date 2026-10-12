@@ -25,8 +25,9 @@ export function getErrorMessage(error: unknown, fallback = 'Unexpected error.') 
   return fallback;
 }
 
-export function makeServiceClient() {
+export function makeServiceClient(timeoutMs?: number) {
   return createClient(getRequiredEnv('SUPABASE_URL'), getRequiredEnv('SUPABASE_SERVICE_ROLE_KEY'), {
+    ...(timeoutMs ? { global: { fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, { ...init, signal: AbortSignal.timeout(timeoutMs) }) } } : {}),
     auth: {
       persistSession: false,
       autoRefreshToken: false,

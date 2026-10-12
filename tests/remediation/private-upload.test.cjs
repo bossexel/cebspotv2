@@ -7,10 +7,11 @@ const helpers=load('supabase/functions/_shared/privateUpload.ts');
 const png=Uint8Array.from([137,80,78,71,13,10,26,10,0]);
 const resource='40000000-0000-4000-8000-000000000001';
 function fixture(options={}) {
-  let handler;const writes=[];let reads=0;
+  let handler;const writes=[];const removals=[];let reads=0;
   const record={id:resource,user_id:ids.a,status:'pending_payment',payment_required:true,payment_status:'pending',payment_method:null,hold_expires_at:new Date(Date.now()+300000).toISOString(),...options.record};
-  const client={from(){let matches=true;return {select(){reads++;return this},eq(key,value){matches &&= record[key]===value;return this},async single(){return {data:matches?record:null,error:null}}}},storage:{from(bucket){return {async upload(path,bytes,settings){writes.push({bucket,path,bytes,settings});return {error:options.failStorage?{}:null}}}}}};
+  const client={from(){let matches=true;return {select(){reads++;return this},eq(key,value){matches &&= record[key]===value;return this},async single(){return {data:matches?record:null,error:null}}}},storage:{from(bucket){return {async remove(paths){removals.push({bucket,paths});return {error:null}},async upload(path,bytes,settings){writes.push({bucket,path,bytes,settings});return {error:options.failStorage?{}:null}}}}}};
   client.rpc=async(name,args)=>{
+    if(name==='account_is_active')return {data:!options.deleted,error:null};
     reads++;
     if(options.rateLimited)return {data:{allowed:false,retry_after:60},error:null};
     const valid=args.customer_id===record.user_id && args.target_resource_id===record.id && record.payment_required
@@ -23,7 +24,7 @@ function fixture(options={}) {
     '../_shared/paymongo.ts':{makeServiceClient:()=>client,async getUserFromRequest(req){if(req.headers.get('authorization')!=='Bearer fixture-auth')throw Error('Auth');return {id:ids.a}}},
     '../_shared/privateUpload.ts':helpers,
   },{Request,Response,crypto:webcrypto,Deno:{serve(fn){handler=fn}}});
-  return {writes,get reads(){return reads},call({body=png,mime='image/png',auth='Bearer fixture-auth',id=resource,kind='reservation_proof',method='POST'}={}){return handler(new Request(`https://fixture.invalid/private-upload?kind=${kind}&resourceId=${id}`,{method,headers:{authorization:auth,'content-type':mime},...(method==='POST'?{body}:{} )}))}};
+  return {writes,removals,get reads(){return reads},call({body=png,mime='image/png',auth='Bearer fixture-auth',id=resource,kind='reservation_proof',method='POST'}={}){return handler(new Request(`https://fixture.invalid/private-upload?kind=${kind}&resourceId=${id}`,{method,headers:{authorization:auth,'content-type':mime},...(method==='POST'?{body}:{} )}))}};
 }
 test('unauthenticated upload is rejected before reading reservation or bytes',async()=>{
   const f=fixture();assert.equal((await f.call({auth:''})).status,401);assert.equal(f.reads,0);assert.equal(f.writes.length,0);
@@ -48,6 +49,10 @@ test('persistent admission refusal returns predictable 429 and Retry-After befor
 });
 test('storage failure has predictable 503 without exposing credentials or private content',async()=>{
   const f=fixture({failStorage:true});const response=await f.call();assert.equal(response.status,503);assert.deepEqual(Object.keys(await response.json()),['error']);
+});
+test('an upload completing after deletion begins is removed and never attached',async()=>{
+  const f=fixture({deleted:true});assert.equal((await f.call()).status,409);
+  assert.equal(f.removals.length,1);assert.equal(f.removals[0].paths[0],f.writes[0].path);
 });
 test('streaming body limit works without a Content-Length header and cancels the stream',async()=>{
   let cancelled=false;let chunks=0;

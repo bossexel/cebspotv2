@@ -1,4 +1,7 @@
 import asyncio
+import hmac
+import os
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -94,12 +97,25 @@ def create_app(settings=None, verifier=None, runtime=None, upload_timeout=30):
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.runtime = runtime
     app.add_middleware(UploadBoundary, runtime=runtime, verifier=verify, upload_timeout=upload_timeout)
-    app.add_middleware(CORSMiddleware, allow_origins=settings.allowed_origins, allow_methods=['GET', 'POST'],
+    app.add_middleware(CORSMiddleware, allow_origins=settings.allowed_origins, allow_methods=['GET', 'POST', 'DELETE'],
                        allow_headers=['Content-Type', 'Authorization'])
 
     @app.get('/health')
     async def health():
         return {'status': 'ok', 'service': 'cebspot-face-anonymizer'}
+
+    @app.delete('/internal/account-jobs/{owner_id}')
+    async def erase_account_jobs(request: Request, owner_id: str):
+        expected = os.getenv('ACCOUNT_DELETION_WORKER_TOKEN', '')
+        supplied = request.headers.get('Authorization', '').removeprefix('Bearer ')
+        if len(expected) < 32 or not hmac.compare_digest(expected, supplied):
+            raise HTTPException(401, 'Worker authentication required.')
+        try:
+            owner = str(uuid.UUID(owner_id))
+        except ValueError:
+            raise HTTPException(400, 'Invalid account identifier.') from None
+        pending = runtime.cancel_owner(owner)
+        return JSONResponse({'status': 'cancelling' if pending else 'cleared'}, status_code=202 if pending else 200)
 
     @app.post('/api/anonymize-jobs', status_code=202)
     async def create_job(request: Request, image: UploadFile = File(...)):
@@ -118,9 +134,14 @@ def create_app(settings=None, verifier=None, runtime=None, upload_timeout=30):
         finally:
             await image.close()
 
+    @app.delete('/api/anonymize-jobs')
+    async def cancel_jobs(request: Request):
+        pending = runtime.cancel_owner(request.state.owner)
+        return JSONResponse({'status': 'cancelling' if pending else 'cleared'}, status_code=202 if pending else 200)
+
     def owned_job(request, job_id):
         job = runtime.jobs.get(job_id)
-        if not job or job.owner != request.state.owner:
+        if not job or job.owner != request.state.owner or job.cancelled:
             raise HTTPException(404, 'Anonymization job not found.')
         return job
 

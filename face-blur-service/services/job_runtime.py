@@ -38,7 +38,16 @@ class SupabaseVerifier:
         try:
             with urlopen(request, timeout=5) as response:
                 user = json.loads(response.read(65536))
-            return str(uuid.UUID(user['id']))
+            owner = str(uuid.UUID(user['id']))
+            profile_request = Request(self.url + '/rest/v1/profiles?select=id&id=eq.' + owner,
+                headers={'apikey': self.key, 'Authorization': 'Bearer ' + token})
+            with urlopen(profile_request, timeout=5) as response:
+                profiles = json.loads(response.read(65536))
+            if not profiles or profiles[0].get('id') != owner:
+                raise AdmissionError(401, 'Account unavailable.')
+            return owner
+        except AdmissionError:
+            raise
         except HTTPError as error:
             raise AdmissionError(401 if error.code in (401, 403) else 503, 'Session validation unavailable or expired.') from None
         except Exception:
@@ -97,6 +106,7 @@ class Job:
     created: float
     status: str = 'uploading'
     result: dict | None = None
+    cancelled: bool = False
 
 
 class JobRuntime:
@@ -165,11 +175,25 @@ class JobRuntime:
         return job
 
     def enqueue(self, job, data, mime):
+        if job.cancelled or job.id not in self.jobs:
+            raise AdmissionError(409, 'Photo job cancelled.')
         if self.queue.full():
             raise AdmissionError(429, 'Photo queue is full. Retry later.')
         (job.directory / 'upload').write_bytes(data)
         job.status = 'queued'
         self.queue.put_nowait((job, mime))
+
+    def cancel_owner(self, owner):
+        pending = False
+        for job in list(self.jobs.values()):
+            if job.owner != owner:
+                continue
+            job.cancelled = True
+            if job.status in ('processing', 'delivering'):
+                pending = True
+            else:
+                self.remove(job.id)
+        return pending
 
     async def _worker(self):
         while True:
@@ -181,13 +205,19 @@ class JobRuntime:
                 # The runner kills and joins its child before returning. Cancelling
                 # its supervising thread would leave native image work running.
                 job.result = await self.runner(job, mime)
+                if job.cancelled:
+                    self.remove(job.id)
+                    continue
                 (job.directory / 'upload').unlink(missing_ok=True)
                 for source in job.directory.glob('*-source*'):
                     source.unlink(missing_ok=True)
                 job.status = 'complete'
             except Exception:
-                job.status = 'failed'
-                self._cleanup(job.directory)
+                if job.cancelled:
+                    self.remove(job.id)
+                else:
+                    job.status = 'failed'
+                    self._cleanup(job.directory)
             finally:
                 job.created = time.monotonic()
                 self.queue.task_done()

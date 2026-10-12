@@ -82,6 +82,54 @@ class SecurityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(status,200);self.assertEqual(headers[b'cache-control'],b'no-store');self.assertEqual(body,PNG_SIGNATURE)
         self.assertNotIn(job_id,self.runtime.jobs);self.assertEqual(list(self.runtime.root.glob('face-job-*')),[])
 
+    async def test_cancel_owner_never_cancels_other_users_and_removes_running_output(self):
+        self.gate.clear()
+        _,body,_,_=await request(self.app)
+        job_id=json.loads(body)['job_id']
+        await asyncio.sleep(.01)
+        _,other,_,_=await request(self.app,token='customer-b')
+        other_id=json.loads(other)['job_id']
+        status,_,_,_=await request(self.app,method='DELETE')
+        self.assertEqual(status,202)
+        self.assertIn(other_id,self.runtime.jobs)
+        self.assertEqual((await request(self.app,f'/api/anonymize-jobs/{job_id}',method='GET'))[0],404)
+        self.gate.set();await self.runtime.queue.join()
+        self.assertNotIn(job_id,self.runtime.jobs)
+        self.assertIn(other_id,self.runtime.jobs)
+        self.assertEqual((await request(self.app,method='DELETE',token=None))[0],401)
+
+    async def test_internal_account_cleanup_requires_server_secret(self):
+        from unittest.mock import patch
+        owner='30000000-0000-4000-8000-000000000001'
+        _,body,_,_=await request(self.app,token=owner)
+        await self.runtime.queue.join()
+        job_id=json.loads(body)['job_id']
+        token='synthetic-worker-token-at-least-32-characters'
+        with patch.dict('os.environ',{'ACCOUNT_DELETION_WORKER_TOKEN':token}):
+            self.assertEqual((await request(self.app,'/internal/account-jobs/'+owner,method='DELETE',token=owner))[0],401)
+            self.assertEqual((await request(self.app,'/internal/account-jobs/'+owner,method='DELETE',token=token))[0],200)
+        self.assertNotIn(job_id,self.runtime.jobs)
+
+    async def test_verifier_rejects_existing_auth_identity_with_locked_or_missing_profile(self):
+        from unittest.mock import patch
+        from services.job_runtime import SupabaseVerifier
+        owner='30000000-0000-4000-8000-000000000001'
+        class Reply:
+            def __init__(self, value): self.value=value
+            def __enter__(self): return self
+            def __exit__(self, *args): pass
+            def read(self, size): return json.dumps(self.value).encode()
+        with patch.dict('os.environ',{'SUPABASE_URL':'https://synthetic.invalid','SUPABASE_ANON_KEY':'synthetic-public-key'}):
+            verifier=SupabaseVerifier()
+        for profiles in ([],[{'id':owner}]):
+            with patch('services.job_runtime.urlopen',side_effect=[Reply({'id':owner}),Reply(profiles)]) as network:
+                if profiles: self.assertEqual(await verifier('synthetic'),owner)
+                else:
+                    with self.assertRaises(AdmissionError) as failure: await verifier('synthetic')
+                    self.assertEqual(failure.exception.status,401)
+                self.assertEqual(network.call_count,2)
+                self.assertIn('/rest/v1/profiles?',network.call_args[0][0].full_url)
+
     async def test_mime_size_stream_limit_timeout_and_interruption_cleanup(self):
         inputs=[({'mime':'text/html'},415),({'data':b'fake'},415),({'data':b''},413),({'raw':b'x'*66537},413)]
         for index,(kwargs,expected) in enumerate(inputs):

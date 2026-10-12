@@ -45,6 +45,9 @@ verify_jwt = true
 [functions.private-upload]
 verify_jwt = true
 
+[functions.delete-account]
+verify_jwt = true
+
 [functions.payment-maintenance]
 verify_jwt = false
 

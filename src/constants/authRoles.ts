@@ -39,7 +39,7 @@ export function getRoleHome(role: AppRole): '/admin' | '/owner-dashboard' | '/' 
 }
 
 export function canAccessRootRoute(role: AppRole, rootRoute: string) {
-  if (rootRoute === 'auth' || rootRoute === 'reset-password' || rootRoute === 'privacy') return true;
+  if (rootRoute === 'auth' || rootRoute === 'reset-password' || rootRoute === 'privacy' || rootRoute === 'account-deletion') return true;
   if (rootRoute === 'admin-sandbox' || rootRoute === 'admin-studio') return __DEV__;
   if (role === 'admin') return rootRoute === 'admin';
   if (role === 'owner') return rootRoute === 'owner-dashboard';

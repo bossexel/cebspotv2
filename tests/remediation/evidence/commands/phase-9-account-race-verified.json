@@ -1,0 +1,12 @@
+{
+  "label": "phase-9-account-race-verified",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/account-deletion.test.cjs"
+  ],
+  "startedAt": "2026-10-12T22:22:56.186Z",
+  "finishedAt": "2026-10-12T22:23:07.108Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: account erasure RPCs are service-only for all client roles\nok 1 - account erasure RPCs are service-only for all client roles\n  ---\n  duration_ms: 9225.7851\n  type: 'test'\n  ...\n# Subtest: assigned owners/admins and active reservations block deletion without changing data\nok 2 - assigned owners/admins and active reservations block deletion without changing data\n  ---\n  duration_ms: 77.4214\n  type: 'test'\n  ...\n# Subtest: deletion freezes old sessions, stops sharing and transfers circle ownership\nok 3 - deletion freezes old sessions, stops sharing and transfers circle ownership\n  ---\n  duration_ms: 84.8058\n  type: 'test'\n  ...\n# Subtest: bounded quiescence and file cleanup prevent premature Auth deletion\nok 4 - bounded quiescence and file cleanup prevent premature Auth deletion\n  ---\n  duration_ms: 73.1981\n  type: 'test'\n  ...\n# Subtest: personal data is removed while financial identifiers/amounts/dates survive; retries are idempotent\nok 5 - personal data is removed while financial identifiers/amounts/dates survive; retries are idempotent\n  ---\n  duration_ms: 45.4845\n  type: 'test'\n  ...\n# Subtest: a booking queued behind deletion cannot recreate customer data\nok 6 - a booking queued behind deletion cannot recreate customer data\n  ---\n  duration_ms: 404.1026\n  type: 'test'\n  ...\n1..6\n# tests 6\n# suites 0\n# pass 6\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 10736.6709\n"
+}

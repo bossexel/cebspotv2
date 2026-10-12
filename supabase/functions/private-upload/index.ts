@@ -8,7 +8,7 @@ Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return jsonResponse({ error: 'Method not allowed.' }, 405);
   try {
-    const client = makeServiceClient();
+    const client = makeServiceClient(15000);
     let user;
     try { user = await getUserFromRequest(request, client); }
     catch { return jsonResponse({ error: 'Authentication required.' }, 401); }
@@ -35,6 +35,11 @@ Deno.serve(async (request: Request) => {
     const bucket = kind === 'owner_document' ? 'owner-verification-documents' : 'payment-proofs';
     const uploaded = await client.storage.from(bucket).upload(path, bytes, { contentType: mime, upsert: false });
     if (uploaded.error) return jsonResponse({ error: 'Private upload unavailable. Retry while your hold is active.' }, 503);
+    const active = await client.rpc('account_is_active', { customer_id: user.id });
+    if (active.error || active.data !== true) {
+      await client.storage.from(bucket).remove([path]);
+      return jsonResponse({ error: 'Account unavailable. Upload was not attached.' }, active.error ? 503 : 409);
+    }
     return jsonResponse({ path }, 201);
   } catch (error) {
     if (error instanceof UploadError) return jsonResponse({ error: error.message }, error.status);

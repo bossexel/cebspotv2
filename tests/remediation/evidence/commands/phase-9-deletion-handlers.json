@@ -1,0 +1,12 @@
+{
+  "label": "phase-9-deletion-handlers",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/account-deletion-handler.test.cjs"
+  ],
+  "startedAt": "2026-10-12T22:10:11.866Z",
+  "finishedAt": "2026-10-12T22:10:12.167Z",
+  "exitCode": 1,
+  "output": "TAP version 13\n# C:\\\\Users\\\\9real\\\\Downloads\\\\cebspotv3\\\\tests\\\\remediation\\\\account-deletion-handler.test.cjs:17\n#  client.storage={from(bucket){return {async remove(paths){calls.push('storage-remove');if(state.failStorage)return {error:{}};await db.exec('reset role');await db.query('delete from storage.objects where bucket_id=$1 and name=any($2::text[])',[bucket,paths]);return {error:null}}}};\n#                                                                                                                                                                                                                                                                                          ^\n# SyntaxError: Unexpected token ';'\n#     at wrapSafe (node:internal/modules/cjs/loader:1620:18)\n#     at Module._compile (node:internal/modules/cjs/loader:1662:20)\n#     at Object..js (node:internal/modules/cjs/loader:1820:10)\n#     at Module.load (node:internal/modules/cjs/loader:1423:32)\n#     at Function._load (node:internal/modules/cjs/loader:1246:12)\n#     at TracingChannel.traceSync (node:diagnostics_channel:322:14)\n#     at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)\n#     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n#     at node:internal/main/run_main_module:36:49\n# Node.js v22.18.0\n# Subtest: tests\\\\remediation\\\\account-deletion-handler.test.cjs\nnot ok 1 - tests\\\\remediation\\\\account-deletion-handler.test.cjs\n  ---\n  duration_ms: 101.1167\n  type: 'test'\n  location: 'C:\\\\Users\\\\9real\\\\Downloads\\\\cebspotv3\\\\tests\\\\remediation\\\\account-deletion-handler.test.cjs:1:1'\n  failureType: 'testCodeFailure'\n  exitCode: 1\n  signal: ~\n  error: 'test failed'\n  code: 'ERR_TEST_FAILURE'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 0\n# fail 1\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 123.4988\n"
+}
