@@ -5,6 +5,8 @@ import type { Circle, CircleInvite, CircleMember } from '../types';
 const localCircles: Circle[] = [...sampleCircles];
 const localInvites = new Map<string, CircleInvite>();
 
+export type CircleSharingState = { enabled: boolean; generation: string | null };
+
 function generateLocalInviteCode() {
   const letters = Array.from({ length: 3 }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join('');
   const numbers = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
@@ -12,6 +14,38 @@ function generateLocalInviteCode() {
 }
 
 export const circleService = {
+  async getLocationSharing(userId: string): Promise<CircleSharingState> {
+    if (!hasSupabaseConfig) throw new Error('A connected account is required.');
+    const { data, error } = await supabase.from('circle_location_shares').select('enabled,generation').eq('user_id',userId).maybeSingle();
+    if (error) throw error;
+    return data ?? {enabled:false,generation:null};
+  },
+  async setLocationSharing(enabled: boolean): Promise<CircleSharingState> {
+    const { data,error }=await supabase.rpc('set_circle_location_sharing',{share_enabled:enabled});
+    if(error)throw error;
+    const row=Array.isArray(data)?data[0]:data;
+    if(!row || row.enabled!==enabled || typeof row.generation!=='string')throw new Error('Sharing choice was not confirmed.');
+    return row;
+  },
+  async publishLocation(generation: string, latitude: number, longitude: number) {
+    const {data,error}=await supabase.rpc('publish_circle_location',{share_generation:generation,latitude_input:latitude,longitude_input:longitude});
+    if(error)throw error;
+    if(data!==true)throw new Error('Location sharing was not confirmed.');
+  },
+  async leaveCircle(circleId: string) {
+    const {data,error}=await supabase.rpc('leave_circle',{target_circle_id:circleId});
+    if(error)throw error;
+    if(data!==true)throw new Error('Leaving the circle was not confirmed.');
+  },
+  subscribeToMembers(circleId: string, callback: (members: CircleMember[]) => void) {
+    let active=true;
+    const refresh=()=>{void this.getCircleMembers(circleId).then(members=>{if(active)callback(members)}).catch(()=>{if(active)callback([])});};
+    const channel=supabase.channel(`circle-members-${circleId}-${Math.random().toString(36).slice(2)}`)
+      .on('postgres_changes',{event:'*',schema:'public',table:'circles',filter:`id=eq.${circleId}`},refresh).subscribe();
+    // Expire cached positions and memberships even if realtime disconnects.
+    const timer=setInterval(refresh,15000);
+    return ()=>{active=false;clearInterval(timer);void supabase.removeChannel(channel)};
+  },
   async getUserCircles(userId: string): Promise<Circle[]> {
     if (!hasSupabaseConfig) return localCircles;
 

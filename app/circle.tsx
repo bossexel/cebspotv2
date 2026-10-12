@@ -10,7 +10,7 @@ import { useAuth } from '../src/hooks/useAuth';
 import { useLocation } from '../src/hooks/useLocation';
 import { useTheme } from '../src/hooks/useTheme';
 import { circleService } from '../src/services/circleService';
-import { profileService } from '../src/services/profileService';
+import { CirclePrivacyControls } from '../src/components/CirclePrivacyControls';
 import type { Circle, CircleInvite, CircleMember } from '../src/types';
 
 const defaultMapCenter = { latitude: 10.321, longitude: 123.901 };
@@ -57,6 +57,7 @@ export default function CircleScreen() {
     getCurrentLocation,
   } = useLocation();
   const requestedLocationRef = useRef(false);
+  const sharingGenerationRef = useRef<string | null>(null);
   const [circles, setCircles] = useState<Circle[]>([]);
   const [members, setMembers] = useState<CircleMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,6 +135,8 @@ export default function CircleScreen() {
     };
   }, [previewCircle?.id]);
 
+  useEffect(() => previewCircle ? circleService.subscribeToMembers(previewCircle.id, setMembers) : undefined, [previewCircle?.id]);
+
   const visibleMembers = useMemo(() => {
     const memberMap = new Map(members.map((member) => [member.id, member]));
     const currentUserBelongs = Boolean(
@@ -203,6 +206,7 @@ export default function CircleScreen() {
   }, [location, visibleMembers]);
 
   const refreshUserLocation = useCallback(async (showError = true) => {
+    const sharingGeneration = sharingGenerationRef.current;
     const nextLocation = await getCurrentLocation();
     if (!nextLocation) {
       if (showError) Alert.alert('Location unavailable', 'Enable location access to show your position on the Circle map.');
@@ -210,12 +214,9 @@ export default function CircleScreen() {
     }
 
     setMapCenter({ latitude: nextLocation.latitude, longitude: nextLocation.longitude });
-    if (user?.id) {
+    if (user?.id && sharingGeneration && sharingGenerationRef.current === sharingGeneration) {
       try {
-        await profileService.updateProfile(user.id, {
-          location: { lat: nextLocation.latitude, lng: nextLocation.longitude },
-          last_location_update: new Date(nextLocation.timestamp).toISOString(),
-        });
+        await circleService.publishLocation(sharingGeneration,nextLocation.latitude,nextLocation.longitude);
       } catch (error) {
         console.warn('Unable to publish Circle location:', error);
       }
@@ -335,6 +336,10 @@ export default function CircleScreen() {
 
   return (
     <ScreenContainer appColors={appColors} showBottomNav scroll scrollEnabled={!mapInteracting}>
+      {previewCircle && <CirclePrivacyControls circleId={previewCircle.id}
+        onSharingChanged={state => { sharingGenerationRef.current = state.enabled ? state.generation : null; }}
+        onEnabled={() => { void refreshUserLocation(true); }}
+        onLeft={() => { sharingGenerationRef.current = null; setMembers([]); setCircleInvite(null); setCircles(current => current.filter(item => item.id !== previewCircle.id)); }} />}
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <Text style={[styles.title, { color: appColors.onSurface }]}>Circle</Text>

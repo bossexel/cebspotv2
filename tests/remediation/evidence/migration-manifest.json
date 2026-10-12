@@ -49,6 +49,10 @@
     {
       "name": "20261013000600_server_reservation_details.sql",
       "sha256": "77f9f46dc49f961a1f0aece0658aca2da5154ea87759d71c9451afb126713549"
+    },
+    {
+      "name": "20261013000700_circle_location_controls.sql",
+      "sha256": "1e036ebcbb0b962116e02fa3ba9683399edc7bc64b6878d010b89b3c821c88fd"
     }
   ]
 }
