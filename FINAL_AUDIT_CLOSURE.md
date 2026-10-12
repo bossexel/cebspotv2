@@ -9,6 +9,7 @@ Updated: 2026-10-13 (Asia/Manila).
 | Group | Work | Verification | Disposition |
 |---|---|---|---|
 | Phase 1 | Captured initial HEAD/status/staged and unstaged diffs without discarding edits; created approved local branch | Refreshed typecheck passed; backend/platform 146 passed, 5 skipped | Baseline complete; original map failure and external gates retained |
+| Phase 2 / LA-01 | Explicit public allowlist; restrictive activity guard; authoritative owner relation; forged-event and profile identity protection | 11 isolated SQL tests passed across six roles, including overlapping permissive policy | Local implementation verified in isolated fixture; full-schema/API/staging gate remains open |
 
 ## Command record
 
@@ -18,6 +19,8 @@ Read-only planning checks and their outcomes are recorded in REMEDIATION_STATUS.
 - Initial status and baseline diff capture: passed; snapshot is ignored and contains no published private data.
 - `node scripts/remediation-check.cjs phase-1-typecheck npm run typecheck`: passed.
 - `node scripts/remediation-check.cjs phase-1-backend node --test tests/backend/*.test.cjs tests/platform/*.test.cjs`: passed, 146 passed / 5 skipped (not database concurrency acceptance).
+- `node scripts/remediation-check.cjs phase-2-activity-privacy node --test tests/remediation/activity-privacy.test.cjs`: failed because the fixture admin function inherited an empty search path. Corrected fixture to use a qualified table and pinned search path; failed evidence retained.
+- `node scripts/remediation-check.cjs phase-2-activity-privacy-verified node --test tests/remediation/activity-privacy.test.cjs`: 11 passed.
 
 ## Deliverables pending
 
