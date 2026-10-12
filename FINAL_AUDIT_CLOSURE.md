@@ -2,7 +2,7 @@
 
 Updated: 2026-10-13 (Asia/Manila).
 
-**Recommendation: NO-GO.** Implementation is in progress; no P0/P1 finding is closed yet. See [REMEDIATION_STATUS.md](REMEDIATION_STATUS.md) for acceptance criteria and exact external next steps.
+**Recommendation: NO-GO for user testing/production.** Local implementations and retained tests pass as recorded below; deployed P0/P1 acceptance is still blocked by isolated staging/Auth/Storage/provider/device verification. LA-08/09 are outside Android scope, not repaired web features. The final Android export is backend-disabled verification bytecode, not an installable or staging-approved release candidate. See [handoff, staging, manual tests and rollback](docs/android-release-candidate.md) and [REMEDIATION_STATUS.md](REMEDIATION_STATUS.md).
 
 ## Execution log
 
@@ -39,9 +39,9 @@ The phase 3 commit includes the two pre-existing untracked October migrations un
 
 Phase 4 touches previously modified reservation/owner screens and inventory/spot/type modules. Their existing changes are preserved; focused path commits necessarily retain those in-scope dependencies. The initial snapshot remains available to distinguish pre-existing work.
 
-## Deliverables pending
+## Release deliverables
 
-LA-by-LA verified fixes, changed-file/commit manifest, migration order and checksums, regression outcomes, Android manual checklist, isolated staging instructions, rollback instructions, final artifact hashes, and final release recommendation.
+The [Android release handoff](docs/android-release-candidate.md) links the LA-by-LA findings, changed-file/source manifests, ordered migration checksums, retained command outcomes and final artifact hashes. It includes exact staging/Render redeployment steps, the Android manual checklist, rollback boundaries and the NO-GO recommendation. External acceptance gates remain open.
 
 ## Unverified claims and boundaries
 
@@ -109,4 +109,8 @@ Latest focused SQL race suite passed 6 checks and face service passed 12 checks;
 Dependency updates reduce npm findings from 77 (2 critical) to 65 (0 critical). A real Expo Windows extraction test caught tar 7's removed default export; a narrow idempotent postinstall patch supports both affected Expo archive paths, verified against each actual helper. The Python upload stack and local installer tools were patched; final installed-environment audit reports no known vulnerabilities. Container/Linux and native APK dependency acceptance remain unverified. No forced SDK upgrade was used.
 
 Generated browser/scratch tracking was removed in `a8f7d1d` without removing local files or rewriting history. The original staging deletions were committed separately after checking that the index contained only the intended generated directories. Required existing Android source/test dependencies are retained as their own reviewable group; unrelated user work remains untouched.
+
+## Final deletion concurrency correction
+
+The retained `deletion-assignment-race-red` test reproduced an owner assignment after deletion began. Migration `20261013000900_block_deleting_owner_assignments.sql` rejects assignments to inactive/deleting accounts and serializes assignments with deletion using venue-then-profile locks. `deletion-assignment-concurrency` passes all 13 account/replay checks, including a grant that started before the deletion transaction committed. This is a local PostgreSQL result, not deployed Auth acceptance. No existing account or hosted data was changed.
 

@@ -75,3 +75,23 @@ test('a booking queued behind deletion cannot recreate customer data',async()=>{
   await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from reservations where user_id=$1',[customer])).rows[0].n,0);
  }finally{await deleting.query('rollback').catch(()=>{});await deleting.end();await creating.end();}
 });
+test('venue assignments cannot be added to a deleting account between cleanup and Auth removal',async()=>{
+ const customer='30000000-0000-4000-8000-000000000007';await server();
+ await assert.rejects(db.query('update spots set owner_id=$1 where id=$2',[customer,ids.venue]),/active account/);
+ await assert.rejects(db.query('insert into owner_spot_access(owner_id,spot_id) values($1,$2)',[customer,ids.venue]),/active account/);
+ assert.equal((await db.query('select owner_id from spots where id=$1',[ids.venue])).rows[0].owner_id,ids.owner);
+ await db.query('update spots set owner_id=$1 where id=$2',[ids.other,ids.discovery]);
+ assert.equal((await db.query('select owner_id from spots where id=$1',[ids.discovery])).rows[0].owner_id,ids.other);
+});
+test('an owner grant started before deletion commits cannot pass a stale active-account check',async()=>{
+ const customer='30000000-0000-4000-8000-000000000008';await server();await db.exec('reset role');
+ await db.query("insert into auth.users(id,email) values($1,'owner-race@synthetic.example.test')",[customer]);
+ const deleting=await db.connect(),granting=await db.connect();
+ try {
+  await db.as(null,deleting,'service_role');await deleting.query('begin');await deleting.query('select begin_account_deletion($1)',[customer]);
+  await db.as(null,granting,'service_role');
+  const outcome=granting.query('insert into owner_spot_access(owner_id,spot_id) values($1,$2)',[customer,ids.discovery]).then(value=>({value}),error=>({error}));
+  await new Promise(resolve=>setTimeout(resolve,75));await deleting.query('commit');
+  assert.match((await outcome).error?.message??'',/active account/);
+ }finally{await deleting.query('rollback').catch(()=>{});await deleting.end();await granting.end();}
+});

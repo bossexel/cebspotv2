@@ -53,6 +53,14 @@
     {
       "name": "20261013000700_circle_location_controls.sql",
       "sha256": "1e036ebcbb0b962116e02fa3ba9683399edc7bc64b6878d010b89b3c821c88fd"
+    },
+    {
+      "name": "20261013000800_account_erasure.sql",
+      "sha256": "4171be5264f8385d74034a48d90b1e7b192a1521cac07e059a8b57b9080dfc98"
+    },
+    {
+      "name": "20261013000900_block_deleting_owner_assignments.sql",
+      "sha256": "c74ddd052955285973859f6bf75e87df05eecc969772607879a7b8311cafecdc"
     }
   ]
 }

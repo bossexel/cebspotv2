@@ -4,6 +4,8 @@ Updated: 2026-10-13 (Asia/Manila). Branch: `audit-remediation-2026-10-12`.
 
 Release decision: **NO-GO**. No audit finding is closed by a passing build alone.
 
+Final handoff: [Android release candidate verification, staging steps, manual checklist and rollback](docs/android-release-candidate.md). Exact retained commands/outcomes, changed-file list, migration application order/checksums, source hashes and final artifact hashes are linked there. Local code acceptance passes; deployed/physical-device gates and remaining dependency/history review stay open.
+
 ## Release contract
 
 - Customer/owner: Android only. Render admin remains supported.
@@ -78,4 +80,8 @@ Migration `20261013000800_account_erasure.sql` adds a resumable service-only cle
 Final native remediation suite: **127 passed, 0 failed** (`final-remediation`). Existing backend/platform suite: **127 passed, 5 skipped** (`final-backend-and-platform`). Existing isolated performance helpers: 10 passed. The patched face stack passes 12 tests; its installed Windows environment advisory scan reports no known vulnerabilities. Android Hermes (8.3 MB) and isolated admin (4.01 MB) exports pass; the final admin browser artifact passes intercepted-traffic checks. The Android export is explicitly **offline verification only**, with backend configuration removed, not an installable/staging-approved release candidate.
 
 The source-retention commit includes pre-existing Android source changes and required table/time/dev-route dependencies used by these exports. It preserves those changes rather than recreating a different source state. Initial diffs remain in the ignored baseline snapshot. Generated browser/scratch files and Expo device settings were removed from tracking in a separate hygiene commit; local files and Git history were not rewritten. Remaining unrelated user documents, tools and obsolete payment fixture changes are retained outside focused commits.
+
+## Account deletion assignment race follow-up
+
+Migration `20261013000900_block_deleting_owner_assignments.sql` follows 008. A retained failing regression demonstrated new venue responsibilities being attached to an account after deletion began. The guard now locks venue then profile, checks account activity after concurrent deletion commits, and rejects both direct venue assignment and delegated owner access. `deletion-assignment-concurrency`: **13 passed**, covering eight account checks plus complete migration replay/upgrade and role isolation. Matching-engine/Supabase/device gates remain open.
 
