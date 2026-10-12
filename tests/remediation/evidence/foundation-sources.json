@@ -1,0 +1,34 @@
+[
+  {
+    "file": "supabase-schema.sql",
+    "sha256": "dd0cf22c153a3bcf8cd7cb7e4f7ef67508f1d9e8a2e4ad97e2809db9f928ec92"
+  },
+  {
+    "file": "supabase-reservation-locking.sql",
+    "sha256": "34618e9c7ed82095f0449dea53645b75526aa224b1adad4669cd185fc1322abf"
+  },
+  {
+    "file": "supabase-admin-dashboard.sql",
+    "sha256": "0c2e309c78a290a4b257b97c9fbbb889d9a2f9545004b2e35188c84d70107509"
+  },
+  {
+    "file": "supabase-gamification.sql",
+    "sha256": "ed13903f3ddc0544024357a70d2cd301128b38b70277c9e58b959fedd1994fb4"
+  },
+  {
+    "file": "supabase-review-interactions.sql",
+    "sha256": "2e0d191db5b951cfc554aee316309abe90c30ca01f1c2d06e2a40d05821eff93"
+  },
+  {
+    "file": "supabase-dedicated-owner-accounts.sql",
+    "sha256": "67efd74423f5b299853a5235e7da6145983688a819133fb42dd79c4292cc796c"
+  },
+  {
+    "file": "supabase-fix-owner-request-rejection.sql",
+    "sha256": "abe60efae714d71846bf51f1eceb68f868a8f18656495d7f6d36af717e92ef30"
+  },
+  {
+    "file": "supabase-remove-visit-checkins.sql",
+    "sha256": "53309428317b3363f0b92794dfe4d636e640d8e3ead6de4ba6218c369f536f9f"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "label": "phase-3-complete-migrations-bom-corrected",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/migrations.test.cjs"
+  ],
+  "startedAt": "2026-10-12T17:30:29.905Z",
+  "finishedAt": "2026-10-12T17:30:37.183Z",
+  "exitCode": 1,
+  "output": "TAP version 13\n# Subtest: the complete timestamped migration chain creates required booking surfaces\nnot ok 1 - the complete timestamped migration chain creates required booking surfaces\n  ---\n  duration_ms: 6578.9297\n  type: 'test'\n  location: 'C:\\\\Users\\\\9real\\\\Downloads\\\\cebspotv3\\\\tests\\\\remediation\\\\migrations.test.cjs:8:1'\n  failureType: 'testCodeFailure'\n  error: |-\n    Expected values to be strictly equal:\n    + actual - expected\n    \n    + null\n    - 'physical_venue_tables'\n    \n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected: 'physical_venue_tables'\n  actual: ~\n  operator: 'strictEqual'\n  stack: |-\n    TestContext.<anonymous> (C:\\Users\\9real\\Downloads\\cebspotv3\\tests\\remediation\\migrations.test.cjs:10:12)\n    process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    async Test.run (node:internal/test_runner/test:1054:7)\n    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)\n  ...\n# Subtest: fresh installation has no business/demo fixtures and does have required guards\nok 2 - fresh installation has no business/demo fixtures and does have required guards\n  ---\n  duration_ms: 14.9023\n  type: 'test'\n  ...\n# Subtest: migration version/checksum manifest is retained\nok 3 - migration version/checksum manifest is retained\n  ---\n  duration_ms: 1.8086\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 2\n# fail 1\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 7094.4627\n"
+}

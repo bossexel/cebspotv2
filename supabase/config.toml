@@ -1,3 +1,41 @@
+project_id = "cebspot-remediation-local"
+
+[api]
+enabled = true
+port = 54351
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54352
+shadow_port = 54350
+major_version = 17
+
+[db.seed]
+enabled = false
+
+[studio]
+enabled = true
+port = 54353
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:8081"
+additional_redirect_urls = ["cebspot://**", "http://localhost:8084/**"]
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+
+[analytics]
+enabled = false
+
 [functions.paymongo-webhook]
 verify_jwt = false
 

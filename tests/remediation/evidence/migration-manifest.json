@@ -1,0 +1,34 @@
+{
+  "kind": "complete-native-postgresql-replay",
+  "limitations": "Auth/Storage schemas are contract fixtures; not a Supabase stack reset or API verification.",
+  "migrations": [
+    {
+      "name": "20260901000000_schema_foundation.sql",
+      "sha256": "b8e0e5283f0bd941d13dfbf920def1989169113d620c7777ab52ef09ffcf9ee4"
+    },
+    {
+      "name": "20260901000100_feature_foundation.sql",
+      "sha256": "c0fa9bf664a08f3c0d861d7546ac50a96c957ea5f1e547fc5133d7f148579004"
+    },
+    {
+      "name": "20260912000100_reservation_attendance.sql",
+      "sha256": "12f70227011ff23352d6061beeb7cbfa9c1c814d9a5c95148916c2a99fa1b992"
+    },
+    {
+      "name": "20260915000100_admin_identity_cutover.sql",
+      "sha256": "a55af0fd885a44e27684b169314ac2f5a8673c44a2bb3f06fb6d2eb1abe8cf85"
+    },
+    {
+      "name": "20261006000100_audit_authorization_hardening.sql",
+      "sha256": "7b980712bdf2518458aa83e2714bd280638a5e164f3589f2511406536b841cf0"
+    },
+    {
+      "name": "20261011000100_table_booking_policy_and_walk_ins.sql",
+      "sha256": "988edf657e405c8c83d4672edcb5136984d88ad4166a0f62acd677459e2084b7"
+    },
+    {
+      "name": "20261013000100_activity_privacy.sql",
+      "sha256": "53d9513b16551b6b03772b2f7c1fa93a9b2dece93a2532874f1b0bb7f4e96cf5"
+    }
+  ]
+}

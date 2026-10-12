@@ -17,8 +17,8 @@ Release decision: **NO-GO**. No audit finding is closed by a passing build alone
 
 | Finding | Current status | Files / planned changes | Acceptance tests / evidence |
 |---|---|---|---|
-| LA-01 activity privacy | Implemented; 11 isolated SQL tests pass; full-schema/API/staging verification pending, P0 not closed | `20261013000100_activity_privacy.sql`; `tests/remediation/activity-privacy.test.cjs` | Six roles, secondary owner, overlapping allow-all policy, forged events, profile identity escalation; evidence `phase-2-activity-privacy-verified.json` |
-| LA-02 schema history | Open P1 | Foundation and forward `supabase/migrations`; complete replay harness | Fresh replay and upgrade equivalence; required RPCs/tables/policies/indexes; full local stack reset pending runtime |
+| LA-01 activity privacy | Isolated and complete-schema SQL tests pass; API/staging verification pending, deployed P0 not closed | `20261013000100_activity_privacy.sql`; activity and migration tests | Six roles, secondary owner, overlapping policy, forged events/profile escalation; evidence `phase-3-replay-upgrade-and-roles.json` |
+| LA-02 schema history | Complete native PostgreSQL replay and isolated upgrade equivalence pass; full Supabase reset/API/staging pending | Two `20260901` foundation migrations; `supabase/MIGRATIONS.md`; complete replay harness | 16 SQL checks pass across migration/privacy suites; required surfaces and no business seeds; manifest retained |
 | LA-03 inventory | Open P1 | Reservation eligibility migration and client inventory guards | Sole allowed venue + real inventory; discovery-only elsewhere; stale availability/races |
 | LA-04 manual proof | Open P1 | Authenticated upload endpoint, protected submission RPC, checkout/proof services | Upload/submission/review/approval; six-role private access; forged trusted fields |
 | LA-05 checkout retries | Open P1 | Durable attempts in reservation_payments; checkout handlers | Retry/race/session reuse/retirement/provider-success-local-failure |
