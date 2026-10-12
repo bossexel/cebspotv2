@@ -1,0 +1,23 @@
+# Dependency release triage
+
+The final retained npm registry report contains 65 affected packages, including parents affected through another dependency: 36 high and 29 moderate, with zero critical. These are not 65 independent root vulnerabilities. The installed Windows Python environment has zero known findings; the Linux container is unscanned. See [machine-readable advisories](../tests/remediation/evidence/dependency-triage.json) and the exact install/audit reports in the command record.
+
+Safe updates within existing ranges removed the critical shell-quote and tar findings and other advisories. Tar 7 requires the reviewed idempotent Expo extraction compatibility patch; both actual archive helpers pass round-trip tests after a clean lockfile install. No forced SDK replacement or downgrade was applied.
+
+The following is a source/lockfile-based assessment, not an Android binary security certification. Parent edges come from the final `package-lock.json`; registry severity alone does not establish exploitability or release priority.
+
+| Remaining root package | Observed dependency path | Release disposition / next verification |
+|---|---|---|
+| `decode-uri-component` | `query-string`, imported by installed Expo Router | Android external-link input is relevant. `app/+native-intent.tsx` rejects malformed percent encoding, control characters and inputs over 8192 characters before initial/subsequent links reach Router. Actual installed Router hook tests pass and valid payment/OAuth/Unicode links are preserved. The vulnerable dependency remains: verify the workaround on a physical APK, and migrate to the maintained decoder with an explicitly reviewed CommonJS/ESM integration after capstone stabilization. This is mitigation, not dependency removal. |
+| `@xmldom/xmldom` | `@expo/plist` and `plist` | Build/config XML handling. Review config/plugin inputs and patched-version compatibility; do not feed untrusted XML into the build. The current range includes old 0.7 and 0.9 instances, so no blind global version substitution. Native build verification is outstanding. |
+| `ajv` | Remaining vulnerable instance is pinned by `expo-dev-launcher` to 8.11.0 | Advisory concerns `$data` validation. Preview/native dev-launcher inclusion and actual option use need APK/config review. Other updated AJV instances do not close this pinned copy. |
+| `braces` | `micromatch` | Pattern matching used by build tooling. Review untrusted pattern entry points and a compatible parser replacement. No claim that every downstream path is unreachable. |
+| `image-size` | `metro` | Build-time asset inspection; malicious bundled image inputs are relevant. Current range prevents the major patched parser replacement. Review repository assets and build trust boundary; real face-service uploads use separate patched Python image processing. |
+| `node-forge` | Expo CLI/code-signing tools and `selfsigned` | Build/dev-server and signing tooling. Keep build inputs and signing material private; inspect actual certificate-verification calls and compatible patches before security signoff. This remains an unresolved tooling advisory, not a cleared finding. |
+| `postcss` | `@expo/metro-config`, constrained to ~8.4.32 | CSS/source-map build handling. Review trusted CSS/source maps and compatible SDK/tool patch. Admin export succeeds but does not prove protection against malicious build inputs. |
+| `sprintf-js` | `argparse` | CLI formatting; inspect whether external values can control format/precision before accepting exposure. Registry proposes an incompatible React Native upgrade; that proposal was not applied. |
+| `uuid` | Expo logging/telemetry/ngrok and `xcode` | Advisory targets specific UUID versions with caller-provided output buffers. Audit actual API use and Android/build inclusion; no blanket dismissal because an iOS tool is among the parents. |
+
+The decoder maintainer identifies version 0.5.0 as the rewrite and offers input-size limits as a workaround. Its published package is ESM, while the installed `query-string` calls CommonJS `require`; a forced override alone is not a verified compatibility fix. Sources: [maintainer release](https://github.com/SamVerschueren/decode-uri-component/releases/tag/v0.5.0), [maintainer package metadata](https://github.com/SamVerschueren/decode-uri-component/blob/v0.5.0/package.json), [maintainer security advisory](https://github.com/SamVerschueren/decode-uri-component/security/advisories/GHSA-vcc3-ghjq-m6fr).
+
+Residual advisories require review in the actual APK/build/container environment before a release GO. No clean npm audit or complete runtime non-reachability claim is made. Credential rotation and history rewriting remain separate explicitly approved operations.

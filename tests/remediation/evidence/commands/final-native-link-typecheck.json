@@ -1,0 +1,12 @@
+{
+  "label": "final-native-link-typecheck",
+  "command": [
+    "npm",
+    "run",
+    "typecheck"
+  ],
+  "startedAt": "2026-10-12T23:30:30.893Z",
+  "finishedAt": "2026-10-12T23:31:15.010Z",
+  "exitCode": 0,
+  "output": "\n> cebspot@1.0.0 typecheck\n> tsc --noEmit\n\n"
+}

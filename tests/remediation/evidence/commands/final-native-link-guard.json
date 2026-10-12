@@ -1,0 +1,12 @@
+{
+  "label": "final-native-link-guard",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/native-links.test.cjs"
+  ],
+  "startedAt": "2026-10-12T23:30:03.309Z",
+  "finishedAt": "2026-10-12T23:30:04.360Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: external malformed/oversized links are rejected before the legacy query decoder\nok 1 - external malformed/oversized links are rejected before the legacy query decoder\n  ---\n  duration_ms: 3.0638\n  type: 'test'\n  ...\n# Subtest: valid provider return, encoded contacts, Unicode and OAuth links remain unchanged\nok 2 - valid provider return, encoded contacts, Unicode and OAuth links remain unchanged\n  ---\n  duration_ms: 0.8026\n  type: 'test'\n  ...\n# Subtest: installed Expo Router invokes the guard for initial and subsequent native links\nok 3 - installed Expo Router invokes the guard for initial and subsequent native links\n  ---\n  duration_ms: 101.1558\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 898.8292\n"
+}
