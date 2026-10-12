@@ -12,6 +12,7 @@ Updated: 2026-10-13 (Asia/Manila).
 | Phase 2 / LA-01 | Explicit public allowlist; restrictive activity guard; authoritative owner relation; forged-event and profile identity protection | 11 isolated SQL tests passed across six roles, including overlapping permissive policy | Local implementation verified in isolated fixture; full-schema/API/staging gate remains open |
 | Phase 3 / LA-02 | Added missing schema/feature foundations and complete replay harness; pinned local config; deprecated root deployment sequence | 16 tests passed: fresh native PostgreSQL replay, catalog-equivalent upgrade preserving fixture rows, six-role privacy | Full Supabase reset/API blocked by missing runtime; native SQL verification is complete for this group |
 | Phase 4 / LA-03 | Sole-venue database gate; protected owner inventory confirmation; edits invalidate confirmation; live booking/owner flows use only stored tables | 17 focused SQL/client/settings tests passed; TypeScript passed | Actual venue inventory still requires owner confirmation in isolated staging; no venue data was edited remotely |
+| Phase 5 / LA-04, LA-07 | Server-owned deadlines; protected manual proof RPC; private reservation-bound upload; direct customer updates denied; owner approval under venue lock | 23 SQL/handler/migration tests passed, including concurrency and injected transaction failure; TypeScript passed | Real Auth/Storage/API and Android tests remain pending; staging must schedule service-only expiry sweep |
 
 ## Command record
 
@@ -45,4 +46,14 @@ No production deployment/data changes, real payment, refund, credential rotation
 
 - Phase 4 broad backend initially failed an obsolete generated-inventory source assertion. Updated it to require stored inventory and protected confirmation; an initial correction used the wrong call signature and was corrected after inspecting the call. Failed evidence retained.
 - `node scripts/remediation-check.cjs phase-4-backend-final node --test tests/backend/*.test.cjs tests/platform/*.test.cjs`: 146 passed, 5 skipped.
+
+
+- `node scripts/remediation-check.cjs phase-5-typecheck npm run typecheck`: passed.
+- `node scripts/remediation-check.cjs phase-5-manual-proof node --test tests/remediation/manual-proof.test.cjs`: 10 passed (initial workflow set).
+- `node scripts/remediation-check.cjs phase-5-workflows node --test tests/remediation/manual-proof.test.cjs tests/remediation/private-upload.test.cjs tests/remediation/migrations.test.cjs`: 23 passed. Tests use fresh loopback PostgreSQL and isolated handler adapters; they do not prove deployed Auth/Storage behavior.
+
+
+- `node scripts/remediation-check.cjs phase-5-proof-client node --test tests/remediation/proof-client.test.cjs`: 4 passed.
+- `node scripts/remediation-check.cjs phase-5-existing-backend node --test tests/backend/*.test.cjs tests/platform/*.test.cjs`: 146 passed, 5 skipped.
+- Phase 5 requires deploying the new authenticated private-upload function with the migration; old publicly addressed proof paths require resubmission. Schedule `expire_incomplete_reservation_holds()` with a server-only staging scheduler at least once per minute. Expired holds stop blocking inventory immediately even before the sweep persists cancellation. Provider session retirement is the next audit group.
 

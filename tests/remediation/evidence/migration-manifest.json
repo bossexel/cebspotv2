@@ -33,6 +33,10 @@
     {
       "name": "20261013000200_android_reservation_scope.sql",
       "sha256": "85996c02fa4aab5b80564c816cfb6b6cf1850643e238711f22b637c2564338d6"
+    },
+    {
+      "name": "20261013000300_manual_proof_and_bounded_holds.sql",
+      "sha256": "1318b9dea61f9598100e2e7a0a569b7917c226dcaa080a6f1bcb92594c9224e9"
     }
   ]
 }

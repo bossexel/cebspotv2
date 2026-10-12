@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, Image, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ExpoLinking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Camera, Check, CheckCircle2, Clock3, ExternalLink, Upload, WalletCards } from 'lucide-react-native';
 import { AppButton } from '../../src/components/AppButton';
+import { formatPickerTime } from '../../src/components/AdjustableTimePicker';
 import { ConfirmationModal } from '../../src/components/ConfirmationModal';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
 import { clubTableDisplayName } from '../../src/constants/clubFloorPlan';
@@ -16,8 +17,9 @@ import { paymentProofService } from '../../src/services/paymentProofService';
 import { paymongoCheckoutService } from '../../src/services/paymongoCheckoutService';
 import { reservationService } from '../../src/services/reservationService';
 import { spotService } from '../../src/services/spotService';
-import type { NewReservation, Spot } from '../../src/types';
+import type { NewReservation, Reservation, Spot } from '../../src/types';
 import { checkReservationAvailability } from '../../src/utils/reservations';
+import { venueTableService } from '../../src/services/venueTableService';
 
 const testCebspotPaymentDetails = {
   walletNumber: '0917 555 0198',
@@ -62,7 +64,6 @@ export default function CheckoutScreen() {
     spotName?: string;
     date?: string;
     time?: string;
-    timeEnd?: string;
     guests?: string;
     tableId?: string;
     slotId?: string;
@@ -80,6 +81,8 @@ export default function CheckoutScreen() {
   const [spot, setSpot] = useState<Spot | null>(null);
   const [loadingSpot, setLoadingSpot] = useState(true);
   const [loading, setLoading] = useState(false);
+  const pendingReservation = useRef<Reservation | null>(null);
+  const [serverHoldDeadline, setServerHoldDeadline] = useState<number | null>(null);
   const [paymentMode, setPaymentMode] = useState<PaymentMode | null>(null);
   const [guestPhone, setGuestPhone] = useState('');
   const [paymentTermsAccepted, setPaymentTermsAccepted] = useState(false);
@@ -94,7 +97,6 @@ export default function CheckoutScreen() {
   const spotName = params.spotName ?? spot?.name ?? 'CebSpot Venue';
   const date = params.date ?? new Date().toISOString().slice(0, 10);
   const time = params.time ?? '18:00';
-  const timeEnd = params.timeEnd ?? null;
   const guests = Number(params.guests ?? 1);
   const tableId = params.tableId ?? null;
   const tableDisplayName = tableId ? clubTableDisplayName(tableId) : 'Table not selected';
@@ -107,7 +109,7 @@ export default function CheckoutScreen() {
   const note = params.note?.trim() || null;
   const usingTestDetails = isTestCebspotSpot(spotName);
   const parsedHoldExpiresAt = Number(params.holdExpiresAt ?? 0);
-  const holdExpiresAt = Number.isFinite(parsedHoldExpiresAt) ? parsedHoldExpiresAt : 0;
+  const holdExpiresAt = serverHoldDeadline ?? (Number.isFinite(parsedHoldExpiresAt) ? parsedHoldExpiresAt : 0);
   const [holdSecondsRemaining, setHoldSecondsRemaining] = useState(() => getHoldSecondsRemaining(holdExpiresAt));
   const holdExpired = holdExpiresAt > 0 && holdSecondsRemaining <= 0;
   const customerName = useMemo(() => {
@@ -214,7 +216,7 @@ export default function CheckoutScreen() {
 
   function validateCheckoutBase() {
     if (holdExpired) {
-      Alert.alert('Reservation timer expired', 'Your 5-minute table hold expired. Please start the reservation again.', [
+      Alert.alert('Selection timer expired', 'Your 5-minute selection window expired. Availability will be checked again when you choose a table.', [
         {
           text: 'Choose table',
           onPress: () => router.replace({ pathname: '/reservation/[id]', params: { id: spotId } }),
@@ -290,6 +292,15 @@ export default function CheckoutScreen() {
 
   async function createPaidReservation(paymentFields: Partial<NewReservation>) {
     if (!profile) throw new Error('Authentication required.');
+    if (pendingReservation.current) return pendingReservation.current;
+
+    const liveTables = await venueTableService.getAvailability(spotId, date, slotId);
+    const liveTable = liveTables.find(table => table.tableId === tableId);
+    if (!liveTable?.onlineAvailable) {
+      throw new Error(liveTable?.bookingPolicy === 'walk_in_only'
+        ? 'Walk-ins only: this table cannot be reserved online. Please choose another table.'
+        : 'This table is no longer available online. Please choose another table.');
+    }
 
     const available = await checkReservationAvailability({
       spotId,
@@ -302,7 +313,7 @@ export default function CheckoutScreen() {
     }
 
     const reservationCode = `CEBSPOT-${Date.now()}`;
-    return reservationService.createReservation({
+    const saved = await reservationService.createReservation({
       user_id: profile.id,
       guest_name: customerName,
       guest_email: customerEmail,
@@ -312,7 +323,7 @@ export default function CheckoutScreen() {
       reservation_date: date,
       reservation_time: time,
       reservation_time_start: time,
-      reservation_time_end: timeEnd,
+      reservation_time_end: null,
       guest_count: guests,
       guests,
       table_id: tableId,
@@ -336,6 +347,30 @@ export default function CheckoutScreen() {
       payment_terms_accepted_at: new Date().toISOString(),
       qr_code: reservationCode,
     });
+    pendingReservation.current = saved;
+    setServerHoldDeadline(saved.hold_expires_at ? Date.parse(saved.hold_expires_at) : null);
+    return saved;
+  }
+
+  async function showCheckoutError(title: string, error: any) {
+    const unavailable = /walk-ins only|table.*(no longer|just booked|occupied|cleaning|unavailable)/i.test(error.message || '');
+    if (!unavailable) {
+      Alert.alert(title, error.message || 'Please try again.');
+      return;
+    }
+    let message = error.message;
+    try {
+      // The policy can change between the read and the INSERT. Re-read after a
+      // server rejection; provider checkout is never reached on that failure.
+      const live = await venueTableService.getAvailability(spotId, date, slotId);
+      if (live.find(table => table.tableId === tableId)?.bookingPolicy === 'walk_in_only') {
+        message = 'Walk-ins only: this table cannot be reserved online. Choose another available table.';
+      }
+    } catch { message += ' Live availability could not be refreshed. Try again from the booking screen.'; }
+    Alert.alert('Table unavailable', message, [
+      { text: 'Close', style: 'cancel' },
+      { text: 'Choose another table', onPress: () => router.replace({ pathname: '/reservation/[id]', params: { id: spotId } }) },
+    ]);
   }
 
   async function confirmDirectPayment() {
@@ -374,7 +409,7 @@ export default function CheckoutScreen() {
           console.error('Unable to void failed GCash checkout reservation:', voidError);
         }
       }
-      Alert.alert('GCash checkout failed', error.message ?? 'Please try again.');
+      await showCheckoutError('GCash checkout failed', error);
     } finally {
       setLoading(false);
     }
@@ -416,7 +451,7 @@ export default function CheckoutScreen() {
           console.error('Unable to void failed QR Ph checkout reservation:', voidError);
         }
       }
-      Alert.alert('QR Ph checkout failed', error.message ?? 'Please try again.');
+      await showCheckoutError('QR Ph checkout failed', error);
     } finally {
       setLoading(false);
     }
@@ -427,18 +462,16 @@ export default function CheckoutScreen() {
 
     try {
       setLoading(true);
-      const paymentProofUrl = await paymentProofService.uploadProof(paymentScreenshot as string, profile.id);
-      const reservation = await createPaidReservation({
-        payment_method: 'gcash',
-        payment_reference: transactionReference.trim(),
-        payment_proof_url: paymentProofUrl,
-        payer_gcash_number: payerGcashNumber.trim(),
-      });
+      const reservation = await createPaidReservation({});
+      const paymentProofUrl = await paymentProofService.uploadProof(paymentScreenshot as string, profile.id, reservation.id);
+      await reservationService.submitPaymentProof(
+        reservation.id, paymentProofUrl, transactionReference.trim(), payerGcashNumber.trim(),
+      );
 
       router.replace({ pathname: '/confirmed/[id]', params: { id: reservation.id } });
     } catch (error: any) {
       console.error('Checkout error:', error);
-      Alert.alert('Payment confirmation failed', error.message ?? 'Please try again.');
+      await showCheckoutError('Payment confirmation failed', error);
     } finally {
       setLoading(false);
     }
@@ -524,14 +557,14 @@ export default function CheckoutScreen() {
         >
           <Clock3 size={20} color={holdExpired ? colors.danger : colors.primary} />
           <View style={styles.holdTimerCopy}>
-            <Text style={[styles.holdTimerLabel, { color: appColors.onSurfaceVariant }]}>TABLE HOLD</Text>
+            <Text style={[styles.holdTimerLabel, { color: appColors.onSurfaceVariant }]}>SELECTION WINDOW</Text>
             <Text style={[styles.holdTimerValue, holdExpired && styles.holdTimerExpiredText]}>
               {holdExpired ? 'Expired' : formatHoldTime(holdSecondsRemaining)}
             </Text>
             <Text style={[styles.holdTimerNote, { color: appColors.onSurfaceVariant }]}>
               {holdExpired
-                ? 'Return to the reservation page to choose this table again.'
-                : 'Submit your payment details before this hold ends.'}
+                ? 'Return to reservations to choose a table again. Availability is rechecked before booking.'
+                : 'Complete checkout within this selection window. It does not reserve the table.'}
             </Text>
           </View>
         </View>
@@ -577,7 +610,7 @@ export default function CheckoutScreen() {
           {[
             ['Spot', spotName],
             ['Date', date],
-            ['Show-up time', `${time}${timeEnd ? ` - ${timeEnd}` : ''}`],
+            ['Show-up time', formatPickerTime(time)],
             ['Table', tableDisplayName],
             ['Party size', `${guests} ${guests === 1 ? 'guest' : 'guests'}`],
             ['Required deposit', formatPeso(total)],
@@ -829,7 +862,7 @@ export default function CheckoutScreen() {
       <AppButton
         label={
           holdExpired
-            ? 'Table Hold Expired'
+            ? 'Selection Window Expired'
             : !contactDetailsComplete
               ? 'Complete Personal Information'
               : !paymentTermsAccepted

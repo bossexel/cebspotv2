@@ -42,6 +42,9 @@ verify_jwt = false
 [functions.provision-owner-account]
 verify_jwt = true
 
+[functions.private-upload]
+verify_jwt = true
+
 [auth.email.template.recovery]
 subject = "Your CebSpot password reset code"
 content_path = "./supabase/templates/recovery.html"

@@ -1,0 +1,12 @@
+{
+  "label": "phase-5-proof-client",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/proof-client.test.cjs"
+  ],
+  "startedAt": "2026-10-12T18:02:56.997Z",
+  "finishedAt": "2026-10-12T18:02:58.119Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: Android proof client sends bytes to authenticated request-bound endpoint\nok 1 - Android proof client sends bytes to authenticated request-bound endpoint\n  ---\n  duration_ms: 140.1397\n  type: 'test'\n  ...\n# Subtest: external URLs, unsupported MIME and oversized local files never enter an upload\nok 2 - external URLs, unsupported MIME and oversized local files never enter an upload\n  ---\n  duration_ms: 102.0056\n  type: 'test'\n  ...\n# Subtest: failed or incorrectly scoped server responses never become attached proof\nok 3 - failed or incorrectly scoped server responses never become attached proof\n  ---\n  duration_ms: 79.7824\n  type: 'test'\n  ...\n# Subtest: reviewers open only short-lived signed private paths\nok 4 - reviewers open only short-lived signed private paths\n  ---\n  duration_ms: 38.3381\n  type: 'test'\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 942.6583\n"
+}

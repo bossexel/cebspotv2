@@ -135,6 +135,10 @@ export interface Reservation {
   payment_terms_accepted?: boolean;
   payment_terms_accepted_at?: string | null;
   qr_code: string;
+  hold_expires_at?: string | null;
+  proof_submitted_at?: string | null;
+  paid_at?: string | null;
+  approved_by?: string | null;
   created_at: string;
   updated_at?: string;
 }

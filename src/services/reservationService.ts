@@ -239,6 +239,14 @@ function throwReservationSlotConflict() {
 }
 
 export const reservationService = {
+  async submitPaymentProof(reservationId: string, proofPath: string, reference: string, payerNumber: string): Promise<Reservation> {
+    if (!hasSupabaseConfig) throw new Error('A connected account is required to submit payment proof.');
+    const { data, error } = await supabase.rpc('submit_reservation_payment_proof', {
+      reservation_id: reservationId, proof_path: proofPath, reference, payer_number: payerNumber,
+    });
+    if (error) throw error;
+    return normalizeReservation(data);
+  },
   async createReservation(reservation: NewReservation): Promise<Reservation> {
     const isDirectDemoPayment = reservation.payment_method === 'gcash_direct_demo';
     const reservationToCreate: NewReservation = isTestCebspotRecord(reservation)
@@ -264,7 +272,7 @@ export const reservationService = {
         user_id: created.user_id,
         user_name: 'Demo Explorer',
         action: 'reserved',
-        target_id: created.spot_id,
+        target_id: created.id,
         target_name: created.spot_name,
         type: 'reservation',
         spot_id: created.spot_id,
@@ -295,7 +303,7 @@ export const reservationService = {
         user_id: created.user_id,
         user_name: 'Explorer',
         action: 'reserved',
-        target_id: created.spot_id,
+        target_id: created.id,
         target_name: created.spot_name,
         type: 'reservation',
         spot_id: created.spot_id,
@@ -399,21 +407,7 @@ export const reservationService = {
       return approved ? normalizeReservation(approved) : null;
     }
 
-    const rpcMissing = /approve_paid_reservation|function|schema cache/i.test(approvalError.message ?? '');
-    if (!rpcMissing) throw approvalError;
-
-    const { data, error } = await client
-      .from('reservations')
-      .update({
-        status: 'confirmed',
-        payment_status: 'paid',
-        updated_at: updatedAt,
-      })
-      .eq('id', id)
-      .select('*')
-      .single();
-    if (error) throw error;
-    return data ? normalizeReservation(data) : null;
+    throw approvalError;
   },
 
   async recordReservationAttendance(
