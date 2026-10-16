@@ -20,8 +20,6 @@ import {
 } from 'react-native';
 import {
   ArrowLeft,
-  ArrowDown,
-  ArrowUp,
   Bell,
   CalendarCheck2,
   Check,
@@ -39,6 +37,7 @@ import {
   Users,
   X,
 } from 'lucide-react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { colors } from '../src/constants/colors';
@@ -157,6 +156,18 @@ function getPreviewMedia(item?: LocalUpdate | null) {
 function formatSpotScore(score: number) {
   if (score > 0) return `+${score}`;
   return String(score);
+}
+
+function SpotPinIcon({ color, holeColor, size = 21 }: { color: string; holeColor: string; size?: number }) {
+  return (
+    <Svg accessibilityElementsHidden width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8Z"
+        fill={color}
+      />
+      <Circle cx="12" cy="10" r="3.25" fill={holeColor} />
+    </Svg>
+  );
 }
 
 function NotificationTypeIcon({ item, color }: { item: Activity; color: string }) {
@@ -468,7 +479,7 @@ export default function ActivityScreen() {
     };
   }, [localUpdates, openSubmissionId]);
 
-  async function voteForUpdate(item: LocalUpdate, voteType: SpotVoteType) {
+  async function voteForUpdate(item: LocalUpdate) {
     if (item.source_type !== 'spot_submission' || !item.source_id) {
       return;
     }
@@ -482,7 +493,7 @@ export default function ActivityScreen() {
 
     try {
       setVotingUpdateIds((current) => [...current, item.id]);
-      const result = await localUpdateService.voteOnSpotSubmission(item.source_id, voteType);
+      const result = await localUpdateService.toggleSpotSubmissionVote(item.source_id);
       setSubmissionVotes((current) => {
         const nextVotes = { ...current };
         if (result.vote_type === 'up' || result.vote_type === 'down') {
@@ -897,53 +908,34 @@ export default function ActivityScreen() {
               ) : null}
 
               <View style={styles.updateActions}>
-                <View style={[styles.voteCluster, !canVote && styles.disabledAction]}>
-                  <Pressable
-                    accessible
-                    accessibilityRole="button"
-                    accessibilityLabel={currentVote === 'up' ? `Remove upvote from ${item.title}` : `Upvote ${item.title}`}
-                    disabled={!canVote || voting}
-                    style={[
-                      styles.voteIconButton,
-                      currentVote === 'up' && styles.upvoteButtonActive,
-                      voting && styles.disabledAction,
-                    ]}
-                    onPress={() => voteForUpdate(item, 'up')}
-                  >
-                    <ArrowUp
-                      size={18}
-                      color={currentVote === 'up' ? colors.white : canVote ? colors.primary : appColors.onSurfaceVariant}
-                      strokeWidth={3}
-                    />
-                  </Pressable>
+                <Pressable
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel={currentVote === 'up' ? `Remove Spot from ${item.title}` : `Spot ${item.title}`}
+                  accessibilityState={{ selected: currentVote === 'up', disabled: !canVote || voting }}
+                  disabled={!canVote || voting}
+                  style={({ pressed }) => [
+                    styles.spotVoteButton,
+                    { borderColor: appColors.outlineVariant, backgroundColor: appColors.surface },
+                    currentVote === 'up' && styles.spotVoteButtonActive,
+                    (!canVote || voting) && styles.disabledAction,
+                    pressed && styles.pressedButton,
+                  ]}
+                  onPress={() => voteForUpdate(item)}
+                >
                   {voting ? (
-                    <ActivityIndicator color={colors.primary} size="small" style={styles.voteSpinner} />
-                  ) : null}
+                    <ActivityIndicator color={colors.primary} size="small" />
+                  ) : (
+                    <SpotPinIcon
+                      color={currentVote === 'up' ? colors.primary : canVote ? appColors.onSurface : appColors.onSurfaceVariant}
+                      holeColor={appColors.surface}
+                    />
+                  )}
                   <Text style={[styles.voteScoreText, { color: canVote ? appColors.onSurface : appColors.onSurfaceVariant }]}>
                     {formatSpotScore(item.spot_count)}
                   </Text>
-                  <Pressable
-                    accessible
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      currentVote === 'down' ? `Remove downvote from ${item.title}` : `Downvote ${item.title}`
-                    }
-                    disabled={!canVote || voting}
-                    style={[
-                      styles.voteIconButton,
-                      currentVote === 'down' && styles.downvoteButtonActive,
-                      voting && styles.disabledAction,
-                    ]}
-                    onPress={() => voteForUpdate(item, 'down')}
-                  >
-                    <ArrowDown
-                      size={18}
-                      color={currentVote === 'down' ? colors.white : canVote ? colors.danger : appColors.onSurfaceVariant}
-                      strokeWidth={3}
-                    />
-                  </Pressable>
-                  <Text style={[styles.voteLabelText, { color: appColors.onSurfaceVariant }]}>Spot</Text>
-                </View>
+                  <Text style={[styles.voteLabelText, { color: currentVote === 'up' ? colors.primary : appColors.onSurfaceVariant }]}>Spot</Text>
+                </Pressable>
                 <View style={styles.actionSpacer} />
                 <Pressable
                   accessible
@@ -1187,9 +1179,12 @@ export default function ActivityScreen() {
                   ) : null}
 
                   <View style={[styles.postStatsRow, { borderTopColor: appColors.outlineVariant }]}>
-                    <Text style={[styles.postStatText, { color: appColors.onSurfaceVariant }]}>
-                      {formatSpotScore(selectedCommentUpdate.spot_count)} Spot
-                    </Text>
+                    <View style={styles.postSpotStat}>
+                      <SpotPinIcon size={14} color={colors.primary} holeColor={appColors.surface} />
+                      <Text style={[styles.postStatText, { color: appColors.onSurfaceVariant }]}>
+                        {formatSpotScore(selectedCommentUpdate.spot_count)} Spot
+                      </Text>
+                    </View>
                     <Text style={[styles.postStatText, { color: appColors.onSurfaceVariant }]}>
                       {comments.length || selectedCommentUpdate.comments_count} Comments
                     </Text>
@@ -1616,24 +1611,18 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.black + '10',
   },
-  voteCluster: {
+  spotVoteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  voteIconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
+    minHeight: 38,
+    paddingHorizontal: spacing.sm,
+    gap: 5,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: colors.black + '14',
-    backgroundColor: colors.white + '00',
   },
-  upvoteButtonActive: {
+  spotVoteButtonActive: {
     borderColor: colors.primary,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary + '12',
   },
   sortButton: {
     minHeight: 38,
@@ -1649,15 +1638,8 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     fontWeight: '900',
   },
-  downvoteButtonActive: {
-    borderColor: colors.danger,
-    backgroundColor: colors.danger,
-  },
-  voteSpinner: {
-    width: 22,
-  },
   voteScoreText: {
-    minWidth: 24,
+    minWidth: 20,
     textAlign: 'center',
     fontSize: fontSize.sm,
     fontWeight: '900',
@@ -1666,6 +1648,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     fontWeight: '900',
     textTransform: 'uppercase',
+  },
+  postSpotStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
   },
   disabledAction: {
     opacity: 0.55,
