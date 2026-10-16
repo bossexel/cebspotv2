@@ -37,7 +37,6 @@ import {
   Users,
   X,
 } from 'lucide-react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { colors } from '../src/constants/colors';
@@ -156,18 +155,6 @@ function getPreviewMedia(item?: LocalUpdate | null) {
 function formatSpotScore(score: number) {
   if (score > 0) return `+${score}`;
   return String(score);
-}
-
-function SpotPinIcon({ color, holeColor, size = 21 }: { color: string; holeColor: string; size?: number }) {
-  return (
-    <Svg accessibilityElementsHidden width={size} height={size} viewBox="0 0 24 24">
-      <Path
-        d="M12 2a8 8 0 0 0-8 8c0 5.5 8 12 8 12s8-6.5 8-12a8 8 0 0 0-8-8Z"
-        fill={color}
-      />
-      <Circle cx="12" cy="10" r="3.25" fill={holeColor} />
-    </Svg>
-  );
 }
 
 function NotificationTypeIcon({ item, color }: { item: Activity; color: string }) {
@@ -491,15 +478,35 @@ export default function ActivityScreen() {
 
     if (votingUpdateIds.includes(item.id)) return;
 
+    const submissionId = item.source_id;
+    const previousVote = submissionVotes[submissionId] ?? null;
+    const optimisticVote: SpotVoteType | null = previousVote === 'up' ? null : 'up';
+    const previousVoteValue = previousVote === 'up' ? 1 : previousVote === 'down' ? -1 : 0;
+    const optimisticVoteValue = optimisticVote === 'up' ? 1 : 0;
+
+    setSubmissionVotes((current) => {
+      const nextVotes = { ...current };
+      if (optimisticVote) nextVotes[submissionId] = optimisticVote;
+      else delete nextVotes[submissionId];
+      return nextVotes;
+    });
+    setLocalUpdates((current) =>
+      current.map((update) =>
+        update.id === item.id
+          ? { ...update, spot_count: item.spot_count + optimisticVoteValue - previousVoteValue }
+          : update
+      )
+    );
+
     try {
       setVotingUpdateIds((current) => [...current, item.id]);
-      const result = await localUpdateService.toggleSpotSubmissionVote(item.source_id);
+      const result = await localUpdateService.toggleSpotSubmissionVote(submissionId);
       setSubmissionVotes((current) => {
         const nextVotes = { ...current };
         if (result.vote_type === 'up' || result.vote_type === 'down') {
-          nextVotes[item.source_id!] = result.vote_type;
+          nextVotes[submissionId] = result.vote_type;
         } else {
-          delete nextVotes[item.source_id!];
+          delete nextVotes[submissionId];
         }
         return nextVotes;
       });
@@ -507,6 +514,15 @@ export default function ActivityScreen() {
         current.map((update) => (update.id === item.id ? { ...update, spot_count: result.vote_count } : update))
       );
     } catch (error: any) {
+      setSubmissionVotes((current) => {
+        const nextVotes = { ...current };
+        if (previousVote) nextVotes[submissionId] = previousVote;
+        else delete nextVotes[submissionId];
+        return nextVotes;
+      });
+      setLocalUpdates((current) =>
+        current.map((update) => (update.id === item.id ? { ...update, spot_count: item.spot_count } : update))
+      );
       console.error('Unable to vote on spot submission:', error);
       Alert.alert('Vote failed', error.message ?? 'Please try again.');
     } finally {
@@ -914,23 +930,19 @@ export default function ActivityScreen() {
                   accessibilityLabel={currentVote === 'up' ? `Remove Spot from ${item.title}` : `Spot ${item.title}`}
                   accessibilityState={{ selected: currentVote === 'up', disabled: !canVote || voting }}
                   disabled={!canVote || voting}
+                  hitSlop={10}
                   style={({ pressed }) => [
                     styles.spotVoteButton,
-                    { borderColor: appColors.outlineVariant, backgroundColor: appColors.surface },
-                    currentVote === 'up' && styles.spotVoteButtonActive,
-                    (!canVote || voting) && styles.disabledAction,
+                    !canVote && styles.disabledAction,
                     pressed && styles.pressedButton,
                   ]}
                   onPress={() => voteForUpdate(item)}
                 >
-                  {voting ? (
-                    <ActivityIndicator color={colors.primary} size="small" />
-                  ) : (
-                    <SpotPinIcon
-                      color={currentVote === 'up' ? colors.primary : canVote ? appColors.onSurface : appColors.onSurfaceVariant}
-                      holeColor={appColors.surface}
-                    />
-                  )}
+                  <MapPin
+                    size={21}
+                    color={currentVote === 'up' ? colors.primary : canVote ? appColors.onSurface : appColors.onSurfaceVariant}
+                    strokeWidth={2.5}
+                  />
                   <Text style={[styles.voteScoreText, { color: canVote ? appColors.onSurface : appColors.onSurfaceVariant }]}>
                     {formatSpotScore(item.spot_count)}
                   </Text>
@@ -1180,7 +1192,7 @@ export default function ActivityScreen() {
 
                   <View style={[styles.postStatsRow, { borderTopColor: appColors.outlineVariant }]}>
                     <View style={styles.postSpotStat}>
-                      <SpotPinIcon size={14} color={colors.primary} holeColor={appColors.surface} />
+                      <MapPin size={14} color={colors.primary} strokeWidth={2.5} />
                       <Text style={[styles.postStatText, { color: appColors.onSurfaceVariant }]}>
                         {formatSpotScore(selectedCommentUpdate.spot_count)} Spot
                       </Text>
@@ -1614,15 +1626,7 @@ const styles = StyleSheet.create({
   spotVoteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 38,
-    paddingHorizontal: spacing.sm,
     gap: 5,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-  },
-  spotVoteButtonActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary + '12',
   },
   sortButton: {
     minHeight: 38,

@@ -9,13 +9,17 @@ function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), 'utf8');
 }
 
-test('activity posts expose one branded Spot control with its count and no downvote control', () => {
+test('activity posts expose one outline Spot control with its count and no pill, spinner, or downvote', () => {
   const screen = read('app/activity.tsx');
 
-  assert.match(screen, /function SpotPinIcon/);
-  assert.match(screen, /toggleSpotSubmissionVote\(item\.source_id\)/);
+  assert.match(screen, /toggleSpotSubmissionVote\(submissionId\)/);
   assert.match(screen, /formatSpotScore\(item\.spot_count\)/);
   assert.match(screen, /accessibilityState=\{\{ selected: currentVote === 'up'/);
+  assert.match(screen, /hitSlop=\{10\}/);
+  assert.match(screen, /const optimisticVote: SpotVoteType \| null/);
+  assert.match(screen, /<MapPin[\s\S]*color=\{currentVote === 'up' \? colors\.primary/);
+  assert.doesNotMatch(screen, /spotVoteButtonActive|styles\.spotVoteButton,[\s\S]{0,160}(borderColor|backgroundColor)/);
+  assert.doesNotMatch(screen, /voting \? \([\s\S]{0,100}<ActivityIndicator/);
   assert.doesNotMatch(screen, /ArrowUp|ArrowDown|Downvote|voteForUpdate\(item, 'down'\)/);
 });
 
