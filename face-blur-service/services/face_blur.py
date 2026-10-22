@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import threading
 import time
 import uuid
 from dataclasses import dataclass
@@ -100,9 +99,6 @@ class FaceBox:
 class FaceBlurService:
     def __init__(self, settings: FaceBlurSettings) -> None:
         self.settings = settings
-        self._short_detector = None
-        self._full_detector = None
-        self._detector_lock = threading.Lock()
 
     def validate_startup(self) -> None:
         if not self.settings.short_model_path.is_file():
@@ -139,16 +135,11 @@ class FaceBlurService:
         except OSError:
             logger.debug("could not chmod temp directory; continuing")
 
-        short_detector = self._create_detector(self.settings.short_model_path)
-        try:
-            full_detector = self._create_detector(self.settings.full_model_path)
-        except Exception:
-            short_detector.close()
-            raise
-
-        self._short_detector = short_detector
-        self._full_detector = full_detector
-        logger.info("MediaPipe short-range and full-range face detectors loaded")
+        # Detector graphs are opened sequentially during processing. Holding both
+        # native runtimes at once can exceed the memory available on small Render
+        # instances, and the worker process would be killed without a Python
+        # traceback. File and numeric configuration checks remain fail-fast here.
+        logger.info("MediaPipe short-range and full-range face models verified")
 
     async def anonymize_upload(self, upload: UploadFile) -> AnonymizedImage:
         prepared = await self.prepare_upload(upload)
@@ -389,22 +380,28 @@ class FaceBlurService:
         import numpy as np
 
         image_height, image_width = image_rgb.shape[:2]
+        candidates: list[FaceBox] = []
 
-        with self._detector_lock:
-            if self._short_detector is None or self._full_detector is None:
-                raise RuntimeError("Face detectors are unavailable.")
-
-            candidates = self._detect_in_image(
-                self._full_detector,
-                image_rgb,
-                offset_x=0,
-                offset_y=0,
-                image_width=image_width,
-                image_height=image_height,
-            )
+        full_detector = self._create_detector(self.settings.full_model_path)
+        try:
             candidates.extend(
                 self._detect_in_image(
-                    self._short_detector,
+                    full_detector,
+                    image_rgb,
+                    offset_x=0,
+                    offset_y=0,
+                    image_width=image_width,
+                    image_height=image_height,
+                )
+            )
+        finally:
+            full_detector.close()
+
+        short_detector = self._create_detector(self.settings.short_model_path)
+        try:
+            candidates.extend(
+                self._detect_in_image(
+                    short_detector,
                     image_rgb,
                     offset_x=0,
                     offset_y=0,
@@ -413,11 +410,14 @@ class FaceBlurService:
                 )
             )
 
+            # Tiling effectively brings distant faces into the short-range
+            # detector's working scale. Re-running the full-range graph for every
+            # tile adds memory/CPU cost without extending the covered range.
             for x1, y1, x2, y2 in self._tile_windows(image_width, image_height):
                 tile_rgb = np.ascontiguousarray(image_rgb[y1:y2, x1:x2])
                 candidates.extend(
                     self._detect_in_image(
-                        self._full_detector,
+                        short_detector,
                         tile_rgb,
                         offset_x=x1,
                         offset_y=y1,
@@ -425,16 +425,8 @@ class FaceBlurService:
                         image_height=image_height,
                     )
                 )
-                candidates.extend(
-                    self._detect_in_image(
-                        self._short_detector,
-                        tile_rgb,
-                        offset_x=x1,
-                        offset_y=y1,
-                        image_width=image_width,
-                        image_height=image_height,
-                    )
-                )
+        finally:
+            short_detector.close()
 
         unique_faces = self._deduplicate_boxes(candidates)
         logger.info("%s face candidates merged into %s unique faces", len(candidates), len(unique_faces))

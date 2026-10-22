@@ -102,6 +102,30 @@ class SecurityTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(other_id,self.runtime.jobs)
         self.assertEqual((await request(self.app,method='DELETE',token=None))[0],401)
 
+    async def test_detectors_are_opened_sequentially_to_bound_worker_memory(self):
+        import numpy as np
+        from services.face_blur import FaceBlurService
+
+        service=FaceBlurService(self.settings)
+        active=0; peak=0; opened=[]
+        class Detector:
+            def __init__(self,name): self.name=name
+            def close(self):
+                nonlocal active
+                active-=1
+        def create(path):
+            nonlocal active,peak
+            active+=1;peak=max(peak,active);opened.append(path.name)
+            return Detector(path.name)
+        calls=[]
+        service._create_detector=create
+        service._detect_in_image=lambda detector,image_rgb,**kwargs: calls.append(detector.name) or []
+        service._detect_faces(np.zeros((1024,1024,3),dtype=np.uint8))
+        self.assertEqual(peak,1)
+        self.assertEqual(opened,['blaze_face_full_range.tflite','blaze_face_short_range.tflite'])
+        self.assertEqual(calls.count('blaze_face_full_range.tflite'),1)
+        self.assertGreater(calls.count('blaze_face_short_range.tflite'),1)
+
     async def test_internal_account_cleanup_requires_server_secret(self):
         from unittest.mock import patch
         owner='30000000-0000-4000-8000-000000000001'
@@ -203,6 +227,14 @@ class SecurityTests(unittest.IsolatedAsyncioTestCase):
         (job.directory/'upload').write_bytes(image.getvalue())
         result=await asyncio.to_thread(run_child,settings,job.directory/'upload','image/png',job.directory,30)
         self.assertEqual(result['faces_detected'],0);self.assertTrue(Path(result['output_path']).is_file())
+        self.runtime.remove(job.id)
+
+    async def test_real_detector_tiled_png_smoke(self):
+        source=ROOT.parent/'assets'/'cebspot-logo.png'
+        settings=replace(self.settings,max_image_bytes=2_000_000)
+        job=self.runtime.admit('detector-tiled-smoke')
+        result=await asyncio.to_thread(run_child,settings,source,'image/png',job.directory,30)
+        self.assertGreater(Path(result['output_path']).stat().st_size,0)
         self.runtime.remove(job.id)
 
 
