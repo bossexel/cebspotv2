@@ -1,0 +1,191 @@
+{
+  "kind": "read-only-live-probes",
+  "date": "2026-10-11 Asia/Manila",
+  "keyMode": "live",
+  "results": [
+    {
+      "label": "auth-settings",
+      "status": 200,
+      "ms": 1570,
+      "configuration": {
+        "signupDisabled": false,
+        "emailAutoconfirm": false,
+        "emailEnabled": true,
+        "googleEnabled": true
+      }
+    },
+    {
+      "label": "auth-health",
+      "status": 200,
+      "ms": 214
+    },
+    {
+      "label": "anonymous:spots",
+      "status": 200,
+      "ms": 456,
+      "rowsReturnedCappedAt5": 0
+    },
+    {
+      "label": "anonymous:profiles",
+      "status": 200,
+      "ms": 461,
+      "rowsReturnedCappedAt5": 0
+    },
+    {
+      "label": "anonymous:reservations",
+      "status": 200,
+      "ms": 258,
+      "rowsReturnedCappedAt5": 0
+    },
+    {
+      "label": "anonymous:reservation_payments",
+      "status": 200,
+      "ms": 253,
+      "rowsReturnedCappedAt5": 0
+    },
+    {
+      "label": "anonymous:owner_access_requests",
+      "status": 200,
+      "ms": 205,
+      "rowsReturnedCappedAt5": 0
+    },
+    {
+      "label": "anonymous:owner_spot_access",
+      "status": 200,
+      "ms": 207,
+      "rowsReturnedCappedAt5": 0
+    },
+    {
+      "label": "anonymous:circles",
+      "status": 200,
+      "ms": 168,
+      "rowsReturnedCappedAt5": 0
+    },
+    {
+      "label": "anonymous:walk_in_visits",
+      "status": 404,
+      "ms": 247,
+      "errorCode": "PGRST205"
+    },
+    {
+      "label": "anonymous:activities",
+      "status": 200,
+      "ms": 206,
+      "rowsReturnedCappedAt5": 5
+    },
+    {
+      "label": "public-spot-inventory",
+      "status": 200,
+      "ms": 214,
+      "count": 75,
+      "reservable": 35,
+      "reservableWithoutInventory": 34,
+      "zeroGcashWithPositiveFee": 0
+    },
+    {
+      "label": "table-availability-rpc",
+      "status": 404,
+      "ms": 243,
+      "errorCode": "PGRST202"
+    },
+    {
+      "label": "anonymous-function:paymongo-create-qrph-checkout",
+      "status": 401,
+      "ms": 1282,
+      "errorCode": "UNAUTHORIZED_NO_AUTH_HEADER",
+      "rejected": true
+    },
+    {
+      "label": "anonymous-function:paymongo-create-gcash-checkout",
+      "status": 401,
+      "ms": 1367,
+      "errorCode": "UNAUTHORIZED_NO_AUTH_HEADER",
+      "rejected": true
+    },
+    {
+      "label": "anonymous-function:provision-owner-account",
+      "status": 401,
+      "ms": 2267,
+      "errorCode": "UNAUTHORIZED_NO_AUTH_HEADER",
+      "rejected": true
+    },
+    {
+      "label": "anonymous-function:paymongo-webhook",
+      "status": 400,
+      "ms": 1481,
+      "errorCode": "http-error",
+      "rejected": true
+    },
+    {
+      "label": "configured-test-account-login",
+      "status": 200,
+      "ms": 470,
+      "emailConfirmed": true
+    },
+    {
+      "label": "test-profile-role",
+      "status": 200,
+      "ms": 246,
+      "role": "user"
+    },
+    {
+      "label": "test-user:reservations",
+      "status": 200,
+      "ms": 356,
+      "rowsReturnedCappedAt5": 0,
+      "unexpectedRows": 0
+    },
+    {
+      "label": "test-user:reservation_payments",
+      "status": 200,
+      "ms": 203,
+      "rowsReturnedCappedAt5": 0,
+      "unexpectedRows": 0
+    },
+    {
+      "label": "test-user:profiles",
+      "status": 200,
+      "ms": 207,
+      "rowsReturnedCappedAt5": 0,
+      "unexpectedRows": 0
+    },
+    {
+      "label": "test-user:walk_in_visits",
+      "status": 404,
+      "ms": 210,
+      "errorCode": "PGRST205"
+    },
+    {
+      "label": "test-user:activities",
+      "status": 200,
+      "ms": 204,
+      "rowsReturnedCappedAt5": 5,
+      "unexpectedRows": 5
+    },
+    {
+      "label": "test-session-local-logout",
+      "status": 204,
+      "ms": 211
+    },
+    {
+      "label": "face-health",
+      "networkError": "TimeoutError",
+      "ms": 20016
+    },
+    {
+      "label": "paymongo-webhook-config",
+      "status": 200,
+      "ms": 864,
+      "matches": [
+        {
+          "live": true,
+          "status": "enabled",
+          "events": [
+            "checkout_session.payment.paid"
+          ],
+          "localSecretMatches": true
+        }
+      ]
+    }
+  ]
+}

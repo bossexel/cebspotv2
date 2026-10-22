@@ -1,5 +1,7 @@
 # CebSpot audit closure — local verification and external gates
 
+October 16 preview update attempt: user authorized Android preview/test publication. TypeScript and 278 current tests pass (5 skips). Read-only EAS checks confirm preview/runtime 1.0.3, but preview still uses the existing application's backend and face targets without explicit staging identification. Nothing published; backend classification requested to honor the existing no-production boundary. See [publication record](docs/preview-update-2026-10-16.md). This does not change the UAT NO-GO recommendation.
+
 Updated: 2026-10-13 (Asia/Manila).
 
 **Recommendation: NO-GO for user testing/production.** Local implementations and retained tests pass as recorded below; deployed P0/P1 acceptance is still blocked by isolated staging/Auth/Storage/provider/device verification. LA-08/09 are outside Android scope, not repaired web features. The final Android export is backend-disabled verification bytecode, not an installable or staging-approved release candidate. See [handoff, staging, manual tests and rollback](docs/android-release-candidate.md) and [REMEDIATION_STATUS.md](REMEDIATION_STATUS.md).

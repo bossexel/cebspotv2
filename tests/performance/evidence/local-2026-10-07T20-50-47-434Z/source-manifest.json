@@ -1,0 +1,670 @@
+[
+  {
+    "file": "app/_layout.tsx",
+    "sha256": "9cefeb0fe9b08a36436c5cef93e6b5e0faf58b4015d5d4dc2591056350dd7020"
+  },
+  {
+    "file": "app/about.tsx",
+    "sha256": "be122959838acd1722f837f0fb69b1a07301cb3d40a741edcc5cd6f65e0573eb"
+  },
+  {
+    "file": "app/activity.tsx",
+    "sha256": "3e2c7b5db95a78a690c4a283964297082955b090552a503b8c85bcbd0626d803"
+  },
+  {
+    "file": "app/admin-sandbox.tsx",
+    "sha256": "9d71d766c716ee9d5f080af9de2ba2335697030419ea8ead09f5e9dcd876cee6"
+  },
+  {
+    "file": "app/admin-studio/dashboard.tsx",
+    "sha256": "a386e4b068ff478ebdd0b1f9912ec2cd088bfb8fd488500d7e3319c39147de55"
+  },
+  {
+    "file": "app/admin-studio/index.tsx",
+    "sha256": "34ee51fcf65d502bd1ec6642267c73371192d21fddd03c890f92263244a7fcbc"
+  },
+  {
+    "file": "app/admin-studio/login.tsx",
+    "sha256": "cc498ab002eb01c02e9514b29cc6acbb443292364ce4d02110491c028741972b"
+  },
+  {
+    "file": "app/admin.tsx",
+    "sha256": "736c035eb83350983e00d656b73c2ec85d48a87a7297a5d7d48cdf0da1a9c1b8"
+  },
+  {
+    "file": "app/auth/callback.tsx",
+    "sha256": "d5f44ce3bdac46d28ab6b1c8141c5fa7d4bcfc9b299b1bac620dbc399b4cfde4"
+  },
+  {
+    "file": "app/checkout/[id].tsx",
+    "sha256": "92cdbc7c0df515749a7f122202dc5cd86f8d0132d4e6c6b0bca06dee0404ce99"
+  },
+  {
+    "file": "app/circle.tsx",
+    "sha256": "18b7731a46e5274ec544a195962af45c4f4932d20ab30713dfb9a0a405aea831"
+  },
+  {
+    "file": "app/circle/[id].tsx",
+    "sha256": "393053281d8d36ad0a901bf4af0d88ddbec9079e04b9cdf3803ff97c5f862513"
+  },
+  {
+    "file": "app/confirmed/[id].tsx",
+    "sha256": "fa3b3cdb95bcc43e90c50c686993eb0198896c2c14761380a6a29ef1377a01c4"
+  },
+  {
+    "file": "app/documentation.tsx",
+    "sha256": "5a16c6989ee1217190c78567c99037a400df591d1c94bc4bac28685d37ac1f5f"
+  },
+  {
+    "file": "app/gamification.tsx",
+    "sha256": "ff5c4146975f9ec60c3865922bb7c29982eb42b6e68bc0f2dab425e9daaed0e4"
+  },
+  {
+    "file": "app/index.tsx",
+    "sha256": "1e742821f15daa0e867c5e04034ab01ec4cff70f3a5582d4f6cdaccee8b5a963"
+  },
+  {
+    "file": "app/login.tsx",
+    "sha256": "77f717546808e3c48fe06c60620e6e7a6fb94810b79aacae36e1fb8b87b8dcf8"
+  },
+  {
+    "file": "app/owner-access.tsx",
+    "sha256": "98095c55dae3fae08d491fce2a3630db157c2b8e6413f2d5ffb077ffde4f95fd"
+  },
+  {
+    "file": "app/owner-dashboard.tsx",
+    "sha256": "357883f35d1bf878b443dd9c794f33afda720ebc4dd6ecac6423cd81d798f937"
+  },
+  {
+    "file": "app/privacy.tsx",
+    "sha256": "b0da9167fe40fd257fb8de211d90a23d3fca5b2df3598c08724dba03f83ae087"
+  },
+  {
+    "file": "app/profile.tsx",
+    "sha256": "f7767e4ac7bb389c16186f5c071ca3fd2dbf4c83a32d211d1fd8f8d5077c83e5"
+  },
+  {
+    "file": "app/reservation/[id].tsx",
+    "sha256": "bdc084bbef724a70af3e2760c6847c57cf9ac20ddd4b68f452f2bb758fe3cc6d"
+  },
+  {
+    "file": "app/reservations.tsx",
+    "sha256": "31d1adbf32677b8d62be9f4d5efc228e7c50f71477e45731cddfc657ddaa6475"
+  },
+  {
+    "file": "app/reset-password.tsx",
+    "sha256": "0cc4e18120c8ba09bc14985cea65a4eb8aecbac3893e0284a1dbd7aa9f6fdc01"
+  },
+  {
+    "file": "app/saved.tsx",
+    "sha256": "44aa7f54657ded455a0ee00e8ab0b67b0bf3e12e2038dd47c5469dbcd8ccb7cd"
+  },
+  {
+    "file": "app/spot/[id].tsx",
+    "sha256": "9d6426ac37ca8d009989a6312ee28ecb4175487e4f5f160bf57be6db63568b9f"
+  },
+  {
+    "file": "app/submit-spot.tsx",
+    "sha256": "ad595b4dd69ccb921e9e3780c6478fcddb0e0413155e00cbde1e56482e646812"
+  },
+  {
+    "file": "package-lock.json",
+    "sha256": "e5d8856989e25b800feadcc53a5570d05f2f95253af70eb988f909c0e0d9fc3e"
+  },
+  {
+    "file": "package.json",
+    "sha256": "bad4ba3a4ced207631f58c9ba6ba6517b570eb01d1aa58e99d1bfa0ee19f9120"
+  },
+  {
+    "file": "src/components/AppButton.tsx",
+    "sha256": "a5441bb3df2f4c69c5c38b791eafde865e46e20ca053dbf11b574314cd429406"
+  },
+  {
+    "file": "src/components/AppUpdatePrompt.tsx",
+    "sha256": "8128f34066ca6e3a5026dbef2fad6e1cbb9a543b733c13ca8dcdc3369bbc7e41"
+  },
+  {
+    "file": "src/components/BottomNav.tsx",
+    "sha256": "aa078e86c1cb3b2e9db6b6efbc3e9a30343b05855592d677c773f4da3d253384"
+  },
+  {
+    "file": "src/components/CategoryChip.tsx",
+    "sha256": "6380c266b2b5be31ade10060fcbe0065969cfa2e8baa988cee866cbb9fc15579"
+  },
+  {
+    "file": "src/components/ConfirmationModal.tsx",
+    "sha256": "93395369aba014aebdd64e9069f4c0866403f66b8b248f503d7ec730325f0362"
+  },
+  {
+    "file": "src/components/InformationScreen.tsx",
+    "sha256": "506c56f66457775179497c55666fa128f38ab04d778d78b74299ae2d7337a91b"
+  },
+  {
+    "file": "src/components/PasswordInput.tsx",
+    "sha256": "df55fa78cc9490f1df3720ed884c39bd05deee1160dd4edf43fa9ca93989d5f3"
+  },
+  {
+    "file": "src/components/ReservationTermsCard.tsx",
+    "sha256": "5a4a78fbbaf04cb15506101e329b15673a737b12b0387e7c63fee1a9e4cbe7b8"
+  },
+  {
+    "file": "src/components/ScreenContainer.tsx",
+    "sha256": "b3709bb24d7e92131f8953c8b6dd69603eb92c1e8a6257f41561e43679d1d5b1"
+  },
+  {
+    "file": "src/components/SpotCard.tsx",
+    "sha256": "59940b8a9b22fab803c00e30355f464e3b301fcb55e1f1536eb171aa144b1a28"
+  },
+  {
+    "file": "src/components/SpotCategoryIcon.tsx",
+    "sha256": "4f631d922097888a5b98f3918d1cd4ced7ee2a4deae4e534f150842ec8efabcb"
+  },
+  {
+    "file": "src/components/SpotSubmissionStatusBanner.tsx",
+    "sha256": "87e0da93679443ae7be60ac8ac160522da7d325a0d23225dd1c13bceab4dbecb"
+  },
+  {
+    "file": "src/components/SupabaseConnectionPanel.tsx",
+    "sha256": "10b79a2ef146b92f5b7f9aa8eff241c583e82b45cdeacfedeb273f2338105a05"
+  },
+  {
+    "file": "src/components/TileMap.tsx",
+    "sha256": "ed57fcf5e06e9d849865f0f95c72259364644b09c0cfd4563d57546eb6b022b5"
+  },
+  {
+    "file": "src/components/admin-sandbox/AdminSandboxScreen.tsx",
+    "sha256": "c466a380b8cfa6f9e04fabfe330ba49f251e3ca8d5b71d0b2aaf0764e68631c4"
+  },
+  {
+    "file": "src/components/admin-studio/AdminStudioScreens.tsx",
+    "sha256": "268d5c8d3b753f0426e3383511bd238ba2c879c3c1e1ef7b55082214cadd72e6"
+  },
+  {
+    "file": "src/components/map/MapSurface.tsx",
+    "sha256": "50736d70c43f2b3b5419f4ea88c3a461da32ca592abd7e6f0e742baf830b39e4"
+  },
+  {
+    "file": "src/components/map/MapSurface.web.tsx",
+    "sha256": "5c66efaf5d568257ac194fe12c7331a0b524badd465933818116efb2d9eea11a"
+  },
+  {
+    "file": "src/components/map/map.css",
+    "sha256": "27002046cbedaca5b26a5ad564133ee00099426f1cf68a617697573a8ddea70e"
+  },
+  {
+    "file": "src/components/map/mapDocument.generated.ts",
+    "sha256": "a3b41575055ef3e3edea34b094d3ef89e02f1707b82e287282bf9de6530474b4"
+  },
+  {
+    "file": "src/components/map/runtime.js",
+    "sha256": "4a1a760b23cfa34baa60ea89fdbc1f7087221ae61e247a0ad5fde40dcaf79c46"
+  },
+  {
+    "file": "src/components/map/types.ts",
+    "sha256": "415f268c08b95597ca5d7e5f81d934126b041a62e36382e1d6d7334838ffddd8"
+  },
+  {
+    "file": "src/constants/about.ts",
+    "sha256": "e57b174134a372b06bf4e7662756b77415b3c8cad0b8c0b2f7a00b3308fcf06b"
+  },
+  {
+    "file": "src/constants/authRoles.ts",
+    "sha256": "ec170fc22a5e42190998b1628c32ed96c920b09d66cc92c32e12669afdb9a6d4"
+  },
+  {
+    "file": "src/constants/clubFloorPlan.ts",
+    "sha256": "cc2ea4f39ad77397d449ca763c5924695e890d1ad3c3be7b26deb2421fc9d590"
+  },
+  {
+    "file": "src/constants/colors.ts",
+    "sha256": "b04bf43772939f9c8eda703eadab00b1c8f91aa10219970c532bf1b2f7b0ff0d"
+  },
+  {
+    "file": "src/constants/design.ts",
+    "sha256": "805a18f73c1e7874b802deac01a88e2fcc0e247368d73dc360a78de7a1d20eb3"
+  },
+  {
+    "file": "src/constants/documentation.ts",
+    "sha256": "842caa390fb683f011b8a30f50e39cf4ea51cc799fb8c7e8093bea91cb21b718"
+  },
+  {
+    "file": "src/constants/map.ts",
+    "sha256": "cb8b6e2a77434d2163a5f7e4d3ba6826098056a703c4f7573e1f37f0ef35c918"
+  },
+  {
+    "file": "src/constants/mapTiles.ts",
+    "sha256": "42466594c54e7bc67d566cf8f2d8f6a6c43be88ad6a6b843c05c656a693c1167"
+  },
+  {
+    "file": "src/constants/privacy.ts",
+    "sha256": "4abae5ab8db0c2bacf058aab0e5743ba7b6d63a767df9367f1ed8ff2b5af67f9"
+  },
+  {
+    "file": "src/constants/reportCategories.ts",
+    "sha256": "dc5ee9866c5921512f28c6b35889f53615ef0134379a988f871b72dc59c02d52"
+  },
+  {
+    "file": "src/constants/sampleData.ts",
+    "sha256": "cb34623caefe016169eef5b533768399bc41065dc4f57b83d086979be171fe81"
+  },
+  {
+    "file": "src/hooks/useAuth.ts",
+    "sha256": "ee09cec439573596d14c4c5d8ff4f82df2808c0d4dfe18d9dd690dd6cd96bf86"
+  },
+  {
+    "file": "src/hooks/useLocation.ts",
+    "sha256": "5bb0516d9360799a466e993f4e0e501ae128539b7f3d30e362fedb7453a15779"
+  },
+  {
+    "file": "src/hooks/useScopedAuth.ts",
+    "sha256": "ac72e15c1bcdbb36fa16b9a8e9125637945817ffe671037b28cb2ea782a9f41b"
+  },
+  {
+    "file": "src/hooks/useTheme.ts",
+    "sha256": "9f4ae5a18b348741bc9dc32acc310cf7ef254ae8ed03e804305db088d631f2d4"
+  },
+  {
+    "file": "src/lib/supabase.ts",
+    "sha256": "30a81c578988cb388a784d9ac867c8259b701e27a70f6784de9f676b9b871446"
+  },
+  {
+    "file": "src/lib/utils.ts",
+    "sha256": "9304a861c8673bee09e0f12de31773abbde503b02e59dfd74763ddec2e37cf05"
+  },
+  {
+    "file": "src/services/activityService.ts",
+    "sha256": "9e4da955ca7726dc3a7527a1d3a32589754df19f3e92b32f8760f3e1cca44611"
+  },
+  {
+    "file": "src/services/adminDashboardService.ts",
+    "sha256": "a216b22f2fcc9cfe5c6f79693a619490b8e4cf19e4fb56d27cc116b1b2384cf8"
+  },
+  {
+    "file": "src/services/circleService.ts",
+    "sha256": "a09c85b3558161719febb375a029841d296f667309861c649b85e201902ee4bb"
+  },
+  {
+    "file": "src/services/gamificationService.ts",
+    "sha256": "dbfb71128ba4b63c4d74973144e667ca210a656da9134991f7de54e8a7d7a07f"
+  },
+  {
+    "file": "src/services/imageAnonymization.ts",
+    "sha256": "257409b14ed8acf010b4ea8d55f5901642114c7a7376f8cbe3ab59151f4d5354"
+  },
+  {
+    "file": "src/services/localUpdateService.ts",
+    "sha256": "d41d8bdfb90a93cbfc990c77cf41d64e88029c4e9e6adfdac7ab73901a10ff73"
+  },
+  {
+    "file": "src/services/ownerAccessService.ts",
+    "sha256": "11681f3f30ccb6d350e0202c45516a08385442754a18dbf140fde6b8b09a6bb6"
+  },
+  {
+    "file": "src/services/ownerGalleryService.ts",
+    "sha256": "f0a0c8e27140cbaecf61b5ac28d5847e21793f3c58eb55fc1ff80936a301a56f"
+  },
+  {
+    "file": "src/services/ownerVerificationDocumentService.ts",
+    "sha256": "9e86eb867c67f16c88032c5bd14f1738f0851cff4410307d826bcc10321952f0"
+  },
+  {
+    "file": "src/services/paymentProofService.ts",
+    "sha256": "77c8dad12a9a744900e6d5df56ce34eaf9f016f9933118876f5806714ceaa19e"
+  },
+  {
+    "file": "src/services/paymongoCheckoutService.ts",
+    "sha256": "54e103e1944edf3952eda2f45e42ad3f79484c0ea6fc17adf59aab07a6b0cb12"
+  },
+  {
+    "file": "src/services/profilePhotoService.ts",
+    "sha256": "f11402627da6f8cf6ee329e20b9659eca6cfec6013a11146538047d6c7768ebb"
+  },
+  {
+    "file": "src/services/profileService.ts",
+    "sha256": "08c8df8421f7a5a3802036b669bcbc7eafa171461995c20e1c6aa52e99638bd0"
+  },
+  {
+    "file": "src/services/reservationReminderService.ts",
+    "sha256": "8449ece789aab9c976ca4cee4fb7e03df01930d8a793549f9f6840ef1d93959c"
+  },
+  {
+    "file": "src/services/reservationService.ts",
+    "sha256": "51262d6f04d4a775284c8e5b10eff68999136451d406df44e5e02d6874027a2e"
+  },
+  {
+    "file": "src/services/reviewMediaService.ts",
+    "sha256": "eb40b863e2afb8e0af466beadb0d805a0584bb0b68891b52e71ac34dc072854b"
+  },
+  {
+    "file": "src/services/reviewService.ts",
+    "sha256": "1c154019097de17c380aee4e3b884fac2a2c37c3ee37cb022146e27ed2951632"
+  },
+  {
+    "file": "src/services/savedSpotService.ts",
+    "sha256": "d9ba30b1f06adfa32965974d390e8ef414542d18423d95faf69800f1d61c3d35"
+  },
+  {
+    "file": "src/services/spotEditSuggestionService.ts",
+    "sha256": "3127e73c7762491268631d78e5e1af262b3653f9e36bce8b590ac674108c2f74"
+  },
+  {
+    "file": "src/services/spotService.ts",
+    "sha256": "5ffdeeba49db247a98eef407a71fd3c7777770376e803c52c592671ba29925aa"
+  },
+  {
+    "file": "src/services/spotSubmissionDraftService.ts",
+    "sha256": "4f1670d58c38119b6699674a52f8388ecbfa9e47070954a9b959749f7c3991ef"
+  },
+  {
+    "file": "src/services/spotSubmissionNotificationService.ts",
+    "sha256": "03f75211f336d7ae05eef570b34597bfe1c35c1f7975044fb3e1519e6a9458cf"
+  },
+  {
+    "file": "src/services/spotSubmissionQueueService.ts",
+    "sha256": "8c75b879bd98b4c1ccadafd5cb6a9c314d4b2577d45ba5e9c9d83086d6e18f5e"
+  },
+  {
+    "file": "src/services/spotSubmissionService.ts",
+    "sha256": "dbb5edf27b03d74de3bafedc4c9960d36f4aa33b8229778664b1c1870951aefe"
+  },
+  {
+    "file": "src/services/supabaseHealthService.ts",
+    "sha256": "ca5a7efb824c7952a5738a372144226785445832b705b312ebc6e7c0916e2635"
+  },
+  {
+    "file": "src/services/supabaseService.ts",
+    "sha256": "df83220194b939acd6458f69fe04f572f20e841f8a56c3aa88ffa4c21418df9b"
+  },
+  {
+    "file": "src/services/userNotificationService.ts",
+    "sha256": "9c9aa0e566319963ea0131047b3cd1ea76c377195be8e146708530705a1397cc"
+  },
+  {
+    "file": "src/types.ts",
+    "sha256": "9682fc87eb109a10a6734bccf631756616665c1a572b742eb095b587d8742909"
+  },
+  {
+    "file": "src/types/index.ts",
+    "sha256": "ed08357a6f493ac52b46c30448e6dd8232ad4430ea3d3c854ac146d4374d1c10"
+  },
+  {
+    "file": "src/utils/auth.ts",
+    "sha256": "d1e2f468ef93ee321b9574f34575638d3ad344a7c4f77cb3afa8c11c41ae5abd"
+  },
+  {
+    "file": "src/utils/distance.ts",
+    "sha256": "43495e940ca6f3eaef15e03a821d81826147f05285d0db3f3b2df0f28ee2abe6"
+  },
+  {
+    "file": "src/utils/externalLinks.ts",
+    "sha256": "860b2b43eae6a23a03723347d2912eabe81361be29e9781a3dc973ab823c3f5e"
+  },
+  {
+    "file": "src/utils/reservations.ts",
+    "sha256": "d6612fdb9419079b8c4ea8c6bbff58cc6b75c691124e7587f79dd2fe120688bc"
+  },
+  {
+    "file": "src/utils/similarSpots.ts",
+    "sha256": "85cb1fecdee514890839f4f120461b691d3c946f1a6cedadf5559f9f481d21fe"
+  },
+  {
+    "file": "src/utils/spotCategory.ts",
+    "sha256": "d6e7391c6a3fb750fa166be98e09754208be7917fce97b28af74b48bd10f6842"
+  },
+  {
+    "file": "src/utils/tableInventory.ts",
+    "sha256": "1e01fa9fcb19fc4b3c400e7f99be3e255d868afebf8448b3435bb07bc339652b"
+  },
+  {
+    "file": "supabase-activity-media-repair.sql",
+    "sha256": "4955db26443863878f26de097b2a536d84c5bd3f93d199346eb461fe153d4c60"
+  },
+  {
+    "file": "supabase-admin-dashboard.sql",
+    "sha256": "0c2e309c78a290a4b257b97c9fbbb889d9a2f9545004b2e35188c84d70107509"
+  },
+  {
+    "file": "supabase-circles.sql",
+    "sha256": "246ebe20f9e25bd89065e46b4233afff094001412fad91dfa7b0d8274668be0f"
+  },
+  {
+    "file": "supabase-club-floor-plan.sql",
+    "sha256": "2d80d118d8ab97f62d26c17805019fe1b3346af6b3c7bb64e183c5db33e6e70f"
+  },
+  {
+    "file": "supabase-data-clarity-audit.sql",
+    "sha256": "b1478a9128af2985fe61ae95b261421a4a2d90d0c14e0affd75a10f00829d8a9"
+  },
+  {
+    "file": "supabase-dedicated-owner-accounts.sql",
+    "sha256": "67efd74423f5b299853a5235e7da6145983688a819133fb42dd79c4292cc796c"
+  },
+  {
+    "file": "supabase-email-auth.sql",
+    "sha256": "52c4a4772ef0101b85c3c045b2e51548554b5e332672be9b39924927054be3df"
+  },
+  {
+    "file": "supabase-fix-owner-request-rejection.sql",
+    "sha256": "ae5f2d2b712e4ec83c252f8f0f417ee00d72dc5f38717e39eac9534bc130632d"
+  },
+  {
+    "file": "supabase-fix-test-cebspot-club-revert.sql",
+    "sha256": "89d609529231b30242defedfb78402dab45909bdb57e39267cf5448772d2071e"
+  },
+  {
+    "file": "supabase-fix-void-unpaid-reservation.sql",
+    "sha256": "6001abb4152439a6c14c8fdeb86c0291e628da3fb0748a859c35bcf22fc1d8d3"
+  },
+  {
+    "file": "supabase-gamification.sql",
+    "sha256": "ed13903f3ddc0544024357a70d2cd301128b38b70277c9e58b959fedd1994fb4"
+  },
+  {
+    "file": "supabase-local-update-interactions.sql",
+    "sha256": "57eb27ecd9f3223c09bc1a44677cad0a2cd77284924fe15fc6dd6009f9f296b0"
+  },
+  {
+    "file": "supabase-owner-business-email-validation.sql",
+    "sha256": "43fbd2a05e001c384613193a6760b4b9dfeb1fe4d3d8f66694646f7c9f3d2213"
+  },
+  {
+    "file": "supabase-paymongo-qrph.sql",
+    "sha256": "45dd9a1b990455a59bb815f4937cafb4be61eaba9cdaa7125109e14c8dac465b"
+  },
+  {
+    "file": "supabase-popular-submissions-workflow.sql",
+    "sha256": "4f13d012594f367363276986f366864de63d63d5d8ee3bfeb7b071d1b23114d6"
+  },
+  {
+    "file": "supabase-remove-visit-checkins.sql",
+    "sha256": "53309428317b3363f0b92794dfe4d636e640d8e3ead6de4ba6218c369f536f9f"
+  },
+  {
+    "file": "supabase-replies-repair.sql",
+    "sha256": "1ccdac7e0331642eff6e8eea7f1c5650cc4f571d9efc6c52035cff7d4b91e408"
+  },
+  {
+    "file": "supabase-reservation-attendance.sql",
+    "sha256": "12f70227011ff23352d6061beeb7cbfa9c1c814d9a5c95148916c2a99fa1b992"
+  },
+  {
+    "file": "supabase-reservation-change-policy.sql",
+    "sha256": "897fe1460ab0aa99f2f96bcab6da4c64e09661c94f2fe24d3b08d9ecaed827ba"
+  },
+  {
+    "file": "supabase-reservation-contact-details.sql",
+    "sha256": "b0a9c6d9ce5cf63e54a28bdb629339bfd4f66f0f2cf53b1ddb82824be4036d89"
+  },
+  {
+    "file": "supabase-reservation-locking.sql",
+    "sha256": "34618e9c7ed82095f0449dea53645b75526aa224b1adad4669cd185fc1322abf"
+  },
+  {
+    "file": "supabase-reservation-reminders.sql",
+    "sha256": "c8a4653b5a800d211c736a96c070d693a71957371a81d9670be3db098553d58a"
+  },
+  {
+    "file": "supabase-review-interactions.sql",
+    "sha256": "2e0d191db5b951cfc554aee316309abe90c30ca01f1c2d06e2a40d05821eff93"
+  },
+  {
+    "file": "supabase-schema.sql",
+    "sha256": "dd0cf22c153a3bcf8cd7cb7e4f7ef67508f1d9e8a2e4ad97e2809db9f928ec92"
+  },
+  {
+    "file": "supabase-seed-spots.sql",
+    "sha256": "713afedec646dd823dde73e25a60fc30684de47972bdab2345f7ec7711d6dd58"
+  },
+  {
+    "file": "supabase-spot-claim-status.sql",
+    "sha256": "5476cb4612457be7194835662e829f1e67c460c72d5771634edfffe45440aa00"
+  },
+  {
+    "file": "supabase-spot-edit-suggestions.sql",
+    "sha256": "6267714cd24eb3985dc3b34c760447bd2d7fd8803a70272b29363dd724c6e254"
+  },
+  {
+    "file": "supabase-unpaid-payment-void.sql",
+    "sha256": "51cb76d616469dd061264dd3ca521c01e8678a6e3c3d7e115083b3a0faacd60f"
+  },
+  {
+    "file": "supabase/.temp/linked-project.json",
+    "sha256": "04ee9f769422237b517eed6aa320777c1b449f8d0efe0d13c905b437b4a0d9e9"
+  },
+  {
+    "file": "supabase/config.toml",
+    "sha256": "97ae0e3f7dc9e10860ffa0868853cc9073ec83fee9c52a4dd40a3dfd6f510068"
+  },
+  {
+    "file": "supabase/functions/_shared/cors.ts",
+    "sha256": "827676ff9a4731f7bdc1f3e396cc84878dc1c8012d88e41121d8e1671f2778f8"
+  },
+  {
+    "file": "supabase/functions/_shared/paymongo.ts",
+    "sha256": "4ece60ac8f0fe34c1e2e9ad37d73be211e4f425d37a39be162141803716d19e6"
+  },
+  {
+    "file": "supabase/functions/paymongo-create-gcash-checkout/index.ts",
+    "sha256": "52bda1cfb8dc044ec522d8fc59b4b4fbb8ce61654eafbf4a370f3b4b4ca10ecd"
+  },
+  {
+    "file": "supabase/functions/paymongo-create-qrph-checkout/index.ts",
+    "sha256": "d47665867151e995dab2672d1e6a74761d60a03ae2b56eba9d4fa07a1c9b13a6"
+  },
+  {
+    "file": "supabase/functions/paymongo-webhook/index.ts",
+    "sha256": "a0a2e26f027be0afd9209df63543f6a2a5356968b89e943047c1db10cee49a18"
+  },
+  {
+    "file": "supabase/functions/provision-owner-account/index.ts",
+    "sha256": "b71cd9e05dd345febf8106a6ffabf561d86edf797046cc655b9d1349c2f55ce9"
+  },
+  {
+    "file": "supabase/migrations/20260912000100_reservation_attendance.sql",
+    "sha256": "12f70227011ff23352d6061beeb7cbfa9c1c814d9a5c95148916c2a99fa1b992"
+  },
+  {
+    "file": "supabase/migrations/20260915000100_admin_identity_cutover.sql",
+    "sha256": "a55af0fd885a44e27684b169314ac2f5a8673c44a2bb3f06fb6d2eb1abe8cf85"
+  },
+  {
+    "file": "supabase/migrations/20261006000100_audit_authorization_hardening.sql",
+    "sha256": "7b980712bdf2518458aa83e2714bd280638a5e164f3589f2511406536b841cf0"
+  },
+  {
+    "file": "supabase/templates/confirmation.html",
+    "sha256": "6312a4ab81023881a4fe114c77a0184837c01ac23dc679674859c0e867896b89"
+  },
+  {
+    "file": "supabase/templates/recovery.html",
+    "sha256": "b84854ecc90c63501af6400f21051f30de72e495a8fe30402d768115248136e7"
+  },
+  {
+    "file": "tests/backend/admin-dashboard.test.cjs",
+    "sha256": "5417e095338a0306824b69ab83a8fdaa9dd11cfa1a5cd228462f1db2b1ff07e9"
+  },
+  {
+    "file": "tests/backend/audit-remediation.test.cjs",
+    "sha256": "850fc9f6a1376444b28b32e2e882cafed0aaaa65b86c39df4f26bdf3fe9dc2be"
+  },
+  {
+    "file": "tests/backend/club-floor-plan.test.cjs",
+    "sha256": "394464db2e69d03b0a82d62b7aec7f6bde9123b7ae04592f88c5c22023dde534"
+  },
+  {
+    "file": "tests/backend/owner-branding.test.cjs",
+    "sha256": "96fd173dbb7d4046a1b36be0f9e450684072d041abf9e315c45f795f21144de9"
+  },
+  {
+    "file": "tests/backend/payment-harness.cjs",
+    "sha256": "23b537701d47a0608ac9d90edcaf9a0319496837e97cc2d18bdaea1c26681a5f"
+  },
+  {
+    "file": "tests/backend/payments.test.cjs",
+    "sha256": "43f8c13bda985294b3ba9e784dbaa59561b44ca3a7fa5b9b8e2cd9cbc829387e"
+  },
+  {
+    "file": "tests/backend/reservation-attendance.test.cjs",
+    "sha256": "0356514e0c44a8cf3ddf5bb845ebad1e5844a66c0c5fb7ba48c98aa3c3db62c0"
+  },
+  {
+    "file": "tests/backend/reservation-change-policy.test.cjs",
+    "sha256": "d5f98f4c81f26a4e1b9986ac7cd916a53fcfc9800783f45dea356ef4e7f59df8"
+  },
+  {
+    "file": "tests/backend/reservation-checkout-details.test.cjs",
+    "sha256": "dfc4d8f4ed20da985740dae61cc5c79235021ece35766a08279e6c133b5ebedf"
+  },
+  {
+    "file": "tests/backend/spot-claim-status.test.cjs",
+    "sha256": "1c822859c875c2ceda0bad647bec14c26df0b0c1b5cfd22552c675a564735033"
+  },
+  {
+    "file": "tests/performance/isolated/app-logic.cjs",
+    "sha256": "42fba325a70a9305ca33a898c8b90e86246ecb7a78bd042ff0b27bd94ebf96c7"
+  },
+  {
+    "file": "tests/performance/isolated/client.cjs",
+    "sha256": "bad406c160c76076cf8d151428e508bec036fabd491a9c6017cb2dc19012d0c9"
+  },
+  {
+    "file": "tests/performance/isolated/concurrency.cjs",
+    "sha256": "2967460b2644f3342e8c64aa33e3d6b13f4f6bab366aac406fe0ead923386402"
+  },
+  {
+    "file": "tests/performance/isolated/config.cjs",
+    "sha256": "32004b9d5f9e3a2515cf7042ba72b3664ad700eaf212ca5fbc84d0c90ffe5bbb"
+  },
+  {
+    "file": "tests/performance/isolated/fixtures.cjs",
+    "sha256": "1c6327ba2bde8229d830c063ba7d9f67a9f5e1afad499034902cb39612fc9dcc"
+  },
+  {
+    "file": "tests/performance/isolated/journeys.cjs",
+    "sha256": "3136ec735c48534ddec9817314747f7dcfc75493957902e2c30141add397c4d6"
+  },
+  {
+    "file": "tests/performance/isolated/load.cjs",
+    "sha256": "a0c1f8f84f6d2fa24e8be7df95e508e54c9a9c6d758955617b8a2d7f02596be2"
+  },
+  {
+    "file": "tests/performance/isolated/local-evidence.cjs",
+    "sha256": "56af83d6d53a7e3cee4cdaa7bb56c5de7d9590968ae90e29be4e2a467979b206"
+  },
+  {
+    "file": "tests/performance/isolated/preflight.cjs",
+    "sha256": "366a49eceb20f6fc6f6f8f85de35615ea8f238fcb263ccc7f0d6a97e6eeb674c"
+  },
+  {
+    "file": "tests/performance/isolated/report.cjs",
+    "sha256": "5bb6d3b367643eb0ee685adbbee3702432c3e0d5830aeb56e4252b0f94b4c34e"
+  },
+  {
+    "file": "tests/performance/isolated/stats.cjs",
+    "sha256": "d7648a45ea00cc4aaa8b24f3bbfa0efab238be4390d9487e61a810ec61905738"
+  },
+  {
+    "file": "tests/performance/isolated/suite.test.cjs",
+    "sha256": "7dca3a2688c308d6e00d96b09c15b2e7e0a857f847a97715578afaad23634bcf"
+  }
+]

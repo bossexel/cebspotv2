@@ -7,6 +7,12 @@ export interface PaymongoCheckout {
   currency: string;
 }
 
+type CheckoutInput = {
+  reservationId: string;
+  successUrl?: string;
+  cancelUrl?: string;
+};
+
 async function getFunctionErrorMessage(error: unknown) {
   if (!error || typeof error !== 'object') return 'PayMongo checkout request failed.';
   const maybeError = error as {
@@ -38,38 +44,25 @@ async function getFunctionErrorMessage(error: unknown) {
   return maybeError.message ?? 'PayMongo checkout request failed.';
 }
 
+async function createCheckout(method: 'gcash' | 'qrph', input: CheckoutInput): Promise<PaymongoCheckout> {
+  const { data, error } = await supabase.functions.invoke(`paymongo-create-${method}-checkout`, {
+    body: input,
+  });
+
+  if (error) throw new Error(await getFunctionErrorMessage(error));
+  if (!data?.checkoutUrl || !data?.checkoutSessionId) {
+    throw new Error('PayMongo did not return a checkout URL.');
+  }
+
+  return data as PaymongoCheckout;
+}
+
 export const paymongoCheckoutService = {
-  async createGcashCheckout(input: {
-    reservationId: string;
-    successUrl?: string;
-    cancelUrl?: string;
-  }): Promise<PaymongoCheckout> {
-    const { data, error } = await supabase.functions.invoke('paymongo-create-gcash-checkout', {
-      body: input,
-    });
-
-    if (error) throw new Error(await getFunctionErrorMessage(error));
-    if (!data?.checkoutUrl || !data?.checkoutSessionId) {
-      throw new Error('PayMongo did not return a checkout URL.');
-    }
-
-    return data as PaymongoCheckout;
+  async createGcashCheckout(input: CheckoutInput): Promise<PaymongoCheckout> {
+    return createCheckout('gcash', input);
   },
 
-  async createQrphCheckout(input: {
-    reservationId: string;
-    successUrl?: string;
-    cancelUrl?: string;
-  }): Promise<PaymongoCheckout> {
-    const { data, error } = await supabase.functions.invoke('paymongo-create-qrph-checkout', {
-      body: input,
-    });
-
-    if (error) throw new Error(await getFunctionErrorMessage(error));
-    if (!data?.checkoutUrl || !data?.checkoutSessionId) {
-      throw new Error('PayMongo did not return a checkout URL.');
-    }
-
-    return data as PaymongoCheckout;
+  async createQrphCheckout(input: CheckoutInput): Promise<PaymongoCheckout> {
+    return createCheckout('qrph', input);
   },
 };

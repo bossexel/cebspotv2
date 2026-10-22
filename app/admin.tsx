@@ -1,4 +1,17 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { type TableColumn, DataPanel, DataTable, StatusBadge, LoadingPanel, InlineNotice, EmptyState } from '../src/features/admin-dashboard/components';
+import { adminPalette, adminFontFamily, styles } from '../src/features/admin-dashboard/styles';
+import {
+  formatLastUpdated,
+  formatCompactNumber,
+  formatAdminMoney,
+  filterListings,
+  filterSubmissions,
+  filterPulse,
+  filterReports,
+  filterUsers,
+  filterOwnerRequests,
+} from '../src/features/admin-dashboard/presentation';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -7,7 +20,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -28,6 +40,7 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
@@ -36,6 +49,7 @@ import {
   LayoutDashboard,
   LogOut,
   LucideIcon,
+  Menu,
   Mail,
   Map,
   MapPin,
@@ -48,10 +62,12 @@ import {
   ShieldCheck,
   TicketCheck,
   TrendingUp,
+  Trash2,
   TriangleAlert,
   User,
   UserPlus,
   Users,
+  X,
   XCircle,
 } from 'lucide-react-native';
 import { SupabaseConnectionPanel } from '../src/components/SupabaseConnectionPanel';
@@ -59,20 +75,24 @@ import { PasswordInput } from '../src/components/PasswordInput';
 import { TileMap } from '../src/components/TileMap';
 import { ADMIN_EMAIL, hasAdminAccess, normalizeAuthEmail } from '../src/constants/authRoles';
 import { colors } from '../src/constants/colors';
-import { shadow } from '../src/constants/design';
 import { REVIEW_REPORT_CATEGORIES } from '../src/constants/reportCategories';
 import { useScopedAuth } from '../src/hooks/useScopedAuth';
 import { getAuthErrorMessage } from '../src/utils/auth';
 import { platformAlert as Alert } from '../src/utils/platformAlert';
+import { getSpotCategoryColor } from '../src/utils/spotCategory';
 import { ownerVerificationDocumentService } from '../src/services/ownerVerificationDocumentService';
 import {
   applySpotEditSuggestion,
   approveSpotSubmission,
+  deleteAdminOwnerRequest,
+  deleteAdminSpot,
   dismissAdminReport,
+  getAdminSpotMapRows,
   getAdminDashboardData,
   reviewOwnerAccessRequest,
   type AdminDashboardData,
   type AdminListingRow,
+  type AdminMapSpotRow,
   type AdminOwnerRequestRow,
   type AdminOwnerRequestDecision,
   type AdminProgressItem,
@@ -99,37 +119,6 @@ type StatCardProps = {
   delta?: string;
 };
 
-type TableColumn<T> = {
-  key: string;
-  label: string;
-  flex?: number;
-  align?: 'left' | 'right';
-  render: (item: T) => React.ReactNode;
-};
-
-const adminPalette = {
-  background: '#f9f6f5',
-  surfaceBright: '#f9f6f5',
-  surfaceLowest: '#ffffff',
-  surfaceLow: '#f3f0ef',
-  surfaceContainer: '#eae7e7',
-  surfaceHigh: '#e5e2e1',
-  inverseSurface: '#0e0e0e',
-  onSurface: '#2f2e2e',
-  onSurfaceVariant: '#5c5b5b',
-  outline: '#787676',
-  outlineVariant: '#afacac',
-  primary: '#FA5F00',
-  primaryFixed: '#FA5F00',
-  primaryContainer: '#FA5F00',
-  secondaryContainer: '#ffc5a5',
-  tertiaryContainer: '#f8a91f',
-  error: '#b31b25',
-  errorContainer: '#fb5151',
-  success: '#15803d',
-  successContainer: '#dcfce7',
-};
-
 const navItems: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard, searchPlaceholder: 'Search in overview...' },
   { id: 'spots', label: 'Spots', icon: MapPin, searchPlaceholder: 'Search in spots...' },
@@ -139,8 +128,7 @@ const navItems: NavItem[] = [
   { id: 'system', label: 'System', icon: Settings, searchPlaceholder: 'Search system settings...' },
 ];
 
-const adminFontFamily = 'Inter_400Regular';
-
+const cebspotLogo = require('../assets/cebspot-logo.png');
 const requestBars = [40, 60, 30, 80, 100, 52, 70];
 
 // Simple trailing debounce. Used to coalesce bursts of realtime table-change
@@ -187,18 +175,22 @@ export default function AdminConsoleScreen() {
     Inter_900Black,
   });
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [signingOut, setSigningOut] = useState(false);
   const [dashboard, setDashboard] = useState<AdminDashboardData | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [approvingSubmissionId, setApprovingSubmissionId] = useState<string | null>(null);
+  const [deletingSpotId, setDeletingSpotId] = useState<string | null>(null);
   const [moderatingReportId, setModeratingReportId] = useState<string | null>(null);
   const [reviewingOwnerRequestId, setReviewingOwnerRequestId] = useState<string | null>(null);
+  const [deletingOwnerRequestId, setDeletingOwnerRequestId] = useState<string | null>(null);
   const [approvalNotice, setApprovalNotice] = useState<{ tone: 'success' | 'error'; title: string; copy: string } | null>(null);
 
   const activeNav = navItems.find((item) => item.id === activeSection) ?? navItems[0];
   const compact = width < 1180;
+  const mobile = width < 760;
   // This client-side check only controls whether the admin UI renders — it
   // is a UX gate, not a security boundary. Every read/write this screen
   // performs (getAdminDashboardData, approveSpotSubmission,
@@ -342,6 +334,57 @@ export default function AdminConsoleScreen() {
     }
   }
 
+  async function handleDeleteSpot(listing: AdminListingRow) {
+    try {
+      setDeletingSpotId(listing.id);
+      setApprovalNotice(null);
+      await deleteAdminSpot(listing.id, client);
+      setDashboard((current) =>
+        current
+          ? {
+              ...current,
+              metrics: {
+                ...current.metrics,
+                totalSpots: Math.max(0, current.metrics.totalSpots - 1),
+                publicSpots: Math.max(
+                  0,
+                  current.metrics.publicSpots - (listing.status.toLowerCase() === 'verified' ? 1 : 0),
+                ),
+              },
+              recentListings: current.recentListings.filter((item) => item.id !== listing.id),
+            }
+          : current,
+      );
+      setApprovalNotice({
+        tone: 'success',
+        title: 'Spot deleted',
+        copy: `${listing.name} was permanently removed from CebSpot.`,
+      });
+      refreshDashboard().catch((error: any) => {
+        setDashboardError(error?.message ?? 'The spot was deleted, but dashboard refresh failed.');
+      });
+    } catch (error: any) {
+      setApprovalNotice({
+        tone: 'error',
+        title: 'Delete failed',
+        copy: error?.message ?? 'Please try again.',
+      });
+    } finally {
+      setDeletingSpotId(null);
+    }
+  }
+
+  function confirmDeleteSpot(listing: AdminListingRow) {
+    Alert.alert(
+      `Delete ${listing.name}?`,
+      'This permanently removes the spot and related discovery content. Spots with booking history are protected and cannot be deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete Spot', style: 'destructive', onPress: () => void handleDeleteSpot(listing) },
+      ],
+    );
+  }
+
   async function handleDismissReport(report: AdminReportRow, notes: string) {
     try {
       setModeratingReportId(report.id);
@@ -478,6 +521,57 @@ export default function AdminConsoleScreen() {
     }
   }
 
+  async function handleDeleteOwnerRequest(request: AdminOwnerRequestRow) {
+    try {
+      setDeletingOwnerRequestId(request.id);
+      setApprovalNotice(null);
+      await deleteAdminOwnerRequest(request.id, client);
+
+      const wasPending = request.status.toLowerCase() === 'pending';
+      setDashboard((current) =>
+        current
+          ? {
+              ...current,
+              metrics: {
+                ...current.metrics,
+                pendingOwnerRequests: wasPending
+                  ? Math.max(0, current.metrics.pendingOwnerRequests - 1)
+                  : current.metrics.pendingOwnerRequests,
+              },
+              ownerRequests: current.ownerRequests.filter((item) => item.id !== request.id),
+            }
+          : current,
+      );
+      setApprovalNotice({
+        tone: 'success',
+        title: 'Owner request deleted',
+        copy: `${request.applicant}'s request for ${request.spot} was permanently removed.`,
+      });
+      refreshDashboard().catch((error: any) => {
+        setDashboardError(error?.message ?? 'The request was deleted, but dashboard refresh failed.');
+      });
+    } catch (error: any) {
+      setApprovalNotice({
+        tone: 'error',
+        title: 'Delete failed',
+        copy: error?.message ?? 'Please try again.',
+      });
+    } finally {
+      setDeletingOwnerRequestId(null);
+    }
+  }
+
+  function confirmDeleteOwnerRequest(request: AdminOwnerRequestRow) {
+    Alert.alert(
+      'Delete owner request?',
+      `This permanently removes ${request.applicant}'s application and review record. It does not delete the applicant, the spot, or owner access already granted.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete Request', style: 'destructive', onPress: () => void handleDeleteOwnerRequest(request) },
+      ],
+    );
+  }
+
   function openReportSpot(report: AdminReportRow) {
     if (!report.spotId) {
       Alert.alert('Spot unavailable', 'This report is not linked to a spot record.');
@@ -514,12 +608,62 @@ export default function AdminConsoleScreen() {
     );
   }
 
+  function navigateTo(section: AdminSection) {
+    setActiveSection(section);
+    setQuery('');
+    setMobileNavOpen(false);
+  }
+
+  const navigationCounts: Partial<Record<AdminSection, number>> = dashboard ? {
+    spots: dashboard.metrics.pendingSpotSubmissions,
+    reports: dashboard.reports.length,
+    requests: dashboard.ownerRequests.filter((request) => request.status.toLowerCase() === 'pending').length,
+  } : {};
+
+  const sidebarContent = (
+    <>
+      <View style={styles.brandBlock}>
+        <Text style={styles.brand}>CebSpot Admin</Text>
+        <Text style={styles.brandSub}>Operations Console</Text>
+      </View>
+
+      <View style={styles.nav}>
+        {navItems.map((item) => (
+          <SidebarItem
+            key={item.id}
+            item={item}
+            active={activeSection === item.id}
+            compact={false}
+            count={navigationCounts[item.id]}
+            onPress={() => navigateTo(item.id)}
+          />
+        ))}
+      </View>
+
+      <View style={styles.sidebarFooter}>
+        <View style={styles.adminCard}>
+          <View style={styles.adminAvatar}>
+            {profile?.photo_url ? <Image source={{ uri: profile.photo_url }} style={styles.adminAvatarImage} /> : <Text style={styles.adminAvatarText}>{adminInitial}</Text>}
+          </View>
+          <View style={styles.adminCopy}>
+            <Text style={styles.adminName} numberOfLines={1}>{adminName}</Text>
+            <Text style={styles.adminRole} numberOfLines={1}>{profile?.email || 'superadmin@cebspot.com'}</Text>
+          </View>
+        </View>
+        <Pressable style={styles.signOutButton} onPress={confirmSignOut} disabled={signingOut}>
+          <LogOut size={18} color={adminPalette.outlineVariant} />
+          <Text style={styles.signOutText}>{signingOut ? 'Signing out...' : 'Sign out'}</Text>
+        </Pressable>
+      </View>
+    </>
+  );
+
   return (
     <View style={styles.screen}>
-      <View style={[styles.sidebar, compact && styles.sidebarCompact]}>
+      {!mobile && <View style={[styles.sidebar, compact && styles.sidebarCompact]}>
         <View style={styles.brandBlock}>
           <Text style={styles.brand}>CebSpot Admin</Text>
-          <Text style={styles.brandSub}>Super Admin Console</Text>
+          {!compact && <Text style={styles.brandSub}>Operations Console</Text>}
         </View>
 
         <View style={styles.nav}>
@@ -529,10 +673,8 @@ export default function AdminConsoleScreen() {
               item={item}
               active={activeSection === item.id}
               compact={compact}
-              onPress={() => {
-                setActiveSection(item.id);
-                setQuery('');
-              }}
+              count={navigationCounts[item.id]}
+              onPress={() => navigateTo(item.id)}
             />
           ))}
         </View>
@@ -562,11 +704,26 @@ export default function AdminConsoleScreen() {
             {!compact && <Text style={styles.signOutText}>{signingOut ? 'Signing out...' : 'Sign out'}</Text>}
           </Pressable>
         </View>
-      </View>
+      </View>}
+
+      <Modal transparent visible={mobileNavOpen} animationType="fade" onRequestClose={() => setMobileNavOpen(false)}>
+        <View style={styles.mobileNavBackdrop}>
+          <Pressable accessibilityLabel="Close navigation" onPress={() => setMobileNavOpen(false)} style={styles.mobileNavScrim} />
+          <View style={styles.mobileNavDrawer}>
+            <Pressable accessibilityLabel="Close navigation" onPress={() => setMobileNavOpen(false)} style={styles.mobileNavClose}>
+              <X size={20} color={colors.white} />
+            </Pressable>
+            {sidebarContent}
+          </View>
+        </View>
+      </Modal>
 
       <View style={styles.workspace}>
-        <View style={styles.topbar}>
-          <View style={styles.searchBox}>
+        <View style={[styles.topbar, mobile && styles.topbarMobile]}>
+          <View style={[styles.topbarLead, mobile && styles.topbarLeadMobile]}>
+            {mobile && <Pressable accessibilityLabel="Open navigation" onPress={() => setMobileNavOpen(true)} style={styles.mobileMenuButton}><Menu size={21} color={adminPalette.onSurface} /></Pressable>}
+            {mobile && <Text style={styles.mobileSectionTitle}>{activeNav.label}</Text>}
+          <View style={[styles.searchBox, mobile && styles.searchBoxMobile]}>
             <Search size={18} color={adminPalette.outline} />
             <TextInput
               value={query}
@@ -576,7 +733,8 @@ export default function AdminConsoleScreen() {
               style={styles.searchInput}
             />
           </View>
-          <View style={styles.topbarActions}>
+          </View>
+          <View style={[styles.topbarActions, mobile && styles.topbarActionsMobile]}>
             <IconButton icon={RefreshCw} onPress={refreshDashboard} loading={dashboardLoading} />
             <IconButton icon={Bell} dot />
             <View style={styles.topbarDivider} />
@@ -589,7 +747,7 @@ export default function AdminConsoleScreen() {
 
         <ScrollView
           style={styles.canvas}
-          contentContainerStyle={styles.canvasContent}
+          contentContainerStyle={[styles.canvasContent, mobile && styles.canvasContentMobile]}
           showsVerticalScrollIndicator={false}
         >
           {dashboardError && <InlineNotice title="Live data issue" copy={dashboardError} />}
@@ -604,17 +762,20 @@ export default function AdminConsoleScreen() {
               {activeSection === 'overview' && (
                 <OverviewSection
                   dashboard={dashboard}
-                  client={client}
-                  userId={profile?.id}
                   query={query}
+                  mobile={mobile}
+                  onNavigate={navigateTo}
                 />
               )}
               {activeSection === 'spots' && (
                 <SpotsSection
                   dashboard={dashboard}
+                  client={client}
                   query={query}
                   approvingSubmissionId={approvingSubmissionId}
+                  deletingSpotId={deletingSpotId}
                   onApproveSubmission={handleApproveSubmission}
+                  onDeleteSpot={confirmDeleteSpot}
                 />
               )}
               {activeSection === 'reports' && (
@@ -636,10 +797,12 @@ export default function AdminConsoleScreen() {
                   client={client}
                   query={query}
                   reviewingRequestId={reviewingOwnerRequestId}
+                  deletingRequestId={deletingOwnerRequestId}
                   onReviewRequest={handleReviewOwnerRequest}
+                  onDeleteRequest={confirmDeleteOwnerRequest}
                 />
               )}
-              {activeSection === 'system' && <SystemSection dashboard={dashboard} />}
+              {activeSection === 'system' && <SystemSection dashboard={dashboard} client={client} userId={profile?.id} />}
             </>
           ) : (
             <EmptyState title="No dashboard data yet" copy="Refresh the console to request live Supabase data." />
@@ -661,6 +824,8 @@ function AdminLoginGate({
   onLogout: () => Promise<void>;
   onResetPassword: (email: string) => Promise<void>;
 }) {
+  const { width } = useWindowDimensions();
+  const isCompactLogin = width < 860;
   const [email, setEmail] = useState(ADMIN_EMAIL);
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -724,62 +889,184 @@ function AdminLoginGate({
   }
 
   return (
-    <View style={styles.adminGateScreen}>
-      <View style={styles.adminGateCard}>
-        <View style={styles.adminGateIcon}>
-          <ShieldCheck size={30} color={adminPalette.primaryFixed} />
-        </View>
-        <Text style={styles.adminGateBrand}>CebSpot Admin</Text>
-        <Text style={styles.adminGateCopy}>Sign in with the admin account issued by CebSpot.</Text>
-
-        {hasWrongAccount ? (
-          <>
-            <View style={styles.adminGateNotice}>
-              <TriangleAlert size={18} color={adminPalette.error} />
-              <Text style={styles.adminGateNoticeText}>
-                {signedInEmail} is signed in, but it does not have admin access.
-              </Text>
+    <View style={[styles.adminLoginScreen, isCompactLogin && styles.adminLoginScreenCompact]}>
+      {!isCompactLogin && (
+        <View style={styles.adminLoginStory}>
+          <View style={styles.adminLoginStoryGlowTop} />
+          <View style={styles.adminLoginStoryGlowBottom} />
+          <View style={styles.adminLoginBrandRow}>
+            <Image
+              accessibilityLabel="CebSpot logo"
+              resizeMode="contain"
+              source={cebspotLogo}
+              style={styles.adminLoginLogo}
+            />
+            <View>
+              <Text style={styles.adminLoginBrandName}>CebSpot Admin</Text>
+              <Text style={styles.adminLoginBrandMeta}>OPERATIONS CONSOLE</Text>
             </View>
-            <Pressable disabled={submitting || signingOut} onPress={logoutWrongAccount} style={styles.adminGateButton}>
-              <Text style={styles.adminGateButtonText}>{signingOut ? 'Signing Out...' : 'Sign Out'}</Text>
-            </Pressable>
-          </>
-        ) : (
-          <>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              placeholder="Admin email"
-              placeholderTextColor={adminPalette.outline}
-              style={styles.adminGateInput}
+          </View>
+
+          <View style={styles.adminLoginStoryContent}>
+            <Text style={styles.adminLoginEyebrow}>CEBU OPERATIONS</Text>
+            <Text style={styles.adminLoginHeadline}>Run the platform with clarity.</Text>
+            <Text style={styles.adminLoginStoryCopy}>
+              Review discovery, trust and safety, ownership, and system health from one protected workspace.
+            </Text>
+            <View style={styles.adminLoginPromiseList}>
+              {[
+                'Priority queues and live platform signals',
+                'Evidence-first moderation workflows',
+                'Role-protected administrative access',
+              ].map((promise) => (
+                <View key={promise} style={styles.adminLoginPromiseItem}>
+                  <View style={styles.adminLoginPromiseIcon}>
+                    <CheckCircle2 size={15} color={adminPalette.primaryFixed} strokeWidth={2.8} />
+                  </View>
+                  <Text style={styles.adminLoginPromiseText}>{promise}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.adminLoginRestrictedPill}>
+            <ShieldCheck size={15} color="#ffd5bd" />
+            <Text style={styles.adminLoginRestrictedText}>Authorized personnel only</Text>
+          </View>
+        </View>
+      )}
+
+      <ScrollView
+        contentContainerStyle={[
+          styles.adminLoginFormContent,
+          isCompactLogin && styles.adminLoginFormContentCompact,
+        ]}
+        keyboardShouldPersistTaps="handled"
+        style={styles.adminLoginFormPane}
+      >
+        {isCompactLogin && (
+          <View style={styles.adminLoginMobileBrand}>
+            <Image
+              accessibilityLabel="CebSpot logo"
+              resizeMode="contain"
+              source={cebspotLogo}
+              style={styles.adminLoginMobileLogo}
             />
-            <PasswordInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Password"
-              placeholderTextColor={adminPalette.outline}
-              containerStyle={styles.adminGatePasswordContainer}
-              style={styles.adminGatePasswordInput}
-              onSubmitEditing={submit}
-            />
-            <Pressable
-              accessibilityRole="button"
-              disabled={submitting || requestingReset}
-              onPress={requestPasswordReset}
-              style={styles.adminGateForgotButton}
-            >
-              <Text style={styles.adminGateForgotText}>
-                {requestingReset ? 'Sending reset email...' : 'Forgot password?'}
-              </Text>
-            </Pressable>
-            <Pressable disabled={submitting || requestingReset} onPress={submit} style={styles.adminGateButton}>
-              <Text style={styles.adminGateButtonText}>{submitting ? 'Signing In...' : 'Sign In'}</Text>
-            </Pressable>
-          </>
+            <View>
+              <Text style={styles.adminLoginMobileBrandName}>CebSpot Admin</Text>
+              <Text style={styles.adminLoginMobileBrandMeta}>OPERATIONS CONSOLE</Text>
+            </View>
+          </View>
         )}
-      </View>
+
+        <View style={styles.adminLoginFormCard}>
+          <View style={styles.adminLoginFormIcon}>
+            <ShieldCheck size={23} color={adminPalette.primaryFixed} strokeWidth={2.5} />
+          </View>
+          <Text style={styles.adminLoginFormEyebrow}>ADMINISTRATOR ACCESS</Text>
+          <Text style={styles.adminLoginTitle}>Welcome back</Text>
+          <Text style={styles.adminLoginSubtitle}>
+            Sign in to continue to the CebSpot operations console.
+          </Text>
+
+          <View style={styles.adminLoginSecurityNote}>
+            <Radio size={14} color={adminPalette.success} />
+            <Text style={styles.adminLoginSecurityText}>Protected admin session</Text>
+          </View>
+
+          {hasWrongAccount ? (
+            <>
+              <View style={styles.adminGateNotice}>
+                <TriangleAlert size={18} color={adminPalette.error} />
+                <Text style={styles.adminGateNoticeText}>
+                  {signedInEmail} is signed in, but it does not have admin access.
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                disabled={submitting || signingOut}
+                onPress={logoutWrongAccount}
+                style={({ pressed }) => [
+                  styles.adminLoginButton,
+                  pressed && styles.adminLoginButtonPressed,
+                  (submitting || signingOut) && styles.adminLoginButtonDisabled,
+                ]}
+              >
+                {signingOut ? (
+                  <ActivityIndicator color={colors.white} size="small" />
+                ) : (
+                  <Text style={styles.adminLoginButtonText}>Sign out and use admin account</Text>
+                )}
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Text style={styles.adminLoginFieldLabel}>Email address</Text>
+              <TextInput
+                accessibilityLabel="Admin email"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                autoComplete="email"
+                keyboardType="email-address"
+                placeholder="name@cebspot.com"
+                placeholderTextColor={adminPalette.outline}
+                style={styles.adminLoginInput}
+              />
+
+              <View style={styles.adminLoginPasswordLabelRow}>
+                <Text style={styles.adminLoginFieldLabel}>Password</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={submitting || requestingReset}
+                  hitSlop={8}
+                  onPress={requestPasswordReset}
+                >
+                  <Text style={styles.adminLoginForgotText}>
+                    {requestingReset ? 'Sending reset email...' : 'Forgot password?'}
+                  </Text>
+                </Pressable>
+              </View>
+              <PasswordInput
+                accessibilityLabel="Admin password"
+                value={password}
+                onChangeText={setPassword}
+                autoComplete="current-password"
+                placeholder="Enter your password"
+                placeholderTextColor={adminPalette.outline}
+                containerStyle={styles.adminLoginPasswordContainer}
+                style={styles.adminLoginPasswordInput}
+                onSubmitEditing={submit}
+              />
+
+              <Pressable
+                accessibilityRole="button"
+                disabled={submitting || requestingReset}
+                onPress={submit}
+                style={({ pressed }) => [
+                  styles.adminLoginButton,
+                  pressed && styles.adminLoginButtonPressed,
+                  (submitting || requestingReset) && styles.adminLoginButtonDisabled,
+                ]}
+              >
+                {submitting ? (
+                  <ActivityIndicator color={colors.white} size="small" />
+                ) : (
+                  <View style={styles.adminLoginButtonContent}>
+                    <Text style={styles.adminLoginButtonText}>Sign in to admin console</Text>
+                    <ChevronRight size={18} color={colors.white} strokeWidth={2.6} />
+                  </View>
+                )}
+              </Pressable>
+            </>
+          )}
+
+          <View style={styles.adminLoginLegalRule} />
+          <Text style={styles.adminLoginLegal}>
+            CebSpot administrative access is restricted. Activity may be logged for security and audit purposes.
+          </Text>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -788,18 +1075,21 @@ function SidebarItem({
   item,
   active,
   compact,
+  count,
   onPress,
 }: {
   item: NavItem;
   active: boolean;
   compact: boolean;
+  count?: number;
   onPress: () => void;
 }) {
   const Icon = item.icon;
   return (
-    <Pressable style={[styles.navItem, active && styles.navItemActive, compact && styles.navItemCompact]} onPress={onPress}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${item.label}${count ? ` ${count}` : ''}`} accessibilityState={{ selected: active }} style={[styles.navItem, active && styles.navItemActive, compact && styles.navItemCompact]} onPress={onPress}>
       <Icon size={19} color={active ? adminPalette.primaryFixed : '#d8d4d1'} strokeWidth={active ? 2.7 : 2.1} />
       {!compact && <Text style={[styles.navText, active && styles.navTextActive]}>{item.label}</Text>}
+      {!!count && <View style={[styles.navCount, compact && styles.navCountCompact]}><Text style={styles.navCountText}>{count > 99 ? '99+' : count}</Text></View>}
     </Pressable>
   );
 }
@@ -836,7 +1126,7 @@ function PageIntro({
 }) {
   return (
     <View style={styles.pageIntro}>
-      <View>
+      <View style={styles.pageIntroCopy}>
         <Text style={styles.eyebrow}>{eyebrow}</Text>
         <Text style={styles.pageTitle}>{title}</Text>
         <Text style={styles.pageSubtitle}>{subtitle}</Text>
@@ -846,100 +1136,39 @@ function PageIntro({
   );
 }
 
-function SegmentedRange() {
+function SegmentedRange({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
     <View style={styles.rangeControl}>
       {['24h', '7d', '30d', '90d'].map((range) => (
-        <Pressable key={range} style={[styles.rangeButton, range === '30d' && styles.rangeButtonActive]}>
-          <Text style={[styles.rangeText, range === '30d' && styles.rangeTextActive]}>{range}</Text>
+        <Pressable key={range} accessibilityRole="button" accessibilityState={{ selected: range === value }} onPress={() => onChange(range)} style={[styles.rangeButton, range === value && styles.rangeButtonActive]}>
+          <Text style={[styles.rangeText, range === value && styles.rangeTextActive]}>{range}</Text>
         </Pressable>
       ))}
       <View style={styles.rangeDivider} />
       <View style={styles.calendarChip}>
         <CalendarDays size={15} color={adminPalette.onSurfaceVariant} />
-        <Text style={styles.calendarChipText}>Last 30 days</Text>
+        <Text style={styles.calendarChipText}>{value === '24h' ? 'Today' : `Last ${value}`}</Text>
       </View>
     </View>
   );
 }
 
-function formatLastUpdated(value: string) {
-  return new Date(value).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatCompactNumber(value: number) {
-  if (value >= 1000) return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
-  return String(value);
-}
-
-function formatAdminMoney(value: number) {
-  return `P ${Math.round(value).toLocaleString('en-US')}`;
-}
-
-function matchesQuery(values: Array<string | number | null | undefined>, query: string) {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return true;
-  return values.some((value) => String(value ?? '').toLowerCase().includes(needle));
-}
-
-function filterListings(rows: AdminListingRow[], query: string) {
-  return rows.filter((item) => matchesQuery([item.name, item.category, item.barangay, item.status, item.id], query));
-}
-
-function filterSubmissions(rows: AdminSpotSubmissionRow[], query: string) {
-  return rows.filter((item) =>
-    matchesQuery([
-      item.name,
-      item.category,
-      item.barangay,
-      item.status,
-      item.id,
-      item.description,
-      item.address,
-      item.submitterName,
-      item.submitterEmail,
-      item.popularityScore,
-      item.voteCount,
-    ], query),
-  );
-}
-
-function filterPulse(rows: AdminPulseRow[], query: string) {
-  return rows.filter((item) => matchesQuery([item.action, item.user, item.location, item.status, item.value], query));
-}
-
-function filterReports(rows: AdminReportRow[], query: string) {
-  return rows.filter((item) => matchesQuery([item.type, item.spot, item.area, item.reporter, item.description], query));
-}
-
-function filterUsers(rows: AdminUserRow[], query: string) {
-  return rows.filter((item) => matchesQuery([item.name, item.email, item.role, item.location, item.id], query));
-}
-
-function filterOwnerRequests(rows: AdminOwnerRequestRow[], query: string) {
-  return rows.filter((item) => matchesQuery([item.applicant, item.email, item.spot, item.category, item.barangay, item.status], query));
-}
-
 function OverviewSection({
   dashboard,
-  client,
-  userId,
   query,
+  mobile,
+  onNavigate,
 }: {
   dashboard: AdminDashboardData;
-  client: SupabaseClient;
-  userId?: string;
   query: string;
+  mobile: boolean;
+  onNavigate: (section: AdminSection) => void;
 }) {
   const pulseRows = filterPulse(dashboard.livePulse, query);
   const dailyInsights = dashboard.dailyInsights;
   const latestDayIndex = Math.max(0, dailyInsights.length - 1);
   const [selectedDayIndex, setSelectedDayIndex] = useState(latestDayIndex);
+  const [range, setRange] = useState('7d');
 
   useEffect(() => {
     setSelectedDayIndex((current) => Math.min(current, Math.max(0, dailyInsights.length - 1)));
@@ -958,20 +1187,20 @@ function OverviewSection({
         eyebrow="Insights"
         title="Overview"
         subtitle={`Live platform health - refreshed ${formatLastUpdated(dashboard.generatedAt)}`}
-        right={<SegmentedRange />}
+        right={<SegmentedRange value={range} onChange={setRange} />}
       />
 
-      <View style={styles.supabaseHealthWrap}>
-        <SupabaseConnectionPanel
-          scope="admin"
-          client={client}
-          userId={userId}
-          title="Admin Supabase Connectivity"
-          subtitle="Checks auth, public spots, reservations, and owner request tables from this dashboard."
-        />
+      <View style={styles.actionCenterHeader}>
+        <View><Text style={styles.sectionEyebrow}>PRIORITY QUEUES</Text><Text style={styles.sectionTitle}>Needs your attention</Text></View>
+        <Text style={styles.sectionHint}>Live operational workload</Text>
+      </View>
+      <View style={styles.actionGrid}>
+        <ActionCard icon={UserPlus} label="Owner requests" value={dashboard.ownerRequests.filter((item) => item.status.toLowerCase() === 'pending').length} copy="Verify business ownership" tone="primary" onPress={() => onNavigate('requests')} />
+        <ActionCard icon={TriangleAlert} label="Reports" value={dashboard.reports.length} copy="Review trust and safety issues" tone="danger" onPress={() => onNavigate('reports')} />
+        <ActionCard icon={MapPin} label="Spot submissions" value={dashboard.metrics.pendingSpotSubmissions} copy="Approve new places" tone="blue" onPress={() => onNavigate('spots')} />
       </View>
 
-      <View style={styles.overviewGrid}>
+      <View style={[styles.overviewGrid, mobile && styles.overviewGridMobile]}>
         <View style={styles.heroCard}>
           <View style={styles.heroContent}>
             <Text style={styles.heroLabel}>Estimated Spot Revenue</Text>
@@ -992,7 +1221,7 @@ function OverviewSection({
           <TrendingUp size={210} color="#FA5F00" style={styles.heroWatermark} />
         </View>
 
-        <View style={styles.overviewSideStats}>
+        <View style={[styles.overviewSideStats, mobile && styles.overviewSideStatsMobile]}>
           <StatCard label="Published Spots" value={formatCompactNumber(selectedTotalSpots)} icon={Map} delta={selectedDayLabel} />
           <StatCard label="Active Owners" value={formatCompactNumber(selectedOwners)} icon={User} delta={selectedDayLabel} />
           <StatCard
@@ -1005,7 +1234,7 @@ function OverviewSection({
         </View>
       </View>
 
-      <View style={styles.twoColumnGrid}>
+      <View style={[styles.twoColumnGrid, mobile && styles.twoColumnGridMobile]}>
         <ChartCard
           title="Reservations per day"
           subtitle="Volume tracking for confirmed bookings"
@@ -1032,6 +1261,11 @@ function OverviewSection({
             barAccessibilityLabel={(index) => `${dailyInsights[index]?.label ?? 'Day'} new spots`}
           />
         </ChartCard>
+      </View>
+
+      <View style={[styles.twoColumnGrid, mobile && styles.twoColumnGridMobile]}>
+        <ProgressPanel title="Top spot categories" subtitle="Categorical distribution by venue type" data={dashboard.categories} categoryOverview />
+        <ProgressPanel title="Top barangays in Cebu" subtitle="Leaderboard areas for registered spots." data={dashboard.barangays} yellow />
       </View>
 
       <DataPanel title="Live Platform Pulse" right={<LiveSessionLabel count={dashboard.livePulse.length} />}>
@@ -1073,6 +1307,11 @@ function OverviewSection({
   );
 }
 
+function ActionCard({ icon: Icon, label, value, copy, tone, onPress }: { icon: LucideIcon; label: string; value: number; copy: string; tone: 'primary' | 'danger' | 'blue'; onPress: () => void }) {
+  const tint = tone === 'danger' ? { bg: adminPalette.errorContainer + '20', color: adminPalette.error } : tone === 'blue' ? { bg: '#dbeafe', color: '#1d4ed8' } : { bg: adminPalette.primary + '12', color: adminPalette.primary };
+  return <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.actionCard, pressed && styles.actionCardPressed]}><View style={[styles.actionIcon, { backgroundColor: tint.bg }]}><Icon size={19} color={tint.color} /></View><View style={styles.actionCardCopy}><Text style={styles.actionLabel}>{label}</Text><Text style={styles.actionDescription}>{copy}</Text></View><Text style={styles.actionValue}>{formatCompactNumber(value)}</Text><ChevronRight size={18} color={adminPalette.outline} /></Pressable>;
+}
+
 function DarkMiniStat({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.darkMiniStat}>
@@ -1084,18 +1323,45 @@ function DarkMiniStat({ label, value }: { label: string; value: string }) {
 
 function SpotsSection({
   dashboard,
+  client,
   query,
   approvingSubmissionId,
+  deletingSpotId,
   onApproveSubmission,
+  onDeleteSpot,
 }: {
   dashboard: AdminDashboardData;
+  client: SupabaseClient;
   query: string;
   approvingSubmissionId: string | null;
+  deletingSpotId: string | null;
   onApproveSubmission: (submission: AdminSpotSubmissionRow) => void;
+  onDeleteSpot: (listing: AdminListingRow) => void;
 }) {
   const listings = filterListings(dashboard.recentListings, query);
   const pendingSubmissions = filterSubmissions(dashboard.pendingSubmissions, query);
   const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
+  const [mapVisible, setMapVisible] = useState(false);
+  const [mapLoading, setMapLoading] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [mapSpots, setMapSpots] = useState<AdminMapSpotRow[]>([]);
+  const [selectedMapSpotId, setSelectedMapSpotId] = useState<string | null>(null);
+
+  async function openMapOverview(force = false) {
+    setMapVisible(true);
+    if (mapSpots.length && !force) return;
+    try {
+      setMapLoading(true);
+      setMapError(null);
+      const rows = await getAdminSpotMapRows(client);
+      setMapSpots(rows);
+      setSelectedMapSpotId(rows[0]?.id ?? null);
+    } catch (error: any) {
+      setMapError(error?.message ?? 'Unable to load the spot map.');
+    } finally {
+      setMapLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!pendingSubmissions.length) {
@@ -1133,8 +1399,15 @@ function SpotsSection({
       </View>
 
       <View style={styles.twoColumnGrid}>
-        <ProgressPanel title="Top spot categories" subtitle="Categorical distribution by venue type" data={dashboard.categories} />
-        <ProgressPanel title="Top barangays in Cebu" subtitle="Leaderboard areas for registered spots." data={dashboard.barangays} yellow />
+        <ProgressPanel title="Top spot categories" subtitle="Categorical distribution by venue type" data={dashboard.categories} categoryOverview />
+        <ProgressPanel
+          title="Top barangays in Cebu"
+          subtitle="Leaderboard areas for registered spots."
+          data={dashboard.barangays}
+          yellow
+          actionLabel="Open spot map overview"
+          onAction={openMapOverview}
+        />
       </View>
 
       <DataPanel title="Pending Spot Submissions" right={<Text style={styles.exportLink}>{pendingSubmissions.length} Pending</Text>}>
@@ -1182,12 +1455,29 @@ function SpotsSection({
               label: 'Actions',
               align: 'right',
               render: (item) => (
-                <Pressable
-                  style={styles.tableIconButton}
-                  onPress={() => Alert.alert('Coming soon', `Editing ${item.name} isn't wired up yet.`)}
-                >
-                  <Edit3 size={16} color={adminPalette.onSurfaceVariant} />
-                </Pressable>
+                <View style={styles.inlineActions}>
+                  <Pressable
+                    accessibilityLabel={`Edit ${item.name}`}
+                    accessibilityRole="button"
+                    style={styles.tableIconButton}
+                    onPress={() => Alert.alert('Coming soon', `Editing ${item.name} isn't wired up yet.`)}
+                  >
+                    <Edit3 size={16} color={adminPalette.onSurfaceVariant} />
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel={`Delete ${item.name}`}
+                    accessibilityRole="button"
+                    disabled={deletingSpotId === item.id}
+                    style={[styles.tableIconButton, deletingSpotId === item.id && styles.tableIconButtonDisabled]}
+                    onPress={() => onDeleteSpot(item)}
+                  >
+                    {deletingSpotId === item.id ? (
+                      <ActivityIndicator size="small" color={adminPalette.error} />
+                    ) : (
+                      <Trash2 size={16} color={adminPalette.error} />
+                    )}
+                  </Pressable>
+                </View>
               ),
             },
           ]}
@@ -1202,7 +1492,299 @@ function SpotsSection({
       >
         <Plus size={24} color={colors.white} />
       </Pressable>
+
+      <SpotMapOverviewModal
+        error={mapError}
+        loading={mapLoading}
+        onClose={() => setMapVisible(false)}
+        onRetry={() => {
+          void openMapOverview(true);
+        }}
+        onSelectSpot={setSelectedMapSpotId}
+        selectedSpotId={selectedMapSpotId}
+        spots={mapSpots}
+        visible={mapVisible}
+      />
     </View>
+  );
+}
+
+function SpotMapOverviewModal({
+  visible,
+  spots,
+  selectedSpotId,
+  loading,
+  error,
+  onSelectSpot,
+  onRetry,
+  onClose,
+}: {
+  visible: boolean;
+  spots: AdminMapSpotRow[];
+  selectedSpotId: string | null;
+  loading: boolean;
+  error: string | null;
+  onSelectSpot: (spotId: string) => void;
+  onRetry: () => void;
+  onClose: () => void;
+}) {
+  const { width } = useWindowDimensions();
+  const compact = width < 860;
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const categoryOptions = useMemo(() => {
+    const counts = new globalThis.Map<string, number>();
+    spots.forEach((spot) => {
+      const labels = new Set(
+        [spot.category, ...spot.categories]
+          .map((category) => category?.trim())
+          .filter((category): category is string => Boolean(category)),
+      );
+      labels.forEach((category) => counts.set(category, (counts.get(category) ?? 0) + 1));
+    });
+    return [
+      { label: 'All', count: spots.length },
+      ...Array.from(counts.entries())
+        .sort(([first], [second]) => first.localeCompare(second))
+        .map(([label, count]) => ({ label, count })),
+    ];
+  }, [spots]);
+  const visibleSpots = useMemo(
+    () => selectedCategory === 'All'
+      ? spots
+      : spots.filter((spot) =>
+          [spot.category, ...spot.categories].some(
+            (category) => category.trim().toLowerCase() === selectedCategory.toLowerCase(),
+          ),
+        ),
+    [selectedCategory, spots],
+  );
+  const selectedSpot = visibleSpots.find((spot) => spot.id === selectedSpotId) ?? visibleSpots[0] ?? null;
+  const center = selectedSpot
+    ? { latitude: selectedSpot.latitude, longitude: selectedSpot.longitude }
+    : { latitude: 10.3157, longitude: 123.8854 };
+  const markers = visibleSpots.map((spot) => ({
+    id: spot.id,
+    latitude: spot.latitude,
+    longitude: spot.longitude,
+    label: spot.name,
+    category: [spot.category, ...spot.categories].join(' '),
+    selected: spot.id === selectedSpot?.id,
+    color: getSpotCategoryColor(spot.category, spot.categories),
+    variant: 'pin' as const,
+  }));
+
+  useEffect(() => {
+    if (!categoryOptions.some((option) => option.label === selectedCategory)) {
+      setSelectedCategory('All');
+    }
+  }, [categoryOptions, selectedCategory]);
+
+  function selectCategory(category: string) {
+    setSelectedCategory(category);
+    setCategoryMenuOpen(false);
+    const firstVisibleSpot = category === 'All'
+      ? spots[0]
+      : spots.find((spot) =>
+          [spot.category, ...spot.categories].some(
+            (label) => label.trim().toLowerCase() === category.toLowerCase(),
+          ),
+        );
+    if (firstVisibleSpot) onSelectSpot(firstVisibleSpot.id);
+  }
+
+  return (
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
+      <View style={styles.spotMapBackdrop}>
+        <Pressable accessibilityLabel="Close spot map" onPress={onClose} style={styles.spotMapScrim} />
+        <View style={[styles.spotMapModal, compact && styles.spotMapModalCompact]}>
+          <View style={styles.spotMapHeader}>
+            <View style={styles.spotMapHeaderIcon}>
+              <Map size={20} color={adminPalette.primary} />
+            </View>
+            <View style={styles.spotMapHeaderCopy}>
+              <Text style={styles.spotMapEyebrow}>SPOT DIRECTORY</Text>
+              <Text style={styles.spotMapTitle}>Cebu map overview</Text>
+              <Text style={styles.spotMapSubtitle}>
+                {selectedCategory === 'All'
+                  ? `${spots.length} registered spots with map coordinates`
+                  : `${visibleSpots.length} of ${spots.length} spots in ${selectedCategory}`}
+              </Text>
+            </View>
+            <Pressable accessibilityLabel="Close spot map" onPress={onClose} style={styles.spotMapClose}>
+              <X size={21} color={adminPalette.onSurfaceVariant} />
+            </Pressable>
+          </View>
+
+          {loading ? (
+            <View style={styles.spotMapState}>
+              <ActivityIndicator color={adminPalette.primary} />
+              <Text style={styles.spotMapStateText}>Loading registered spots...</Text>
+            </View>
+          ) : error ? (
+            <View style={styles.spotMapState}>
+              <TriangleAlert size={26} color={adminPalette.error} />
+              <Text style={styles.spotMapStateTitle}>Map unavailable</Text>
+              <Text style={styles.spotMapStateText}>{error}</Text>
+              <Pressable onPress={onRetry} style={styles.spotMapRetry}>
+                <RefreshCw size={15} color={colors.white} />
+                <Text style={styles.spotMapRetryText}>Try again</Text>
+              </Pressable>
+            </View>
+          ) : spots.length === 0 ? (
+            <View style={styles.spotMapState}>
+              <MapPin size={28} color={adminPalette.outline} />
+              <Text style={styles.spotMapStateTitle}>No mapped spots yet</Text>
+              <Text style={styles.spotMapStateText}>Spots need valid latitude and longitude values to appear here.</Text>
+            </View>
+          ) : (
+            <View style={[styles.spotMapBody, compact && styles.spotMapBodyCompact]}>
+              <View style={[styles.spotMapCanvas, compact && styles.spotMapCanvasCompact]}>
+                <TileMap
+                  center={center}
+                  markers={markers}
+                  onMarkerPress={(marker) => onSelectSpot(marker.id)}
+                  style={styles.spotMapTile}
+                  transitionKey={`${selectedCategory}:${selectedSpot?.id ?? 'none'}`}
+                  zoom={selectedSpot ? 14 : 12}
+                />
+                <View style={styles.spotMapCategoryFilter}>
+                  <Pressable
+                    accessibilityLabel={`Filter mapped spots. ${selectedCategory === 'All' ? 'All categories' : selectedCategory} selected.`}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: categoryMenuOpen }}
+                    onPress={() => setCategoryMenuOpen((current) => !current)}
+                    style={styles.spotMapCategoryTrigger}
+                  >
+                    <View
+                      style={[
+                        styles.spotMapCategoryDot,
+                        { backgroundColor: selectedCategory === 'All' ? adminPalette.primary : getSpotCategoryColor(selectedCategory) },
+                      ]}
+                    />
+                    <View style={styles.spotMapCategoryTriggerCopy}>
+                      <Text style={styles.spotMapCategoryTriggerLabel} numberOfLines={1}>
+                        {selectedCategory === 'All' ? 'All categories' : selectedCategory}
+                      </Text>
+                      <Text style={styles.spotMapCategoryTriggerMeta}>{visibleSpots.length} visible spots</Text>
+                    </View>
+                    {categoryMenuOpen
+                      ? <ChevronUp size={16} color={adminPalette.onSurfaceVariant} />
+                      : <ChevronDown size={16} color={adminPalette.onSurfaceVariant} />}
+                  </Pressable>
+
+                  {categoryMenuOpen && (
+                    <ScrollView
+                      accessibilityLabel="Spot category choices"
+                      nestedScrollEnabled
+                      showsVerticalScrollIndicator={false}
+                      style={[styles.spotMapCategoryMenu, compact && styles.spotMapCategoryMenuCompact]}
+                    >
+                      {categoryOptions.map((option) => {
+                        const active = option.label === selectedCategory;
+                        const categoryColor = option.label === 'All'
+                          ? adminPalette.primary
+                          : getSpotCategoryColor(option.label);
+                        return (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: active }}
+                            key={option.label}
+                            onPress={() => selectCategory(option.label)}
+                            style={[styles.spotMapCategoryOption, active && styles.spotMapCategoryOptionActive]}
+                          >
+                            <View style={[styles.spotMapCategoryDot, { backgroundColor: categoryColor }]} />
+                            <Text style={[styles.spotMapCategoryOptionText, active && styles.spotMapCategoryOptionTextActive]} numberOfLines={1}>
+                              {option.label === 'All' ? 'All categories' : option.label}
+                            </Text>
+                            <Text style={styles.spotMapCategoryOptionCount}>{option.count}</Text>
+                            {active && <CheckCircle2 size={15} color={adminPalette.primary} />}
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
+                </View>
+              </View>
+
+              <View style={[styles.spotMapDirectory, compact && styles.spotMapDirectoryCompact]}>
+                {selectedSpot && (
+                  <View style={styles.spotMapSelectedCard}>
+                    <View
+                      style={[
+                        styles.spotMapSelectedCategoryIcon,
+                        { backgroundColor: getSpotCategoryColor(selectedSpot.category, selectedSpot.categories) + '1f' },
+                      ]}
+                    >
+                      <MapPin size={21} color={getSpotCategoryColor(selectedSpot.category, selectedSpot.categories)} />
+                    </View>
+                    <View style={styles.spotMapSelectedBody}>
+                      <View style={styles.spotMapSelectedTopline}>
+                        <StatusBadge label={selectedSpot.isPublic ? 'Published' : 'Hidden'} />
+                        {selectedSpot.isReservable && <StatusBadge label="Reservable" />}
+                      </View>
+                      <Text style={styles.spotMapSelectedName}>{selectedSpot.name}</Text>
+                      <View style={styles.spotMapSelectedCategories}>
+                        {Array.from(new Set([selectedSpot.category, ...selectedSpot.categories])).map((category) => (
+                          <View
+                            key={category}
+                            style={[
+                              styles.spotMapSelectedCategoryChip,
+                              { backgroundColor: getSpotCategoryColor(category) + '1a' },
+                            ]}
+                          >
+                            <View style={[styles.spotMapSelectedCategoryDot, { backgroundColor: getSpotCategoryColor(category) }]} />
+                            <Text style={[styles.spotMapSelectedCategory, { color: getSpotCategoryColor(category) }]}>{category}</Text>
+                          </View>
+                        ))}
+                      </View>
+                      <View style={styles.spotMapAddressRow}>
+                        <MapPin size={13} color={adminPalette.primary} />
+                        <Text style={styles.spotMapSelectedAddress}>{selectedSpot.address}</Text>
+                      </View>
+                      <Text style={styles.spotMapRating}>
+                        {selectedSpot.rating.toFixed(1)} rating · {selectedSpot.reviewCount} reviews
+                      </Text>
+                      {selectedSpot.description ? (
+                        <Text style={styles.spotMapDescription} numberOfLines={3}>{selectedSpot.description}</Text>
+                      ) : null}
+                    </View>
+                  </View>
+                )}
+
+                <Text style={styles.spotMapListHeading}>
+                  {selectedCategory === 'All' ? 'ALL MAPPED SPOTS' : `${selectedCategory.toUpperCase()} SPOTS`}
+                </Text>
+                <ScrollView style={styles.spotMapList} contentContainerStyle={styles.spotMapListContent}>
+                  {visibleSpots.map((spot) => {
+                    const active = spot.id === selectedSpot?.id;
+                    const categoryColor = getSpotCategoryColor(spot.category, spot.categories);
+                    return (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: active }}
+                        key={spot.id}
+                        onPress={() => onSelectSpot(spot.id)}
+                        style={[styles.spotMapListItem, active && styles.spotMapListItemActive]}
+                      >
+                        <View style={[styles.spotMapListCategoryIcon, { backgroundColor: categoryColor + '1a' }]}>
+                          <MapPin size={17} color={categoryColor} />
+                        </View>
+                        <View style={styles.spotMapListCopy}>
+                          <Text style={styles.spotMapListName} numberOfLines={1}>{spot.name}</Text>
+                          <Text style={styles.spotMapListMeta} numberOfLines={1}>{spot.category} · {spot.barangay}</Text>
+                        </View>
+                        <ChevronRight size={16} color={active ? adminPalette.primary : adminPalette.outline} />
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -1220,7 +1802,8 @@ function PendingSubmissionsTable({
   onApproveSubmission: (submission: AdminSpotSubmissionRow) => void;
 }) {
   return (
-    <View>
+    <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.tableScrollContainer}>
+    <View style={styles.tableScrollContent}>
       <View style={styles.tableHead}>
         {['Submitted Spot', 'Sender', 'Category', 'Popularity', 'Submitted', 'Actions'].map((label, index) => (
           <Text
@@ -1297,6 +1880,7 @@ function PendingSubmissionsTable({
       })}
       {!submissions.length && <EmptyState title="Nothing here yet" copy="No pending spot submissions need approval." compact />}
     </View>
+    </ScrollView>
   );
 }
 
@@ -1863,13 +2447,17 @@ function OwnerRequestsSection({
   client,
   query,
   reviewingRequestId,
+  deletingRequestId,
   onReviewRequest,
+  onDeleteRequest,
 }: {
   dashboard: AdminDashboardData;
   client: SupabaseClient;
   query: string;
   reviewingRequestId: string | null;
+  deletingRequestId: string | null;
   onReviewRequest: (request: AdminOwnerRequestRow, decision: AdminOwnerRequestDecision, notes: string) => Promise<boolean>;
+  onDeleteRequest: (request: AdminOwnerRequestRow) => void;
 }) {
   const requestFilters = ['All', 'Pending', 'Approved', 'Rejected'] as const;
   const initialExpandedId = dashboard.ownerRequests.find((request) => request.expanded)?.id ?? null;
@@ -1922,7 +2510,8 @@ function OwnerRequestsSection({
         <Text style={styles.filterSummary}>{visibleRequests.length} matching requests</Text>
       </View>
 
-      <View style={styles.requestsTable}>
+      <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.tableScrollContainer}>
+      <View style={[styles.requestsTable, styles.ownerRequestsScrollContent]}>
         <View style={styles.requestHeader}>
           {['Applicant', 'Spot Name', 'Category', 'Barangay', 'Applied', 'Actions'].map((label) => (
             <Text key={label} style={styles.requestHeading}>
@@ -1934,6 +2523,8 @@ function OwnerRequestsSection({
           const expanded = expandedRequestId === request.id;
           const pending = request.status.toLowerCase() === 'pending';
           const reviewing = reviewingRequestId === request.id;
+          const deleting = deletingRequestId === request.id;
+          const busy = reviewing || deleting;
           return (
           <View key={request.id}>
             <View style={[styles.requestRow, expanded && styles.requestRowExpanded]}>
@@ -1965,9 +2556,9 @@ function OwnerRequestsSection({
                   <>
                     <Pressable
                       accessibilityLabel={`Approve ${request.applicant}'s owner request`}
-                      disabled={reviewing}
+                      disabled={busy}
                       onPress={() => confirmDecision(request, 'approved', request.adminNotes ?? '')}
-                      style={[styles.requestIconAction, reviewing && styles.ownerActionDisabled]}
+                      style={[styles.requestIconAction, busy && styles.ownerActionDisabled]}
                     >
                       {reviewing ? <ActivityIndicator size="small" color="#16a34a" /> : <CheckCircle2 size={18} color="#16a34a" />}
                     </Pressable>
@@ -1980,21 +2571,40 @@ function OwnerRequestsSection({
                     </Pressable>
                     <Pressable
                       accessibilityLabel={`Reject ${request.applicant}'s owner request`}
-                      disabled={reviewing}
+                      disabled={busy}
                       onPress={() => confirmDecision(request, 'rejected', request.adminNotes ?? '')}
-                      style={[styles.requestIconAction, reviewing && styles.ownerActionDisabled]}
+                      style={[styles.requestIconAction, busy && styles.ownerActionDisabled]}
                     >
                       <XCircle size={18} color={adminPalette.error} />
                     </Pressable>
+                    <Pressable
+                      accessibilityLabel={`Delete ${request.applicant}'s owner request`}
+                      disabled={busy}
+                      onPress={() => onDeleteRequest(request)}
+                      style={[styles.requestIconAction, busy && styles.ownerActionDisabled]}
+                    >
+                      {deleting ? <ActivityIndicator size="small" color={adminPalette.error} /> : <Trash2 size={17} color={adminPalette.error} />}
+                    </Pressable>
                   </>
                 ) : (
-                  <Pressable
-                    accessibilityLabel={expanded ? 'Collapse owner request' : 'View owner request details'}
-                    onPress={() => setExpandedRequestId(expanded ? null : request.id)}
-                    style={styles.reviewedRequestAction}
-                  >
-                    <StatusBadge label={request.status} />
-                  </Pressable>
+                  <>
+                    <Pressable
+                      accessibilityLabel={expanded ? 'Collapse owner request' : 'View owner request details'}
+                      disabled={deleting}
+                      onPress={() => setExpandedRequestId(expanded ? null : request.id)}
+                      style={styles.reviewedRequestAction}
+                    >
+                      <StatusBadge label={request.status} />
+                    </Pressable>
+                    <Pressable
+                      accessibilityLabel={`Delete ${request.applicant}'s owner request`}
+                      disabled={deleting}
+                      onPress={() => onDeleteRequest(request)}
+                      style={[styles.requestIconAction, deleting && styles.ownerActionDisabled]}
+                    >
+                      {deleting ? <ActivityIndicator size="small" color={adminPalette.error} /> : <Trash2 size={17} color={adminPalette.error} />}
+                    </Pressable>
+                  </>
                 )}
               </View>
             </View>
@@ -2002,7 +2612,7 @@ function OwnerRequestsSection({
               <ExpandedOwnerRequest
                 client={client}
                 request={request}
-                reviewing={reviewing}
+                reviewing={busy}
                 onApprove={(notes) => confirmDecision(request, 'approved', notes)}
                 onReject={(notes) => confirmDecision(request, 'rejected', notes)}
               />
@@ -2013,6 +2623,7 @@ function OwnerRequestsSection({
         {!visibleRequests.length && <EmptyState title="No owner requests found" copy="There are no matching access requests." compact />}
         <Pagination copy={`Showing ${visibleRequests.length} of ${dashboard.ownerRequests.length} requests`} />
       </View>
+      </ScrollView>
 
       <View style={styles.bottomBento}>
         <View style={styles.velocityCard}>
@@ -2247,7 +2858,7 @@ function ExpandedOwnerRequest({
   );
 }
 
-function SystemSection({ dashboard }: { dashboard: AdminDashboardData }) {
+function SystemSection({ dashboard, client, userId }: { dashboard: AdminDashboardData; client: SupabaseClient; userId?: string }) {
   const queuedJobs = dashboard.metrics.pendingOwnerRequests + dashboard.metrics.reportsFiled;
   const securityAlerts = dashboard.errors.length;
   return (
@@ -2257,6 +2868,15 @@ function SystemSection({ dashboard }: { dashboard: AdminDashboardData }) {
         title="System"
         subtitle="Console health, moderation queues, and operational safeguards."
       />
+      <View style={styles.supabaseHealthWrap}>
+        <SupabaseConnectionPanel
+          scope="admin"
+          client={client}
+          userId={userId}
+          title="Admin Supabase Connectivity"
+          subtitle="Checks authentication, public spots, reservations, and owner request tables."
+        />
+      </View>
       <View style={styles.systemGrid}>
         <StatCard label="Data Source" value={dashboard.source === 'live' ? 'Live' : 'Sample'} icon={Radio} tone="green" delta="Active" />
         <StatCard label="Queued Jobs" value={formatCompactNumber(queuedJobs)} icon={FileText} tone="blue" delta="Review" />
@@ -2431,17 +3051,139 @@ function LineChart() {
   );
 }
 
+function CategoryRankingOverviewModal({
+  visible,
+  data,
+  onClose,
+}: {
+  visible: boolean;
+  data: AdminProgressItem[];
+  onClose: () => void;
+}) {
+  const { width } = useWindowDimensions();
+  const compact = width < 760;
+  const leader = data[0] ?? null;
+  const totalAssignments = data.reduce((sum, item) => {
+    const count = Number.parseInt(item.copy?.match(/\d+/)?.[0] ?? '0', 10);
+    return sum + (Number.isFinite(count) ? count : 0);
+  }, 0);
+
+  return (
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
+      <View style={styles.spotMapBackdrop}>
+        <Pressable accessibilityLabel="Close category rankings" onPress={onClose} style={styles.spotMapScrim} />
+        <View style={[styles.spotMapModal, styles.categoryOverviewModal, compact && styles.spotMapModalCompact]}>
+          <View style={styles.spotMapHeader}>
+            <View style={styles.spotMapHeaderIcon}>
+              <BarChart3 size={20} color={adminPalette.primary} />
+            </View>
+            <View style={styles.spotMapHeaderCopy}>
+              <Text style={styles.spotMapEyebrow}>CATEGORY INSIGHTS</Text>
+              <Text style={styles.spotMapTitle}>Category rankings</Text>
+              <Text style={styles.spotMapSubtitle}>{data.length} categories ranked by published spot assignments</Text>
+            </View>
+            <Pressable accessibilityLabel="Close category rankings" onPress={onClose} style={styles.spotMapClose}>
+              <X size={21} color={adminPalette.onSurfaceVariant} />
+            </Pressable>
+          </View>
+
+          {data.length === 0 ? (
+            <View style={styles.spotMapState}>
+              <BarChart3 size={28} color={adminPalette.outline} />
+              <Text style={styles.spotMapStateTitle}>No category data yet</Text>
+              <Text style={styles.spotMapStateText}>Published spots will appear here once they have a category.</Text>
+            </View>
+          ) : (
+            <View style={[styles.categoryOverviewBody, compact && styles.categoryOverviewBodyCompact]}>
+              <View style={[styles.categoryOverviewSummary, compact && styles.categoryOverviewSummaryCompact]}>
+                <Text style={styles.categoryOverviewSectionLabel}>MOST LISTED CATEGORY</Text>
+                <View style={styles.categoryOverviewLeaderIcon}>
+                  <View style={[styles.categoryOverviewLeaderDot, { backgroundColor: getSpotCategoryColor(leader?.label) }]} />
+                  <BarChart3 size={25} color={getSpotCategoryColor(leader?.label)} />
+                </View>
+                <Text style={styles.categoryOverviewLeaderName}>{leader?.label}</Text>
+                <Text style={styles.categoryOverviewLeaderCount}>{leader?.copy}</Text>
+                <Text style={styles.categoryOverviewLeaderCopy}>The largest category across currently published CebSpot listings.</Text>
+                <View style={styles.categoryOverviewMetrics}>
+                  <View style={styles.categoryOverviewMetric}>
+                    <Text style={styles.categoryOverviewMetricValue}>{data.length}</Text>
+                    <Text style={styles.categoryOverviewMetricLabel}>Categories</Text>
+                  </View>
+                  <View style={styles.categoryOverviewMetricDivider} />
+                  <View style={styles.categoryOverviewMetric}>
+                    <Text style={styles.categoryOverviewMetricValue}>{totalAssignments}</Text>
+                    <Text style={styles.categoryOverviewMetricLabel}>Assignments</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.categoryOverviewRanking}>
+                <View style={styles.categoryOverviewRankingHeader}>
+                  <View>
+                    <Text style={styles.categoryOverviewSectionLabel}>FULL RANKING</Text>
+                    <Text style={styles.categoryOverviewRankingHint}>Scroll to compare every spot category.</Text>
+                  </View>
+                  <Text style={styles.categoryOverviewRankingCount}>{data.length} TOTAL</Text>
+                </View>
+                <ScrollView
+                  accessibilityLabel="Full spot category rankings"
+                  nestedScrollEnabled
+                  showsVerticalScrollIndicator
+                  style={styles.categoryOverviewList}
+                  contentContainerStyle={styles.categoryOverviewListContent}
+                >
+                  {data.map((item, index) => {
+                    const categoryColor = getSpotCategoryColor(item.label);
+                    return (
+                      <View key={item.label} style={styles.categoryOverviewRow}>
+                        <View style={[styles.categoryOverviewRank, index < 3 && styles.categoryOverviewRankTop]}>
+                          <Text style={[styles.categoryOverviewRankText, index < 3 && styles.categoryOverviewRankTextTop]}>{index + 1}</Text>
+                        </View>
+                        <View style={styles.categoryOverviewRowContent}>
+                          <View style={styles.categoryOverviewRowTopline}>
+                            <View style={styles.categoryOverviewRowLabelWrap}>
+                              <View style={[styles.categoryOverviewRowDot, { backgroundColor: categoryColor }]} />
+                              <Text style={styles.categoryOverviewRowLabel}>{item.label}</Text>
+                            </View>
+                            <Text style={styles.categoryOverviewRowValue}>{item.copy ?? `${item.value}%`}</Text>
+                          </View>
+                          <View style={styles.categoryOverviewTrack}>
+                            <View style={[styles.categoryOverviewFill, { width: `${item.value}%`, backgroundColor: categoryColor }]} />
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function ProgressPanel({
   title,
   subtitle,
   data,
   yellow,
+  categoryOverview,
+  actionLabel,
+  onAction,
 }: {
   title: string;
   subtitle: string;
   data: Array<{ label: string; value: number; copy?: string }>;
   yellow?: boolean;
+  categoryOverview?: boolean;
+  actionLabel?: string;
+  onAction?: () => void;
 }) {
+  const [categoryOverviewVisible, setCategoryOverviewVisible] = useState(false);
+  const visibleData = categoryOverview ? data.slice(0, 5) : data;
+
   return (
     <View style={styles.chartCard}>
       <View style={styles.cardTitleRow}>
@@ -2449,10 +3191,32 @@ function ProgressPanel({
           <Text style={styles.cardTitle}>{title}</Text>
           <Text style={styles.cardSubtitle}>{subtitle}</Text>
         </View>
-        {yellow ? <Map size={19} color={adminPalette.outlineVariant} /> : <MoreHorizontal size={19} color={adminPalette.outlineVariant} />}
+        {categoryOverview ? (
+          <Pressable
+            accessibilityLabel="Open category ranking overview"
+            accessibilityRole="button"
+            onPress={() => setCategoryOverviewVisible(true)}
+            style={({ pressed }) => [styles.chartCardAction, pressed && styles.chartCardActionPressed]}
+          >
+            <BarChart3 size={19} color={adminPalette.primary} />
+          </Pressable>
+        ) : yellow && onAction ? (
+          <Pressable
+            accessibilityLabel={actionLabel ?? 'Open map'}
+            accessibilityRole="button"
+            onPress={onAction}
+            style={({ pressed }) => [styles.chartCardAction, pressed && styles.chartCardActionPressed]}
+          >
+            <Map size={19} color={adminPalette.primary} />
+          </Pressable>
+        ) : yellow ? (
+          <Map size={19} color={adminPalette.outlineVariant} />
+        ) : (
+          <MoreHorizontal size={19} color={adminPalette.outlineVariant} />
+        )}
       </View>
       <View style={styles.progressList}>
-        {data.map((item) => (
+        {visibleData.map((item) => (
           <View key={item.label}>
             <View style={styles.progressTitleRow}>
               <Text style={styles.progressLabel}>{item.label}</Text>
@@ -2469,108 +3233,13 @@ function ProgressPanel({
           </View>
         ))}
       </View>
-    </View>
-  );
-}
-
-function DataPanel({
-  title,
-  right,
-  children,
-}: {
-  title?: string;
-  right?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={styles.dataPanel}>
-      {!!title && (
-        <View style={styles.dataPanelHeader}>
-          <Text style={styles.dataPanelTitle}>{title}</Text>
-          {right}
-        </View>
-      )}
-      {children}
-    </View>
-  );
-}
-
-function DataTable<T extends { id: string }>({
-  columns,
-  data,
-  emptyCopy = 'No rows to show yet.',
-}: {
-  columns: TableColumn<T>[];
-  data: T[];
-  emptyCopy?: string;
-}) {
-  return (
-    <View>
-      <View style={styles.tableHead}>
-        {columns.map((column) => (
-          <Text
-            key={column.key}
-            style={[
-              styles.tableHeadText,
-              { flex: column.flex ?? 1, textAlign: column.align ?? 'left' },
-            ]}
-          >
-            {column.label}
-          </Text>
-        ))}
-      </View>
-      {data.map((item) => (
-        <View key={item.id} style={styles.tableRow}>
-          {columns.map((column) => (
-            <View key={column.key} style={{ flex: column.flex ?? 1, alignItems: column.align === 'right' ? 'flex-end' : 'flex-start' }}>
-              {column.render(item)}
-            </View>
-          ))}
-        </View>
-      ))}
-      {!data.length && <EmptyState title="Nothing here yet" copy={emptyCopy} compact />}
-    </View>
-  );
-}
-
-function StatusBadge({
-  label,
-  danger,
-  warning,
-}: {
-  label: string;
-  danger?: boolean;
-  warning?: boolean;
-}) {
-  const lower = label.toLowerCase();
-  const isOwner = lower === 'owner' || lower === 'restaurant';
-  const isPending = lower === 'pending';
-  const isSuccess = lower === 'verified' || lower === 'success' || lower === 'spotter';
-  const background = danger
-    ? adminPalette.errorContainer
-    : warning
-      ? adminPalette.tertiaryContainer
-      : isOwner
-        ? adminPalette.primaryContainer
-        : isPending
-          ? adminPalette.secondaryContainer
-          : isSuccess
-            ? adminPalette.successContainer
-            : adminPalette.surfaceContainer;
-  const foreground = danger
-    ? adminPalette.error
-    : warning
-      ? '#593900'
-      : isOwner
-        ? '#431200'
-        : isPending
-          ? '#763400'
-          : isSuccess
-            ? '#166534'
-            : adminPalette.onSurfaceVariant;
-  return (
-    <View style={[styles.statusBadge, { backgroundColor: background }]}>
-      <Text style={[styles.statusBadgeText, { color: foreground }]}>{label}</Text>
+      {categoryOverview ? (
+        <CategoryRankingOverviewModal
+          data={data}
+          onClose={() => setCategoryOverviewVisible(false)}
+          visible={categoryOverviewVisible}
+        />
+      ) : null}
     </View>
   );
 }
@@ -2639,2288 +3308,3 @@ function Pagination({
     </View>
   );
 }
-
-function LoadingPanel() {
-  return (
-    <View style={styles.loadingPanel}>
-      <ActivityIndicator color={adminPalette.primary} />
-      <Text style={styles.loadingTitle}>Loading live admin data</Text>
-      <Text style={styles.loadingCopy}>Reading Supabase metrics, queues, and recent platform activity.</Text>
-    </View>
-  );
-}
-
-function InlineNotice({
-  title,
-  copy,
-  tone = 'error',
-}: {
-  title: string;
-  copy: string;
-  tone?: 'error' | 'success';
-}) {
-  const toneColor = tone === 'success' ? adminPalette.success : adminPalette.error;
-  const toneBackground = tone === 'success' ? adminPalette.successContainer + '66' : adminPalette.errorContainer + '12';
-  const toneBorder = tone === 'success' ? adminPalette.success + '33' : adminPalette.errorContainer + '55';
-  return (
-    <View style={[styles.inlineNotice, { borderColor: toneBorder, backgroundColor: toneBackground }]}>
-      {tone === 'success' ? <CheckCircle2 size={18} color={toneColor} /> : <TriangleAlert size={18} color={toneColor} />}
-      <View style={styles.inlineNoticeCopy}>
-        <Text style={[styles.inlineNoticeTitle, { color: toneColor }]}>{title}</Text>
-        <Text style={styles.inlineNoticeText}>{copy}</Text>
-      </View>
-    </View>
-  );
-}
-
-function EmptyState({ title, copy, compact }: { title: string; copy: string; compact?: boolean }) {
-  return (
-    <View style={[styles.emptyState, compact && styles.emptyStateCompact]}>
-      <Text style={styles.emptyStateTitle}>{title}</Text>
-      <Text style={styles.emptyStateCopy}>{copy}</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: adminPalette.background,
-    fontFamily: adminFontFamily,
-  },
-  adminGateScreen: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: adminPalette.background,
-    fontFamily: adminFontFamily,
-  },
-  adminGateCard: {
-    width: '100%',
-    maxWidth: 420,
-    borderRadius: 8,
-    padding: 28,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '66',
-    backgroundColor: adminPalette.surfaceLowest,
-    ...shadow.card,
-  },
-  adminGateIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: adminPalette.inverseSurface,
-  },
-  adminGateBrand: {
-    color: adminPalette.onSurface,
-    fontSize: 24,
-    fontWeight: '900',
-  },
-  adminGateCopy: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 20,
-  },
-  adminGateInput: {
-    minHeight: 50,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant,
-    paddingHorizontal: 14,
-    color: adminPalette.onSurface,
-    backgroundColor: adminPalette.surfaceBright,
-    fontFamily: adminFontFamily,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  adminGatePasswordContainer: {
-    minHeight: 50,
-    borderRadius: 8,
-    borderColor: adminPalette.outlineVariant,
-    backgroundColor: adminPalette.surfaceBright,
-  },
-  adminGatePasswordInput: {
-    minHeight: 48,
-    paddingLeft: 14,
-    color: adminPalette.onSurface,
-    fontFamily: adminFontFamily,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  adminGateForgotButton: {
-    alignSelf: 'flex-end',
-    paddingVertical: 2,
-  },
-  adminGateForgotText: {
-    color: adminPalette.primary,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  adminGateButton: {
-    minHeight: 50,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: adminPalette.primary,
-  },
-  adminGateButtonText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  adminGateNotice: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: adminPalette.errorContainer + '18',
-  },
-  adminGateNoticeText: {
-    flex: 1,
-    color: adminPalette.error,
-    fontSize: 13,
-    fontWeight: '800',
-    lineHeight: 18,
-  },
-  sidebar: {
-    width: 250,
-    backgroundColor: adminPalette.inverseSurface,
-    paddingTop: 28,
-    paddingBottom: 24,
-    borderRightWidth: 1,
-    borderRightColor: '#ffffff12',
-  },
-  sidebarCompact: {
-    width: 78,
-  },
-  brandBlock: {
-    paddingHorizontal: 22,
-    marginBottom: 34,
-  },
-  brand: {
-    color: adminPalette.surfaceLowest,
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: 0,
-  },
-  brandSub: {
-    color: adminPalette.outlineVariant,
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 6,
-  },
-  nav: {
-    flex: 1,
-    gap: 4,
-  },
-  navItem: {
-    minHeight: 48,
-    paddingHorizontal: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 13,
-    borderLeftWidth: 4,
-    borderLeftColor: 'transparent',
-  },
-  navItemCompact: {
-    justifyContent: 'center',
-    paddingHorizontal: 0,
-  },
-  navItemActive: {
-    backgroundColor: '#FA5F001a',
-    borderLeftColor: adminPalette.primaryFixed,
-  },
-  navText: {
-    color: '#ded9d6',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  navTextActive: {
-    color: adminPalette.surfaceLowest,
-    fontWeight: '900',
-  },
-  sidebarFooter: {
-    paddingHorizontal: 14,
-    paddingTop: 22,
-    borderTopWidth: 1,
-    borderTopColor: '#ffffff12',
-    gap: 18,
-  },
-  adminCard: {
-    minHeight: 58,
-    borderRadius: 8,
-    padding: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#ffffff0a',
-  },
-  adminAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: adminPalette.primaryContainer,
-  },
-  adminAvatarText: {
-    color: '#431200',
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  adminCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  adminName: {
-    color: adminPalette.surfaceLowest,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  adminRole: {
-    color: adminPalette.outlineVariant,
-    fontSize: 9,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  signOutButton: {
-    minHeight: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 8,
-  },
-  signOutText: {
-    color: adminPalette.surfaceLowest,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  workspace: {
-    flex: 1,
-    minWidth: 0,
-  },
-  topbar: {
-    height: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 28,
-    borderBottomWidth: 1,
-    borderBottomColor: adminPalette.surfaceContainer,
-    backgroundColor: adminPalette.surfaceBright,
-  },
-  searchBox: {
-    width: '100%',
-    maxWidth: 560,
-    minHeight: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant,
-    backgroundColor: adminPalette.surfaceLowest,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  searchInput: {
-    flex: 1,
-    color: adminPalette.onSurface,
-    fontFamily: adminFontFamily,
-    fontSize: 13,
-    fontWeight: '600',
-    paddingVertical: 8,
-  },
-  topbarActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginLeft: 20,
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  notificationDot: {
-    position: 'absolute',
-    right: 10,
-    top: 9,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: adminPalette.primary,
-  },
-  topbarDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: adminPalette.outlineVariant,
-    opacity: 0.65,
-    marginHorizontal: 4,
-  },
-  liveBadge: {
-    minHeight: 36,
-    borderRadius: 8,
-    backgroundColor: adminPalette.primary,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    ...shadow.card,
-  },
-  sampleBadge: {
-    backgroundColor: adminPalette.outline,
-  },
-  liveBadgeText: {
-    color: colors.white,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  canvas: {
-    flex: 1,
-  },
-  canvasContent: {
-    padding: 28,
-    maxWidth: 1280,
-    width: '100%',
-    alignSelf: 'center',
-    gap: 24,
-  },
-  pageIntro: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 18,
-    marginBottom: 28,
-  },
-  eyebrow: {
-    color: adminPalette.primary,
-    fontSize: 10,
-    lineHeight: 14,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  pageTitle: {
-    color: adminPalette.onSurface,
-    fontSize: 34,
-    lineHeight: 40,
-    fontWeight: '900',
-    letterSpacing: 0,
-    marginTop: 4,
-  },
-  pageSubtitle: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: '500',
-    marginTop: 4,
-    maxWidth: 620,
-  },
-  supabaseHealthWrap: {
-    marginBottom: 24,
-  },
-  rangeControl: {
-    minHeight: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant,
-    backgroundColor: adminPalette.surfaceLowest,
-    padding: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  rangeButton: {
-    height: 34,
-    minWidth: 48,
-    borderRadius: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rangeButtonActive: {
-    backgroundColor: adminPalette.primary,
-  },
-  rangeText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  rangeTextActive: {
-    color: colors.white,
-    fontWeight: '900',
-  },
-  rangeDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: adminPalette.outlineVariant,
-    marginHorizontal: 6,
-  },
-  calendarChip: {
-    height: 34,
-    paddingHorizontal: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  calendarChipText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  overviewGrid: {
-    flexDirection: 'row',
-    gap: 24,
-    marginBottom: 24,
-  },
-  heroCard: {
-    flex: 1,
-    minHeight: 330,
-    borderRadius: 20,
-    backgroundColor: adminPalette.inverseSurface,
-    padding: 30,
-    overflow: 'hidden',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: adminPalette.primary + '22',
-    ...shadow.lifted,
-  },
-  heroContent: {
-    zIndex: 2,
-  },
-  heroLabel: {
-    color: adminPalette.primaryFixed,
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.4,
-  },
-  heroValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginTop: 8,
-    flexWrap: 'wrap',
-  },
-  heroValue: {
-    color: adminPalette.surfaceLowest,
-    fontSize: 58,
-    lineHeight: 66,
-    fontWeight: '900',
-    letterSpacing: 0,
-  },
-  heroDelta: {
-    borderRadius: 999,
-    backgroundColor: adminPalette.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  heroDeltaText: {
-    color: colors.white,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  heroCopy: {
-    color: adminPalette.outlineVariant,
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 8,
-  },
-  heroStats: {
-    zIndex: 2,
-    flexDirection: 'row',
-    gap: 20,
-  },
-  darkMiniStat: {
-    flex: 1,
-    minHeight: 84,
-    borderRadius: 12,
-    backgroundColor: '#ffffff0d',
-    borderWidth: 1,
-    borderColor: '#ffffff14',
-    padding: 17,
-    justifyContent: 'center',
-  },
-  darkMiniLabel: {
-    color: adminPalette.outlineVariant,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.9,
-  },
-  darkMiniValue: {
-    color: adminPalette.surfaceLowest,
-    fontSize: 26,
-    fontWeight: '900',
-    marginTop: 3,
-  },
-  heroWatermark: {
-    position: 'absolute',
-    right: -25,
-    top: 42,
-    opacity: 0.18,
-  },
-  overviewSideStats: {
-    width: 290,
-    gap: 22,
-  },
-  statCard: {
-    flex: 1,
-    minHeight: 112,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '66',
-    backgroundColor: adminPalette.surfaceLowest,
-    padding: 22,
-    justifyContent: 'space-between',
-    ...shadow.card,
-  },
-  statCardTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deltaPill: {
-    borderRadius: 999,
-    backgroundColor: adminPalette.primary + '10',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  deltaText: {
-    color: adminPalette.primary,
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  statLabel: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginTop: 12,
-  },
-  statValue: {
-    color: adminPalette.onSurface,
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '900',
-  },
-  statValueDanger: {
-    color: adminPalette.error,
-  },
-  twoColumnGrid: {
-    flexDirection: 'row',
-    gap: 24,
-    marginBottom: 24,
-  },
-  chartCard: {
-    flex: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '75',
-    backgroundColor: adminPalette.surfaceLowest,
-    padding: 28,
-    ...shadow.card,
-  },
-  cardTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 16,
-    marginBottom: 26,
-  },
-  cardTitle: {
-    color: adminPalette.onSurface,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  cardSubtitle: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  exportLink: {
-    color: adminPalette.primary,
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  chartSelectedLabel: {
-    borderRadius: 999,
-    backgroundColor: adminPalette.primary + '12',
-    color: adminPalette.primary,
-    fontSize: 11,
-    fontWeight: '900',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    textTransform: 'uppercase',
-  },
-  barChart: {
-    height: 220,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 12,
-    position: 'relative',
-  },
-  barChartCompact: {
-    height: 138,
-    gap: 8,
-  },
-  gridLines: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-  },
-  gridLine: {
-    height: 1,
-    backgroundColor: adminPalette.surfaceContainer,
-  },
-  barButton: {
-    flex: 1,
-    height: '100%',
-    justifyContent: 'flex-end',
-    zIndex: 2,
-  },
-  barButtonCompact: {
-    minWidth: 8,
-  },
-  barButtonPressed: {
-    opacity: 0.78,
-  },
-  bar: {
-    width: '100%',
-    minHeight: 6,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    zIndex: 2,
-  },
-  barCompact: {
-    borderTopLeftRadius: 5,
-    borderTopRightRadius: 5,
-  },
-  barMuted: {
-    backgroundColor: adminPalette.primary + '22',
-  },
-  barActive: {
-    backgroundColor: adminPalette.primary,
-  },
-  chartLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 14,
-  },
-  chartLabel: {
-    color: adminPalette.outline,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  lineChartWrap: {
-    height: 220,
-    position: 'relative',
-  },
-  lineSvg: {
-    width: '100%',
-    height: 220,
-  },
-  lineGridLines: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
-    paddingVertical: 20,
-    opacity: 0.55,
-  },
-  dataPanel: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '75',
-    backgroundColor: adminPalette.surfaceLowest,
-    overflow: 'hidden',
-    marginBottom: 24,
-    ...shadow.card,
-  },
-  dataPanelHeader: {
-    minHeight: 72,
-    paddingHorizontal: 26,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: adminPalette.surfaceContainer,
-    backgroundColor: adminPalette.surfaceBright,
-  },
-  dataPanelTitle: {
-    color: adminPalette.onSurface,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  liveSessionLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  liveSessionDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: adminPalette.primary,
-  },
-  liveSessionText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  tableHead: {
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: adminPalette.surfaceLow,
-    borderBottomWidth: 1,
-    borderBottomColor: adminPalette.surfaceContainer,
-    paddingHorizontal: 24,
-    gap: 14,
-  },
-  tableHeadText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.4,
-  },
-  tableRow: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    gap: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: adminPalette.surfaceContainer,
-  },
-  rowWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  rowIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: adminPalette.primaryContainer + '33',
-  },
-  tableStrong: {
-    color: adminPalette.onSurface,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  tableMuted: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  tablePrimary: {
-    color: adminPalette.primary,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  tableMini: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 3,
-  },
-  statusBadge: {
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    alignSelf: 'flex-start',
-  },
-  statusBadgeText: {
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  simpleRange: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant,
-    backgroundColor: adminPalette.surfaceLowest,
-    padding: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  simpleRangeButton: {
-    minWidth: 48,
-    height: 32,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  simpleRangeButtonActive: {
-    backgroundColor: adminPalette.primary,
-  },
-  simpleRangeText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  simpleRangeTextActive: {
-    color: colors.white,
-    fontWeight: '900',
-  },
-  spotStatsGrid: {
-    flexDirection: 'row',
-    gap: 24,
-    marginBottom: 24,
-  },
-  growthCard: {
-    flex: 2,
-    minHeight: 152,
-    borderRadius: 14,
-    backgroundColor: adminPalette.primary,
-    padding: 24,
-    overflow: 'hidden',
-    justifyContent: 'space-between',
-    ...shadow.lifted,
-  },
-  growthContent: {
-    zIndex: 2,
-  },
-  growthLabel: {
-    color: '#ffffffcc',
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  growthTitle: {
-    color: colors.white,
-    fontSize: 20,
-    lineHeight: 27,
-    fontWeight: '900',
-    maxWidth: 380,
-    marginTop: 6,
-  },
-  growthLinkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 18,
-  },
-  growthLink: {
-    color: colors.white,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  growthWatermark: {
-    position: 'absolute',
-    right: -15,
-    bottom: -20,
-  },
-  progressList: {
-    gap: 22,
-  },
-  progressTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  progressLabel: {
-    color: adminPalette.onSurface,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  progressValue: {
-    color: adminPalette.onSurface,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  progressTrack: {
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: adminPalette.surfaceContainer,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 999,
-  },
-  listingCell: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  listingImage: {
-    width: 42,
-    height: 42,
-    borderRadius: 8,
-    backgroundColor: adminPalette.surfaceContainer,
-  },
-  adminAvatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 18,
-  },
-  submissionRowExpanded: {
-    backgroundColor: adminPalette.surfaceBright,
-  },
-  submissionSpotButton: {
-    minHeight: 50,
-    borderRadius: 8,
-    paddingRight: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  submissionSpotButtonPressed: {
-    opacity: 0.72,
-  },
-  submissionSpotCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  expandedSubmission: {
-    marginHorizontal: 24,
-    marginBottom: 22,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: adminPalette.primary + '22',
-    backgroundColor: adminPalette.surfaceLowest,
-    overflow: 'hidden',
-    ...shadow.card,
-  },
-  submissionDetailHero: {
-    flexDirection: 'row',
-    gap: 22,
-    padding: 22,
-    borderBottomWidth: 1,
-    borderBottomColor: adminPalette.surfaceContainer,
-  },
-  submissionHeroImage: {
-    width: 240,
-    height: 170,
-    borderRadius: 10,
-    backgroundColor: adminPalette.surfaceContainer,
-  },
-  submissionDetailCopy: {
-    flex: 1,
-    minWidth: 0,
-    gap: 14,
-  },
-  submissionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 14,
-  },
-  submissionTitleCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  submissionDetailTitle: {
-    color: adminPalette.onSurface,
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: '900',
-  },
-  submissionDescription: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 13,
-    lineHeight: 21,
-    fontWeight: '600',
-  },
-  submissionMetaGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  submissionMetaItem: {
-    width: '31%',
-    minWidth: 150,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '50',
-    backgroundColor: adminPalette.surfaceBright,
-    padding: 10,
-  },
-  submissionMetaLabel: {
-    color: adminPalette.outline,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  submissionMetaValue: {
-    color: adminPalette.onSurface,
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: '800',
-    marginTop: 5,
-  },
-  submissionDetailGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 18,
-    padding: 22,
-  },
-  submissionDetailBlock: {
-    flex: 1,
-    minWidth: 260,
-  },
-  submissionDetailBlockWide: {
-    width: '100%',
-  },
-  senderCard: {
-    minHeight: 82,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '55',
-    backgroundColor: adminPalette.surfaceBright,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  senderCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  senderIdText: {
-    color: adminPalette.outline,
-    fontSize: 10,
-    lineHeight: 15,
-    fontWeight: '700',
-    marginTop: 6,
-  },
-  addressCard: {
-    minHeight: 82,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '55',
-    backgroundColor: adminPalette.surfaceBright,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  addressText: {
-    flex: 1,
-    color: adminPalette.onSurface,
-    fontSize: 12,
-    lineHeight: 19,
-    fontWeight: '700',
-  },
-  submissionImageGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  submissionDetailImage: {
-    width: 150,
-    height: 112,
-    borderRadius: 10,
-    backgroundColor: adminPalette.surfaceContainer,
-  },
-  tableIconButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tableIconButtonDisabled: {
-    opacity: 0.65,
-  },
-  approveSubmissionButton: {
-    minHeight: 34,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    backgroundColor: adminPalette.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  approveSubmissionText: {
-    color: colors.white,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  floatingAdd: {
-    position: 'absolute',
-    right: 0,
-    bottom: 10,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: adminPalette.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: adminPalette.primary + '22',
-    ...shadow.lifted,
-  },
-  reportTabsScroller: {
-    borderBottomWidth: 1,
-    borderBottomColor: adminPalette.surfaceContainer,
-    marginBottom: 24,
-  },
-  reportTabs: {
-    flexDirection: 'row',
-    gap: 22,
-    paddingRight: 18,
-  },
-  reportTab: {
-    paddingHorizontal: 6,
-    paddingBottom: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  reportTabActive: {
-    borderBottomColor: adminPalette.primary,
-  },
-  reportTabText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  reportTabTextActive: {
-    color: adminPalette.primary,
-    fontWeight: '900',
-  },
-  reportPanel: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '65',
-    backgroundColor: adminPalette.surfaceLowest,
-    overflow: 'hidden',
-    ...shadow.card,
-  },
-  reportHeader: {
-    minHeight: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: adminPalette.surfaceLow,
-    borderBottomWidth: 1,
-    borderBottomColor: adminPalette.surfaceContainer,
-    paddingHorizontal: 24,
-  },
-  reportHeading: {
-    flex: 1,
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  reportRow: {
-    minHeight: 86,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: adminPalette.surfaceContainer,
-  },
-  reportRowExpanded: {
-    backgroundColor: adminPalette.surfaceLow + '80',
-    alignItems: 'flex-start',
-    paddingTop: 22,
-  },
-  reportColumn: {
-    flex: 1,
-    paddingRight: 14,
-  },
-  reportDescriptionColumn: {
-    flex: 1.6,
-  },
-  reportActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 8,
-  },
-  initialAvatarSmall: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: adminPalette.primaryContainer,
-  },
-  initialAvatarText: {
-    color: '#431200',
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  reviewButton: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  reviewButtonActive: {
-    backgroundColor: adminPalette.primary + '12',
-    borderColor: adminPalette.primary,
-  },
-  reviewButtonText: {
-    color: adminPalette.primary,
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  expandedReport: {
-    marginLeft: 345,
-    marginRight: 24,
-    marginBottom: 24,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '44',
-    backgroundColor: adminPalette.surfaceLowest,
-    padding: 24,
-    ...shadow.card,
-  },
-  expandedReportTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 20,
-  },
-  reportQuote: {
-    color: adminPalette.onSurface,
-    fontSize: 13,
-    lineHeight: 22,
-  },
-  reportDetailLine: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 8,
-    fontWeight: '700',
-  },
-  spotDetailsButton: {
-    minHeight: 38,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  spotDetailsButtonText: {
-    color: adminPalette.primary,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  evidenceToggle: {
-    minHeight: 42,
-    borderRadius: 10,
-    backgroundColor: adminPalette.surfaceLow,
-    paddingHorizontal: 14,
-    marginTop: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  expandedReportBody: {
-    flexDirection: 'row',
-    gap: 40,
-    marginTop: 22,
-  },
-  microHeading: {
-    color: adminPalette.outline,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginBottom: 10,
-  },
-  evidenceImage: {
-    width: 92,
-    height: 92,
-    borderRadius: 12,
-    backgroundColor: adminPalette.surfaceContainer,
-  },
-  pinEvidenceColumn: {
-    width: 340,
-    gap: 12,
-  },
-  pinEvidenceMap: {
-    height: 220,
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '55',
-  },
-  pinEvidenceTileMap: {
-    width: '100%',
-    height: '100%',
-  },
-  pinComparisonRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  pinComparisonBox: {
-    flex: 1,
-    borderRadius: 12,
-    backgroundColor: adminPalette.surfaceLow,
-    padding: 12,
-  },
-  pinComparisonText: {
-    color: adminPalette.onSurface,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  reviewEvidenceBox: {
-    width: 340,
-    borderRadius: 14,
-    backgroundColor: adminPalette.surfaceLow,
-    padding: 14,
-    gap: 12,
-  },
-  flaggedReviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  reviewEvidenceMedia: {
-    gap: 10,
-    paddingRight: 10,
-  },
-  commentThreadBox: {
-    gap: 10,
-    marginTop: 4,
-  },
-  commentThreadItem: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '44',
-    backgroundColor: adminPalette.surfaceLowest,
-    padding: 10,
-    gap: 6,
-  },
-  commentThreadFlagged: {
-    borderColor: adminPalette.error,
-    backgroundColor: '#fff4f4',
-  },
-  commentThreadMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  flaggedLabel: {
-    alignSelf: 'flex-start',
-    color: adminPalette.error,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  notesColumn: {
-    flex: 1,
-  },
-  notesInput: {
-    height: 92,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant,
-    backgroundColor: adminPalette.surfaceLow,
-    padding: 12,
-    color: adminPalette.onSurface,
-    fontFamily: adminFontFamily,
-    fontSize: 12,
-    textAlignVertical: 'top',
-  },
-  expandedActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: 16,
-    borderTopWidth: 1,
-    borderTopColor: adminPalette.surfaceContainer,
-    marginTop: 24,
-    paddingTop: 18,
-  },
-  ghostButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  ghostButtonText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  primaryButton: {
-    borderRadius: 8,
-    backgroundColor: adminPalette.primary,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    ...shadow.card,
-  },
-  primaryButtonText: {
-    color: colors.white,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  addUserButton: {
-    borderRadius: 10,
-    backgroundColor: adminPalette.primaryFixed,
-    paddingHorizontal: 20,
-    minHeight: 46,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    ...shadow.card,
-  },
-  addUserText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  filterBar: {
-    minHeight: 64,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '45',
-    backgroundColor: adminPalette.surfaceLowest,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    ...shadow.card,
-  },
-  filterPillRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
-  },
-  filterPill: {
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    backgroundColor: adminPalette.surfaceContainer,
-  },
-  filterPillActive: {
-    backgroundColor: adminPalette.primary,
-  },
-  filterPillText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  filterPillTextActive: {
-    color: colors.white,
-  },
-  filterSummary: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 11,
-    fontWeight: '800',
-    borderRadius: 999,
-    backgroundColor: adminPalette.surfaceLow,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '35',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  filterSummaryStrong: {
-    color: adminPalette.onSurface,
-    fontWeight: '900',
-  },
-  filterSummaryPrimary: {
-    color: adminPalette.primary,
-    fontWeight: '900',
-  },
-  userCell: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  userAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: adminPalette.secondaryContainer,
-  },
-  userAvatarText: {
-    color: '#582500',
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  locationCell: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  inlineActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  requestToolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    gap: 16,
-  },
-  requestPill: {
-    minHeight: 42,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant,
-    backgroundColor: adminPalette.surfaceLowest,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  requestPillActive: {
-    borderColor: adminPalette.inverseSurface,
-    backgroundColor: adminPalette.inverseSurface,
-    ...shadow.card,
-  },
-  requestPillText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  requestPillTextActive: {
-    color: colors.white,
-    fontWeight: '900',
-  },
-  pendingCount: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: adminPalette.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 5,
-  },
-  pendingCountText: {
-    color: colors.white,
-    fontSize: 9,
-    fontWeight: '900',
-  },
-  toolbarButton: {
-    minHeight: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant,
-    backgroundColor: adminPalette.surfaceLowest,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  toolbarButtonText: {
-    color: adminPalette.onSurface,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  requestsTable: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '55',
-    backgroundColor: adminPalette.surfaceLowest,
-    overflow: 'hidden',
-    marginBottom: 24,
-    ...shadow.card,
-  },
-  requestHeader: {
-    minHeight: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    backgroundColor: adminPalette.surfaceLow,
-    borderBottomWidth: 1,
-    borderBottomColor: adminPalette.surfaceContainer,
-  },
-  requestHeading: {
-    flex: 1,
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-  },
-  requestRow: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: adminPalette.surfaceContainer,
-  },
-  requestRowExpanded: {
-    backgroundColor: adminPalette.primary + '08',
-  },
-  requestColumn: {
-    flex: 1,
-    paddingRight: 12,
-  },
-  requestAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: adminPalette.primaryFixed,
-  },
-  requestAvatarText: {
-    color: '#431200',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  requestActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    gap: 8,
-  },
-  requestIconAction: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  approveAction: {},
-  ownerActionDisabled: {
-    opacity: 0.5,
-  },
-  collapseAction: {
-    backgroundColor: adminPalette.primary,
-  },
-  reviewedRequestAction: {
-    minHeight: 36,
-    justifyContent: 'center',
-  },
-  expandedRequest: {
-    marginHorizontal: 42,
-    marginBottom: 30,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: adminPalette.primary + '22',
-    backgroundColor: adminPalette.surfaceLowest,
-    padding: 28,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 28,
-    ...shadow.lifted,
-  },
-  expandedRequestColumn: {
-    flex: 1,
-    minWidth: 220,
-    borderRightWidth: 1,
-    borderRightColor: adminPalette.surfaceContainer,
-    paddingRight: 24,
-  },
-  microHeadingPrimary: {
-    color: adminPalette.primary,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.8,
-    marginBottom: 14,
-  },
-  messageCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '35',
-    backgroundColor: adminPalette.surfaceBright,
-    padding: 18,
-  },
-  messageText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 13,
-    lineHeight: 22,
-    fontWeight: '600',
-  },
-  ownerDetailGroup: {
-    marginBottom: 14,
-  },
-  ownerDetailLabel: {
-    color: adminPalette.outline,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  ownerDetailValue: {
-    color: adminPalette.onSurface,
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '700',
-  },
-  accessNeedRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  accessNeedChip: {
-    borderRadius: 7,
-    backgroundColor: adminPalette.secondaryContainer + '66',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-  },
-  accessNeedText: {
-    color: '#763400',
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  documentImage: {
-    height: 105,
-    borderRadius: 10,
-    backgroundColor: adminPalette.surfaceContainer,
-  },
-  documentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 10,
-  },
-  documentText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  documentOpenText: {
-    color: adminPalette.primary,
-    fontSize: 10,
-    fontWeight: '900',
-    marginLeft: 'auto',
-  },
-  ownerNotesInput: {
-    height: 104,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant,
-    backgroundColor: adminPalette.surfaceBright,
-    padding: 14,
-    color: adminPalette.onSurface,
-    fontFamily: adminFontFamily,
-    fontSize: 12,
-    textAlignVertical: 'top',
-  },
-  ownerNotesInputReadOnly: {
-    opacity: 0.72,
-  },
-  userAvatarImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 18,
-  },
-  ownerActionRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 18,
-  },
-  rejectButton: {
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: adminPalette.error,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-  },
-  rejectButtonText: {
-    color: adminPalette.error,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  approveButton: {
-    borderRadius: 8,
-    backgroundColor: adminPalette.primary,
-    paddingHorizontal: 18,
-    paddingVertical: 13,
-  },
-  approveButtonText: {
-    color: colors.white,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.1,
-  },
-  reviewedRequestSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 14,
-  },
-  reviewedRequestCopy: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  ownerDecisionBackdrop: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#00000066',
-  },
-  ownerDecisionScrim: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  ownerDecisionModal: {
-    width: '100%',
-    maxWidth: 520,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '66',
-    backgroundColor: adminPalette.surfaceLowest,
-    padding: 24,
-    ...shadow.lifted,
-  },
-  ownerDecisionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  ownerDecisionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ownerDecisionIconApprove: {
-    backgroundColor: adminPalette.successContainer,
-  },
-  ownerDecisionIconReject: {
-    backgroundColor: adminPalette.errorContainer + '24',
-  },
-  ownerDecisionHeadingCopy: {
-    flex: 1,
-  },
-  ownerDecisionEyebrow: {
-    color: adminPalette.primary,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  ownerDecisionTitle: {
-    color: adminPalette.onSurface,
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: '900',
-  },
-  ownerDecisionClose: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ownerDecisionCopy: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: 18,
-  },
-  ownerDecisionSpot: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    borderRadius: 8,
-    backgroundColor: adminPalette.surfaceLow,
-    padding: 14,
-    marginTop: 16,
-  },
-  ownerDecisionSpotCopy: {
-    flex: 1,
-  },
-  ownerDecisionSpotName: {
-    color: adminPalette.onSurface,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  ownerDecisionSpotAddress: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 11,
-    lineHeight: 17,
-    marginTop: 2,
-  },
-  ownerDecisionNotesLabel: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginTop: 18,
-    marginBottom: 7,
-  },
-  ownerDecisionNotes: {
-    minHeight: 96,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant,
-    backgroundColor: adminPalette.surfaceBright,
-    padding: 13,
-    color: adminPalette.onSurface,
-    fontFamily: adminFontFamily,
-    fontSize: 12,
-    textAlignVertical: 'top',
-  },
-  ownerDecisionValidation: {
-    color: adminPalette.error,
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 6,
-  },
-  ownerDecisionActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 22,
-  },
-  ownerDecisionCancel: {
-    minHeight: 42,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-  },
-  ownerDecisionCancelText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  ownerDecisionConfirm: {
-    minWidth: 142,
-    minHeight: 42,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-  },
-  ownerDecisionConfirmApprove: {
-    backgroundColor: adminPalette.success,
-  },
-  ownerDecisionConfirmReject: {
-    backgroundColor: adminPalette.error,
-  },
-  ownerDecisionConfirmText: {
-    color: colors.white,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  bottomBento: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  systemUpdateCard: {
-    flex: 2,
-    minHeight: 245,
-    borderRadius: 18,
-    backgroundColor: adminPalette.inverseSurface,
-    padding: 32,
-    overflow: 'hidden',
-    ...shadow.lifted,
-  },
-  updateTagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
-  },
-  updateTag: {
-    color: colors.white,
-    backgroundColor: adminPalette.primary,
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  updateVersion: {
-    color: adminPalette.primaryFixed,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  updateTitle: {
-    color: colors.white,
-    fontSize: 28,
-    fontWeight: '900',
-  },
-  updateCopy: {
-    color: adminPalette.outlineVariant,
-    fontSize: 15,
-    lineHeight: 24,
-    fontWeight: '600',
-    maxWidth: 560,
-    marginTop: 12,
-  },
-  updateButton: {
-    alignSelf: 'flex-start',
-    borderRadius: 10,
-    backgroundColor: adminPalette.primary,
-    paddingHorizontal: 22,
-    paddingVertical: 13,
-    marginTop: 24,
-  },
-  updateButtonText: {
-    color: colors.white,
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  updateWatermark: {
-    position: 'absolute',
-    right: -20,
-    bottom: -24,
-  },
-  velocityCard: {
-    flex: 1,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '45',
-    backgroundColor: adminPalette.surfaceLowest,
-    padding: 24,
-    ...shadow.card,
-  },
-  velocityFooter: {
-    borderTopWidth: 1,
-    borderTopColor: adminPalette.surfaceContainer,
-    marginTop: 18,
-    paddingTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  velocityValue: {
-    color: adminPalette.onSurface,
-    fontSize: 28,
-    fontWeight: '900',
-  },
-  velocityLabel: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 1.1,
-  },
-  velocityIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: adminPalette.successContainer,
-  },
-  pagination: {
-    minHeight: 60,
-    paddingHorizontal: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: adminPalette.surfaceLow,
-    borderTopWidth: 1,
-    borderTopColor: adminPalette.surfaceContainer,
-  },
-  paginationText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  paginationActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  paginationButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '55',
-    backgroundColor: adminPalette.surfaceLowest,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  paginationButtonDisabled: {
-    opacity: 0.35,
-  },
-  pageNumberActive: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: adminPalette.primary,
-  },
-  pageNumberActiveText: {
-    color: colors.white,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  pageNumber: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pageNumberText: {
-    color: adminPalette.onSurface,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  loadingPanel: {
-    minHeight: 280,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: adminPalette.outlineVariant + '75',
-    backgroundColor: adminPalette.surfaceLowest,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 28,
-    gap: 10,
-    ...shadow.card,
-  },
-  loadingTitle: {
-    color: adminPalette.onSurface,
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  loadingCopy: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  inlineNotice: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: adminPalette.errorContainer + '55',
-    backgroundColor: adminPalette.errorContainer + '12',
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    marginBottom: 16,
-  },
-  inlineNoticeCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  inlineNoticeTitle: {
-    color: adminPalette.error,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  inlineNoticeText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 17,
-    marginTop: 2,
-  },
-  emptyState: {
-    minHeight: 180,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 28,
-  },
-  emptyStateCompact: {
-    minHeight: 118,
-    borderBottomWidth: 1,
-    borderBottomColor: adminPalette.surfaceContainer,
-  },
-  emptyStateTitle: {
-    color: adminPalette.onSurface,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  emptyStateCopy: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 12,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  systemGrid: {
-    flexDirection: 'row',
-    gap: 24,
-    marginBottom: 24,
-  },
-  checklistRow: {
-    minHeight: 66,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: adminPalette.surfaceContainer,
-  },
-  checklistNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: adminPalette.surfaceContainer,
-  },
-  checklistNumberActive: {
-    backgroundColor: adminPalette.primary,
-  },
-  checklistNumberText: {
-    color: adminPalette.onSurfaceVariant,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  checklistNumberTextActive: {
-    color: colors.white,
-  },
-  checklistText: {
-    color: adminPalette.onSurface,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-});

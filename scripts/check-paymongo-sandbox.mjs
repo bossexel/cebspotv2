@@ -15,7 +15,7 @@ const testKey = env.PAYMONGO_SECRET_KEY;
 if (!/^sk_test_(?!x+$|your|placeholder)[A-Za-z0-9]{12,}$/.test(testKey || '')) {
   throw new Error('A real PayMongo Secret Test key is required. Live keys are not accepted.');
 }
-const statePath = path.resolve('.codex-tmp/map-review/payment-sandbox-state.json');
+const statePath = path.resolve(process.env.PAYMONGO_SANDBOX_STATE_PATH || '.codex-tmp/map-review/payment-sandbox-state.json');
 const mode = process.argv[2] || 'inspect';
 if (!['inspect', 'start', 'status', 'cleanup'].includes(mode)) throw new Error('Use inspect, start, status, or cleanup.');
 const state = fs.existsSync(statePath) ? JSON.parse(fs.readFileSync(statePath, 'utf8')) : { attempts: [] };
@@ -128,6 +128,10 @@ try {
           if (session.attributes.livemode !== false) throw new Error('Refusing cleanup of a non-sandbox checkout.');
           if (session.attributes.payment_intent?.attributes?.status === 'succeeded') {
             console.log(JSON.stringify({ method: attempt.method, checkoutExpiry: 'Already paid in sandbox; provider retains the test transaction.' }));
+            attempt.cleanedUp = true;
+            attempt.retainedPaidFixture = true;
+            save();
+            continue;
           } else if (session.attributes.status !== 'expired') {
             await provider(route + '/expire', { method: 'POST', body: '{}' });
           }

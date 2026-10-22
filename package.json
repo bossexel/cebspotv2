@@ -15,6 +15,7 @@
     "build:android:rc": "node scripts/release-env.cjs",
     "eas-build-pre-install": "node scripts/release-env.cjs check-eas",
     "dev:admin": "node scripts/admin-web.cjs start --web --port 8084",
+    "test": "node --test tests/backend/*.test.cjs tests/remediation/*.test.cjs tests/platform/*.test.cjs tests/refactoring/*.test.cjs",
     "test:platform": "node --test tests/platform/android-only.test.cjs",
     "test:admin-web": "node tests/platform/admin-web.cjs",
     "map:build": "node scripts/build-map.cjs",

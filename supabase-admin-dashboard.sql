@@ -953,6 +953,52 @@ $$;
 revoke all on function public.review_owner_access_request(uuid, text, text) from public;
 grant execute on function public.review_owner_access_request(uuid, text, text) to authenticated;
 
+drop function if exists public.delete_admin_owner_request(uuid);
+
+create or replace function public.delete_admin_owner_request(target_request_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  deleted_request public.owner_access_requests%rowtype;
+  deleted_activity_count integer := 0;
+begin
+  perform public.require_active_account();
+
+  if not public.is_current_user_admin() then
+    raise exception 'Admin access required.' using errcode = '42501';
+  end if;
+
+  select *
+  into deleted_request
+  from public.owner_access_requests
+  where id = target_request_id
+  for update;
+
+  if not found then
+    raise exception 'Owner access request not found.' using errcode = 'P0002';
+  end if;
+
+  delete from public.activities
+  where target_id = target_request_id::text
+    and type in ('owner_access', 'owner_access_approved', 'owner_access_rejected');
+  get diagnostics deleted_activity_count = row_count;
+
+  delete from public.owner_access_requests where id = target_request_id;
+
+  return to_jsonb(deleted_request) || jsonb_build_object(
+    'deleted', true,
+    'deletedAt', now(),
+    'deletedActivityCount', deleted_activity_count
+  );
+end;
+$$;
+
+revoke all on function public.delete_admin_owner_request(uuid) from public, anon;
+grant execute on function public.delete_admin_owner_request(uuid) to authenticated, service_role;
+
 drop function if exists public.dismiss_admin_report(text, uuid, text);
 
 create or replace function public.dismiss_admin_report(
@@ -1116,5 +1162,42 @@ $$;
 
 revoke all on function public.apply_spot_edit_suggestion(uuid, text) from public;
 grant execute on function public.apply_spot_edit_suggestion(uuid, text) to authenticated;
+
+drop function if exists public.delete_admin_spot(uuid);
+
+create or replace function public.delete_admin_spot(target_spot_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  deleted_spot jsonb;
+begin
+  if not public.is_current_user_admin() then
+    raise exception 'Admin access required.';
+  end if;
+
+  select jsonb_build_object('id', spot.id, 'name', spot.name, 'category', spot.category)
+  into deleted_spot
+  from public.spots spot
+  where spot.id = target_spot_id
+  for update;
+
+  if deleted_spot is null then
+    raise exception 'Spot not found.';
+  end if;
+
+  if exists (select 1 from public.reservations where spot_id = target_spot_id) then
+    raise exception 'This spot has booking history and cannot be permanently deleted. Hide it from discovery instead.';
+  end if;
+
+  delete from public.spots where id = target_spot_id;
+  return deleted_spot || jsonb_build_object('deleted', true, 'deletedAt', now());
+end;
+$$;
+
+revoke all on function public.delete_admin_spot(uuid) from public, anon;
+grant execute on function public.delete_admin_spot(uuid) to authenticated;
 
 notify pgrst, 'reload schema';

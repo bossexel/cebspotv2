@@ -1,0 +1,12 @@
+{
+  "label": "publish-preflight-typecheck-2026-10-16",
+  "command": [
+    "npm",
+    "run",
+    "typecheck"
+  ],
+  "startedAt": "2026-10-16T07:27:04.992Z",
+  "finishedAt": "2026-10-16T07:27:22.551Z",
+  "exitCode": 0,
+  "output": "\n> cebspot@1.0.0 typecheck\n> tsc --noEmit\n\n"
+}

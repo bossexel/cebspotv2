@@ -1,0 +1,22 @@
+{
+  "kind": "actual-service-code-with-storage-adapters",
+  "findings": [
+    {
+      "case": "browser-proof",
+      "returned": "blob:http://app.test/synthetic-proof",
+      "storageCalls": 0
+    },
+    {
+      "case": "browser-video-submission",
+      "storedImages": [
+        "blob:http://app.test/synthetic-video"
+      ],
+      "storageCalls": 0
+    },
+    {
+      "case": "owner-document-web",
+      "error": "readAsStringAsync is unavailable on web",
+      "classification": "Source executed with the unavailable web file-reader modeled; installed ExponentFileSystemShim has no readAsStringAsync"
+    }
+  ]
+}

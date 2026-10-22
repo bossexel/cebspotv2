@@ -1,0 +1,32 @@
+{
+  "kind": "prerequisite-inspection",
+  "dateUtc": "2026-10-07T21:06:18.153Z",
+  "node": "v22.18.0",
+  "tools": {
+    "docker": {
+      "onPath": false
+    },
+    "supabase": {
+      "onPath": false
+    },
+    "k6": {
+      "onPath": false
+    },
+    "ffmpeg": {
+      "onPath": false
+    },
+    "adb": {
+      "onPath": false
+    }
+  },
+  "androidSdkAdbExists": true,
+  "localApi": {
+    "reachable": false,
+    "reason": "Local connection failed or timed out; no HTTP response"
+  },
+  "localStackPrepared": true,
+  "syntheticPhotoPrepared": true,
+  "syntheticVideoPrepared": false,
+  "target": "Only a loopback health probe was attempted; no hosted target traffic",
+  "dockerDesktopAtDefaultLocation": false
+}

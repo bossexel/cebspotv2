@@ -1,3 +1,4 @@
+import { isLocalFileUri } from '../utils/mediaFile';
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Platform } from 'react-native';
@@ -56,10 +57,6 @@ type AnonymizationJob = {
 
 class RecoverableJobError extends Error {}
 class PermanentUploadError extends Error {}
-
-function isLocalFileUri(uri: string) {
-  return uri.startsWith('file:') || uri.startsWith('content:') || uri.startsWith('ph:');
-}
 
 function getContentType(extension: string) {
   return extension === 'png' ? 'image/png' : 'image/jpeg';

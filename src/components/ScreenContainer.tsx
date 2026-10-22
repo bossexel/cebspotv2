@@ -15,6 +15,7 @@ interface ScreenContainerProps {
   bottomNavOverlay?: boolean;
   onBottomNavHeightChange?: (height: number) => void;
   padded?: boolean;
+  guideNavigation?: boolean;
 }
 
 export function ScreenContainer({
@@ -27,6 +28,7 @@ export function ScreenContainer({
   bottomNavOverlay = false,
   onBottomNavHeightChange,
   padded = true,
+  guideNavigation = false,
 }: ScreenContainerProps) {
   const contentStyle = [
     padded && styles.padded,
@@ -50,7 +52,7 @@ export function ScreenContainer({
         ) : (
           <View style={[styles.flex, contentStyle]}>{children}</View>
         )}
-        {showBottomNav && <BottomNav appColors={appColors} onHeightChange={onBottomNavHeightChange} />}
+        {showBottomNav && <BottomNav appColors={appColors} onHeightChange={onBottomNavHeightChange} guideTargets={guideNavigation} />}
       </View>
     </SafeAreaView>
   );

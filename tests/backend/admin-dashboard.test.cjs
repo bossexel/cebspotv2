@@ -53,6 +53,8 @@ test('every mutating admin RPC performs the server-side admin check', () => {
     'review_owner_access_request',
     'dismiss_admin_report',
     'apply_spot_edit_suggestion',
+    'delete_admin_spot',
+    'delete_admin_owner_request',
   ]) {
     assert.match(sqlFunction(sql, name), /if not public\.is_current_user_admin\(\)/i, name);
   }
@@ -66,6 +68,70 @@ test('admin dashboard routes operational actions through secured RPCs', () => {
   assert.match(service, /rpc\('review_owner_access_request'/);
   assert.match(service, /rpc\('dismiss_admin_report'/);
   assert.match(service, /rpc\('apply_spot_edit_suggestion'/);
+  assert.match(service, /rpc\('delete_admin_spot'/);
+  assert.match(service, /rpc\('delete_admin_owner_request'/);
+});
+
+test('spot deletion is admin-only and preserves booking history', () => {
+  const migration = read('supabase/migrations/20261020000100_admin_spot_delete.sql');
+  const deletion = sqlFunction(migration, 'delete_admin_spot');
+  const screen = read('app/admin.tsx');
+
+  assert.match(deletion, /if not public\.is_current_user_admin\(\)/i);
+  assert.match(deletion, /from public\.reservations[\s\S]*reservation\.spot_id\s*=\s*target_spot_id/i);
+  assert.match(deletion, /delete from public\.spots where id = target_spot_id/i);
+  assert.match(migration, /revoke all on function public\.delete_admin_spot\(uuid\) from public, anon/i);
+  assert.match(screen, /accessibilityLabel={`Delete \$\{item\.name\}`}/);
+  assert.match(screen, /Spots with booking history are protected and cannot be deleted/);
+});
+
+test('owner request deletion is admin-only and does not revoke provisioned access', () => {
+  const migration = read('supabase/migrations/20261021000100_admin_owner_request_delete.sql');
+  const deletion = sqlFunction(migration, 'delete_admin_owner_request');
+  const screen = read('app/admin.tsx');
+
+  assert.match(deletion, /if not public\.is_current_user_admin\(\)/i);
+  assert.match(deletion, /delete from public\.activities[\s\S]*target_id = target_request_id::text/i);
+  assert.match(deletion, /delete from public\.owner_access_requests where id = target_request_id/i);
+  assert.doesNotMatch(deletion, /delete from public\.(profiles|spots|owner_spot_access)/i);
+  assert.match(migration, /revoke all on function public\.delete_admin_owner_request\(uuid\) from public, anon/i);
+  assert.match(screen, /accessibilityLabel={`Delete \$\{request\.applicant\}'s owner request`}/);
+  assert.match(screen, /It does not delete the applicant, the spot, or owner access already granted/);
+});
+
+test('barangay leaderboard opens an interactive admin spot map', () => {
+  const screen = read('app/admin.tsx');
+  const service = read('src/services/adminDashboardService.ts');
+
+  assert.match(screen, /actionLabel="Open spot map overview"/);
+  assert.match(screen, /function SpotMapOverviewModal/);
+  assert.match(screen, /onMarkerPress=\{\(marker\) => onSelectSpot\(marker\.id\)\}/);
+  assert.match(screen, /ALL MAPPED SPOTS/);
+  assert.match(screen, /getSpotCategoryColor\(spot\.category, spot\.categories\)/);
+  assert.match(screen, /selectedCategory === 'All'/);
+  assert.match(screen, /Filter mapped spots/);
+  assert.doesNotMatch(screen, /imageUrl: spot\.image/);
+  assert.doesNotMatch(screen, /source=\{\{ uri: selectedSpot\.image \}\}/);
+  assert.match(service, /getAdminSpotMapRows/);
+  assert.match(service, /category,categories,address,latitude,longitude/);
+});
+
+test('top spot categories opens a scrollable full-ranking overview', () => {
+  const screen = read('app/admin.tsx');
+  const service = read('src/services/adminDashboardService.ts');
+  const analytics = read('src/services/admin-dashboard/analytics.ts');
+
+  assert.match(screen, /title="Top spot categories"[\s\S]*?categoryOverview/);
+  assert.match(screen, /function CategoryRankingOverviewModal/);
+  assert.match(screen, /Open category ranking overview/);
+  assert.match(screen, /Full spot category rankings/);
+  assert.match(screen, /data\.slice\(0, 5\)/);
+  assert.match(service, /categories: publicSpotCategories/);
+  assert.match(service, /\[spot\.category, \.\.\.\(spot\.categories \?\? \[\]\)\]/);
+  assert.match(service, /readAllAdminSpotCategories/);
+  assert.match(service, /\.select\('id,category,categories', \{ count: 'exact' \}\)[\s\S]*?\.range\(/);
+  assert.match(service, /buildSpotCategoryProgress\(categoryResult\.data\)/);
+  assert.match(analytics, /limit === null \? ranked : ranked\.slice\(0, limit\)/);
 });
 
 test('admin members are paged from the full profiles table instead of the 12-row dashboard preview', () => {

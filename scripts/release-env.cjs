@@ -12,14 +12,16 @@ function publicEnvironment(file) {
   }
   return result;
 }
-function validate(env, forbidden = []) {
-  if (env.CEBSPOT_RUNTIME_ENV !== 'staging') throw Error('Explicit isolated staging configuration is required.');
-  const ref = env.CEBSPOT_STAGING_PROJECT_REF;
-  if (!/^[a-z0-9]{20}$/.test(ref ?? '')) throw Error('Set the isolated staging project reference.');
+function validate(env, forbidden = [], mode = 'staging') {
+  const isBeta = mode === 'public-beta';
+  if (env.CEBSPOT_RUNTIME_ENV !== (isBeta ? 'public-beta' : 'staging')) throw Error('Explicit isolated staging configuration is required.');
+  const ref = isBeta ? env.CEBSPOT_BETA_ALLOWED_SUPABASE_REF : env.CEBSPOT_STAGING_PROJECT_REF;
+  if (!/^[a-z0-9]{20}$/.test(ref ?? '')) throw Error(isBeta ? 'Set the pinned public beta Supabase project reference.' : 'Set the isolated staging project reference.');
   let url, face;
   try { url = new URL(env.EXPO_PUBLIC_SUPABASE_URL); face = new URL(env.EXPO_PUBLIC_FACE_BLUR_API_URL); } catch { throw Error('Configure HTTPS staging backend and face-service URLs.'); }
-  if (url.href !== `https://${ref}.supabase.co/` || face.protocol !== 'https:' || face.username || face.password || face.search || face.hash) throw Error('Staging target validation failed.');
-  if (forbidden.some(value => { try { return new URL(value).host === url.host || new URL(value).host === face.host; } catch { return false; } })) throw Error('The existing hosted backend/service cannot be used as isolated staging.');
+  const betaFaceHost = env.CEBSPOT_BETA_ALLOWED_FACE_HOST;
+  if (url.href !== `https://${ref}.supabase.co/` || face.protocol !== 'https:' || face.username || face.password || face.search || face.hash || (isBeta && (!betaFaceHost || face.host !== betaFaceHost))) throw Error(isBeta ? 'Public beta target does not match its pinned Supabase and face-service targets.' : 'Staging target validation failed.');
+  if (!isBeta && forbidden.some(value => { try { return new URL(value).host === url.host || new URL(value).host === face.host; } catch { return false; } })) throw Error('The existing hosted backend/service cannot be used as isolated staging.');
   const key = env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
   let anonymous = false;
   try { anonymous = JSON.parse(Buffer.from(key.split('.')[1], 'base64url')).role === 'anon'; } catch { /* Publishable keys use another format. */ }
@@ -44,6 +46,7 @@ if (require.main === module) {
     const args = process.argv.slice(2);
     if (args[0] === 'check-eas') {
       if (['preview','production'].includes(process.env.EAS_BUILD_PROFILE)) validate(process.env, forbiddenTargets());
+      if (process.env.EAS_BUILD_PROFILE === 'beta') validate(process.env, [], 'public-beta');
     } else {
       const offline = args.includes('--offline-verification');
       const outputIndex = args.indexOf('--output-dir');

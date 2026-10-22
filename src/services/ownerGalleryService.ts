@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import { isLocalFileUri, isBrowserBlobUri, readMediaBody } from '../utils/mediaFile';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { hasSupabaseConfig } from '../lib/supabase';
 import type { Spot } from '../types';
@@ -15,58 +15,15 @@ export type OwnerGalleryUpload = {
 
 const maximumUploadBytes = 12 * 1024 * 1024;
 
-function base64ToArrayBuffer(base64: string) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  const cleanBase64 = base64.replace(/=+$/, '');
-  const bytes: number[] = [];
-  let buffer = 0;
-  let bits = 0;
-
-  for (const char of cleanBase64) {
-    const value = chars.indexOf(char);
-    if (value < 0) continue;
-    buffer = (buffer << 6) | value;
-    bits += 6;
-    if (bits >= 8) {
-      bits -= 8;
-      bytes.push((buffer >> bits) & 0xff);
-    }
-  }
-
-  return new Uint8Array(bytes).buffer;
-}
-
-function isDeviceFile(uri: string) {
-  return uri.startsWith('file:') || uri.startsWith('content:') || uri.startsWith('ph:');
-}
-
-function isBrowserBlob(uri: string) {
-  return /^(blob|data):/i.test(uri);
-}
-
 async function readUploadBody(uri: string) {
-  if (isDeviceFile(uri)) {
-    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-    return base64ToArrayBuffer(base64);
-  }
-
-  if (!isBrowserBlob(uri)) {
+  if (!isLocalFileUri(uri) && !isBrowserBlobUri(uri)) {
     throw new Error('This photo source cannot be privacy processed, so it was not uploaded.');
   }
-  const response = await fetch(uri);
-  if (!response.ok) throw new Error('Unable to read one of the selected photos.');
-  return response.arrayBuffer();
+  return readMediaBody(uri, 'Unable to read one of the selected photos.');
 }
 
 function cleanImages(images: string[] | null | undefined) {
   return [...new Set((images ?? []).map((url) => url.trim()).filter(Boolean))];
-}
-
-function uploadExtension(asset: OwnerGalleryUpload, wasProcessed: boolean) {
-  if (wasProcessed) return 'jpg';
-  const mimeSubtype = asset.mimeType?.split('/')[1]?.toLowerCase();
-  if (mimeSubtype === 'png' || mimeSubtype === 'webp') return mimeSubtype;
-  return 'jpg';
 }
 
 export const ownerGalleryService = {
@@ -108,8 +65,7 @@ export const ownerGalleryService = {
 
         const processedUri = await imageAnonymizationService.anonymizeImage(asset.uri);
         try {
-          const extension = uploadExtension(asset, true);
-          const objectPath = `${userId}/owner-gallery/${spot.id}/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+          const objectPath = `${userId}/owner-gallery/${spot.id}/${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}.jpg`;
           const { error: uploadError } = await client.storage
             .from(spotImagesBucket)
             .upload(objectPath, await readUploadBody(processedUri), {

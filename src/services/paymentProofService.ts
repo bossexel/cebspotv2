@@ -1,12 +1,9 @@
+import { isLocalFileUri, readLocalFileAsArrayBuffer } from '../utils/mediaFile';
 import * as FileSystem from 'expo-file-system';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 
 const paymentProofsBucket = 'payment-proofs';
-
-function isLocalFileUri(uri: string) {
-  return uri.startsWith('file:') || uri.startsWith('content:') || uri.startsWith('ph:');
-}
 
 function getFileExtension(uri: string) {
   const cleanUri = uri.split('?')[0] ?? '';
@@ -19,27 +16,6 @@ function getContentType(extension: string) {
   if (extension === 'png') return 'image/png';
   if (extension === 'pdf') return 'application/pdf';
   throw new Error('Use a JPEG, PNG, or PDF payment proof.');
-}
-
-function base64ToArrayBuffer(base64: string) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  const cleanBase64 = base64.replace(/=+$/, '');
-  const bytes: number[] = [];
-  let buffer = 0;
-  let bits = 0;
-
-  for (const char of cleanBase64) {
-    const value = chars.indexOf(char);
-    if (value < 0) continue;
-    buffer = (buffer << 6) | value;
-    bits += 6;
-    if (bits >= 8) {
-      bits -= 8;
-      bytes.push((buffer >> bits) & 0xff);
-    }
-  }
-
-  return new Uint8Array(bytes).buffer;
 }
 
 export const paymentProofService = {
@@ -55,12 +31,10 @@ export const paymentProofService = {
     if (!info.exists || !('size' in info) || info.size <= 0 || info.size > 5 * 1024 * 1024) {
       throw new Error('Payment proof must be between 1 byte and 5 MiB.');
     }
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+    const body = await readLocalFileAsArrayBuffer(uri);
     const { data, error } = await supabase.functions.invoke(
       `private-upload?kind=reservation_proof&resourceId=${encodeURIComponent(reservationId)}`,
-      { body: base64ToArrayBuffer(base64), headers: { 'Content-Type': contentType } },
+      { body, headers: { 'Content-Type': contentType } },
     );
 
     if (error) {

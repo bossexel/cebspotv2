@@ -7,6 +7,21 @@ import { isReleaseReservable, reservationClientVenueId } from '../utils/tableInv
 
 type TableInventoryUpdate = NonNullable<Spot['table_inventory']>;
 const discoverySpotLimit = 500;
+// Fixed fixture IDs from supabase-seed-spots.sql and the original Supabase
+// test restaurant. Keep these records available
+// for existing reservations and owner tools, but hide them from public discovery.
+const hiddenSeedSpotIds = [
+  '11111111-1111-4111-8111-111111111111',
+  '22222222-2222-4222-8222-222222222222',
+  '33333333-3333-4333-8333-333333333333',
+  '44444444-4444-4444-8444-444444444444',
+  '55555555-5555-4555-8555-555555555555',
+  '66666666-6666-4666-8666-666666666666',
+  '55c91f2e-444c-4a24-9911-c896aaf8549e',
+  ...Array.from({ length: 60 }, (_, index) =>
+    `90000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`),
+];
+const hiddenSeedSpotFilter = `(${hiddenSeedSpotIds.join(',')})`;
 
 function normalizeSpot(row: any): Spot {
   const reservationFee = calculateReservationFee(row);
@@ -68,6 +83,7 @@ export const spotService = {
       .from('spots')
       .select('*')
       .eq('is_public', true)
+      .not('id', 'in', hiddenSeedSpotFilter)
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) throw error;
@@ -77,8 +93,7 @@ export const spotService = {
 
   async getSpotsByIds(ids: string[]): Promise<Spot[]> {
     if (!hasSupabaseConfig) {
-      const savedIds = new Set(ids);
-      return sampleSpots.filter((spot) => savedIds.has(spot.id));
+      throw new Error('Discovery service is not configured.');
     }
 
     const uniqueIds = [...new Set(ids.filter(Boolean))];
@@ -91,7 +106,8 @@ export const spotService = {
         .from('spots')
         .select('*')
         .in('id', batch)
-        .eq('is_public', true);
+        .eq('is_public', true)
+        .not('id', 'in', hiddenSeedSpotFilter);
       if (error) throw error;
       return (data ?? []).map(normalizeSpot);
     }));

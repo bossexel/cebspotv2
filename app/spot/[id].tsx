@@ -47,10 +47,10 @@ import { TileMap } from '../../src/components/TileMap';
 import { colors } from '../../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../../src/constants/design';
 import { REVIEW_REPORT_CATEGORIES } from '../../src/constants/reportCategories';
-import { sampleSpots } from '../../src/constants/sampleData';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useLocation } from '../../src/hooks/useLocation';
 import { useTheme } from '../../src/hooks/useTheme';
+import { useGuideTarget, useSpotGuide } from '../../src/features/onboarding/GuideProvider';
 import { gamificationService } from '../../src/services/gamificationService';
 import { reviewService } from '../../src/services/reviewService';
 import { reviewMediaService } from '../../src/services/reviewMediaService';
@@ -204,6 +204,11 @@ export default function SpotDetailsScreen() {
   const { profile } = useAuth();
   const { getCurrentLocation, location } = useLocation();
   const screenScrollRef = useRef<ScrollView>(null);
+  const guideOffsets = useRef({ sheet: 0, overview: 0, reviews: 0 });
+  const startSpotGuide = useSpotGuide();
+  const titleTarget = useGuideTarget('detail-title', true, () => screenScrollRef.current?.scrollTo({ y: 0, animated: false }));
+  const overviewTarget = useGuideTarget('detail-overview', true, () => screenScrollRef.current?.scrollTo({ y: guideOffsets.current.sheet + guideOffsets.current.overview - spacing.lg, animated: false }));
+  const reviewsTarget = useGuideTarget('detail-reviews', true, () => screenScrollRef.current?.scrollTo({ y: guideOffsets.current.sheet + guideOffsets.current.reviews - spacing.lg, animated: false }));
   const heroGalleryRef = useRef<FlatList<string> | null>(null);
   const [spot, setSpot] = useState<Spot | null>(null);
   const [availableSpots, setAvailableSpots] = useState<Spot[]>([]);
@@ -261,7 +266,7 @@ export default function SpotDetailsScreen() {
           spotService.getSpotById(id),
           spotService.getSpots().catch((error) => {
             console.error('Unable to load similar live spots:', error);
-            return hasSupabaseConfig ? [] : sampleSpots;
+            return [];
           }),
         ]);
         if (active) {
@@ -810,7 +815,7 @@ export default function SpotDetailsScreen() {
             <Share2 size={20} color={colors.white} />
           </Pressable>
         </View>
-        <View style={styles.heroText}>
+        <View ref={titleTarget} collapsable={false} style={styles.heroText}>
           <Text style={styles.badge}>Premium Spot</Text>
           {spot.is_reservable && (
             <Text style={styles.reservationBadge}>
@@ -833,7 +838,8 @@ export default function SpotDetailsScreen() {
         </View>
       </View>
 
-      <View style={[styles.sheet, { backgroundColor: appColors.surface }]}>
+      <View onLayout={(event) => { guideOffsets.current.sheet = event.nativeEvent.layout.y; }} style={[styles.sheet, { backgroundColor: appColors.surface }]}>
+        <AppButton label="Spot guide" variant="ghost" onPress={startSpotGuide} />
         <View style={styles.chips}>
           {spotCategories.map((category) => (
             <CategoryChip key={category} label={category} appColors={appColors} />
@@ -855,7 +861,7 @@ export default function SpotDetailsScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View ref={overviewTarget} collapsable={false} onLayout={(event) => { guideOffsets.current.overview = event.nativeEvent.layout.y; }} style={styles.section}>
           <View style={styles.inlineTitle}>
             <Info size={14} color={colors.primary} />
             <Text style={[styles.sectionTitle, { color: appColors.onSurfaceVariant }]}>Overview</Text>
@@ -894,9 +900,11 @@ export default function SpotDetailsScreen() {
           </ScrollView>
         </View>
 
-        <View style={styles.section}>
+        <View onLayout={(event) => { guideOffsets.current.reviews = event.nativeEvent.layout.y; }} style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: appColors.onSurfaceVariant }]}>Community Reviews</Text>
+            <View ref={reviewsTarget} collapsable={false}>
+              <Text style={[styles.sectionTitle, { color: appColors.onSurfaceVariant }]}>Community Reviews</Text>
+            </View>
             <Text style={styles.reviewCount}>{reviews.length} posts</Text>
           </View>
 

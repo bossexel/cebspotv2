@@ -2,6 +2,8 @@
 
 Expo React Native app for discovering Cebu spots, reserving venues, and sharing local activity. Customers and owners use Android; the admin console stays hosted on Render.
 
+See [code structure and regression checks](docs/code-structure.md) for dashboard modules, shared upload utilities, and local validation commands.
+
 ## Run
 
 ```bash

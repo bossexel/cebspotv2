@@ -5,7 +5,7 @@ export const OWNER_EMAIL = 'testowner@cebspot.com';
 export const USER_EMAIL = 'exielramen@gmail.com';
 
 export function isPublicAndroidRoute(rootRoute: string) {
-  return ['login', 'privacy', 'reset-password', 'auth', 'admin', 'owner-dashboard', 'owner-access', '+not-found'].includes(rootRoute)
+  return ['login', 'privacy', 'reset-password', 'auth', 'admin', 'owner-dashboard', 'owner-access', 'onboarding', '+not-found'].includes(rootRoute)
     || (__DEV__ && ['admin-sandbox', 'admin-studio'].includes(rootRoute));
 }
 

@@ -1,0 +1,171 @@
+{
+  "kind": "local-source-and-mocked-handler-evidence",
+  "dateUtc": "2026-10-07T20:51:15.538Z",
+  "localDate": "2026-10-08, 4:51:15 a.m. GMT+8",
+  "commit": "eb839e670bfc98ffbd9180cc0ba57d357d975a53",
+  "workingTree": "dirty; exact file hashes in source-manifest.json",
+  "node": "v22.18.0",
+  "typescript": "5.8.3",
+  "os": "win32 10.0.26200",
+  "cpu": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+  "logicalCpus": 8,
+  "totalMemoryMB": 7971.3046875,
+  "httpRequests": 0,
+  "backendLoadStatus": "NOT TESTED",
+  "runs": [
+    {
+      "name": "backend-regression",
+      "exitCode": 0,
+      "tests": 94,
+      "pass": 94,
+      "fail": 0,
+      "skipped": 0,
+      "durationMs": 8459.7873
+    },
+    {
+      "name": "suite-self-tests",
+      "exitCode": 1,
+      "tests": 1,
+      "pass": 0,
+      "fail": 1,
+      "skipped": 0,
+      "durationMs": 424.3387
+    }
+  ],
+  "algorithmBenchmarks": [
+    {
+      "operation": "client_search_filter",
+      "datasetSize": 500,
+      "iterations": 100,
+      "avgMs": 0.47051699999996344,
+      "medianMs": 0.33590000000003783,
+      "p95Ms": 0.9764999999988504,
+      "p99Ms": 1.1066999999984546,
+      "validationFailures": 0,
+      "status": "PASS",
+      "interpretation": "Desktop Node source-algorithm microbenchmark; no API or Android frame-time claim"
+    },
+    {
+      "operation": "client_recommendations",
+      "datasetSize": 500,
+      "iterations": 100,
+      "avgMs": 8.845764999999938,
+      "medianMs": 5.9870000000009895,
+      "p95Ms": 23.910600000001068,
+      "p99Ms": 34.041299999998955,
+      "validationFailures": 0,
+      "status": "PASS",
+      "interpretation": "Desktop Node source-algorithm microbenchmark; no API or Android frame-time claim"
+    },
+    {
+      "operation": "client_search_filter",
+      "datasetSize": 1000,
+      "iterations": 100,
+      "avgMs": 1.3189039999999477,
+      "medianMs": 0.7852999999995518,
+      "p95Ms": 4.4135000000005675,
+      "p99Ms": 8.01339999999982,
+      "validationFailures": 0,
+      "status": "PASS",
+      "interpretation": "Desktop Node source-algorithm microbenchmark; no API or Android frame-time claim"
+    },
+    {
+      "operation": "client_recommendations",
+      "datasetSize": 1000,
+      "iterations": 100,
+      "avgMs": 17.594889000000002,
+      "medianMs": 13.432000000000698,
+      "p95Ms": 35.166699999999764,
+      "p99Ms": 79.94980000000032,
+      "validationFailures": 0,
+      "status": "PASS",
+      "interpretation": "Desktop Node source-algorithm microbenchmark; no API or Android frame-time claim"
+    },
+    {
+      "operation": "client_search_filter",
+      "datasetSize": 5000,
+      "iterations": 100,
+      "avgMs": 5.564617000000071,
+      "medianMs": 4.602199999999357,
+      "p95Ms": 11.716800000000148,
+      "p99Ms": 16.528000000000247,
+      "validationFailures": 0,
+      "status": "PASS",
+      "interpretation": "Desktop Node source-algorithm microbenchmark; no API or Android frame-time claim"
+    },
+    {
+      "operation": "client_recommendations",
+      "datasetSize": 5000,
+      "iterations": 100,
+      "avgMs": 54.88251900000021,
+      "medianMs": 49.87069999999949,
+      "p95Ms": 85.63920000000144,
+      "p99Ms": 104.99619999999777,
+      "validationFailures": 0,
+      "status": "PASS",
+      "interpretation": "Desktop Node source-algorithm microbenchmark; no API or Android frame-time claim"
+    }
+  ],
+  "mockedPaymentReplays": [
+    {
+      "concurrency": 1,
+      "signedHandlerInvocations": 21,
+      "elapsedMs": 317.94880000000194,
+      "rowViolations": 0,
+      "stateViolations": 0,
+      "unexpectedFailures": 0,
+      "firstPaidTimestampRewrites": 1,
+      "duplicateRowsAndFinalStateStatus": "PASS",
+      "auditTimestampIdempotencyStatus": "FAIL",
+      "scope": "Actual TS handlers under Node; in-memory database/provider; 20 retries per synthetic fixture, no network, no RLS or financial settlement evidence"
+    },
+    {
+      "concurrency": 5,
+      "signedHandlerInvocations": 105,
+      "elapsedMs": 602.0262000000002,
+      "rowViolations": 0,
+      "stateViolations": 0,
+      "unexpectedFailures": 0,
+      "firstPaidTimestampRewrites": 5,
+      "duplicateRowsAndFinalStateStatus": "PASS",
+      "auditTimestampIdempotencyStatus": "FAIL",
+      "scope": "Actual TS handlers under Node; in-memory database/provider; 20 retries per synthetic fixture, no network, no RLS or financial settlement evidence"
+    },
+    {
+      "concurrency": 10,
+      "signedHandlerInvocations": 210,
+      "elapsedMs": 779.0600999999988,
+      "rowViolations": 0,
+      "stateViolations": 0,
+      "unexpectedFailures": 0,
+      "firstPaidTimestampRewrites": 10,
+      "duplicateRowsAndFinalStateStatus": "PASS",
+      "auditTimestampIdempotencyStatus": "FAIL",
+      "scope": "Actual TS handlers under Node; in-memory database/provider; 20 retries per synthetic fixture, no network, no RLS or financial settlement evidence"
+    },
+    {
+      "concurrency": 25,
+      "signedHandlerInvocations": 525,
+      "elapsedMs": 1775.7949000000008,
+      "rowViolations": 0,
+      "stateViolations": 0,
+      "unexpectedFailures": 0,
+      "firstPaidTimestampRewrites": 25,
+      "duplicateRowsAndFinalStateStatus": "PASS",
+      "auditTimestampIdempotencyStatus": "FAIL",
+      "scope": "Actual TS handlers under Node; in-memory database/provider; 20 retries per synthetic fixture, no network, no RLS or financial settlement evidence"
+    },
+    {
+      "concurrency": 50,
+      "signedHandlerInvocations": 1050,
+      "elapsedMs": 3422.9975000000013,
+      "rowViolations": 0,
+      "stateViolations": 0,
+      "unexpectedFailures": 0,
+      "firstPaidTimestampRewrites": 50,
+      "duplicateRowsAndFinalStateStatus": "PASS",
+      "auditTimestampIdempotencyStatus": "FAIL",
+      "scope": "Actual TS handlers under Node; in-memory database/provider; 20 retries per synthetic fixture, no network, no RLS or financial settlement evidence"
+    }
+  ]
+}

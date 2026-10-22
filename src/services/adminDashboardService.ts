@@ -3,217 +3,37 @@ import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { getReviewReportCategory } from '../constants/reportCategories';
 import { makeSampleReservation, sampleActivities, sampleReviews, sampleSpots } from '../constants/sampleData';
 import type { Activity, OwnerAccessRequest, Reservation, Spot, SpotEditSuggestion, SpotSubmission, UserProfile } from '../types';
+import type {
+  AdminDailyInsight,
+  AdminListingRow,
+  AdminMapSpotRow,
+  AdminPulseRow,
+  AdminReportSource,
+  AdminReportCoordinate,
+  AdminReportReviewContext,
+  AdminReportRow,
+  AdminUserRow,
+  AdminOwnerRequestRow,
+  AdminOwnerRequestDecision,
+  AdminOwnerRequestDecisionResult,
+  AdminSpotSubmissionRow,
+  AdminDashboardData,
+} from './admin-dashboard/types';
+import {
+  numberValue,
+  startOfToday,
+  daysAgo,
+  toPercentSeries,
+  buildDailySeries,
+  isPaidReservation,
+  buildDailyInsights,
+  buildProgress,
+} from './admin-dashboard/analytics';
 
-export type AdminMetricSnapshot = {
-  totalSpots: number;
-  publicSpots: number;
-  reservableSpots: number;
-  spotsToday: number;
-  totalReservations: number;
-  reservationsToday: number;
-  reservations30d: number;
-  confirmedReservations: number;
-  estimatedRevenue: number;
-  activeOwners: number;
-  totalUsers: number;
-  reportsFiled: number;
-  pendingOwnerRequests: number;
-  pendingSpotSubmissions: number;
-};
-
-export type AdminProgressItem = {
-  label: string;
-  value: number;
-  copy?: string;
-};
-
-export type AdminDailyInsight = {
-  key: string;
-  label: string;
-  reservations: number;
-  reservationBar: number;
-  newSpots: number;
-  newSpotBar: number;
-  estimatedRevenue: number;
-  totalSpots: number;
-  activeOwners: number;
-  reportsFiled: number;
-};
-
-export type AdminListingRow = {
-  id: string;
-  name: string;
-  category: string;
-  barangay: string;
-  status: string;
-  date: string;
-  image: string;
-};
-
-export type AdminPulseRow = {
-  id: string;
-  action: string;
-  user: string;
-  location: string;
-  value: string;
-  status: string;
-};
-
-export type AdminReportSource = 'review_report' | 'spot_edit_suggestion';
-
-export type AdminReportCoordinate = {
-  latitude: number;
-  longitude: number;
-};
-
-export type AdminReportReviewContext = {
-  id: string;
-  author: string;
-  rating: number | null;
-  comment: string;
-  date: string;
-  flagged?: boolean;
-  mediaUrls?: string[];
-};
-
-export type AdminReportRow = {
-  id: string;
-  source: AdminReportSource;
-  createdAt?: string | null;
-  type: string;
-  spotId?: string | null;
-  reviewId?: string | null;
-  field?: string | null;
-  currentValue?: string | null;
-  suggestedValue?: string | null;
-  currentCoordinate?: AdminReportCoordinate | null;
-  suggestedCoordinate?: AdminReportCoordinate | null;
-  spot: string;
-  area: string;
-  reporter: string;
-  date: string;
-  description: string;
-  reviewAuthor?: string | null;
-  reviewRating?: number | null;
-  reviewComment?: string | null;
-  reviewDate?: string | null;
-  reviewMediaUrls?: string[] | null;
-  reviewThread?: AdminReportReviewContext[];
-  note?: string | null;
-  expanded?: boolean;
-};
-
-export type AdminUserRow = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  location: string;
-  joined: string;
-  avatar: string;
-  photoUrl?: string | null;
-};
-
-export type AdminOwnerRequestRow = {
-  id: string;
-  requesterId: string | null;
-  spotId?: string | null;
-  applicant: string;
-  initials: string;
-  email: string;
-  phone?: string | null;
-  spot: string;
-  fullAddress: string;
-  category: string;
-  accessNeeds: string[];
-  verificationDocuments: string[];
-  barangay: string;
-  applied: string;
-  status: string;
-  message?: string | null;
-  adminNotes?: string | null;
-  reviewedAt?: string | null;
-  expanded?: boolean;
-};
-
-export type AdminOwnerRequestDecision = 'approved' | 'rejected';
-
-export type AdminOwnerRequestDecisionResult = {
-  ok: boolean;
-  requestId: string;
-  status: AdminOwnerRequestDecision;
-  spotId?: string | null;
-  spotName?: string | null;
-  alreadyReviewed?: boolean;
-};
-
-export type AdminSpotSubmissionRow = {
-  id: string;
-  name: string;
-  category: string;
-  categories?: string[] | null;
-  barangay: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  submitted: string;
-  createdAt?: string | null;
-  status: string;
-  image: string;
-  images: string[];
-  voteCount: number;
-  searchCount: number;
-  similarSubmissionCount: number;
-  popularityScore: number;
-  description?: string | null;
-  reservationType?: string | null;
-  reservationFee: number;
-  paymentRequired: boolean;
-  isReservable: boolean;
-  submitterId: string;
-  submitterName: string;
-  submitterEmail: string;
-};
-
-export type AdminDashboardData = {
-  source: 'live' | 'sample';
-  generatedAt: string;
-  metrics: AdminMetricSnapshot;
-  reservationsBars: number[];
-  reservationBarLabels: string[];
-  newSpotBars: number[];
-  newSpotBarLabels: string[];
-  dailyInsights: AdminDailyInsight[];
-  categories: AdminProgressItem[];
-  barangays: AdminProgressItem[];
-  recentListings: AdminListingRow[];
-  livePulse: AdminPulseRow[];
-  reports: AdminReportRow[];
-  users: AdminUserRow[];
-  ownerRequests: AdminOwnerRequestRow[];
-  pendingSubmissions: AdminSpotSubmissionRow[];
-  errors: string[];
-};
+export type * from './admin-dashboard/types';
 
 const fallbackSpotImage =
   'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80&w=240';
-
-function numberValue(value: unknown) {
-  const next = Number(value ?? 0);
-  return Number.isFinite(next) ? next : 0;
-}
-
-function startOfToday() {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function daysAgo(days: number) {
-  const date = startOfToday();
-  date.setDate(date.getDate() - days);
-  return date;
-}
 
 function formatShortDate(value?: string | null) {
   if (!value) return '-';
@@ -374,127 +194,6 @@ function normalizeReservation(row: any): Reservation {
     status: row.status ?? 'pending',
     payment_status: row.payment_status ?? 'not_required',
   };
-}
-
-function toPercentSeries(counts: number[]) {
-  const max = Math.max(...counts, 1);
-  return counts.map((count) => Math.max(count ? 18 : 6, Math.round((count / max) * 100)));
-}
-
-function buildDailySeries(rows: Array<{ created_at?: string | null }>, days = 10) {
-  const buckets = Array.from({ length: days }, (_, index) => {
-    const date = daysAgo(days - index - 1);
-    return {
-      key: date.toISOString().slice(0, 10),
-      count: 0,
-      label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    };
-  });
-
-  rows.forEach((row) => {
-    const key = row.created_at ? new Date(row.created_at).toISOString().slice(0, 10) : '';
-    const bucket = buckets.find((item) => item.key === key);
-    if (bucket) bucket.count += 1;
-  });
-
-  return {
-    bars: toPercentSeries(buckets.map((bucket) => bucket.count)),
-    labels: [buckets[0]?.label ?? '', buckets[Math.floor(days / 2)]?.label ?? '', buckets[days - 1]?.label ?? ''],
-  };
-}
-
-function getDateKey(value?: string | null) {
-  if (!value) return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
-}
-
-function isOnOrBefore(value: string | null | undefined, target: Date) {
-  if (!value) return false;
-  const date = new Date(value);
-  return !Number.isNaN(date.getTime()) && date <= target;
-}
-
-function isPaidReservation(reservation: Reservation) {
-  return ['confirmed', 'checked_in', 'completed'].includes(reservation.status) && reservation.payment_status === 'paid';
-}
-
-function buildDailyInsights(input: {
-  spots: Spot[];
-  reservations: Reservation[];
-  users: UserProfile[];
-  reports: AdminReportRow[];
-}, days = 10): AdminDailyInsight[] {
-  const buckets = Array.from({ length: days }, (_, index) => {
-    const date = daysAgo(days - index - 1);
-    const dayStart = new Date(date);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
-    return {
-      key: dayStart.toISOString().slice(0, 10),
-      label: dayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      dayEnd,
-      reservations: 0,
-      newSpots: 0,
-      estimatedRevenue: 0,
-      totalSpots: 0,
-      activeOwners: 0,
-      reportsFiled: 0,
-    };
-  });
-
-  input.reservations.forEach((reservation) => {
-    const bucket = buckets.find((item) => item.key === getDateKey(reservation.created_at));
-    if (!bucket) return;
-    bucket.reservations += 1;
-    if (isPaidReservation(reservation)) {
-      bucket.estimatedRevenue += numberValue(reservation.reservation_fee || reservation.fee);
-    }
-  });
-
-  input.spots.forEach((spot) => {
-    const bucket = buckets.find((item) => item.key === getDateKey(spot.created_at));
-    if (bucket) bucket.newSpots += 1;
-  });
-
-  input.reports.forEach((report) => {
-    const bucket = buckets.find((item) => item.key === getDateKey(report.createdAt));
-    if (bucket) bucket.reportsFiled += 1;
-  });
-
-  const reservationBars = toPercentSeries(buckets.map((bucket) => bucket.reservations));
-  const newSpotBars = toPercentSeries(buckets.map((bucket) => bucket.newSpots));
-
-  return buckets.map((bucket, index) => ({
-    key: bucket.key,
-    label: bucket.label,
-    reservations: bucket.reservations,
-    reservationBar: reservationBars[index],
-    newSpots: bucket.newSpots,
-    newSpotBar: newSpotBars[index],
-    estimatedRevenue: bucket.estimatedRevenue,
-    totalSpots: input.spots.filter((spot) => isOnOrBefore(spot.created_at, bucket.dayEnd)).length,
-    activeOwners: input.users.filter((user) => user.role === 'owner' && isOnOrBefore(user.created_at, bucket.dayEnd)).length,
-    reportsFiled: bucket.reportsFiled,
-  }));
-}
-
-function buildProgress(items: Array<{ label: string }>, limit = 5): AdminProgressItem[] {
-  const counts = new Map<string, number>();
-  items.forEach((item) => {
-    const label = item.label || 'Uncategorized';
-    counts.set(label, (counts.get(label) ?? 0) + 1);
-  });
-
-  const top = Array.from(counts.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit);
-  const max = Math.max(...top.map(([, count]) => count), 1);
-  return top.map(([label, count]) => ({
-    label,
-    value: Math.max(8, Math.round((count / max) * 100)),
-    copy: `${count} ${count === 1 ? 'spot' : 'spots'}`,
-  }));
 }
 
 function mapListing(spot: Spot): AdminListingRow {
@@ -710,6 +409,21 @@ function mapSubmission(submission: SpotSubmission, submitter?: UserProfile): Adm
   };
 }
 
+function buildSpotCategoryProgress(
+  spots: Array<{ category?: string | null; categories?: string[] | null }>,
+) {
+  const categoryItems = spots.flatMap((spot) =>
+    Array.from(
+      new Set(
+        [spot.category, ...(spot.categories ?? [])]
+          .map((category) => category?.trim())
+          .filter((category): category is string => Boolean(category)),
+      ),
+    ).map((label) => ({ label })),
+  );
+  return buildProgress(categoryItems, null);
+}
+
 function buildDashboardFromRows(input: {
   source: 'live' | 'sample';
   spots: Spot[];
@@ -734,6 +448,7 @@ function buildDashboardFromRows(input: {
     return isPaidReservation(reservation) ? sum + numberValue(reservation.reservation_fee || reservation.fee) : sum;
   }, 0);
   const publicSpots = input.spots.filter((spot) => spot.is_public);
+  const publicSpotCategories = buildSpotCategoryProgress(publicSpots);
   const reservationSeries = buildDailySeries(input.reservations);
   const spotSeries = buildDailySeries(publicSpots);
   const dailyInsights = buildDailyInsights({
@@ -773,7 +488,7 @@ function buildDashboardFromRows(input: {
     newSpotBars: spotSeries.bars,
     newSpotBarLabels: spotSeries.labels,
     dailyInsights,
-    categories: buildProgress(publicSpots.map((spot) => ({ label: spot.category }))),
+    categories: publicSpotCategories,
     barangays: buildProgress(publicSpots.map((spot) => ({ label: getBarangay(spot.address) }))),
     recentListings: input.spots.slice(0, 8).map(mapListing),
     livePulse: [
@@ -935,6 +650,31 @@ async function readAllAdminProfiles(client: SupabaseClient) {
   }
 }
 
+async function readAllAdminSpotCategories(client: SupabaseClient) {
+  const pageSize = 500;
+  const spots: Array<{ id: string; category: string | null; categories: string[] | null }> = [];
+  let offset = 0;
+
+  while (true) {
+    const { data, error, count } = await client
+      .from('spots')
+      .select('id,category,categories', { count: 'exact' })
+      .eq('is_public', true)
+      .order('id', { ascending: true })
+      .range(offset, offset + pageSize - 1);
+
+    if (error) return { data: null, error };
+
+    const page = (data ?? []) as Array<{ id: string; category: string | null; categories: string[] | null }>;
+    spots.push(...page);
+    offset += page.length;
+
+    if (page.length === 0 || (count !== null && offset >= count) || (count === null && page.length < pageSize)) {
+      return { data: spots, error: null };
+    }
+  }
+}
+
 export async function getAdminDashboardData(client: SupabaseClient = supabase): Promise<AdminDashboardData> {
   if (!hasSupabaseConfig) return sampleDashboard();
 
@@ -951,7 +691,7 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
       pendingSubmissions: [],
       reports: [],
     });
-    const [submissionResult, profilesResult] = await Promise.all([
+    const [submissionResult, profilesResult, categoryResult] = await Promise.all([
       client
         .from('pending_spot_submission_popularity')
         .select('*')
@@ -959,6 +699,7 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
         .order('created_at', { ascending: false })
         .limit(100),
       readAllAdminProfiles(client),
+      readAllAdminSpotCategories(client),
     ]);
     const detailedSubmissionRows = submissionResult.data;
     const allProfileRows = profilesResult.data;
@@ -996,7 +737,9 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
         ? dailyInsights.map((item) => item.label).filter(Boolean).slice(-3)
         : spotRows.map((item: any) => item.label).filter(Boolean).slice(-3),
       dailyInsights,
-      categories: rows.categories ?? data.categories,
+      categories: categoryResult.data
+        ? buildSpotCategoryProgress(categoryResult.data)
+        : rows.categories ?? data.categories,
       barangays: rows.barangays ?? data.barangays,
       recentListings: rows.recentListings ?? data.recentListings,
       livePulse: rows.livePulse ?? data.livePulse,
@@ -1009,6 +752,7 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
       ),
       errors: [
         ...(profilesResult.error ? [`Profiles: ${profilesResult.error.message}`] : []),
+        ...(categoryResult.error ? [`Spot categories: ${categoryResult.error.message}`] : []),
         ...(pendingSubmittersError ? [`Submission senders: ${pendingSubmittersError.message}`] : []),
       ],
     };
@@ -1193,6 +937,84 @@ export async function approveSpotSubmission(submissionId: string, client: Supaba
     throw error;
   }
 
+  return data;
+}
+
+export async function getAdminSpotMapRows(client: SupabaseClient = supabase): Promise<AdminMapSpotRow[]> {
+  if (!hasSupabaseConfig) {
+    return sampleSpots.map(normalizeSpot).map((spot) => ({
+      id: spot.id,
+      name: spot.name,
+      description: spot.description ?? null,
+      category: spot.category,
+      categories: spot.categories ?? [],
+      address: spot.address,
+      barangay: getBarangay(spot.address),
+      latitude: spot.latitude,
+      longitude: spot.longitude,
+      rating: numberValue(spot.rating),
+      reviewCount: numberValue(spot.review_count),
+      isPublic: spot.is_public,
+      isReservable: spot.is_reservable,
+    }));
+  }
+
+  const { data, error } = await client
+    .from('spots')
+    .select('id,name,description,category,categories,address,latitude,longitude,rating,review_count,is_public,is_reservable')
+    .order('created_at', { ascending: false })
+    .limit(1000);
+
+  if (error) throw new Error(error.message ?? 'Unable to load the admin spot map.');
+
+  return (data ?? [])
+    .map((row: any) => ({
+      id: String(row.id),
+      name: row.name ?? 'Unnamed spot',
+      description: row.description ?? null,
+      category: row.category ?? 'Uncategorized',
+      categories: stringArray(row.categories),
+      address: row.address ?? 'Cebu City',
+      barangay: getBarangay(row.address),
+      latitude: numberValue(row.latitude),
+      longitude: numberValue(row.longitude),
+      rating: numberValue(row.rating),
+      reviewCount: numberValue(row.review_count),
+      isPublic: Boolean(row.is_public),
+      isReservable: Boolean(row.is_reservable),
+    }))
+    .filter((spot) => Number.isFinite(spot.latitude) && Number.isFinite(spot.longitude));
+}
+
+export async function deleteAdminSpot(spotId: string, client: SupabaseClient = supabase) {
+  if (!hasSupabaseConfig) return { id: spotId };
+
+  const { data, error } = await client.rpc('delete_admin_spot', { target_spot_id: spotId });
+  if (error) {
+    const missingRpc = /delete_admin_spot|schema cache|could not find the function|pgrst202/i.test(
+      error.message ?? error.details ?? '',
+    );
+    if (missingRpc) {
+      throw new Error('Install the admin spot-delete migration in Supabase, then refresh the dashboard.');
+    }
+    throw new Error(error.message ?? 'Unable to delete the spot.');
+  }
+  return data;
+}
+
+export async function deleteAdminOwnerRequest(requestId: string, client: SupabaseClient = supabase) {
+  if (!hasSupabaseConfig) return { id: requestId };
+
+  const { data, error } = await client.rpc('delete_admin_owner_request', { target_request_id: requestId });
+  if (error) {
+    const missingRpc = /delete_admin_owner_request|schema cache|could not find the function|pgrst202/i.test(
+      error.message ?? error.details ?? '',
+    );
+    if (missingRpc) {
+      throw new Error('Install the admin owner-request delete migration in Supabase, then refresh the dashboard.');
+    }
+    throw new Error(error.message ?? 'Unable to delete the owner request.');
+  }
   return data;
 }
 

@@ -1,0 +1,34 @@
+{
+  "kind": "isolated-face-integration",
+  "status": "PASS",
+  "requests": [
+    {
+      "operation": "health",
+      "status": 200,
+      "elapsedMs": 286.75790000000006,
+      "bytes": 179
+    },
+    {
+      "operation": "job_create",
+      "status": 202,
+      "elapsedMs": 35.25859999999989,
+      "bytes": 63
+    },
+    {
+      "operation": "job_poll",
+      "status": 200,
+      "elapsedMs": 23.776900000000296,
+      "bytes": 109
+    },
+    {
+      "operation": "job_result",
+      "status": 200,
+      "elapsedMs": 36.886799999999766,
+      "bytes": 67357
+    }
+  ],
+  "facesDetected": 0,
+  "processingTimeMs": 202,
+  "interpretation": "Single synthetic no-face image pipeline check; does not test detector accuracy or face-service load capacity",
+  "elapsedMs": 1407.8676
+}

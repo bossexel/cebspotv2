@@ -1,0 +1,44 @@
+[
+  {
+    "case": "offline-after-17-seconds",
+    "path": "/",
+    "body": "Live spots could not be loaded. Check your connection and try again.\nNEARBY SPOTS\n0 spots found near you\nNO MATCHES FOUND\nCLEAR FILTERS\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+    "scrollWidth": 390,
+    "viewport": 390,
+    "inputCount": 1
+  },
+  {
+    "case": "login-after-17-seconds",
+    "tokenRequests": 1,
+    "loginDisabled": true,
+    "path": "/login",
+    "body": "CEBSPOT\nFind your spot at the heart of Cebu.\nForgot password?\nLOGIN\nCREATE A CEBSPOT ACCOUNT\nOR\nG\nContinue with Google",
+    "scrollWidth": 390,
+    "viewport": 390,
+    "inputCount": 2
+  },
+  {
+    "case": "login-after-delayed-error",
+    "path": "/login",
+    "body": "CEBSPOT\nFind your spot at the heart of Cebu.\nForgot password?\nLOGIN\nCREATE A CEBSPOT ACCOUNT\nOR\nG\nContinue with Google",
+    "scrollWidth": 390,
+    "viewport": 390,
+    "inputCount": 2
+  },
+  {
+    "case": "invalid-signup",
+    "path": "/login",
+    "body": "CEBSPOT\nFind your spot at the heart of Cebu.\nCREATE ACCOUNT\nI ALREADY HAVE AN ACCOUNT\nOR\nG\nContinue with Google",
+    "scrollWidth": 390,
+    "viewport": 390,
+    "inputCount": 5
+  },
+  {
+    "case": "empty-recovery",
+    "path": "/reset-password",
+    "body": "Forgot password?\nEnter your account email to receive a verification code.\nEmail address\nEnter your account email.\nSEND VERIFICATION CODE\nBack to login",
+    "scrollWidth": 390,
+    "viewport": 390,
+    "inputCount": 1
+  }
+]

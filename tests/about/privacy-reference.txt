@@ -1,0 +1,111 @@
+Privacy Policy
+
+Effective Date: June 27, 2026
+
+Introduction
+
+Welcome to CebSpot (“the Platform”, “we”, “our”, or “us”). We are committed to protecting your privacy and handling your information responsibly. This Privacy Policy explains what information we collect, how we use it, and the choices available to you when using our website and mobile application.
+
+By accessing or using CebSpot, you agree to the practices described in this Privacy Policy.
+
+Information We Collect
+
+INFORMATION YOU PROVIDE
+
+• Name and profile information
+• Email address
+• Reviews, ratings, comments, and feedback
+• Information submitted through forms, inquiries, or support requests
+• Café information submitted by café owners and administrators
+
+AUTOMATICALLY COLLECTED INFORMATION
+
+• Device information (device type, OS, browser type)
+• IP address
+• General usage information and activity within the Platform
+• Diagnostic and performance information
+• Analytics and crash reports
+
+LOCATION INFORMATION
+
+CebSpot is a location-based platform. To provide its core features, the Platform requires access to your device’s location.
+
+• Show nearby cafés
+• Recommend cafés based on proximity
+• Display distance and travel-related info
+• Improve search and discovery experiences
+• Deliver location-aware recommendations
+
+* Note: Certain core features may not function properly if location permissions are denied.
+
+How We Use Information
+
+We use collected information to:
+
+• Provide and maintain the Platform and its features
+• Personalize recommendations and search results
+• Help users discover cafés based on preferences
+• Improve user experience and platform performance
+• Monitor security, reliability, and system health
+• Respond to inquiries and provide support
+• Communicate important platform updates
+• Conduct analytics and research to improve services
+
+Information Sharing and Disclosure
+
+We do NOT sell your personal information.
+
+We may share information in the following situations:
+
+• With service providers that help operate the Platform (hosting, analytics, mapping, auth, and infrastructure)
+• With café owners or administrators when necessary to provide Platform functionality
+• When required by law, legal process, or official government requests
+• To protect the rights, property, safety, and security of our users and the Platform
+
+Third-Party Services
+
+CebSpot uses third-party services and technologies to deliver features and improve experience. These services process data according to their own privacy policies:
+
+• Cloud Hosting
+• Analytics Services
+• Auth Providers
+• Mapping APIs
+• Navigation Integrations
+• Storage Servers
+
+We encourage users to review the privacy practices of these third-party providers.
+
+User-Generated Content
+
+The Platform allows you to submit user-generated content, including reviews, ratings, comments, photos, and feedback.
+
+Important Warning: Any content you submit may be visible to other users. Please avoid sharing sensitive or confidential information in public fields.
+
+Data Retention
+
+We retain information only for as long as necessary to provide the services, resolve disputes, enforce agreements, and maintain security. Once no longer needed, data is deleted, anonymized, or aggregated.
+
+Data Security
+
+We implement administrative, technical, and organizational safeguards designed to protect your information from unauthorized access, loss, or alteration.
+
+* While we strive to protect your data, no method of transmission over the internet can be guaranteed 100% secure.
+
+Children’s Privacy
+
+CebSpot is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13. If discovered, we will take steps to remove such records immediately.
+
+Changes to This Privacy Policy
+
+We may update this Privacy Policy from time to time. Any changes will become effective once the updated policy is posted on this page. We encourage you to review it periodically.
+
+Contact Us
+
+If you have questions, concerns, or requests regarding this Privacy Policy, please contact the developer:
+
+John Benedict M. Badilla
+Developer, CebSpot
+
+Email: johnbenedicteduc@gmail.com
+
+Thank you for using CebSpot and for supporting local cafés.

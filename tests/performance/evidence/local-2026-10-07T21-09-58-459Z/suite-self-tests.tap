@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: default invocation never inherits application/production env
+ok 1 - default invocation never inherits application/production env
+  ---
+  duration_ms: 16.3135
+  type: 'test'
+  ...
+# Subtest: hosted target requires staging and exact origin acknowledgement
+ok 2 - hosted target requires staging and exact origin acknowledgement
+  ---
+  duration_ms: 11.8109
+  type: 'test'
+  ...
+# Subtest: secrets embedded in target URL are rejected
+ok 3 - secrets embedded in target URL are rejected
+  ---
+  duration_ms: 6.1767
+  type: 'test'
+  ...
+# Subtest: resource limits and workload levels are validated
+ok 4 - resource limits and workload levels are validated
+  ---
+  duration_ms: 23.2665
+  type: 'test'
+  ...
+# Subtest: expected booking conflicts require the real active-slot constraint
+ok 5 - expected booking conflicts require the real active-slot constraint
+  ---
+  duration_ms: 1.5195
+  type: 'test'
+  ...
+# Subtest: content failures count as unexpected failures and expected conflicts stay separate
+ok 6 - content failures count as unexpected failures and expected conflicts stay separate
+  ---
+  duration_ms: 5.1451
+  type: 'test'
+  ...
+# Subtest: empty samples and missing race/recovery evidence cannot be reported as capacity PASS
+ok 7 - empty samples and missing race/recovery evidence cannot be reported as capacity PASS
+  ---
+  duration_ms: 3.381
+  type: 'test'
+  ...
+# Subtest: HTTP latency includes the delayed response body and request timeout is bounded
+ok 8 - HTTP latency includes the delayed response body and request timeout is bounded
+  ---
+  duration_ms: 615.5562
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2145.7823

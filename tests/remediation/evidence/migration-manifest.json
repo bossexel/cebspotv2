@@ -61,6 +61,14 @@
     {
       "name": "20261013000900_block_deleting_owner_assignments.sql",
       "sha256": "c74ddd052955285973859f6bf75e87df05eecc969772607879a7b8311cafecdc"
+    },
+    {
+      "name": "20261020000100_admin_spot_delete.sql",
+      "sha256": "6ac899cd4d6ca6cb2355b0e10f32c6772dffc3fb90383c4bb5f307549d74d35d"
+    },
+    {
+      "name": "20261021000100_admin_owner_request_delete.sql",
+      "sha256": "326bd649cfbfffd36d234f594d8c18601f6a83fbc6171f232f7468445e2553b7"
     }
   ]
 }

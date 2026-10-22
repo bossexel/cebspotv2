@@ -1,0 +1,7 @@
+{
+  "kind": "evidence-secret-check",
+  "dateUtc": "2026-10-07T21:28:42.521Z",
+  "filesChecked": 28,
+  "filesRedacted": 0,
+  "scope": "Exact values of configured keys/passwords/secrets/tokens, never printed. Supplementary review remains necessary before public release."
+}

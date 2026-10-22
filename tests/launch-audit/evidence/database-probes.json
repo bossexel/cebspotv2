@@ -1,0 +1,383 @@
+{
+  "kind": "isolated-postgresql-source-slices-with-rls",
+  "findings": [
+    {
+      "case": "manual-proof-after-current-migrations",
+      "storedMethod": null,
+      "storedReference": null,
+      "storedProof": null,
+      "ownerApproval": "Only eligible manual GCash payments with submitted proof can be approved."
+    },
+    {
+      "case": "fake-paid-state-and-fee",
+      "accepted": true,
+      "status": "pending_payment",
+      "paymentStatus": "pending",
+      "fee": "150.00"
+    },
+    {
+      "case": "unknown-table",
+      "accepted": false,
+      "code": "P0002",
+      "message": "Table not found. Refresh availability."
+    },
+    {
+      "case": "invalid-slot",
+      "accepted": false,
+      "code": "22023",
+      "message": "Select an available venue, date, and reservation slot."
+    },
+    {
+      "case": "negative-guests",
+      "accepted": false,
+      "code": "23514",
+      "message": "new row for relation \"reservations\" violates check constraint \"reservations_guest_count_check\""
+    },
+    {
+      "case": "over-capacity",
+      "accepted": false,
+      "code": "55000",
+      "message": "This table is unavailable for your party. Refresh availability."
+    },
+    {
+      "case": "missing-contact",
+      "accepted": false,
+      "code": "P0001",
+      "message": "Guest name, email, and phone are required for paid reservations."
+    },
+    {
+      "case": "malformed-contact",
+      "accepted": true,
+      "status": "pending_payment",
+      "paymentStatus": "pending",
+      "fee": "150.00"
+    },
+    {
+      "case": "mismatched-slot-time",
+      "accepted": true,
+      "status": "pending_payment",
+      "paymentStatus": "pending",
+      "fee": "150.00"
+    },
+    {
+      "case": "forged-creation-time",
+      "accepted": true,
+      "status": "pending_payment",
+      "paymentStatus": "pending",
+      "fee": "150.00"
+    },
+    {
+      "case": "free-booking-owner-check-in",
+      "storedStatus": "pending",
+      "paymentRequired": false,
+      "ownerAttendance": "accepted"
+    },
+    {
+      "case": "50-distinct-users-same-table",
+      "ms": 311,
+      "accepted": 1,
+      "rejected": 49,
+      "storedRows": 1,
+      "attempts": [
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 141.76579999999922
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 184.94820000000072
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 87.33840000000055
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 145.01710000000094
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 62.11499999999978
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 95.83040000000074
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 155.88930000000073
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 90.86779999999999
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 81.30420000000049
+        },
+        {
+          "accepted": true,
+          "ms": 55.32459999999992
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 67.06970000000001
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 121.03939999999966
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 188.35339999999997
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 166.45709999999963
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 130.8040000000001
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 75.41090000000077
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 176.20780000000013
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 146.84670000000006
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 70.06319999999869
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 113.90070000000014
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 134.0112999999983
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 108.33510000000024
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 97.67489999999998
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 124.34690000000046
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 190.7455000000009
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 101.88360000000102
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 273.172700000001
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 163.01760000000104
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 235.79889999999978
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 271.02160000000003
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 224.05149999999958
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 196.40070000000014
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 186.3855999999996
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 260.21130000000085
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 191.6795000000002
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 216.79989999999998
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 240.60519999999997
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 255.33189999999922
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 285.5132999999987
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 295.246799999999
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 227.50960000000123
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 198.48149999999987
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 245.27219999999943
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 279.5079000000005
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 147.52679999999964
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 208.5066999999999
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 273.91709999999875
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 202.82360000000153
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 288.73019999999997
+        },
+        {
+          "accepted": false,
+          "code": "55000",
+          "message": "This table was just booked. Refresh availability and choose another table.",
+          "ms": 248.10319999999956
+        }
+      ]
+    }
+  ]
+}

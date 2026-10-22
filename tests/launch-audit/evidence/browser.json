@@ -1,0 +1,456 @@
+{
+  "date": "2026-10-11 Asia/Manila",
+  "kind": "production-web-with-synthetic-services",
+  "checks": [
+    {
+      "width": 320,
+      "requestedRoute": "/",
+      "ms": 1724,
+      "path": "/",
+      "body": "NEARBY SPOTS\n1 spots found near you\nAudit Fixture Cafe\nCebu City - 2.7km\nCAFE\nGO TO SPOT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 1,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/profile",
+      "ms": 1711,
+      "path": "/profile",
+      "body": "A\nAudit Guest\nCebu City, Philippines\nLEVEL 1\nMilestone\n0 of 100 points toward Level 2\n0%\n0\nSPOT POINTS\nEarned from helpful activity\n1\nRESERVATIONS\nBookings you made\nAccount\nSigned in as\naudit@example.test\nHome base\nCebu City, Philippines\nQuick Actions\nAbout\nOur story, features, and common questions\nCebSpot Rewards\nView XP, badges, history, and rank\nSaved Spots\nBookmark spots to find them here\nShare a Spot\nPost a hidden gem for the community\nActivity\nCheck posts, comments, and alerts\nLOGOUT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/saved",
+      "ms": 1418,
+      "path": "/saved",
+      "body": "SAVED SPOTS\nPlaces you bookmarked from Explore\nNo saved spots yet\nTap the bookmark on a spot in Explore and it will appear here.\nEXPLORE SPOTS\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/activity",
+      "ms": 1369,
+      "path": "/activity",
+      "body": "ACTIVITY\nNotifications and local updates\nLocal Updates\nNewest\nClyde Hans Sadudaquil\nJust now\nNature spot\nKalma nga pahangin!\nLahug\n+1\nSPOT\n0 Comments\nJoshua Eniceta III\n1d ago\nVIP Club Access\nPrivate tables, bottle service, and kusog nga weekend crowd.\nIT Park\n+12\nSPOT\n0 Comments\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/reservations",
+      "ms": 1489,
+      "path": "/reservations",
+      "body": "RESERVATIONS\nManage your bookings\nUPCOMING\n1\nAudit Fixture Cafe\nPENDING PAYMENT\nRESERVATION FEE: PHP 150\nMon, Oct 12\n18:00:00\n2\nT01\nPayment · Pending\nDETAILS\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/circle",
+      "ms": 1355,
+      "path": "/circle",
+      "body": "CIRCLE\n0 friends active now\nJOIN\nMy Code\nCreate a circle to invite friends\nNew Circle\nCreate a private squad\nMy Circles\nNo circles yet\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/gamification",
+      "ms": 1415,
+      "path": "/gamification",
+      "body": "CEBSPOT REWARDS\nTrack XP, badges, and contribution rank\nCURRENT LEVEL\nLevel 1\n0 XP\n0 of 100 XP toward Level 2\n0\nBADGES\n0\nRECENT LOGS\nLeaderboard\nNo rankings yet\nEarn XP from reviews, visits, reports, reservations, and approved spot contributions.\nBadges\nBadges will appear here\nRun the gamification SQL migration, then complete contribution actions to unlock badges.\nXP History\nNo XP yet\nWrite reviews, upload media, and complete reservations to start earning.\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/submit-spot",
+      "ms": 1398,
+      "path": "/submit-spot",
+      "body": "FOUND A SPOT?\nHelp the community expand the network.\nMEDIA\n0/5\nADD SPOT MEDIA\nPHOTOS\nVIDEO 15S\nSPOT NAME\nDESCRIPTION\nCATEGORIES\nSPECIALTY COFFEE\nOUTDOOR\nSTREET FOOD\nSOCIAL HUB\nRESTAURANT\nCO-WORKING\nCAFE\nCLUB\nBAR\nADDRESS\nLocation pinned: 10.3157, 123.8854\nACCEPTS RESERVATIONS?\nYES\nNO\nSubmitted spots are reviewed before becoming public. Reservation pricing is added by verified owners and checked by admins.\nSUBMIT SPOT\nPrivacy notice\nFor compliance with the Data Privacy Act, any image containing a visible face will have the face automatically blurred before the spot is posted. Select I Agree to continue filling out the spot details.\nNOT NOW\nI AGREE",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 2,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/about",
+      "ms": 1448,
+      "path": "/about",
+      "body": "About CebSpot\nCebSpot\nDiscover Cebu. Find your next spot.\nCebSpot is a mobile application for discovery and leisure in Cebu City. It helps users explore local places, learn more about venues, and plan their next visit.\nTechnical Documentation\nExplore CebSpot’s features and system architecture.\nPrivacy Policy\nUnderstand how your information is handled.\nOur purpose and story\nWe created CebSpot to bring local discovery tools and venue information together, helping users make informed choices about where to go while supporting the visibility of local establishments.\nCebSpot was developed as a capstone project by Bachelor of Science in Information Technology students at the University of Southern Philippines Foundation.\nRooted in Cebu City\nCebSpot focuses on Cebu City, with listed places across categories such as cafés, restaurants, outdoor spots, street food, co-working spaces, bars, and clubs. Listings are a selection of places, rather than a complete directory of every establishment.\nTable reservations are available only at participating establishments, subject to table and schedule availability and each venue’s booking policies.\nHow CebSpot works\n01\nFind your next spot\nSearch Explore and filter places by category, distance, and rating. Browse map pins and open a place to learn more.\n02\nGet to know a venue\nView available photos, venue details, and community reviews. Save spots to revisit from your Profile.\n03\nShare local discoveries\nUse Share a Spot to submit a place for review. On a spot’s page, write a review, add photos, or suggest corrected details.\n04\nPlan a table reservation\nAt a participating venue, choose the available date, time, table, and guest details, then review the booking conditions. Free reservations do not require a deposit. Paid reservations continue to",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/privacy",
+      "ms": 1381,
+      "path": "/privacy",
+      "body": "Privacy Policy\nEffective Date: June 27, 2026\nIntroduction\nWelcome to CebSpot (“the Platform”, “we”, “our”, or “us”). We are committed to protecting your privacy and handling your information responsibly. This Privacy Policy explains what information we collect, how we use it, and the choices available to you when using our website and mobile application.\nBy accessing or using CebSpot, you agree to the practices described in this Privacy Policy.\nInformation We Collect\nINFORMATION YOU PROVIDE\n•\nName and profile information\n•\nEmail address\n•\nReviews, ratings, comments, and feedback\n•\nInformation submitted through forms, inquiries, or support requests\n•\nCafé information submitted by café owners and administrators\nAUTOMATICALLY COLLECTED INFORMATION\n•\nDevice information (device type, OS)\n•\nIP address\n•\nGeneral usage information and activity within the Platform\n•\nDiagnostic and performance information\n•\nAnalytics and crash reports\nLOCATION INFORMATION\nCebSpot is a location-based platform. To provide its core features, the Platform requires access to your device’s location.\n•\nShow nearby spots\n•\nRecommend spots based on proximity\n•\nImprove search and discovery experiences\n•\nDeliver location-aware recommendations\n* Note: Certain core features may not function properly if location permissions are denied.\nHow We Use Information\nWe use collected information to:\n•\nProvide and maintain the Platform and its features\n•\nPersonalize recommendations and search results\n•\nHelp users discover spots based on preferences\n•\nImprove user experience and platform performance\n•\nMonitor security, reliability, and system health\n•\nRespond to inquiries and provide support\n•\nCommunicate important platform updates\n•\nConduct analytics and research to improve services\nInformation Sharing and Disclosure\nWe",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 1,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/documentation",
+      "ms": 1373,
+      "path": "/documentation",
+      "body": "Technical Documentation\nTECHNICAL DOCS\nCebSpot\nSystem overview, features, architecture layers, and technical specifications of the mobile application for discovery and leisure in Cebu City.\nOVERVIEW\nFEATURES\nARCHITECTURE\nSYSTEM OVERVIEW\nPlatform Summary\nCebSpot is a mobile application designed to support discovery and leisure in Cebu City. It brings together published local spot information, map-based exploration, community contributions, and reservation features where available. The application helps users explore places and plan visits, while participating establishments manage supported reservation activities through the owner interface.\nThe directory depends on published venue records and reviewed contributions. Not every place offers reservations, complete opening information, or the same payment options. The application presents the information and controls available for the selected spot rather than treating every listing as a bookable venue.\nFor explorers\nUse your account to browse and search, filter results, open venue details and galleries, read or write reviews, and save places on your device. You can suggest corrections or submit a new spot for review. At a participating venue, choose an available schedule and table, provide guest details, and follow the booking’s confirmation or payment steps.\nFor venue owners\nApproved owners use the role-based dashboard or web owner portal to manage assigned venues. Their workflows include venue details and gallery updates, table schedules, guest reservations, manual payment review where offered, arrival status, and review replies. Administrators separately review place submissions, corrections, and owner-access requests.\nTECHNOLOGY STACK\nThese technologies are present in the project. Integration availability depends on th",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/spot/22222222-2222-4222-8222-222222222222",
+      "ms": 1385,
+      "path": "/spot/22222222-2222-4222-8222-222222222222",
+      "body": "PREMIUM SPOT\nRESERVATION FEE: ₱150\nAUDIT FIXTURE CAFE\nCebu City\nCAFE\nRATING\nNo rating yet\nVOLUME\nMedium\nOVERVIEW\nSynthetic audit venue.\nGALLERY\n1 PHOTOS\nMAIN\nCOMMUNITY REVIEWS\n0 POSTS\nPHOTO\nPOST\nNO REVIEWS YET\nBe the first to post a review for this spot.\nSPOT DETAILS\nOPENING HOURS\nHours not posted\nADDRESS\nCebu City\nWEBSITE\nWebsite not posted\nCONTACT NUMBER\nContact not posted\nInterested? \nReserve a table here\nFOUND INCORRECT DETAILS?\nSuggest an edit\nROUTE LINE\nROUTE LINE\nOwn this spot? Contact us.",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/reservation/22222222-2222-4222-8222-222222222222",
+      "ms": 1412,
+      "path": "/reservation/22222222-2222-4222-8222-222222222222",
+      "body": "BOOKING\nAudit Fixture Cafe\nSelect Date\nOCTOBER 2026\nS\n11\nM\n12\nT\n13\nW\n14\nT\n15\nF\n16\nS\n17\nExperience Slot\nAdjust the hours and minutes with the arrows. Tap AM or PM to switch.\nReservation time\n08\n:\n00\nPM\nArrival time: 08:00 PM\nGroup Size\nSolo\n(1 person)\nTable for 2\n(2 persons)\nSmall Group\n(3-5 party)\nBig Group\n(6+ party)\nTables\nT01\n4 seats\nAvailable online\nAdditional Information\nReservation Adjustments\nPlans can change. You can review your booking details before confirming.\nAdjustment Requests\nContact the spot about adjustment requests. Any changes are subject to availability and the spot's policies.\nNo Cancellation After Payment\nOnce your reservation is booked and paid, cancellation is not allowed, in accordance with the spot's policies.\nPaid Reservation Notice\nReservation deposits and processing fees are non-refundable. Please review your booking details before completing payment.\nBooking Summary\nSpot\nAudit Fixture Cafe\nSelected Date\nSun, Oct 11, 2026\nSelected Time\nCustom time (08:00 PM)\nGroup Size\nTable for 2\nGuest Count\n2\nReservation Type\nReservation Fee\nFee\nPHP 150\nPayment Status\nPending\nI understand the no-cancellation policy after payment, non-refundable fees, and adjustment conditions.\nSELECTION TIMER\n5:00\nThis timer tracks your selection only; availability is checked again before booking.\nRESERVATION FEE\nPHP 150\nSTATUS\nPENDING\n08:00 PM - Table for 2 - T01\nConfirm Booking",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/checkout/22222222-2222-4222-8222-222222222222",
+      "ms": 1475,
+      "path": "/checkout/22222222-2222-4222-8222-222222222222",
+      "body": "RESERVATION PAYMENT\nAudit Fixture Cafe\nPERSONAL INFORMATION\nFull name\nAudit Guest\nEmail\naudit@example.test\nPhone\nUsed by the spot to verify and contact you about this reservation.\nBOOKING DETAILS\nSpot\nAudit Fixture Cafe\nDate\n2026-10-11\nShow-up time\n06:00 PM\nTable\nTable not selected\nParty size\n1 guest\nRequired deposit\nPHP 150.00\nI have read and accept reservation\nTerms and Conditions\nEnter your phone number before accepting.\nPayment Method\nComplete your information and accept the agreement to unlock payment methods.\nGCash\nManual\nQR Ph\nScan to pay\nPayment options will appear after the required acknowledgement.\nAudit Fixture Cafe\n2026-10-11 at 18:00 - 1 guests\nPHP 150.00\nCOMPLETE PERSONAL INFORMATION",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 1,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/confirmed/33333333-3333-4333-8333-333333333333",
+      "ms": 1549,
+      "path": "/confirmed/33333333-3333-4333-8333-333333333333",
+      "body": "PAYMENT PROCESSING\nFinish the PayMongo QR Ph checkout. This page will update once PayMongo confirms the payment.\nSPOT\nAudit Fixture Cafe\nSTATUS\nPending Payment\nPERSONAL DETAILS\nNAME\nAudit Guest\nE-MAIL\naudit@example.test\nPHONE\n09171234567\nBOOKING DETAILS\nDATE & TIME\nOctober 12, 2026 • 6:00 PM\nTABLE\nT01\nPARTY\n2 Guests\nBOOKING ID\n3333\nUNIQUE ID\n1791676800\nRESERVATION TYPE\nReservation Fee: PHP 150\nPAYMENT\nPending\nComplete the PayMongo QR Ph checkout. CebSpot will confirm this reservation automatically after PayMongo reports the payment as paid.\nIMPORTANT: Terms and Conditions\nPaid Reservation\n- Once your reservation is booked and paid, cancellation is not allowed, in accordance with the spot's policies.\n• All processing fees are NON-REFUNDABLE.\n• Deposits are retainers and will be applied to your total bill on the night of the event, unless the table is a no show in which case the deposit is forfeited. The deposit will become a cancellation fee for no-show tables.\n• Deposits are NON-REFUNDABLE.\n• All events are 21+. Proper identification (government issued driver’s licenses, passports, liquor IDs, military IDs) required for entry.\n• No alcohol permitted out of the premises.\n• Entry is at the discretion of our door security staff and management. Due to legal liability we will not admit anyone who has engaged in prior drinking.\n• All table reservations must arrive before 12 midnight, unless prior arrangements are made with the VIP hosts.\n• Any tables that do not arrive by 12 midnight will be resold to any waiting parties and the deposit on the table is forfeited and applied as a cancellation fee.\n• Patrons must abide by our dress code policy and may be refused entry.\nGOT IT\nCANCEL PAYMENT & RELEASE TABLE\nRESERVATIONS\nEXPLORE",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/circle/unknown",
+      "ms": 1376,
+      "path": "/circle/unknown",
+      "body": "Circle\nCircle unavailable",
+      "scrollWidth": 320,
+      "viewport": 320,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 320,
+      "requestedRoute": "/missing-audit-page",
+      "ms": 1356,
+      "path": "/missing-audit-page",
+      "body": "Unmatched Route\nPage could not be found.\nhttp://app.test/missing-audit-page\nGo back\n•\nSitemap",
+      "scrollWidth": 339,
+      "viewport": 320,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "requestedRoute": "/",
+      "ms": 1658,
+      "path": "/",
+      "body": "NEARBY SPOTS\n1 spots found near you\nAudit Fixture Cafe\nCebu City - 2.7km\nCAFE\nGO TO SPOT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 1,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "requestedRoute": "/profile",
+      "ms": 1696,
+      "path": "/profile",
+      "body": "A\nAudit Guest\nCebu City, Philippines\nLEVEL 1\nMilestone\n0 of 100 points toward Level 2\n0%\n0\nSPOT POINTS\nEarned from helpful activity\n1\nRESERVATIONS\nBookings you made\nAccount\nSigned in as\naudit@example.test\nHome base\nCebu City, Philippines\nQuick Actions\nAbout\nOur story, features, and common questions\nCebSpot Rewards\nView XP, badges, history, and rank\nSaved Spots\nBookmark spots to find them here\nShare a Spot\nPost a hidden gem for the community\nActivity\nCheck posts, comments, and alerts\nLOGOUT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "requestedRoute": "/reservation/22222222-2222-4222-8222-222222222222",
+      "ms": 1468,
+      "path": "/reservation/22222222-2222-4222-8222-222222222222",
+      "body": "BOOKING\nAudit Fixture Cafe\nSelect Date\nOCTOBER 2026\nS\n11\nM\n12\nT\n13\nW\n14\nT\n15\nF\n16\nS\n17\nExperience Slot\nAdjust the hours and minutes with the arrows. Tap AM or PM to switch.\nReservation time\n08\n:\n00\nPM\nArrival time: 08:00 PM\nGroup Size\nSolo\n(1 person)\nTable for 2\n(2 persons)\nSmall Group\n(3-5 party)\nBig Group\n(6+ party)\nTables\nT01\n4 seats\nAvailable online\nAdditional Information\nReservation Adjustments\nPlans can change. You can review your booking details before confirming.\nAdjustment Requests\nContact the spot about adjustment requests. Any changes are subject to availability and the spot's policies.\nNo Cancellation After Payment\nOnce your reservation is booked and paid, cancellation is not allowed, in accordance with the spot's policies.\nPaid Reservation Notice\nReservation deposits and processing fees are non-refundable. Please review your booking details before completing payment.\nBooking Summary\nSpot\nAudit Fixture Cafe\nSelected Date\nSun, Oct 11, 2026\nSelected Time\nCustom time (08:00 PM)\nGroup Size\nTable for 2\nGuest Count\n2\nReservation Type\nReservation Fee\nFee\nPHP 150\nPayment Status\nPending\nI understand the no-cancellation policy after payment, non-refundable fees, and adjustment conditions.\nSELECTION TIMER\n5:00\nThis timer tracks your selection only; availability is checked again before booking.\nRESERVATION FEE\nPHP 150\nSTATUS\nPENDING\n08:00 PM - Table for 2 - T01\nConfirm Booking",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 390,
+      "requestedRoute": "/checkout/22222222-2222-4222-8222-222222222222",
+      "ms": 1383,
+      "path": "/checkout/22222222-2222-4222-8222-222222222222",
+      "body": "RESERVATION PAYMENT\nAudit Fixture Cafe\nPERSONAL INFORMATION\nFull name\nAudit Guest\nEmail\naudit@example.test\nPhone\nUsed by the spot to verify and contact you about this reservation.\nBOOKING DETAILS\nSpot\nAudit Fixture Cafe\nDate\n2026-10-11\nShow-up time\n06:00 PM\nTable\nTable not selected\nParty size\n1 guest\nRequired deposit\nPHP 150.00\nI have read and accept reservation\nTerms and Conditions\nEnter your phone number before accepting.\nPayment Method\nComplete your information and accept the agreement to unlock payment methods.\nGCash\nManual\nQR Ph\nScan to pay\nPayment options will appear after the required acknowledgement.\nAudit Fixture Cafe\n2026-10-11 at 18:00 - 1 guests\nPHP 150.00\nCOMPLETE PERSONAL INFORMATION",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 1,
+      "errors": []
+    },
+    {
+      "width": 768,
+      "requestedRoute": "/",
+      "ms": 1836,
+      "path": "/",
+      "body": "NEARBY SPOTS\n1 spots found near you\nAudit Fixture Cafe\nCebu City - 2.7km\nCAFE\nGO TO SPOT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "inputCount": 1,
+      "errors": []
+    },
+    {
+      "width": 768,
+      "requestedRoute": "/profile",
+      "ms": 1738,
+      "path": "/profile",
+      "body": "A\nAudit Guest\nCebu City, Philippines\nLEVEL 1\nMilestone\n0 of 100 points toward Level 2\n0%\n0\nSPOT POINTS\nEarned from helpful activity\n1\nRESERVATIONS\nBookings you made\nAccount\nSigned in as\naudit@example.test\nHome base\nCebu City, Philippines\nQuick Actions\nAbout\nOur story, features, and common questions\nCebSpot Rewards\nView XP, badges, history, and rank\nSaved Spots\nBookmark spots to find them here\nShare a Spot\nPost a hidden gem for the community\nActivity\nCheck posts, comments, and alerts\nLOGOUT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 768,
+      "requestedRoute": "/reservation/22222222-2222-4222-8222-222222222222",
+      "ms": 1445,
+      "path": "/reservation/22222222-2222-4222-8222-222222222222",
+      "body": "BOOKING\nAudit Fixture Cafe\nSelect Date\nOCTOBER 2026\nS\n11\nM\n12\nT\n13\nW\n14\nT\n15\nF\n16\nS\n17\nExperience Slot\nAdjust the hours and minutes with the arrows. Tap AM or PM to switch.\nReservation time\n08\n:\n00\nPM\nArrival time: 08:00 PM\nGroup Size\nSolo\n(1 person)\nTable for 2\n(2 persons)\nSmall Group\n(3-5 party)\nBig Group\n(6+ party)\nTables\nT01\n4 seats\nAvailable online\nAdditional Information\nReservation Adjustments\nPlans can change. You can review your booking details before confirming.\nAdjustment Requests\nContact the spot about adjustment requests. Any changes are subject to availability and the spot's policies.\nNo Cancellation After Payment\nOnce your reservation is booked and paid, cancellation is not allowed, in accordance with the spot's policies.\nPaid Reservation Notice\nReservation deposits and processing fees are non-refundable. Please review your booking details before completing payment.\nBooking Summary\nSpot\nAudit Fixture Cafe\nSelected Date\nSun, Oct 11, 2026\nSelected Time\nCustom time (08:00 PM)\nGroup Size\nTable for 2\nGuest Count\n2\nReservation Type\nReservation Fee\nFee\nPHP 150\nPayment Status\nPending\nI understand the no-cancellation policy after payment, non-refundable fees, and adjustment conditions.\nSELECTION TIMER\n5:00\nThis timer tracks your selection only; availability is checked again before booking.\nRESERVATION FEE\nPHP 150\nSTATUS\nPENDING\n08:00 PM - Table for 2 - T01\nConfirm Booking",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 768,
+      "requestedRoute": "/checkout/22222222-2222-4222-8222-222222222222",
+      "ms": 1435,
+      "path": "/checkout/22222222-2222-4222-8222-222222222222",
+      "body": "RESERVATION PAYMENT\nAudit Fixture Cafe\nPERSONAL INFORMATION\nFull name\nAudit Guest\nEmail\naudit@example.test\nPhone\nUsed by the spot to verify and contact you about this reservation.\nBOOKING DETAILS\nSpot\nAudit Fixture Cafe\nDate\n2026-10-11\nShow-up time\n06:00 PM\nTable\nTable not selected\nParty size\n1 guest\nRequired deposit\nPHP 150.00\nI have read and accept reservation\nTerms and Conditions\nEnter your phone number before accepting.\nPayment Method\nComplete your information and accept the agreement to unlock payment methods.\nGCash\nManual\nQR Ph\nScan to pay\nPayment options will appear after the required acknowledgement.\nAudit Fixture Cafe\n2026-10-11 at 18:00 - 1 guests\nPHP 150.00\nCOMPLETE PERSONAL INFORMATION",
+      "scrollWidth": 768,
+      "viewport": 768,
+      "inputCount": 1,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "requestedRoute": "/",
+      "ms": 1535,
+      "path": "/",
+      "body": "NEARBY SPOTS\n1 spots found near you\nAudit Fixture Cafe\nCebu City - 2.7km\nCAFE\nGO TO SPOT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "inputCount": 1,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "requestedRoute": "/profile",
+      "ms": 1363,
+      "path": "/profile",
+      "body": "A\nAudit Guest\nCebu City, Philippines\nLEVEL 1\nMilestone\n0 of 100 points toward Level 2\n0%\n0\nSPOT POINTS\nEarned from helpful activity\n1\nRESERVATIONS\nBookings you made\nAccount\nSigned in as\naudit@example.test\nHome base\nCebu City, Philippines\nQuick Actions\nAbout\nOur story, features, and common questions\nCebSpot Rewards\nView XP, badges, history, and rank\nSaved Spots\nBookmark spots to find them here\nShare a Spot\nPost a hidden gem for the community\nActivity\nCheck posts, comments, and alerts\nLOGOUT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "requestedRoute": "/reservation/22222222-2222-4222-8222-222222222222",
+      "ms": 1358,
+      "path": "/reservation/22222222-2222-4222-8222-222222222222",
+      "body": "BOOKING\nAudit Fixture Cafe\nSelect Date\nOCTOBER 2026\nS\n11\nM\n12\nT\n13\nW\n14\nT\n15\nF\n16\nS\n17\nExperience Slot\nAdjust the hours and minutes with the arrows. Tap AM or PM to switch.\nReservation time\n08\n:\n00\nPM\nArrival time: 08:00 PM\nGroup Size\nSolo\n(1 person)\nTable for 2\n(2 persons)\nSmall Group\n(3-5 party)\nBig Group\n(6+ party)\nTables\nT01\n4 seats\nAvailable online\nAdditional Information\nReservation Adjustments\nPlans can change. You can review your booking details before confirming.\nAdjustment Requests\nContact the spot about adjustment requests. Any changes are subject to availability and the spot's policies.\nNo Cancellation After Payment\nOnce your reservation is booked and paid, cancellation is not allowed, in accordance with the spot's policies.\nPaid Reservation Notice\nReservation deposits and processing fees are non-refundable. Please review your booking details before completing payment.\nBooking Summary\nSpot\nAudit Fixture Cafe\nSelected Date\nSun, Oct 11, 2026\nSelected Time\nCustom time (08:00 PM)\nGroup Size\nTable for 2\nGuest Count\n2\nReservation Type\nReservation Fee\nFee\nPHP 150\nPayment Status\nPending\nI understand the no-cancellation policy after payment, non-refundable fees, and adjustment conditions.\nSELECTION TIMER\n5:00\nThis timer tracks your selection only; availability is checked again before booking.\nRESERVATION FEE\nPHP 150\nSTATUS\nPENDING\n08:00 PM - Table for 2 - T01\nConfirm Booking",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "inputCount": 0,
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "requestedRoute": "/checkout/22222222-2222-4222-8222-222222222222",
+      "ms": 1368,
+      "path": "/checkout/22222222-2222-4222-8222-222222222222",
+      "body": "RESERVATION PAYMENT\nAudit Fixture Cafe\nPERSONAL INFORMATION\nFull name\nAudit Guest\nEmail\naudit@example.test\nPhone\nUsed by the spot to verify and contact you about this reservation.\nBOOKING DETAILS\nSpot\nAudit Fixture Cafe\nDate\n2026-10-11\nShow-up time\n06:00 PM\nTable\nTable not selected\nParty size\n1 guest\nRequired deposit\nPHP 150.00\nI have read and accept reservation\nTerms and Conditions\nEnter your phone number before accepting.\nPayment Method\nComplete your information and accept the agreement to unlock payment methods.\nGCash\nManual\nQR Ph\nScan to pay\nPayment options will appear after the required acknowledgement.\nAudit Fixture Cafe\n2026-10-11 at 18:00 - 1 guests\nPHP 150.00\nCOMPLETE PERSONAL INFORMATION",
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "inputCount": 1,
+      "errors": []
+    },
+    {
+      "case": "empty-login-validation",
+      "visibleMessage": false,
+      "domChanged": false,
+      "dialogs": []
+    },
+    {
+      "case": "invalid-login-response",
+      "tokenRequests": 1,
+      "visibleError": false,
+      "dialogs": 0,
+      "body": "CEBSPOT\nFind your spot at the heart of Cebu.\nForgot password?\nLOGIN\nCREATE A CEBSPOT ACCOUNT\nOR\nG\nContinue with Google"
+    },
+    {
+      "case": "anonymous-privacy-link",
+      "path": "/login",
+      "body": "CEBSPOT\nFind your spot at the heart of Cebu.\nForgot password?\nLOGIN\nCREATE A CEBSPOT ACCOUNT\nOR\nG\nContinue with Google",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 2
+    },
+    {
+      "case": "public-gate",
+      "requestedRoute": "/owner-dashboard",
+      "path": "/owner-dashboard",
+      "body": "CebSpot Owner\nUse the dedicated business account CebSpot created after verification\nEMAIL\nPASSWORD\nSIGN IN",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 2
+    },
+    {
+      "case": "public-gate",
+      "requestedRoute": "/admin",
+      "path": "/admin",
+      "body": "CebSpot Admin\nSign in with the admin account issued by CebSpot.\nForgot password?\nSign In",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 2
+    },
+    {
+      "case": "public-gate",
+      "requestedRoute": "/owner-access",
+      "path": "/owner-access",
+      "body": "SPOT OWNER ACCESS\nRequest Owner Access\nContact CebSpot\nSubmit your venue details. CebSpot will create a dedicated business account after verification.\nUse a dedicated business email that has never been registered as a CebSpot user. Existing user accounts cannot be converted into owner accounts.\nCONTACT NAME\nNEW BUSINESS ACCOUNT EMAIL\nCONTACT NUMBER\nSPOT NAME\nCATEGORY\nRestaurant\nCafe\nBar\nClub\nLounge\nFood Park\nSPOT ADDRESS\nACCESS NEEDED\nReservations\nDown Payments\nGuest Reviews\nTables & Pricing\nVERIFICATION DOCUMENTS\nAttach IDs, business permits, proof of ownership, photos, or PDFs to help us verify your request faster. You may attach as many documents as needed.\nInsert Documents\nMESSAGE\nSEND REQUEST",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 5
+    },
+    {
+      "case": "public-gate",
+      "requestedRoute": "/reset-password",
+      "path": "/reset-password",
+      "body": "Forgot password?\nEnter your account email to receive a verification code.\nEmail address\nSEND VERIFICATION CODE\nBack to login",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 1
+    },
+    {
+      "case": "public-gate",
+      "requestedRoute": "/auth/callback",
+      "path": "/login",
+      "body": "CEBSPOT\nFind your spot at the heart of Cebu.\nForgot password?\nLOGIN\nCREATE A CEBSPOT ACCOUNT\nOR\nG\nContinue with Google",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 2
+    },
+    {
+      "case": "missing-record",
+      "requestedRoute": "/spot/22222222-2222-4222-8222-222222222222",
+      "path": "/spot/22222222-2222-4222-8222-222222222222",
+      "body": "Spot not found\nBACK TO EXPLORE",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 0
+    },
+    {
+      "case": "missing-record",
+      "requestedRoute": "/reservation/22222222-2222-4222-8222-222222222222",
+      "path": "/reservation/22222222-2222-4222-8222-222222222222",
+      "body": "Spot not found",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 0
+    },
+    {
+      "case": "missing-record",
+      "requestedRoute": "/confirmed/33333333-3333-4333-8333-333333333333",
+      "path": "/confirmed/33333333-3333-4333-8333-333333333333",
+      "body": "Reservation not found\nBACK TO EXPLORE",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 0
+    }
+  ],
+  "network": [
+    {
+      "mode": "offline",
+      "stage": "1.2-seconds",
+      "path": "/",
+      "body": "NEARBY SPOTS\n0 spots found near you\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 1
+    },
+    {
+      "mode": "offline",
+      "stage": "5.4-seconds",
+      "path": "/",
+      "body": "NEARBY SPOTS\n0 spots found near you\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 1
+    },
+    {
+      "mode": "slow",
+      "stage": "1.2-seconds",
+      "path": "/",
+      "body": "NEARBY SPOTS\n0 spots found near you\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 1
+    },
+    {
+      "mode": "slow",
+      "stage": "5.4-seconds",
+      "path": "/",
+      "body": "NEARBY SPOTS\n1 spots found near you\nAudit Fixture Cafe\nCebu City - 2.7km\nCAFE\nGO TO SPOT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+      "scrollWidth": 390,
+      "viewport": 390,
+      "inputCount": 1
+    }
+  ]
+}

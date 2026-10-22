@@ -1,0 +1,28 @@
+{
+  "kind": "verified-execution-blockers",
+  "dateLocal": "2026-10-08 Asia/Manila",
+  "loadInvocation": {
+    "command": "node tests/performance/run-suite.cjs",
+    "exitCode": 1,
+    "reportedError": "Missing PERF_ANON_KEY",
+    "targetConfiguration": "Prepared .env.perf.local selects loopback, with no credentials populated"
+  },
+  "localSupabase": {
+    "healthProbeReachable": false,
+    "dockerOnPath": false,
+    "dockerDefaultLocationExists": false,
+    "supabaseCliOnPath": false,
+    "schemaSnapshotGenerated": true,
+    "schemaStartupVerified": false
+  },
+  "wsl": {
+    "command": "wsl.exe --list --quiet",
+    "exitCode": 1,
+    "reportedMessage": "The Windows Subsystem for Linux is not installed."
+  },
+  "staging": "No dedicated staging identity supplied; application hosted project never used",
+  "media": "Synthetic JPEG prepared; ffmpeg unavailable and synthetic MP4 not prepared",
+  "android": "SDK adb devices -l returned an empty device list",
+  "face": "Existing Python runtime worked after sandbox escalation; one local job passed; temporary server stopped",
+  "provenance": "Sanitized facts from actual tool and command outputs; no secrets included"
+}

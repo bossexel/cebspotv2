@@ -4,6 +4,7 @@ import { Bell, Compass, LucideIcon, Plus, User, Users } from 'lucide-react-nativ
 import { usePathname, useRouter } from 'expo-router';
 import { AppColors, colors } from '../constants/colors';
 import { bottomNavLayout, fontSize, radius, shadow, spacing } from '../constants/design';
+import { useGuideTarget } from '../features/onboarding/GuideProvider';
 
 interface TabItem {
   label: string;
@@ -21,14 +22,19 @@ const tabs: TabItem[] = [
 const leftTabs = tabs.slice(0, 2);
 const rightTabs = tabs.slice(2);
 
-export function BottomNav({ appColors, onHeightChange }: { appColors: AppColors; onHeightChange?: (height: number) => void }) {
+export function BottomNav({ appColors, onHeightChange, guideTargets = false }: { appColors: AppColors; onHeightChange?: (height: number) => void; guideTargets?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
+  const circleTarget = useGuideTarget('circle', guideTargets);
+  const activityTarget = useGuideTarget('activity', guideTargets);
+  const shareTarget = useGuideTarget('bottom-nav-share', guideTargets);
+  const profileTarget = useGuideTarget('bottom-nav-profile', guideTargets);
 
   return (
     <View pointerEvents="box-none" style={styles.wrap}>
       <View
         testID="bottom-navigation"
+        collapsable={false}
         onLayout={(event) => onHeightChange?.(event.nativeEvent.layout.height)}
         style={[styles.bar, { backgroundColor: appColors.surfaceLow }]}
       >
@@ -38,6 +44,8 @@ export function BottomNav({ appColors, onHeightChange }: { appColors: AppColors;
           return (
             <Pressable
               key={tab.href}
+              ref={tab.href === '/circle' ? circleTarget : undefined}
+              collapsable={false}
               onPress={() => router.replace(tab.href)}
               style={({ pressed }) => [styles.item, active && styles.activeItem, pressed && styles.pressed]}
             >
@@ -55,6 +63,8 @@ export function BottomNav({ appColors, onHeightChange }: { appColors: AppColors;
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Share a new spot"
+          ref={shareTarget}
+          collapsable={false}
           onPress={() => router.push('/submit-spot')}
           style={({ pressed }) => [styles.plusItem, pressed && styles.pressed]}
         >
@@ -69,6 +79,8 @@ export function BottomNav({ appColors, onHeightChange }: { appColors: AppColors;
           return (
             <Pressable
               key={tab.href}
+              ref={tab.href === '/profile' ? profileTarget : activityTarget}
+              collapsable={false}
               onPress={() => router.replace(tab.href)}
               style={({ pressed }) => [styles.item, active && styles.activeItem, pressed && styles.pressed]}
             >

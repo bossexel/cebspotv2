@@ -1,3 +1,4 @@
+import { base64ToArrayBuffer } from '../utils/base64';
 import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { supabase } from '../lib/supabase';
@@ -11,27 +12,6 @@ type ProfilePhotoInput = {
   width?: number | null;
   fileSize?: number | null;
 };
-
-function base64ToArrayBuffer(base64: string) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  const cleanBase64 = base64.replace(/=+$/, '');
-  const bytes: number[] = [];
-  let buffer = 0;
-  let bits = 0;
-
-  for (const char of cleanBase64) {
-    const value = chars.indexOf(char);
-    if (value < 0) continue;
-    buffer = (buffer << 6) | value;
-    bits += 6;
-    if (bits >= 8) {
-      bits -= 8;
-      bytes.push((buffer >> bits) & 0xff);
-    }
-  }
-
-  return new Uint8Array(bytes).buffer;
-}
 
 export const profilePhotoService = {
   async upload(userId: string, input: ProfilePhotoInput) {

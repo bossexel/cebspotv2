@@ -1,0 +1,157 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\9real\\Downloads\\cebspotv3\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.map.config.cjs",
+      "--reporter=json",
+      "--grep",
+      "selection travels"
+    ],
+    "configFile": "C:\\Users\\9real\\Downloads\\cebspotv3\\playwright.map.config.cjs",
+    "rootDir": "C:/Users/9real/Downloads/cebspotv3/tests/map",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/9real/Downloads/cebspotv3/.codex-tmp/map-review/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Users/9real/Downloads/cebspotv3/tests/map",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 20000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "runtime.spec.cjs",
+      "file": "runtime.spec.cjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "selection travels through intermediate positions, reuses pins and does not wait for tiles",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 20000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 9254,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m10.331\u001b[39m\nReceived:   \u001b[31m10.33100536729993\u001b[39m",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m10.331\u001b[39m\nReceived:   \u001b[31m10.33100536729993\u001b[39m\n    at C:\\Users\\9real\\Downloads\\cebspotv3\\tests\\map\\runtime.spec.cjs:132:24",
+                    "location": {
+                      "file": "C:\\Users\\9real\\Downloads\\cebspotv3\\tests\\map\\runtime.spec.cjs",
+                      "column": 24,
+                      "line": 132
+                    },
+                    "snippet": "  130 |   const intermediate = await page.evaluate(() => window.__map.getCenter().lat);\n  131 |   expect(intermediate).toBeGreaterThan(initial.center.latitude);\n> 132 |   expect(intermediate).toBeLessThan(initial.markers[1].latitude);\n      |                        ^\n  133 |   expect(await page.evaluate(() => window.__oldPin === document.querySelector('[aria-label=\"Garden B\"]'))).toBe(true);\n  134 |   await expect(page.locator('[aria-label=\"Garden B\"]')).toHaveAttribute('aria-pressed', 'true');\n  135 |   // Leaflet pans to whole screen pixels. Check within one pixel, not subpixel metres."
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\9real\\Downloads\\cebspotv3\\tests\\map\\runtime.spec.cjs",
+                        "column": 24,
+                        "line": 132
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m10.331\u001b[39m\nReceived:   \u001b[31m10.33100536729993\u001b[39m\n\n  130 |   const intermediate = await page.evaluate(() => window.__map.getCenter().lat);\n  131 |   expect(intermediate).toBeGreaterThan(initial.center.latitude);\n> 132 |   expect(intermediate).toBeLessThan(initial.markers[1].latitude);\n      |                        ^\n  133 |   expect(await page.evaluate(() => window.__oldPin === document.querySelector('[aria-label=\"Garden B\"]'))).toBe(true);\n  134 |   await expect(page.locator('[aria-label=\"Garden B\"]')).toHaveAttribute('aria-pressed', 'true');\n  135 |   // Leaflet pans to whole screen pixels. Check within one pixel, not subpixel metres.\n    at C:\\Users\\9real\\Downloads\\cebspotv3\\tests\\map\\runtime.spec.cjs:132:24"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-07T21:17:55.337Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\map-review\\test-results\\runtime-selection-travels--86f1b-and-does-not-wait-for-tiles\\test-failed-1.png"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\map-review\\test-results\\runtime-selection-travels--86f1b-and-does-not-wait-for-tiles\\error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\map-review\\test-results\\runtime-selection-travels--86f1b-and-does-not-wait-for-tiles\\trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\9real\\Downloads\\cebspotv3\\tests\\map\\runtime.spec.cjs",
+                    "column": 24,
+                    "line": 132
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "28a87b68990b9f9e59c2-c417d272bcda070ca98d",
+          "file": "runtime.spec.cjs",
+          "line": 125,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-07T21:17:51.585Z",
+    "duration": 44656.971000000005,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

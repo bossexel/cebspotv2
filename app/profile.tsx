@@ -355,6 +355,20 @@ export default function ProfileScreen() {
         <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Quick Actions</Text>
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="App Guide"
+          accessibilityHint="Restart the introduction and walkthrough on Explore"
+          style={({ pressed }) => [styles.listItem, { backgroundColor: appColors.surfaceLow }, pressed && styles.pressed]}
+          onPress={() => router.replace({ pathname: '/', params: { appGuide: String(Date.now()) } })}
+        >
+          <View style={styles.settingIcon}><Info size={20} color={colors.primary} /></View>
+          <View style={styles.listCopy}>
+            <Text style={[styles.listTitle, { color: appColors.onSurface }]}>App Guide</Text>
+            <Text style={[styles.listSub, { color: appColors.onSurfaceVariant }]}>Replay the CebSpot walkthrough</Text>
+          </View>
+          <ChevronRight size={20} color={appColors.onSurfaceVariant} />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
           accessibilityLabel="About CebSpot"
           style={({ pressed }) => [styles.listItem, { backgroundColor: appColors.surfaceLow }, pressed && styles.pressed]}
           onPress={() => router.push('/about')}

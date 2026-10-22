@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import { isLocalFileUri, isBrowserBlobUri, readMediaBody } from '../utils/mediaFile';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import type {
   NewSpotSubmission,
@@ -60,24 +60,6 @@ function toDatabaseSubmission(submission: NewSpotSubmissionUpload): NewSpotSubmi
   return databaseSubmission;
 }
 
-function isLocalFileUri(uri: string) {
-  return uri.startsWith('file:') || uri.startsWith('content:') || uri.startsWith('ph:');
-}
-
-function isBrowserBlobUri(uri: string) {
-  return /^(blob|data):/i.test(uri);
-}
-
-async function readMediaBody(uri: string) {
-  if (isLocalFileUri(uri)) {
-    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-    return base64ToArrayBuffer(base64);
-  }
-  const response = await fetch(uri);
-  if (!response.ok) throw new Error('Unable to read the privacy-processed photo.');
-  return response.arrayBuffer();
-}
-
 function getMediaExtension(asset: SpotSubmissionMediaAsset, uri: string) {
   const fileNameExtension = asset.fileName?.split('.').pop();
   const cleanUri = uri.split('?')[0] ?? '';
@@ -97,27 +79,6 @@ function getMediaContentType(asset: SpotSubmissionMediaAsset, extension: string)
   if (extension === 'mov') return 'video/quicktime';
   if (extension === 'webm') return 'video/webm';
   return 'video/mp4';
-}
-
-function base64ToArrayBuffer(base64: string) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  const cleanBase64 = base64.replace(/=+$/, '');
-  const bytes: number[] = [];
-  let buffer = 0;
-  let bits = 0;
-
-  for (const char of cleanBase64) {
-    const value = chars.indexOf(char);
-    if (value < 0) continue;
-    buffer = (buffer << 6) | value;
-    bits += 6;
-    if (bits >= 8) {
-      bits -= 8;
-      bytes.push((buffer >> bits) & 0xff);
-    }
-  }
-
-  return new Uint8Array(bytes).buffer;
 }
 
 async function uploadMedia(
@@ -151,7 +112,7 @@ async function uploadMedia(
     await reportProgress(onProgress, progressAt(0.65), uploadProgressMessage);
     const wasProcessed = asset.type === 'image';
     const extension = wasProcessed ? 'jpg' : getMediaExtension(asset, processedUri);
-    const fileBody = await readMediaBody(processedUri);
+    const fileBody = await readMediaBody(processedUri, 'Unable to read the privacy-processed photo.');
     const path = `${submitterId}/${Date.now()}-${index}.${extension}`;
     const contentType = wasProcessed ? 'image/jpeg' : getMediaContentType(asset, extension);
     const { error } = await supabase.storage.from(spotImagesBucket).upload(path, fileBody, {

@@ -1,0 +1,574 @@
+TAP version 13
+# Subtest: admin identity is checked server-side by authenticated user, role, and email
+ok 1 - admin identity is checked server-side by authenticated user, role, and email
+  ---
+  duration_ms: 13.3375
+  type: 'test'
+  ...
+# Subtest: admin identity cutover revokes the old role and promotes the new account
+ok 2 - admin identity cutover revokes the old role and promotes the new account
+  ---
+  duration_ms: 4.009
+  type: 'test'
+  ...
+# Subtest: admin login offers password visibility and recovery controls
+ok 3 - admin login offers password visibility and recovery controls
+  ---
+  duration_ms: 7.1716
+  type: 'test'
+  ...
+# Subtest: every mutating admin RPC performs the server-side admin check
+ok 4 - every mutating admin RPC performs the server-side admin check
+  ---
+  duration_ms: 3.1377
+  type: 'test'
+  ...
+# Subtest: admin dashboard routes operational actions through secured RPCs
+ok 5 - admin dashboard routes operational actions through secured RPCs
+  ---
+  duration_ms: 2.1995
+  type: 'test'
+  ...
+# Subtest: admin members are paged from the full profiles table instead of the 12-row dashboard preview
+ok 6 - admin members are paged from the full profiles table instead of the 12-row dashboard preview
+  ---
+  duration_ms: 9.9377
+  type: 'test'
+  ...
+# Subtest: admin screen exposes live moderation and owner-review handlers
+ok 7 - admin screen exposes live moderation and owner-review handlers
+  ---
+  duration_ms: 7.7968
+  type: 'test'
+  ...
+# Subtest: supabase-admin-dashboard.sql lets admins reject applications without an account id
+ok 8 - supabase-admin-dashboard.sql lets admins reject applications without an account id
+  ---
+  duration_ms: 9.296
+  type: 'test'
+  ...
+# Subtest: supabase-fix-owner-request-rejection.sql lets admins reject applications without an account id
+ok 9 - supabase-fix-owner-request-rejection.sql lets admins reject applications without an account id
+  ---
+  duration_ms: 2.5343
+  type: 'test'
+  ...
+# Subtest: live discovery does not replace empty or failed backend results with sample listings
+ok 10 - live discovery does not replace empty or failed backend results with sample listings
+  ---
+  duration_ms: 5.6201
+  type: 'test'
+  ...
+# Subtest: a failed review write is reported as a failure rather than inserted as session-only content
+ok 11 - a failed review write is reported as a failure rather than inserted as session-only content
+  ---
+  duration_ms: 23.0238
+  type: 'test'
+  ...
+# Subtest: booking insertion rejects null slots and requires the selected table to exist in venue inventory
+ok 12 - booking insertion rejects null slots and requires the selected table to exist in venue inventory
+  ---
+  duration_ms: 5.2373
+  type: 'test'
+  ...
+# Subtest: portal profile loading contains no inventory-clearing repair heuristic
+ok 13 - portal profile loading contains no inventory-clearing repair heuristic
+  ---
+  duration_ms: 2.1121
+  type: 'test'
+  ...
+# Subtest: club floor plan contains each public table exactly once
+ok 14 - club floor plan contains each public table exactly once
+  ---
+  duration_ms: 14.131
+  type: 'test'
+  ...
+# Subtest: floor plan capacity and owner-only rules match the supplied layout
+ok 15 - floor plan capacity and owner-only rules match the supplied layout
+  ---
+  duration_ms: 1.3092
+  type: 'test'
+  ...
+# Subtest: each booking slot receives an independent complete inventory
+ok 16 - each booking slot receives an independent complete inventory
+  ---
+  duration_ms: 0.9871
+  type: 'test'
+  ...
+# Subtest: normalization keeps the mapped IDs and applies saved availability
+ok 17 - normalization keeps the mapped IDs and applies saved availability
+  ---
+  duration_ms: 1.6476
+  type: 'test'
+  ...
+# Subtest: supabase-schema.sql exposes live table occupancy without stale payment holds
+ok 18 - supabase-schema.sql exposes live table occupancy without stale payment holds
+  ---
+  duration_ms: 6.6124
+  type: 'test'
+  ...
+# Subtest: supabase-club-floor-plan.sql exposes live table occupancy without stale payment holds
+ok 19 - supabase-club-floor-plan.sql exposes live table occupancy without stale payment holds
+  ---
+  duration_ms: 3.1272
+  type: 'test'
+  ...
+# Subtest: booking requires an explicit club table and passes it through checkout
+ok 20 - booking requires an explicit club table and passes it through checkout
+  ---
+  duration_ms: 4.0447
+  type: 'test'
+  ...
+# Subtest: owner dashboard preserves the fixed club inventory when publishing pricing
+ok 21 - owner dashboard preserves the fixed club inventory when publishing pricing
+  ---
+  duration_ms: 3.1096
+  type: 'test'
+  ...
+# Subtest: dedicated owner provisioning rejects existing CebSpot identities
+ok 22 - dedicated owner provisioning rejects existing CebSpot identities
+  ---
+  duration_ms: 16.1442
+  type: 'test'
+  ...
+# Subtest: owner request submission rejects registered and already-pending business emails
+ok 23 - owner request submission rejects registered and already-pending business emails
+  ---
+  duration_ms: 8.6614
+  type: 'test'
+  ...
+# Subtest: dedicated owner invitation is finalized server-side and rolled back on failure
+ok 24 - dedicated owner invitation is finalized server-side and rolled back on failure
+  ---
+  duration_ms: 3.2166
+  type: 'test'
+  ...
+# Subtest: database finalizer creates an owner-only profile and spot assignment
+ok 25 - database finalizer creates an owner-only profile and spot assignment
+  ---
+  duration_ms: 3.9248
+  type: 'test'
+  ...
+# Subtest: admin approval uses account provisioning while rejection stays in the review RPC
+ok 26 - admin approval uses account provisioning while rejection stays in the review RPC
+  ---
+  duration_ms: 9.9964
+  type: 'test'
+  ...
+# Subtest: mobile owner dashboard loads the spot assigned to the signed-in business account
+ok 27 - mobile owner dashboard loads the spot assigned to the signed-in business account
+  ---
+  duration_ms: 5.5276
+  type: 'test'
+  ...
+# Subtest: signed-in roles are confined to their dedicated application surface
+ok 28 - signed-in roles are confined to their dedicated application surface
+  ---
+  duration_ms: 4.6623
+  type: 'test'
+  ...
+# Subtest: standalone owner portal derives its venue from owner_spot_access
+ok 29 - standalone owner portal derives its venue from owner_spot_access
+  ---
+  duration_ms: 14.3504
+  type: 'test'
+  ...
+# Subtest: owner venue data does not inherit the Test Cebspot Club table template
+ok 30 - owner venue data does not inherit the Test Cebspot Club table template
+  ---
+  duration_ms: 6.8985
+  type: 'test'
+  ...
+# Subtest: owner logout and review replies are connected to the assigned venue
+ok 31 - owner logout and review replies are connected to the assigned venue
+  ---
+  duration_ms: 5.1061
+  type: 'test'
+  ...
+# Subtest: master schema removes prototype-only owner assignment hooks
+ok 32 - master schema removes prototype-only owner assignment hooks
+  ---
+  duration_ms: 4.1291
+  type: 'test'
+  ...
+# Subtest: fallback data keeps the Test Cebspot Club brand and category
+ok 33 - fallback data keeps the Test Cebspot Club brand and category
+  ---
+  duration_ms: 1.3856
+  type: 'test'
+  ...
+# Subtest: gcash: rejects missing authentication without a provider request or write
+ok 34 - gcash: rejects missing authentication without a provider request or write
+  ---
+  duration_ms: 1167.1441
+  type: 'test'
+  ...
+# Subtest: gcash: rejects another user's reservation
+ok 35 - gcash: rejects another user's reservation
+  ---
+  duration_ms: 505.9491
+  type: 'test'
+  ...
+# Subtest: gcash: rejects unavailable reservation {"payment_status":"paid"}
+ok 36 - gcash: rejects unavailable reservation {"payment_status":"paid"}
+  ---
+  duration_ms: 955.8369
+  type: 'test'
+  ...
+# Subtest: gcash: rejects unavailable reservation {"status":"cancelled"}
+ok 37 - gcash: rejects unavailable reservation {"status":"cancelled"}
+  ---
+  duration_ms: 1002.1253
+  type: 'test'
+  ...
+# Subtest: gcash: rejects unavailable reservation {"status":"completed"}
+ok 38 - gcash: rejects unavailable reservation {"status":"completed"}
+  ---
+  duration_ms: 299.3938
+  type: 'test'
+  ...
+# Subtest: gcash: rejects unavailable reservation {"status":"no_show"}
+ok 39 - gcash: rejects unavailable reservation {"status":"no_show"}
+  ---
+  duration_ms: 445.0932
+  type: 'test'
+  ...
+# Subtest: gcash: creates pending checkout with centavo amount and persists references
+ok 40 - gcash: creates pending checkout with centavo amount and persists references
+  ---
+  duration_ms: 308.4146
+  type: 'test'
+  ...
+# Subtest: gcash: provider failure is surfaced without marking reservation paid
+ok 41 - gcash: provider failure is surfaced without marking reservation paid
+  ---
+  duration_ms: 286.0903
+  type: 'test'
+  ...
+# Subtest: gcash: sends saved guest contact details as billing and ignores request overrides
+ok 42 - gcash: sends saved guest contact details as billing and ignores request overrides
+  ---
+  duration_ms: 316.4965
+  type: 'test'
+  ...
+# Subtest: gcash: rejects missing guest_name before provider calls or database writes
+ok 43 - gcash: rejects missing guest_name before provider calls or database writes
+  ---
+  duration_ms: 160.0589
+  type: 'test'
+  ...
+# Subtest: gcash: rejects missing guest_email before provider calls or database writes
+ok 44 - gcash: rejects missing guest_email before provider calls or database writes
+  ---
+  duration_ms: 486.2447
+  type: 'test'
+  ...
+# Subtest: gcash: rejects missing guest_phone before provider calls or database writes
+ok 45 - gcash: rejects missing guest_phone before provider calls or database writes
+  ---
+  duration_ms: 243.4173
+  type: 'test'
+  ...
+# Subtest: qrph: rejects missing authentication without a provider request or write
+ok 46 - qrph: rejects missing authentication without a provider request or write
+  ---
+  duration_ms: 355.1513
+  type: 'test'
+  ...
+# Subtest: qrph: rejects another user's reservation
+ok 47 - qrph: rejects another user's reservation
+  ---
+  duration_ms: 320.1151
+  type: 'test'
+  ...
+# Subtest: qrph: rejects unavailable reservation {"payment_status":"paid"}
+ok 48 - qrph: rejects unavailable reservation {"payment_status":"paid"}
+  ---
+  duration_ms: 215.7776
+  type: 'test'
+  ...
+# Subtest: qrph: rejects unavailable reservation {"status":"cancelled"}
+ok 49 - qrph: rejects unavailable reservation {"status":"cancelled"}
+  ---
+  duration_ms: 188.5528
+  type: 'test'
+  ...
+# Subtest: qrph: rejects unavailable reservation {"status":"completed"}
+ok 50 - qrph: rejects unavailable reservation {"status":"completed"}
+  ---
+  duration_ms: 179.5068
+  type: 'test'
+  ...
+# Subtest: qrph: rejects unavailable reservation {"status":"no_show"}
+ok 51 - qrph: rejects unavailable reservation {"status":"no_show"}
+  ---
+  duration_ms: 146.1054
+  type: 'test'
+  ...
+# Subtest: qrph: creates pending checkout with centavo amount and persists references
+ok 52 - qrph: creates pending checkout with centavo amount and persists references
+  ---
+  duration_ms: 225.2431
+  type: 'test'
+  ...
+# Subtest: qrph: provider failure is surfaced without marking reservation paid
+ok 53 - qrph: provider failure is surfaced without marking reservation paid
+  ---
+  duration_ms: 167.9027
+  type: 'test'
+  ...
+# Subtest: qrph: sends saved guest contact details as billing and ignores request overrides
+ok 54 - qrph: sends saved guest contact details as billing and ignores request overrides
+  ---
+  duration_ms: 200.0186
+  type: 'test'
+  ...
+# Subtest: qrph: rejects missing guest_name before provider calls or database writes
+ok 55 - qrph: rejects missing guest_name before provider calls or database writes
+  ---
+  duration_ms: 153.1507
+  type: 'test'
+  ...
+# Subtest: qrph: rejects missing guest_email before provider calls or database writes
+ok 56 - qrph: rejects missing guest_email before provider calls or database writes
+  ---
+  duration_ms: 188.8447
+  type: 'test'
+  ...
+# Subtest: qrph: rejects missing guest_phone before provider calls or database writes
+ok 57 - qrph: rejects missing guest_phone before provider calls or database writes
+  ---
+  duration_ms: 139.312
+  type: 'test'
+  ...
+# Subtest: GCash reuses a pending checkout without a second provider request
+ok 58 - GCash reuses a pending checkout without a second provider request
+  ---
+  duration_ms: 121.4804
+  type: 'test'
+  ...
+# Subtest: GCash checkout uses venue pricing and an explicitly allowed HTTPS return origin
+ok 59 - GCash checkout uses venue pricing and an explicitly allowed HTTPS return origin
+  ---
+  duration_ms: 199.0845
+  type: 'test'
+  ...
+# Subtest: QR Ph accepts only the reservation confirmation route on an allowed return origin
+ok 60 - QR Ph accepts only the reservation confirmation route on an allowed return origin
+  ---
+  duration_ms: 253.1777
+  type: 'test'
+  ...
+# Subtest: concurrent GCash checkout requests use the same provider idempotency key
+ok 61 - concurrent GCash checkout requests use the same provider idempotency key
+  ---
+  duration_ms: 146.1915
+  type: 'test'
+  ...
+# Subtest: QR Ph retry expires the old attempt and creates a new one
+ok 62 - QR Ph retry expires the old attempt and creates a new one
+  ---
+  duration_ms: 123.9089
+  type: 'test'
+  ...
+# Subtest: webhook rejects missing, tampered and stale signatures before database writes
+ok 63 - webhook rejects missing, tampered and stale signatures before database writes
+  ---
+  duration_ms: 481.3301
+  type: 'test'
+  ...
+# Subtest: webhook accepts separate test and live signing secrets without crossing modes
+ok 64 - webhook accepts separate test and live signing secrets without crossing modes
+  ---
+  duration_ms: 641.6322
+  type: 'test'
+  ...
+# Subtest: signed paid event confirms reservation; duplicate event does not duplicate payment rows
+ok 65 - signed paid event confirms reservation; duplicate event does not duplicate payment rows
+  ---
+  duration_ms: 181.1546
+  type: 'test'
+  ...
+# Subtest: signed failure cancels a pending reservation
+ok 66 - signed failure cancels a pending reservation
+  ---
+  duration_ms: 167.3366
+  type: 'test'
+  ...
+# Subtest: late paid event never reopens a cancelled reservation
+ok 67 - late paid event never reopens a cancelled reservation
+  ---
+  duration_ms: 305.6093
+  type: 'test'
+  ...
+# Subtest: untracked payment notification is acknowledged without modifying any records
+ok 68 - untracked payment notification is acknowledged without modifying any records
+  ---
+  duration_ms: 166.9596
+  type: 'test'
+  ...
+# Subtest: database write failure is surfaced for webhook retry
+ok 69 - database write failure is surfaced for webhook retry
+  ---
+  duration_ms: 176.1644
+  type: 'test'
+  ...
+# Subtest: a late failure cannot downgrade an already paid reservation
+ok 70 - a late failure cannot downgrade an already paid reservation
+  ---
+  duration_ms: 111.7174
+  type: 'test'
+  ...
+# Subtest: unhandled event cannot reset a paid reservation to pending
+ok 71 - unhandled event cannot reset a paid reservation to pending
+  ---
+  duration_ms: 104.3208
+  type: 'test'
+  ...
+# Subtest: duplicate paid notification preserves a completed reservation
+ok 72 - duplicate paid notification preserves a completed reservation
+  ---
+  duration_ms: 140.8601
+  type: 'test'
+  ...
+# Subtest: failure of an expired QR attempt cannot cancel its replacement checkout
+ok 73 - failure of an expired QR attempt cannot cancel its replacement checkout
+  ---
+  duration_ms: 199.0969
+  type: 'test'
+  ...
+# Subtest: owner dashboard exposes confirmed-arrival and no-show decisions with full reservation details
+ok 74 - owner dashboard exposes confirmed-arrival and no-show decisions with full reservation details
+  ---
+  duration_ms: 16.9942
+  type: 'test'
+  ...
+# Subtest: attendance updates route through the owner-only database function
+ok 75 - attendance updates route through the owner-only database function
+  ---
+  duration_ms: 3.9626
+  type: 'test'
+  ...
+# Subtest: supabase-schema.sql secures attendance decisions and notifies the guest
+ok 76 - supabase-schema.sql secures attendance decisions and notifies the guest
+  ---
+  duration_ms: 16.2324
+  type: 'test'
+  ...
+# Subtest: supabase-reservation-attendance.sql secures attendance decisions and notifies the guest
+ok 77 - supabase-reservation-attendance.sql secures attendance decisions and notifies the guest
+  ---
+  duration_ms: 11.8479
+  type: 'test'
+  ...
+# Subtest: checked-in tables remain occupied while no-shows release their table
+ok 78 - checked-in tables remain occupied while no-shows release their table
+  ---
+  duration_ms: 3.8507
+  type: 'test'
+  ...
+# Subtest: arrival and no-show activities become user notifications linked to reservation details
+ok 79 - arrival and no-show activities become user notifications linked to reservation details
+  ---
+  duration_ms: 2.2052
+  type: 'test'
+  ...
+# Subtest: self-service reservation changes are available only for free reservations
+ok 80 - self-service reservation changes are available only for free reservations
+  ---
+  duration_ms: 5.1159
+  type: 'test'
+  ...
+# Subtest: reservation service uses policy-enforcing customer RPCs
+ok 81 - reservation service uses policy-enforcing customer RPCs
+  ---
+  duration_ms: 2.2472
+  type: 'test'
+  ...
+# Subtest: supabase-schema.sql enforces ownership and blocks paid reservation changes
+ok 82 - supabase-schema.sql enforces ownership and blocks paid reservation changes
+  ---
+  duration_ms: 5.2639
+  type: 'test'
+  ...
+# Subtest: supabase-reservation-change-policy.sql enforces ownership and blocks paid reservation changes
+ok 83 - supabase-reservation-change-policy.sql enforces ownership and blocks paid reservation changes
+  ---
+  duration_ms: 2.4102
+  type: 'test'
+  ...
+# Subtest: unfinished PayMongo checkout can still release its temporary table hold
+ok 84 - unfinished PayMongo checkout can still release its temporary table hold
+  ---
+  duration_ms: 2.5067
+  type: 'test'
+  ...
+# Subtest: payment methods stay locked until contact details and deposit terms are complete
+ok 85 - payment methods stay locked until contact details and deposit terms are complete
+  ---
+  duration_ms: 14.5373
+  type: 'test'
+  ...
+# Subtest: checkout takes identity from the database profile and records the phone snapshot
+ok 86 - checkout takes identity from the database profile and records the phone snapshot
+  ---
+  duration_ms: 7.4747
+  type: 'test'
+  ...
+# Subtest: checkout records the short deposit acceptance and retains the five-minute table hold
+ok 87 - checkout records the short deposit acceptance and retains the five-minute table hold
+  ---
+  duration_ms: 6.6448
+  type: 'test'
+  ...
+# Subtest: supabase-schema.sql stores and enforces paid reservation verification details
+ok 88 - supabase-schema.sql stores and enforces paid reservation verification details
+  ---
+  duration_ms: 5.2421
+  type: 'test'
+  ...
+# Subtest: supabase-reservation-contact-details.sql stores and enforces paid reservation verification details
+ok 89 - supabase-reservation-contact-details.sql stores and enforces paid reservation verification details
+  ---
+  duration_ms: 2.4635
+  type: 'test'
+  ...
+# Subtest: owner and confirmation views expose the saved verification details
+ok 90 - owner and confirmation views expose the saved verification details
+  ---
+  duration_ms: 4.1132
+  type: 'test'
+  ...
+# Subtest: supabase-schema.sql returns only a privacy-safe ownership hint
+ok 91 - supabase-schema.sql returns only a privacy-safe ownership hint
+  ---
+  duration_ms: 10.3125
+  type: 'test'
+  ...
+# Subtest: supabase-spot-claim-status.sql returns only a privacy-safe ownership hint
+ok 92 - supabase-spot-claim-status.sql returns only a privacy-safe ownership hint
+  ---
+  duration_ms: 1.5886
+  type: 'test'
+  ...
+# Subtest: spot details send the exact listing into the owner-access flow
+ok 93 - spot details send the exact listing into the owner-access flow
+  ---
+  duration_ms: 5.8669
+  type: 'test'
+  ...
+# Subtest: owner-access checks management before showing the claim form
+ok 94 - owner-access checks management before showing the claim form
+  ---
+  duration_ms: 20.9807
+  type: 'test'
+  ...
+1..94
+# tests 94
+# suites 0
+# pass 94
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 14442.9873

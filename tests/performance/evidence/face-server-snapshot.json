@@ -1,0 +1,8 @@
+﻿{
+    "dateUtc":  "2026-10-07T21:17:59.6372877Z",
+    "scope":  "Post-check snapshot of the loopback face-service process, not peak load telemetry",
+    "processId":  13512,
+    "cpuSecondsCumulative":  8.28125,
+    "workingSetMB":  35.9765625,
+    "privateMemoryMB":  403.3671875
+}

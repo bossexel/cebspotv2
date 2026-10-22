@@ -15,6 +15,17 @@
       "environment": "preview",
       "channel": "preview"
     },
+    "beta": {
+      "autoIncrement": true,
+      "distribution": "internal",
+      "environment": "preview",
+      "channel": "preview",
+      "env": {
+        "CEBSPOT_RUNTIME_ENV": "public-beta",
+        "CEBSPOT_BETA_ALLOWED_SUPABASE_REF": "fathkdyxgeeokxeobxqp",
+        "CEBSPOT_BETA_ALLOWED_FACE_HOST": "cebspot-face-anonymizer.onrender.com"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "environment": "production",

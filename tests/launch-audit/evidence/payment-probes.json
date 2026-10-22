@@ -1,0 +1,81 @@
+{
+  "kind": "actual-handlers-with-mocked-database-and-provider",
+  "findings": [
+    {
+      "case": "gcash:10-concurrent-checkouts",
+      "responseCodes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "providerCalls": 10,
+      "uniqueProviderKeys": 1,
+      "paymentRows": 1
+    },
+    {
+      "case": "qrph:10-concurrent-checkouts",
+      "responseCodes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "providerCalls": 10,
+      "uniqueProviderKeys": 10,
+      "paymentRows": 10
+    },
+    {
+      "case": "qrph-sequential-retry",
+      "providerCalls": 2,
+      "providerExpireCalls": 0,
+      "localPaymentStates": [
+        "expired",
+        "pending"
+      ],
+      "limitation": "Concurrent mock does not enforce PostgreSQL partial unique indexes; sequential result is compatible with one-pending-payment constraint."
+    },
+    {
+      "case": "paid-after-cancellation",
+      "http": 200,
+      "paymentStatus": "paid",
+      "reservationStatus": "cancelled",
+      "reservationPaymentStatus": "failed",
+      "refundStatus": null
+    },
+    {
+      "case": "reservation-write-failure-after-payment-write",
+      "http": 400,
+      "paymentStatus": "paid",
+      "reservationStatus": "pending_payment"
+    },
+    {
+      "case": "duplicate-paid-event",
+      "paidAtChanged": true
+    },
+    {
+      "case": "signed-amount-currency-mismatch",
+      "http": 200,
+      "reservationStatus": "confirmed",
+      "paymentAmountStored": 150
+    },
+    {
+      "case": "provider-created-local-save-fails",
+      "http": 400,
+      "providerCalls": 1,
+      "paymentRows": 0
+    }
+  ]
+}

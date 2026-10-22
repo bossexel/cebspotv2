@@ -31,6 +31,7 @@ import { AppColors, colors } from '../src/constants/colors';
 import { bottomNavLayout, fontSize, radius, shadow, spacing } from '../src/constants/design';
 import { useLocation } from '../src/hooks/useLocation';
 import { useTheme } from '../src/hooks/useTheme';
+import { HomeGuideReady, useGuideTarget } from '../src/features/onboarding/GuideProvider';
 import { savedSpotService } from '../src/services/savedSpotService';
 import { hasSupabaseConfig, supabase } from '../src/lib/supabase';
 import { spotService } from '../src/services/spotService';
@@ -85,6 +86,8 @@ function spotCenter(spot: EnhancedSpot) {
 }
 
 export default function ExploreScreen() {
+  const discoverTarget = useGuideTarget('discover');
+  const searchTarget = useGuideTarget('search');
   const router = useRouter();
   const params = useLocalSearchParams<{ focusSpotId?: string | string[]; openSpot?: string | string[] }>();
   const { width } = useWindowDimensions();
@@ -292,7 +295,7 @@ export default function ExploreScreen() {
       setFilters({ category: 'All', minRating: 0, maxDistance: 50 });
 
       const existingSpot = spots.find((spot) => spot.id === targetSpotId);
-      const loadedSpot = existingSpot ?? await spotService.getSpotById(targetSpotId);
+      const loadedSpot = existingSpot ?? (await spotService.getSpotsByIds([targetSpotId]))[0];
       if (cancelled || !loadedSpot) return;
 
       const enhancedSpot = 'distanceValue' in loadedSpot
@@ -462,7 +465,8 @@ export default function ExploreScreen() {
   );
 
   return (
-    <ScreenContainer appColors={appColors} showBottomNav bottomNavOverlay onBottomNavHeightChange={setNavigationHeight} padded={false}>
+    <ScreenContainer appColors={appColors} showBottomNav guideNavigation bottomNavOverlay onBottomNavHeightChange={setNavigationHeight} padded={false}>
+      <HomeGuideReady ready={!filterOpen} settled={initialLocationChecked && !loading} />
       <View style={[styles.screen, { backgroundColor: appColors.surface }]}>
         <TileMap
           style={styles.map}
@@ -481,7 +485,7 @@ export default function ExploreScreen() {
         />
 
         <View style={styles.searchWrap} pointerEvents="box-none">
-          <View style={[styles.searchBar, { backgroundColor: appColors.surfaceHighest + 'F2' }]}>
+          <View ref={searchTarget} collapsable={false} style={[styles.searchBar, { backgroundColor: appColors.surfaceHighest + 'F2' }]}>
             <Search size={17} color={appColors.onSurfaceVariant} />
             <TextInput
               value={search}
@@ -534,7 +538,7 @@ export default function ExploreScreen() {
         <View style={[styles.explorePanel, {
           bottom: bottomNavLayout.bottom + navigationHeight + bottomNavLayout.raisedContent + bottomNavLayout.carouselGap,
         }]} pointerEvents="box-none">
-          <View style={styles.sectionHeader}>
+          <View ref={discoverTarget} collapsable={false} style={styles.sectionHeader}>
             <View>
               <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Nearby Spots</Text>
               <Text style={[styles.sectionSub, { color: appColors.onSurfaceVariant }]}>
@@ -752,6 +756,8 @@ const PulseSpotCard = memo(function PulseSpotCard({
   isFavorite,
   onToggleFavorite,
 }: PulseSpotCardProps) {
+  const spotTarget = useGuideTarget('spot', active);
+  const favoriteTarget = useGuideTarget('spot-card-bookmark', active);
   const focusAnim = useRef(new Animated.Value(active ? 1 : 0)).current;
   const imageUrl = spot.images?.[0] ?? fallbackImage;
   const spotCategories = Array.from(new Set([spot.category, ...(spot.categories ?? [])].filter(Boolean))).slice(0, 2);
@@ -787,7 +793,7 @@ const PulseSpotCard = memo(function PulseSpotCard({
           pressed && styles.cardPressed,
         ]}
       >
-        <View style={[styles.imageWrap, { backgroundColor: appColors.surfaceContainer }]}>
+        <View ref={spotTarget} collapsable={false} style={[styles.imageWrap, { backgroundColor: appColors.surfaceContainer }]}>
           <Image source={{ uri: imageUrl }} style={styles.cardImage} />
         </View>
 
@@ -826,22 +832,21 @@ const PulseSpotCard = memo(function PulseSpotCard({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${isFavorite ? 'Remove' : 'Add'} ${spot.name} ${isFavorite ? 'from' : 'to'} favorites`}
-        hitSlop={7}
+        ref={favoriteTarget}
+        collapsable={false}
         onPress={() => onToggleFavorite(spot.id)}
-        style={({ pressed }) => [
-          styles.favoriteButton,
-          {
-            backgroundColor: isFavorite ? colors.primary + '16' : appColors.surfaceContainer,
-            borderColor: isFavorite ? colors.primary + '66' : appColors.outlineVariant + '44',
-          },
-          pressed && styles.favoriteButtonPressed,
-        ]}
+        style={({ pressed }) => [styles.favoriteButton, pressed && styles.favoriteButtonPressed]}
       >
-        <Bookmark
-          size={15}
-          color={isFavorite ? colors.primary : appColors.onSurfaceVariant}
-          fill={isFavorite ? colors.primary : 'transparent'}
-        />
+        <View style={[styles.favoriteCircle, {
+          backgroundColor: isFavorite ? colors.primary + '16' : appColors.surfaceContainer,
+          borderColor: isFavorite ? colors.primary + '66' : appColors.outlineVariant + '44',
+        }]}>
+          <Bookmark
+            size={15}
+            color={isFavorite ? colors.primary : appColors.onSurfaceVariant}
+            fill={isFavorite ? colors.primary : 'transparent'}
+          />
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -1035,8 +1040,15 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     position: 'absolute',
-    top: spacing.md + 1,
-    right: spacing.md + 1,
+    top: spacing.md - 6,
+    right: spacing.md - 6,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  favoriteCircle: {
     width: 30,
     height: 30,
     borderRadius: 15,

@@ -12,6 +12,7 @@ function fixture(options = {}) {
     reservations: [{ id: 'reservation-test', user_id: 'user-test', spot_id: 'spot-test', spot_name: 'Isolated test cafe',
       reservation_fee: 150, fee: 150, payment_required: true, reservation_type: 'paid', payment_status: 'pending',
       status: 'pending_payment', reservation_date: '2030-01-01', reservation_time: '12:00', guest_count: 2,
+      guest_name: 'Booking Guest', guest_email: 'guest@example.test', guest_phone: '09171234567',
       ...options.reservation }],
     spots: [{ id: 'spot-test', reservation_fee: 150, gcash_amount: 150, ...options.spot }],
     reservation_payments: structuredClone(options.payments || []),
@@ -19,6 +20,7 @@ function fixture(options = {}) {
   const calls = [];
   const writes = [];
   let sequence = 0;
+  const idempotentProviderResponses = new Map();
   class Query {
     constructor(table) { this.table = table; this.filters = []; this.mode = 'select'; this.limitCount = Infinity; }
     select() { return this; }
@@ -55,7 +57,8 @@ function fixture(options = {}) {
     from: (table) => new Query(table),
   };
   const env = { SUPABASE_URL: 'https://fixture.invalid', SUPABASE_SERVICE_ROLE_KEY: 'fixture-service-key',
-    PAYMONGO_SECRET_KEY: 'sk_test_fixture', PAYMONGO_WEBHOOK_SECRET: 'fixture-webhook-secret' };
+    PAYMONGO_SECRET_KEY: 'sk_test_fixture', PAYMONGO_WEBHOOK_SECRET: 'fixture-webhook-secret',
+    CHECKOUT_RETURN_URL_ORIGINS: 'https://app.example.test', ...options.env };
   const cache = new Map();
   const handlers = new Map();
   function load(file) {
@@ -76,8 +79,14 @@ function fixture(options = {}) {
       fetch: async (url, init) => {
         calls.push({ url, ...init, payload: JSON.parse(init.body) });
         if (options.providerFailure) return Response.json({ errors: [{ detail: 'Injected provider failure' }] }, { status: 503 });
+        const idempotencyKey = init.headers?.['Idempotency-Key'];
+        if (idempotencyKey && idempotentProviderResponses.has(idempotencyKey)) {
+          return Response.json(structuredClone(idempotentProviderResponses.get(idempotencyKey)));
+        }
         const id = 'cs_test_' + (++sequence);
-        return Response.json({ data: { id, attributes: { checkout_url: 'https://checkout.paymongo.com/' + id, livemode: false } } });
+        const response = { data: { id, attributes: { checkout_url: 'https://checkout.paymongo.com/' + id, livemode: false } } };
+        if (idempotencyKey) idempotentProviderResponses.set(idempotencyKey, response);
+        return Response.json(response);
       },
     };
     vm.runInNewContext(code, context, { filename: absolute });
@@ -95,10 +104,12 @@ function fixture(options = {}) {
     return { data: { id: 'evt_fixture', attributes: { type, livemode: false,
       data: { id: sessionId, type: 'checkout_session', attributes: { amount: 15000, currency: 'PHP', ...attrs } } } } };
   }
-  async function webhook(payload, { timestamp = Math.floor(Date.now() / 1000), secret = env.PAYMONGO_WEBHOOK_SECRET } = {}) {
+  async function webhook(payload, { timestamp = Math.floor(Date.now() / 1000), secret } = {}) {
+    const live = payload?.data?.attributes?.livemode === true;
+    secret ??= live ? env.PAYMONGO_WEBHOOK_SECRET : env.PAYMONGO_TEST_WEBHOOK_SECRET || env.PAYMONGO_WEBHOOK_SECRET;
     const raw = JSON.stringify(payload);
     const signature = createHmac('sha256', secret).update(timestamp + '.' + raw).digest('hex');
-    return invoke('paymongo-webhook', raw, { token: '', headers: { 'paymongo-signature': `t=${timestamp},te=${signature}` } });
+    return invoke('paymongo-webhook', raw, { token: '', headers: { 'paymongo-signature': `t=${timestamp},${live ? 'li' : 'te'}=${signature}` } });
   }
   return { db, calls, writes, invoke, webhook, event };
 }

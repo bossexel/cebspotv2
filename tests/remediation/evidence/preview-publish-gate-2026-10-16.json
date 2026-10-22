@@ -1,0 +1,13 @@
+{
+  "kind": "read-only-preview-public-config-check",
+  "previewChannelAuthorized": true,
+  "stagingMarkerPresent": false,
+  "stagingReferencePresent": false,
+  "publicBackendPresent": true,
+  "publicKeyPresent": true,
+  "faceUrlPresent": true,
+  "sameBackendAsExistingApp": true,
+  "sameFaceAsExistingApp": true,
+  "publishGatePassed": false,
+  "reason": "Explicit isolated staging configuration is required."
+}

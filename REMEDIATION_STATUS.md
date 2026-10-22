@@ -1,5 +1,7 @@
 # CebSpot remediation status
 
+Latest publication check: **2026-10-16**. Android preview update requested; not published yet. Current TypeScript passes and `npm test` has 278 passed / 0 failed / 5 skipped. EAS preview is reachable at runtime 1.0.3, but points to the same backend/face targets as the existing app, with no explicit staging identity. Publication is held at the previously approved no-production boundary pending target classification. See [preview publication record](docs/preview-update-2026-10-16.md) and `tests/remediation/evidence/preview-publish-gate-2026-10-16.json`. The older readiness results below remain historical; no new deployed acceptance is claimed.
+
 Updated: 2026-10-13 (Asia/Manila). Branch: `audit-remediation-2026-10-12`.
 
 Release decision: **NO-GO**. No audit finding is closed by a passing build alone.

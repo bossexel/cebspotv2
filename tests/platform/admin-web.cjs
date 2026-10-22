@@ -33,14 +33,14 @@ async function main() {
     page.on('pageerror', (error) => errors.push(error.message));
     for (const route of ['/', '/admin', '/login']) {
       await page.goto(`https://admin.test${route}`);
-      await expect(page.getByPlaceholder('Admin email')).toBeVisible({ timeout: 20000 });
+      await expect(page.getByLabel('Admin email')).toBeVisible({ timeout: 20000 });
       await expect(page).toHaveURL('https://admin.test/admin');
       console.log(`PASS admin login: ${route}`);
     }
     for (const route of ['/owner-dashboard', '/owner-access', '/reservation/test', '/checkout/test', '/profile', '/spot/test', '/submit-spot', '/owner-portal/']) {
       await page.goto(`https://admin.test${route}`);
       await expect(page.getByText('Customers and venue owners use the CebSpot Android app.')).toBeVisible();
-      assert.equal(await page.getByPlaceholder('Admin email').count(), 0);
+      assert.equal(await page.getByLabel('Admin email').count(), 0);
       console.log(`PASS removed customer/owner route: ${route}`);
     }
     const reservationId = '40000000-0000-4000-8000-000000000001';
@@ -52,7 +52,7 @@ async function main() {
     await expect(page.getByText('Open CebSpot from your Android home screen to check your reservation.')).toBeVisible();
     console.log('PASS static Android return bridge validates IDs and never treats URL outcome as payment authority');
     await page.goto('https://admin.test/admin');
-    await expect(page.getByPlaceholder('Admin email')).toBeVisible();
+    await expect(page.getByLabel('Admin email')).toBeVisible();
     async function expectDialog(action, message) {
       const dialog = page.waitForEvent('dialog');
       const click = action();
@@ -61,23 +61,24 @@ async function main() {
       await shown.dismiss();
       await click;
     }
-    await expectDialog(() => page.getByText('Sign In', { exact: true }).click(), /Missing details/);
-    await page.getByPlaceholder('Admin email').fill('customer@example.test');
-    await page.getByPlaceholder('Password', { exact: true }).fill('TestPassword123');
-    await expectDialog(() => page.getByText('Sign In', { exact: true }).click(), /Admin only/);
-    await page.getByPlaceholder('Admin email').fill('testadmin6000@gmail.com');
-    await expectDialog(() => page.getByText('Sign In', { exact: true }).click(), /Admin login failed/);
-    await expect(page.getByText('Sign In', { exact: true })).toBeVisible();
+    await page.getByLabel('Admin email').fill('');
+    await expectDialog(() => page.getByRole('button', { name: 'Sign in to admin console' }).click(), /Missing details/);
+    await page.getByLabel('Admin email').fill('customer@example.test');
+    await page.getByLabel('Admin password').fill('TestPassword123');
+    await expectDialog(() => page.getByRole('button', { name: 'Sign in to admin console' }).click(), /Admin only/);
+    await page.getByLabel('Admin email').fill('testadmin6000@gmail.com');
+    await expectDialog(() => page.getByRole('button', { name: 'Sign in to admin console' }).click(), /Admin login failed/);
+    await expect(page.getByRole('button', { name: 'Sign in to admin console' })).toBeVisible();
     console.log('PASS visible validation, wrong-account and rejected-credential feedback');
     await page.goto('https://admin.test/reset-password?returnTo=admin');
-    await expect(page.getByPlaceholder('Admin email')).toHaveCount(0);
+    await expect(page.getByLabel('Admin email')).toHaveCount(0);
     await expect(page.getByText('Forgot password?', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Send verification code' })).toBeVisible();
     await page.getByPlaceholder('you@example.com').fill('customer@example.test');
     await page.getByRole('button', { name: 'Send verification code' }).click();
     await expect(page.getByText('Use the CebSpot admin email. Customers and owners recover access in the Android app.')).toBeVisible();
     await page.getByRole('button', { name: 'Back to login' }).click();
-    await expect(page.getByPlaceholder('Admin email')).toBeVisible();
+    await expect(page.getByLabel('Admin email')).toBeVisible();
     console.log('PASS admin-only recovery and return to admin login');
     assert.deepEqual(errors, []);
     console.log('PASS no uncaught browser errors; all external traffic intercepted');

@@ -1,0 +1,17 @@
+{
+  "kind": "browser-fixture-initial-run-observation",
+  "dateLocal": "2026-10-08 Asia/Manila",
+  "command": "npm.cmd run test:map",
+  "mapBundleCheck": "PASS",
+  "tests": 11,
+  "pass": 10,
+  "fail": 1,
+  "reportedDuration": "2.7m (CLI display; exact elapsed time not retained)",
+  "failedTest": "selection travels through intermediate positions, reuses pins and does not wait for tiles",
+  "location": "tests/map/runtime.spec.cjs:132",
+  "expectedLatitudeLessThan": 10.331,
+  "receivedLatitude": 10.33100536729993,
+  "network": "All map tile requests intercepted with fixtures",
+  "scope": "Desktop browser behavioral test; no Android frame or API load evidence",
+  "provenance": "Values transcribed from actual CLI output; initial error-context retained separately"
+}

@@ -1,0 +1,50 @@
+{
+  "kind": "local-real-face-service-synthetic-no-face-image",
+  "checks": [
+    {
+      "case": "health",
+      "status": 200,
+      "bytes": 179,
+      "ms": 149
+    },
+    {
+      "case": "missing-image",
+      "status": 400,
+      "bytes": 36,
+      "ms": 12
+    },
+    {
+      "case": "invalid-base64",
+      "status": 400,
+      "bytes": 40,
+      "ms": 13
+    },
+    {
+      "case": "job-create",
+      "status": 202,
+      "bytes": 63,
+      "ms": 27
+    },
+    {
+      "case": "job-poll",
+      "status": 200,
+      "bytes": 109,
+      "ms": 8
+    },
+    {
+      "case": "download-result",
+      "status": 200,
+      "bytes": 1829,
+      "ms": 10,
+      "jpeg": true,
+      "facesDetected": 0
+    },
+    {
+      "case": "repeat-result-download",
+      "status": 404,
+      "bytes": 41,
+      "ms": 7
+    }
+  ],
+  "limitations": "No detector-accuracy, upload-size exhaustion or service-capacity claim."
+}

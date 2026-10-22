@@ -16,6 +16,8 @@ import { AppUpdatePrompt } from '../src/components/AppUpdatePrompt';
 import { ConfirmationModal } from '../src/components/ConfirmationModal';
 import { canAccessRootRoute, getAppRole, getRoleHome, isPublicAndroidRoute } from '../src/constants/authRoles';
 import { AuthProvider, useAuth } from '../src/hooks/useAuth';
+import { GuideProvider } from '../src/features/onboarding/GuideProvider';
+import { welcomeStorage } from '../src/features/onboarding/welcomeStorage';
 import { ThemeProvider, useTheme } from '../src/hooks/useTheme';
 import { activityService } from '../src/services/activityService';
 import { reservationReminderService } from '../src/services/reservationReminderService';
@@ -40,7 +42,7 @@ const exploreBackRoutes = new Set(['circle', 'activity', 'profile']);
 function AppNavigator() {
   const { user, isSignedIn, loading: authLoading, profile } = useAuth();
   const { isDarkMode, loading: themeLoading, appColors } = useTheme();
-  useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Montserrat_400Regular,
     Montserrat_700Bold,
     Montserrat_800ExtraBold,
@@ -52,7 +54,16 @@ function AppNavigator() {
   const accountRole = profile ? getAppRole(profile) : null;
   const isUserSession = isSignedIn && accountRole === 'user';
   const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
+  const [welcomeCompleted, setWelcomeCompleted] = useState<boolean | null>(null);
   const seenNotificationIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    let mounted = true;
+    void welcomeStorage.hasCompleted().then((completed) => {
+      if (mounted) setWelcomeCompleted(completed);
+    });
+    return () => { mounted = false; };
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !themeLoading) {
@@ -223,7 +234,7 @@ function AppNavigator() {
   const startupPending = authLoading || themeLoading || roleRedirectPending;
 
   return (
-    <>
+    <GuideProvider ready={!startupPending && (fontsLoaded || Boolean(fontError))}>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -276,7 +287,7 @@ function AppNavigator() {
       <AppUpdatePrompt />
       <StatusBar style={isDarkMode ? 'light' : 'dark'} backgroundColor={appColors.surface} />
       {startupPending ? <StartupFallback appColors={appColors} /> : null}
-    </>
+    </GuideProvider>
   );
 }
 
