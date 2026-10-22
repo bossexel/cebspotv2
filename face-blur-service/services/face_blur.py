@@ -10,6 +10,8 @@ from pathlib import Path
 
 from fastapi import UploadFile
 
+from services.mediapipe_face_runtime import load_face_runtime
+
 logger = logging.getLogger("cebspot-face-anonymizer")
 
 SUPPORTED_TYPES = {
@@ -200,20 +202,15 @@ class FaceBlurService:
             raise
 
     def _create_detector(self, model_path: Path):
-        # Keep native computer-vision modules out of the Uvicorn parent. Render's
-        # free instance has a tight memory budget and the killable worker uses a
-        # spawned process, so importing these modules in both processes can make
-        # the worker exit before it reports a result.
-        import mediapipe as mp
-
-        base_options = mp.tasks.BaseOptions(model_asset_path=str(model_path))
-        options = mp.tasks.vision.FaceDetectorOptions(
+        runtime = load_face_runtime()
+        base_options = runtime.BaseOptions(model_asset_path=str(model_path))
+        options = runtime.FaceDetectorOptions(
             base_options=base_options,
-            running_mode=mp.tasks.vision.RunningMode.IMAGE,
+            running_mode=runtime.RunningMode.IMAGE,
             min_detection_confidence=self.settings.min_detection_confidence,
             min_suppression_threshold=self.settings.min_suppression_threshold,
         )
-        return mp.tasks.vision.FaceDetector.create_from_options(options)
+        return runtime.FaceDetector.create_from_options(options)
 
     async def _anonymize_source_file(
         self,
@@ -441,10 +438,10 @@ class FaceBlurService:
         image_width: int,
         image_height: int,
     ) -> list[FaceBox]:
-        import mediapipe as mp
         import numpy as np
 
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(image_rgb))
+        runtime = load_face_runtime()
+        mp_image = runtime.Image(image_format=runtime.ImageFormat.SRGB, data=np.ascontiguousarray(image_rgb))
         detection_result = detector.detect(mp_image)
         boxes: list[FaceBox] = []
         crop_height, crop_width = image_rgb.shape[:2]

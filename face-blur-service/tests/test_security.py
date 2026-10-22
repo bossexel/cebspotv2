@@ -3,6 +3,7 @@ import asyncio
 import io
 import json
 import multiprocessing
+import subprocess
 import sys
 import tempfile
 import time
@@ -165,6 +166,16 @@ class SecurityTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(status,expected);self.assertFalse(self.runtime.jobs)
         self.assertEqual((await request(self.app,token='stalled',stalled=True))[0],408)
         self.assertFalse(self.runtime.jobs);self.assertEqual(list(self.runtime.root.glob('face-job-*')),[])
+
+    async def test_minimal_face_runtime_skips_unused_mediapipe_modules(self):
+        code=("import json,sys; from services.mediapipe_face_runtime import load_face_runtime; "
+              "load_face_runtime(); print(json.dumps({name:(name in sys.modules) for name in "
+              "['matplotlib','sounddevice','mediapipe.tasks.python.audio','mediapipe.tasks.python.text']}))")
+        completed=subprocess.run([sys.executable,'-c',code],cwd=ROOT,capture_output=True,text=True,check=True)
+        self.assertEqual(json.loads(completed.stdout.strip()),{
+            'matplotlib':False,'sounddevice':False,
+            'mediapipe.tasks.python.audio':False,'mediapipe.tasks.python.text':False,
+        })
 
     async def test_queue_per_user_limits_and_single_concurrency(self):
         self.gate.clear()
