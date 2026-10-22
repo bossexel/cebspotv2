@@ -1,6 +1,7 @@
 """Bounded per-process admission and killable image workers. Run one replica."""
 import asyncio
 import json
+import logging
 import multiprocessing
 import os
 import shutil
@@ -12,6 +13,8 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+
+logger = logging.getLogger('cebspot-face-anonymizer')
 
 
 class AdmissionError(Exception):
@@ -64,7 +67,10 @@ def process_image(connection, settings, source, media_type, directory):
         result = asyncio.run(service.anonymize_bytes(Path(source).read_bytes(), media_type))
         connection.send({'output_path': str(result.output_path), 'media_type': result.media_type,
                          'faces_detected': result.faces_detected, 'processing_time_ms': result.processing_time_ms})
-    except Exception:
+    except Exception as error:
+        # Keep the client response generic, but retain enough server-side
+        # information to distinguish decoder, detector and process failures.
+        logger.exception('face worker failed (%s)', type(error).__name__)
         connection.send({'error': 'Image could not be privacy processed.'})
     finally:
         connection.close()
@@ -212,7 +218,8 @@ class JobRuntime:
                 for source in job.directory.glob('*-source*'):
                     source.unlink(missing_ok=True)
                 job.status = 'complete'
-            except Exception:
+            except Exception as error:
+                logger.warning('face job failed (%s)', type(error).__name__)
                 if job.cancelled:
                     self.remove(job.id)
                 else:

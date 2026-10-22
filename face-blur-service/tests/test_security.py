@@ -68,6 +68,10 @@ class SecurityTests(unittest.IsolatedAsyncioTestCase):
         await self.lifespan.__aexit__(None,None,None)
         self.temp.cleanup()
 
+    async def test_app_parent_keeps_native_image_runtime_unloaded(self):
+        self.assertNotIn('cv2', sys.modules)
+        self.assertNotIn('mediapipe', sys.modules)
+
     async def test_auth_before_read_and_private_result(self):
         for token in (None,'invalid'):
             status,_,_,reads=await request(self.app,token=token)

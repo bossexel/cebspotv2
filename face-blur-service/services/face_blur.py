@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import os
@@ -7,11 +9,7 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
-import cv2
-import mediapipe as mp
-import numpy as np
 from fastapi import UploadFile
-from PIL import Image, UnidentifiedImageError
 
 logger = logging.getLogger("cebspot-face-anonymizer")
 
@@ -211,6 +209,12 @@ class FaceBlurService:
             raise
 
     def _create_detector(self, model_path: Path):
+        # Keep native computer-vision modules out of the Uvicorn parent. Render's
+        # free instance has a tight memory budget and the killable worker uses a
+        # spawned process, so importing these modules in both processes can make
+        # the worker exit before it reports a result.
+        import mediapipe as mp
+
         base_options = mp.tasks.BaseOptions(model_asset_path=str(model_path))
         options = mp.tasks.vision.FaceDetectorOptions(
             base_options=base_options,
@@ -290,6 +294,9 @@ class FaceBlurService:
         return False
 
     def _blur_file(self, source_path: Path, output_path: Path, media_type: str) -> int:
+        import cv2
+        import numpy as np
+
         source_width, source_height = self._read_image_dimensions(source_path)
         decode_flag = self._decode_flag(source_width, source_height)
         encoded_source = np.fromfile(str(source_path), dtype=np.uint8)
@@ -337,6 +344,8 @@ class FaceBlurService:
         return blurred_faces
 
     def _read_image_dimensions(self, source_path: Path) -> tuple[int, int]:
+        from PIL import Image, UnidentifiedImageError
+
         try:
             with Image.open(source_path) as image:
                 width, height = image.size
@@ -350,6 +359,8 @@ class FaceBlurService:
         return width, height
 
     def _decode_flag(self, width: int, height: int) -> int:
+        import cv2
+
         longest_side = max(width, height)
         reduction = 1
         while reduction < 8 and longest_side / reduction > self.settings.max_image_dimension:
@@ -362,6 +373,8 @@ class FaceBlurService:
         }.get(reduction, cv2.IMREAD_COLOR)
 
     def _bound_image_dimensions(self, image_bgr: np.ndarray) -> np.ndarray:
+        import cv2
+
         height, width = image_bgr.shape[:2]
         longest_side = max(width, height)
         if longest_side <= self.settings.max_image_dimension:
@@ -373,6 +386,8 @@ class FaceBlurService:
         return cv2.resize(image_bgr, (resized_width, resized_height), interpolation=cv2.INTER_AREA)
 
     def _detect_faces(self, image_rgb: np.ndarray) -> list[FaceBox]:
+        import numpy as np
+
         image_height, image_width = image_rgb.shape[:2]
 
         with self._detector_lock:
@@ -434,6 +449,9 @@ class FaceBlurService:
         image_width: int,
         image_height: int,
     ) -> list[FaceBox]:
+        import mediapipe as mp
+        import numpy as np
+
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(image_rgb))
         detection_result = detector.detect(mp_image)
         boxes: list[FaceBox] = []
@@ -548,6 +566,8 @@ class FaceBlurService:
         return max(3, raw_kernel)
 
     def _write_output(self, image_bgr: np.ndarray, output_path: Path, media_type: str) -> None:
+        import cv2
+
         if media_type == "image/png":
             extension = ".png"
             params = [cv2.IMWRITE_PNG_COMPRESSION, 3]
