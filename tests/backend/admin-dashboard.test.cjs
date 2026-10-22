@@ -50,6 +50,7 @@ test('every mutating admin RPC performs the server-side admin check', () => {
   const sql = read('supabase-admin-dashboard.sql');
   for (const name of [
     'approve_spot_submission',
+    'delete_admin_spot_submission',
     'review_owner_access_request',
     'dismiss_admin_report',
     'apply_spot_edit_suggestion',
@@ -65,6 +66,7 @@ test('admin dashboard routes operational actions through secured RPCs', () => {
 
   assert.match(service, /rpc\('get_admin_dashboard'/);
   assert.match(service, /rpc\('approve_spot_submission'/);
+  assert.match(service, /rpc\('delete_admin_spot_submission'/);
   assert.match(service, /rpc\('review_owner_access_request'/);
   assert.match(service, /rpc\('dismiss_admin_report'/);
   assert.match(service, /rpc\('apply_spot_edit_suggestion'/);
@@ -99,11 +101,30 @@ test('owner request deletion is admin-only and does not revoke provisioned acces
   assert.match(screen, /It does not delete the applicant, the spot, or owner access already granted/);
 });
 
+test('pending spot submission deletion is admin-only and removes linked post data without deleting the user', () => {
+  const migration = read('supabase/migrations/20261022000100_admin_spot_submission_delete.sql');
+  const deletion = sqlFunction(migration, 'delete_admin_spot_submission');
+  const screen = read('app/admin.tsx');
+
+  assert.match(deletion, /if not public\.is_current_user_admin\(\)/i);
+  assert.match(deletion, /deleted_submission\.status <> 'pending'/i);
+  assert.match(deletion, /delete from public\.activities[\s\S]*target_id = target_submission_id::text/i);
+  assert.match(deletion, /delete from public\.local_updates[\s\S]*source_type = 'spot_submission'/i);
+  assert.match(deletion, /delete from public\.spot_submissions where id = target_submission_id/i);
+  assert.doesNotMatch(deletion, /delete from public\.profiles/i);
+  assert.match(migration, /revoke all on function public\.delete_admin_spot_submission\(uuid\) from public, anon/i);
+  assert.match(screen, /accessibilityLabel={`Delete \$\{submission\.name\} submission`}/);
+  assert.match(screen, /Delete Submission/);
+  assert.match(screen, /The submitting user is not deleted/);
+});
+
 test('barangay leaderboard opens an interactive admin spot map', () => {
   const screen = read('app/admin.tsx');
   const service = read('src/services/adminDashboardService.ts');
 
   assert.match(screen, /actionLabel="Open spot map overview"/);
+  assert.match(screen, /actionLabel="Open overview spot map"/);
+  assert.match(screen, /function OverviewSection[\s\S]*getAdminSpotMapRows\(client\)/);
   assert.match(screen, /function SpotMapOverviewModal/);
   assert.match(screen, /onMarkerPress=\{\(marker\) => onSelectSpot\(marker\.id\)\}/);
   assert.match(screen, /ALL MAPPED SPOTS/);

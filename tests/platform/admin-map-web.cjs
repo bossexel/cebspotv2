@@ -35,9 +35,36 @@ const spots = [
     latitude: 10.311, longitude: 123.899, rating: 4.4, review_count: 18, is_public: true, is_reservable: true,
   },
 ];
+const pendingSubmission = {
+  id: '90000000-0000-4000-8000-000000000301',
+  name: 'Sandbox Dessert House',
+  category: 'Dessert',
+  categories: ['Cafe'],
+  barangay: 'Lahug',
+  address: 'Barangay Lahug, Cebu City',
+  latitude: 10.333,
+  longitude: 123.905,
+  submitted: 'Oct 22, 2026',
+  createdAt: now,
+  status: 'Pending',
+  image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+  images: [],
+  voteCount: 3,
+  searchCount: 2,
+  similarSubmissionCount: 0,
+  popularityScore: 5,
+  description: 'Pending submission used to verify the admin delete workflow.',
+  reservationType: 'free',
+  reservationFee: 0,
+  paymentRequired: false,
+  isReservable: false,
+  submitterId: adminId,
+  submitterName: profile.display_name,
+  submitterEmail: profile.email,
+};
 const dashboard = {
   generatedAt: now,
-  metrics: { totalSpots: 3, publicSpots: 3, reservableSpots: 2, spotsToday: 0, totalReservations: 0, reservationsToday: 0, reservations30d: 0, confirmedReservations: 0, estimatedRevenue: 0, activeOwners: 0, totalUsers: 1, reportsFiled: 0, pendingOwnerRequests: 0, pendingSpotSubmissions: 0 },
+  metrics: { totalSpots: 3, publicSpots: 3, reservableSpots: 2, spotsToday: 0, totalReservations: 0, reservationsToday: 0, reservations30d: 0, confirmedReservations: 0, estimatedRevenue: 0, activeOwners: 0, totalUsers: 1, reportsFiled: 0, pendingOwnerRequests: 0, pendingSpotSubmissions: 1 },
   reservationsDaily: [], newSpotsDaily: [], dailyInsights: [],
   categories: [
     { label: 'Cafe', value: 100, copy: '8 spots' },
@@ -49,7 +76,7 @@ const dashboard = {
     { label: 'Co-working', value: 25, copy: '2 spots' },
   ],
   barangays: [{ label: 'Lahug', value: 100, copy: '1 spot' }],
-  recentListings: [], livePulse: [], reports: [], users: [profile], ownerRequests: [], pendingSubmissions: [],
+  recentListings: [], livePulse: [], reports: [], users: [profile], ownerRequests: [], pendingSubmissions: [pendingSubmission],
 };
 const categorySpots = dashboard.categories.map((item, index) => ({
   id: `90000000-0000-4000-8000-0000000002${String(index + 1).padStart(2, '0')}`,
@@ -63,6 +90,7 @@ function tokenFor(user) {
 }
 
 async function main() {
+  let submissionDeleted = false;
   const browser = await chromium.launch({ channel: process.env.MAP_TEST_CHANNEL || 'chrome', headless: true });
   try {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -89,7 +117,16 @@ async function main() {
       }
       if (!url.hostname.endsWith('supabase.co')) return route.abort();
       if (url.pathname === '/auth/v1/user') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(user) });
-      if (url.pathname.includes('/rest/v1/rpc/get_admin_dashboard')) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(dashboard) });
+      if (url.pathname.includes('/rest/v1/rpc/delete_admin_spot_submission')) {
+        submissionDeleted = true;
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: pendingSubmission.id, deleted: true }) });
+      }
+      if (url.pathname.includes('/rest/v1/rpc/get_admin_dashboard')) {
+        const payload = submissionDeleted
+          ? { ...dashboard, metrics: { ...dashboard.metrics, pendingSpotSubmissions: 0 }, pendingSubmissions: [] }
+          : dashboard;
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(payload) });
+      }
       if (url.pathname.includes('/rest/v1/pending_spot_submission_popularity')) return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
       if (url.pathname.includes('/rest/v1/profiles')) {
         const single = request.headers().accept?.includes('application/vnd.pgrst.object');
@@ -117,8 +154,21 @@ async function main() {
     await expect(categoryRankings.getByText('Co-working', { exact: true })).toBeVisible();
     await page.getByLabel('Close category rankings').last().click();
     await expect(page.getByText('Dessert', { exact: true })).toHaveCount(0);
-    await page.getByRole('button', { name: 'Spots', exact: true }).click();
+    await page.getByLabel('Open overview spot map').click();
+    await expect(page.getByText('Cebu map overview')).toBeVisible();
+    await expect(page.getByText('3 registered spots with map coordinates')).toBeVisible();
+    await expect(page.frameLocator('iframe[title="Interactive map of nearby spots"]').locator('.spot-shell')).toHaveCount(3);
+    await page.getByLabel('Close spot map').last().click();
+    await page.getByRole('button', { name: /^Spots/ }).click();
     await expect(page.getByText('Discovery', { exact: true })).toBeVisible();
+    await expect(page.getByText(pendingSubmission.name, { exact: true })).toBeVisible();
+    page.once('dialog', async (dialog) => {
+      assert.match(dialog.message(), /permanently removes the pending submission/i);
+      await dialog.accept();
+    });
+    await page.getByLabel(`Delete ${pendingSubmission.name} submission`).click();
+    await expect(page.getByText(pendingSubmission.name, { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Submission deleted', { exact: true })).toBeVisible();
     await page.getByLabel('Open spot map overview').click();
     await expect(page.getByText('Cebu map overview')).toBeVisible();
     await expect(page.getByText('3 registered spots with map coordinates')).toBeVisible();
@@ -151,7 +201,7 @@ async function main() {
     await expect(frame.locator('.spot-shell')).toHaveCount(1);
     assert.equal(await frame.locator('.spot-shell').first().evaluate((element) => element.style.getPropertyValue('--spot-color')), '#EC4899');
     assert.deepEqual(errors, []);
-    console.log('PASS scrollable category overview plus responsive admin map filtering and image-free colored pins');
+    console.log('PASS identical overview/spots maps, pending-submission delete, and responsive category controls');
   } finally {
     await browser.close();
   }

@@ -1667,6 +1667,22 @@ export const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
   },
+  submissionActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 7,
+  },
+  deleteSubmissionButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: adminPalette.error + '35',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: adminPalette.errorContainer + '35',
+  },
   floatingAdd: {
     position: 'absolute',
     right: 0,

@@ -940,6 +940,24 @@ export async function approveSpotSubmission(submissionId: string, client: Supaba
   return data;
 }
 
+export async function deleteAdminSpotSubmission(submissionId: string, client: SupabaseClient = supabase) {
+  if (!hasSupabaseConfig) return { id: submissionId };
+
+  const { data, error } = await client.rpc('delete_admin_spot_submission', {
+    target_submission_id: submissionId,
+  });
+  if (error) {
+    const missingRpc = /delete_admin_spot_submission|schema cache|could not find the function|pgrst202/i.test(
+      error.message ?? error.details ?? '',
+    );
+    if (missingRpc) {
+      throw new Error('Install the admin spot-submission delete migration in Supabase, then refresh the dashboard.');
+    }
+    throw new Error(error.message ?? 'Unable to delete the pending spot submission.');
+  }
+  return data;
+}
+
 export async function getAdminSpotMapRows(client: SupabaseClient = supabase): Promise<AdminMapSpotRow[]> {
   if (!hasSupabaseConfig) {
     return sampleSpots.map(normalizeSpot).map((spot) => ({

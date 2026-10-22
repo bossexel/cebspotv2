@@ -86,6 +86,7 @@ import {
   approveSpotSubmission,
   deleteAdminOwnerRequest,
   deleteAdminSpot,
+  deleteAdminSpotSubmission,
   dismissAdminReport,
   getAdminSpotMapRows,
   getAdminDashboardData,
@@ -182,6 +183,7 @@ export default function AdminConsoleScreen() {
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [approvingSubmissionId, setApprovingSubmissionId] = useState<string | null>(null);
+  const [deletingSubmissionId, setDeletingSubmissionId] = useState<string | null>(null);
   const [deletingSpotId, setDeletingSpotId] = useState<string | null>(null);
   const [moderatingReportId, setModeratingReportId] = useState<string | null>(null);
   const [reviewingOwnerRequestId, setReviewingOwnerRequestId] = useState<string | null>(null);
@@ -332,6 +334,53 @@ export default function AdminConsoleScreen() {
     } finally {
       setApprovingSubmissionId(null);
     }
+  }
+
+  async function handleDeleteSubmission(submission: AdminSpotSubmissionRow) {
+    try {
+      setDeletingSubmissionId(submission.id);
+      setApprovalNotice(null);
+      await deleteAdminSpotSubmission(submission.id, client);
+      setDashboard((current) =>
+        current
+          ? {
+              ...current,
+              metrics: {
+                ...current.metrics,
+                pendingSpotSubmissions: Math.max(0, current.metrics.pendingSpotSubmissions - 1),
+              },
+              pendingSubmissions: current.pendingSubmissions.filter((item) => item.id !== submission.id),
+            }
+          : current,
+      );
+      setApprovalNotice({
+        tone: 'success',
+        title: 'Submission deleted',
+        copy: `${submission.name} and its linked community post were permanently removed.`,
+      });
+      refreshDashboard().catch((error: any) => {
+        setDashboardError(error?.message ?? 'The submission was deleted, but dashboard refresh failed.');
+      });
+    } catch (error: any) {
+      setApprovalNotice({
+        tone: 'error',
+        title: 'Delete failed',
+        copy: error?.message ?? 'Please try again.',
+      });
+    } finally {
+      setDeletingSubmissionId(null);
+    }
+  }
+
+  function confirmDeleteSubmission(submission: AdminSpotSubmissionRow) {
+    Alert.alert(
+      `Delete ${submission.name}?`,
+      'This permanently removes the pending submission, votes, linked discovery post, comments, and submission notifications. The submitting user is not deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete Submission', style: 'destructive', onPress: () => void handleDeleteSubmission(submission) },
+      ],
+    );
   }
 
   async function handleDeleteSpot(listing: AdminListingRow) {
@@ -762,6 +811,7 @@ export default function AdminConsoleScreen() {
               {activeSection === 'overview' && (
                 <OverviewSection
                   dashboard={dashboard}
+                  client={client}
                   query={query}
                   mobile={mobile}
                   onNavigate={navigateTo}
@@ -773,8 +823,10 @@ export default function AdminConsoleScreen() {
                   client={client}
                   query={query}
                   approvingSubmissionId={approvingSubmissionId}
+                  deletingSubmissionId={deletingSubmissionId}
                   deletingSpotId={deletingSpotId}
                   onApproveSubmission={handleApproveSubmission}
+                  onDeleteSubmission={confirmDeleteSubmission}
                   onDeleteSpot={confirmDeleteSpot}
                 />
               )}
@@ -1155,11 +1207,13 @@ function SegmentedRange({ value, onChange }: { value: string; onChange: (value: 
 
 function OverviewSection({
   dashboard,
+  client,
   query,
   mobile,
   onNavigate,
 }: {
   dashboard: AdminDashboardData;
+  client: SupabaseClient;
   query: string;
   mobile: boolean;
   onNavigate: (section: AdminSection) => void;
@@ -1169,6 +1223,27 @@ function OverviewSection({
   const latestDayIndex = Math.max(0, dailyInsights.length - 1);
   const [selectedDayIndex, setSelectedDayIndex] = useState(latestDayIndex);
   const [range, setRange] = useState('7d');
+  const [mapVisible, setMapVisible] = useState(false);
+  const [mapLoading, setMapLoading] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [mapSpots, setMapSpots] = useState<AdminMapSpotRow[]>([]);
+  const [selectedMapSpotId, setSelectedMapSpotId] = useState<string | null>(null);
+
+  async function openMapOverview(force = false) {
+    setMapVisible(true);
+    if (mapSpots.length && !force) return;
+    try {
+      setMapLoading(true);
+      setMapError(null);
+      const rows = await getAdminSpotMapRows(client);
+      setMapSpots(rows);
+      setSelectedMapSpotId(rows[0]?.id ?? null);
+    } catch (error: any) {
+      setMapError(error?.message ?? 'Unable to load the spot map.');
+    } finally {
+      setMapLoading(false);
+    }
+  }
 
   useEffect(() => {
     setSelectedDayIndex((current) => Math.min(current, Math.max(0, dailyInsights.length - 1)));
@@ -1265,7 +1340,14 @@ function OverviewSection({
 
       <View style={[styles.twoColumnGrid, mobile && styles.twoColumnGridMobile]}>
         <ProgressPanel title="Top spot categories" subtitle="Categorical distribution by venue type" data={dashboard.categories} categoryOverview />
-        <ProgressPanel title="Top barangays in Cebu" subtitle="Leaderboard areas for registered spots." data={dashboard.barangays} yellow />
+        <ProgressPanel
+          title="Top barangays in Cebu"
+          subtitle="Leaderboard areas for registered spots."
+          data={dashboard.barangays}
+          yellow
+          actionLabel="Open overview spot map"
+          onAction={openMapOverview}
+        />
       </View>
 
       <DataPanel title="Live Platform Pulse" right={<LiveSessionLabel count={dashboard.livePulse.length} />}>
@@ -1303,6 +1385,18 @@ function OverviewSection({
           emptyCopy="No matching platform activity yet."
         />
       </DataPanel>
+      <SpotMapOverviewModal
+        error={mapError}
+        loading={mapLoading}
+        onClose={() => setMapVisible(false)}
+        onRetry={() => {
+          void openMapOverview(true);
+        }}
+        onSelectSpot={setSelectedMapSpotId}
+        selectedSpotId={selectedMapSpotId}
+        spots={mapSpots}
+        visible={mapVisible}
+      />
     </View>
   );
 }
@@ -1326,16 +1420,20 @@ function SpotsSection({
   client,
   query,
   approvingSubmissionId,
+  deletingSubmissionId,
   deletingSpotId,
   onApproveSubmission,
+  onDeleteSubmission,
   onDeleteSpot,
 }: {
   dashboard: AdminDashboardData;
   client: SupabaseClient;
   query: string;
   approvingSubmissionId: string | null;
+  deletingSubmissionId: string | null;
   deletingSpotId: string | null;
   onApproveSubmission: (submission: AdminSpotSubmissionRow) => void;
+  onDeleteSubmission: (submission: AdminSpotSubmissionRow) => void;
   onDeleteSpot: (listing: AdminListingRow) => void;
 }) {
   const listings = filterListings(dashboard.recentListings, query);
@@ -1415,10 +1513,12 @@ function SpotsSection({
           submissions={pendingSubmissions}
           expandedSubmissionId={expandedSubmissionId}
           approvingSubmissionId={approvingSubmissionId}
+          deletingSubmissionId={deletingSubmissionId}
           onToggleSubmission={(submission) =>
             setExpandedSubmissionId((current) => (current === submission.id ? null : submission.id))
           }
           onApproveSubmission={onApproveSubmission}
+          onDeleteSubmission={onDeleteSubmission}
         />
       </DataPanel>
 
@@ -1792,14 +1892,18 @@ function PendingSubmissionsTable({
   submissions,
   expandedSubmissionId,
   approvingSubmissionId,
+  deletingSubmissionId,
   onToggleSubmission,
   onApproveSubmission,
+  onDeleteSubmission,
 }: {
   submissions: AdminSpotSubmissionRow[];
   expandedSubmissionId: string | null;
   approvingSubmissionId: string | null;
+  deletingSubmissionId: string | null;
   onToggleSubmission: (submission: AdminSpotSubmissionRow) => void;
   onApproveSubmission: (submission: AdminSpotSubmissionRow) => void;
+  onDeleteSubmission: (submission: AdminSpotSubmissionRow) => void;
 }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.tableScrollContainer}>
@@ -1820,6 +1924,8 @@ function PendingSubmissionsTable({
       {submissions.map((submission) => {
         const expanded = expandedSubmissionId === submission.id;
         const approving = approvingSubmissionId === submission.id;
+        const deleting = deletingSubmissionId === submission.id;
+        const busy = approving || deleting;
         return (
           <React.Fragment key={submission.id}>
             <View style={[styles.tableRow, expanded && styles.submissionRowExpanded]}>
@@ -1858,10 +1964,13 @@ function PendingSubmissionsTable({
                 <StatusBadge label={submission.status} warning />
               </View>
               <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                <View style={styles.submissionActions}>
                 <Pressable
-                  style={[styles.approveSubmissionButton, approving && styles.tableIconButtonDisabled]}
+                  accessibilityLabel={`Approve ${submission.name}`}
+                  accessibilityRole="button"
+                  style={[styles.approveSubmissionButton, busy && styles.tableIconButtonDisabled]}
                   onPress={() => onApproveSubmission(submission)}
-                  disabled={approving}
+                  disabled={busy}
                 >
                   {approving ? (
                     <ActivityIndicator color={colors.white} />
@@ -1872,6 +1981,20 @@ function PendingSubmissionsTable({
                     </>
                   )}
                 </Pressable>
+                <Pressable
+                  accessibilityLabel={`Delete ${submission.name} submission`}
+                  accessibilityRole="button"
+                  disabled={busy}
+                  onPress={() => onDeleteSubmission(submission)}
+                  style={[styles.deleteSubmissionButton, busy && styles.tableIconButtonDisabled]}
+                >
+                  {deleting ? (
+                    <ActivityIndicator size="small" color={adminPalette.error} />
+                  ) : (
+                    <Trash2 size={16} color={adminPalette.error} />
+                  )}
+                </Pressable>
+                </View>
               </View>
             </View>
             {expanded && <ExpandedSpotSubmission submission={submission} />}
