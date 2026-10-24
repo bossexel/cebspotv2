@@ -4,6 +4,8 @@ Expo React Native app for discovering Cebu spots, reserving venues, and sharing 
 
 See [code structure and regression checks](docs/code-structure.md) for dashboard modules, shared upload utilities, and local validation commands.
 
+See [media/feed changes and rollout](docs/media-feed-fixes-2026-10-25.md) for compression limits, the Activity pagination migrations, and the Android 1.0.4 native rebuild required for video compression.
+
 ## Run
 
 ```bash

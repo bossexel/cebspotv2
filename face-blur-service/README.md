@@ -2,6 +2,8 @@
 
 FastAPI service that receives a temporary user-selected image, detects human faces with MediaPipe Face Detector, blurs every detected face with OpenCV Gaussian blur, returns the anonymized image, and deletes temporary files.
 
+The current pipeline outputs JPEGs capped at 1280 px / 320 KiB, uses oval head masks and a minimum 0.70 detection confidence, and validates Supabase credentials at startup. See [the media/feed release notes](../docs/media-feed-fixes-2026-10-25.md) for rollout steps, client compression and validation limits.
+
 The intended flow is:
 
 ```text
@@ -219,7 +221,7 @@ Run local synthetic regression tests from the repository root: `python face-blur
 - Accepts JPEG/JPG/PNG only.
 - Rejects oversized files using `FACE_BLUR_MAX_IMAGE_BYTES`, default 10 MB.
 - Rejects unreasonable decoded dimensions using `FACE_BLUR_MAX_SOURCE_PIXELS`, default 80 megapixels.
-- Memory-safely decodes oversized phone photos to at most `FACE_BLUR_MAX_IMAGE_DIMENSION`, default 3072 pixels on the longest edge.
+- Decodes oversized phone photos to at most `FACE_BLUR_MAX_IMAGE_DIMENSION`, capped at 1280 pixels on the longest edge; all output is JPEG, including PNG input.
 - Checks MIME type and image signature.
 - Uses UUID-based temporary filenames.
 - Saves files under `FACE_BLUR_TEMP_DIR`.
@@ -231,7 +233,7 @@ Run local synthetic regression tests from the repository root: `python face-blur
 - Scans large images in overlapping tiles so distant faces remain large enough for detection.
 - Merges duplicate detections before applying blur.
 - Expands each face box by `FACE_PADDING_RATIO`, default 0.25.
-- Uses strong OpenCV Gaussian blur with an odd kernel based on face size.
+- Strongly smooths each detected head inside an oval mask; inward feathering leaves the surrounding pixels outside the mask unchanged before JPEG encoding.
 - Does not log image contents, tokens, credentials, face crops, or private user information.
 
 ## Test Checklist

@@ -11,7 +11,7 @@ const projectRootPattern = __dirname
   .map((segment) => segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
   .join('[\\\\/]');
 const ignoredProjectDirectories = new RegExp(
-  `^${projectRootPattern}[\\\\/](?:\\.venv|\\.chrome-debug-profile|\\.chrome-video-review|face-blur-service|${isAdminWeb ? '' : 'admin-app|'}dist)(?:[\\\\/]|$)`,
+  `^${projectRootPattern}[\\\\/](?:\\.venv|\\.codex-tmp|\\.chrome-debug-profile|\\.chrome-video-review|face-blur-service|${isAdminWeb ? '' : 'admin-app|'}dist)(?:[\\\\/]|$)`,
 );
 const existingBlockList = config.resolver.blockList;
 config.resolver.blockList = [

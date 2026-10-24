@@ -1,0 +1,626 @@
+{
+  "kind": "actual-screen-components-with-synthetic-services",
+  "limitations": [
+    "No connected Android device.",
+    "React Native Web rendering; native permissions, keyboard, payment, notifications, GPS, files and deployed backend are not accepted by this run.",
+    "Map adapter is synthetic; use separate intercepted real-map regression evidence.",
+    "All HTTP/WebSocket traffic intercepted; no real user records changed.",
+    "Fixture adapter failures are harness limitations unless reproduced independently."
+  ],
+  "observations": [
+    {
+      "loginValidation": {
+        "text": "CEBSPOT\nFind your spot at the heart of Cebu.\nForgot password?\nLOGIN\nRead Privacy Policy\nCREATE A CEBSPOT ACCOUNT\nOR\nG\nContinue with Google\nMissing details: Please complete the form to continue.Dismiss",
+        "overflow": false,
+        "path": "/login"
+      }
+    },
+    {
+      "name": "01-login",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "privacy": {
+        "text": "Privacy Policy\nEffective Date: June 27, 2026\nIntroduction\nWelcome to CebSpot (“the Platform”, “we”, “our”, or “us”). We are committed to protecting your privacy and handling your information responsibly. This Privacy Policy explains what information we collect, how we use it, and the choices available to you when using our Android application.\nBy accessing or using CebSpot, you agree to the practices described in this Privacy Policy.\nInformation We Collect\nINFORMATION YOU PROVIDE\n•\nName and profile information\n•\nEmail address\n•\nReviews, ratings, comments, and feedback\n•\nInformation submitted through forms, inquiries, or support requests\n•\nCafé information submitted by café owners and administrators\nAUTOMATICALLY COLLECTED INFORMATION\n•\nDevice information (device type, OS)\n•\nIP address\n•\nGeneral usage information and activity within the Platform\n•\nDiagnostic and performance information\n•\nAnalytics and crash reports\nLOCATION INFORMATION\nCebSpot is a location-based platform. To provide its core features, the Platform requires access to your device’s location.\n•\nShow nearby spots\n•\nRecommend spots based on proximity\n•\nImprove search and discovery experiences\n•\nDeliver location-aware recommendations\n* Note: Certain core features may not function properly if location permissions are denied.\nHow We Use Information\nWe use collected information to:\n•\nProvide and maintain the Platform and its features\n•\nPersonalize recommendations and search results\n•\nHelp users discover spots based on preferences\n•\nImprove user experience and platform performance\n•\nMonitor security, reliability, and system health\n•\nRespond to inquiries and provide support\n•\nCommunicate important platform updates\n•\nConduct analytics and research to improve services\nInformation Sharing and Disclosure\nWe do NOT sell your personal information.\nWe may share information in the following situations:\n•\nWith service providers that help operate the Platform (hosting, analytics, mapping, auth, and infrastructure)\n•\nWith spot owners or administrators when necessary to provide Platform functionality\n•\nWhen required by law, legal process, or official government requests\n•\nTo protect the rights, property, safety, and security of our users and the Platform\nThird-Party Services\nCebSpot uses third-party services and technologies to deliver features and improve experience. These services process data according to their own privacy policies:\nCloud Hosting\nAnalytics Services\nDatabase and Authentication Providers\nMapping APIs\nData Privacy\nStorage Servers\nPayment Gateways\nWe encourage users to review the privacy practices of these third-party providers.\nReservation and Payment\nReservation information is used to manage the selected booking and communicate its status. Payment-related records are used to associate transactions with reservations and support payment reconciliation. Cancellation and refund rules are provided through the relevant reservation or payment information. This privacy policy does not create a refund guarantee\nUser-Generated Content\nThe Platform allows you to submit user-generated content, including spot submissions, reviews, ratings, comments, photos, and feedback.\nImportant Warning: Any content you submit may be visible to other users. Please avoid sharing sensitive or confidential information in public fields.\nData Retention\nWe retain information only for as long as necessary to provide the services, resolve disputes, enforce agreements, and maintain security. Once no longer needed, data is deleted, anonymized, or aggregated.\nData Security\nWe implement administrative, technical, and organizational safeguards designed to protect your information from unauthorized access, loss, or alteration.\nIn accordance with the Data Privacy Act, any form of data involving faces is automatically blurred\n* While we strive to protect your data, no method of transmission over the internet can be guaranteed 100% secure.\nChildren’s Privacy\nCebSpot is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13. If discovered, we will take steps to remove such records immediately.\nChanges to This Privacy Policy\nWe may update this Privacy Policy from time to time. Any changes will become effective once the updated policy is posted on this page. We encourage you to review it periodically.\nContact Us\nIf you have questions, concerns, or requests regarding this Privacy Policy, please contact the developer:\nJithrix Exiel Bolambao\nDeveloper, CebSpot\nEmail: jithrixexiel2@gmail.com\nThank you for using CebSpot!.",
+        "overflow": false,
+        "path": "/privacy"
+      }
+    },
+    {
+      "name": "02-privacy-before-signup",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "explore": {
+        "text": "Map adapter · synthetic places\nWalkthrough Cafe\nWalkthrough Park\nWalkthrough Dining\nNEARBY SPOTS\n3 spots found near you\nWalkthrough Cafe\nSynthetic Cebu address - 0.0km\nSPECIALTY COFFEE\n4.5\nGO TO SPOT\nWalkthrough Park\nSynthetic Cebu park - 0.2km\nOUTDOOR\n4.5\nGO TO SPOT\nWalkthrough Dining\nSynthetic Cebu dining - 0.5km\nSOCIAL DINING\n4.5\nGO TO SPOT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/"
+      }
+    },
+    {
+      "name": "03-explore",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "search": {
+        "text": "Map adapter · synthetic places\nNEARBY SPOTS\n0 spots found near you\nNO MATCHES FOUND\nCLEAR FILTERS\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/"
+      }
+    },
+    {
+      "clearFiltersButtonSemantics": 0
+    },
+    {
+      "clearFilters": {
+        "text": "Map adapter · synthetic places\nNEARBY SPOTS\n0 spots found near you\nNO MATCHES FOUND\nCLEAR FILTERS\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/"
+      }
+    },
+    {
+      "name": "04-search-no-results",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "spot": {
+        "text": "PREMIUM SPOT\nFREE RESERVATION\nWALKTHROUGH CAFE\nSynthetic Cebu address\n4.0\nSPOT GUIDE\nSPECIALTY COFFEE\nRATING\n4.0 / 5.0\nVOLUME\nMedium\nOVERVIEW\nSynthetic venue for an isolated user walkthrough. No live venue or real reservation is represented.\nGALLERY\n1 PHOTOS\nMAIN\nCOMMUNITY REVIEWS\n1 POSTS\nPHOTO\nPOST\nT\nTest Explorer\nSynthetic review: quiet seating and helpful staff.\n0\nCOMMENTS\nSPOT DETAILS\nOPENING HOURS\nHours not posted\nADDRESS\nSynthetic Cebu address\nWEBSITE\nWebsite not posted\nCONTACT NUMBER\nContact not posted\nInterested? \nReserve a table here\nFOUND INCORRECT DETAILS?\nSuggest an edit\nROUTE LINE\nROUTE LINE\nMap adapter · synthetic places\nSpecialty Coffee\nOwn this spot? Contact us.",
+        "overflow": false,
+        "path": "/spot/66666666-6666-4666-8666-666666666666"
+      }
+    },
+    {
+      "name": "05-spot-details",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "reservation": {
+        "text": "BOOKING\nWalkthrough Cafe\nSelect Date\nOCTOBER 2026\nS\n24\nS\n25\nM\n26\nT\n27\nW\n28\nT\n29\nF\n30\nExperience Slot\nAdjust the hours and minutes with the arrows. Tap AM or PM to switch.\nReservation time\n08\n:\n00\nPM\nArrival time: 08:00 PM\nGroup Size\nSolo\n(1 person)\nTable for 2\n(2 persons)\nSmall Group\n(3-5 party)\nBig Group\n(6+ party)\nChoose Your Table\nAVAILABILITY\nSwipe across the floor plan and tap an available table. Reserved tables are dimmed and marked with an X.\nCocktail · 4 pax\nMain-floor VIP · 10 pax\nVVIP · 10 pax\nMezzanine VIP · 10 pax\n×\nReserved\nMAIN FLOOR\nMEZZANINE\nDJ BOOTH\nMAIN\nBAR\nENTRY\nKTV LOUNGE\nGOLF SIMULATOR\n1\n5\n9\n13\n17\n2\n6\n10\n14\n18\n3\n7\n11\n15\n19\n4\n8\n12\n16\n20\n21\n23\n25\n27\n29\n22\n24\n26\n28\n30\n31\n34\n37\n40\n32\n35\n38\n41\n33\n36\n39\n42\nVVIP 1\nVVIP 2\nVVIP 3\nVVIP 4\nVIP 9\nVIP 8\nVIP 7\nVIP 6\nVIP 5\nVIP 20\nVIP 19\nVIP 18\nVIP 10\nVIP 11\nVIP 17\nVIP 16\nVIP 15\nVIP 14\nVIP 13\nVIP 12\nOwner 1\nOwner 2\nSELECTED TABLE\nTap an available table on the plan\nTables\nCocktail Table 1\n4 seats\nAvailable online\nCocktail Table 2\n2 seats\nWalk-ins only\nAdditional Information\nReservation Adjustments\nPlans can change. You can review your booking details before confirming.\nReschedule Allowed\nYou may reschedule your free reservation from My Reservations, subject to availability and the spot's policies.\nCancellation Allowed\nYou may cancel your free reservation before the scheduled visit, subject to the spot's cancellation policy.\nFree Reservation Notice\nNo reservation fee or deposit is required. Cancellation and adjustments follow the spot's policies; changes are subject to availability.\nBooking Summary\nSpot\nWalkthrough Cafe\nSelected Date\nSat, Oct 24, 2026\nSelected Time\nCustom time (08:00 PM)\nGroup Size\nTable for 2\nGuest Count\n2\nReservation Type\nFree Reservation\nPayment Status\nNot Required\nI understand the cancellation and adjustment conditions for this free reservation.\nFREE RESERVATION\nFree of Charge\nSTATUS\nPENDING\n08:00 PM - Table for 2 - Last table\nConfirm Booking",
+        "overflow": false,
+        "path": "/reservation/66666666-6666-4666-8666-666666666666"
+      }
+    },
+    {
+      "name": "06-reservation-selection",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "activity": {
+        "text": "ACTIVITY\nNotifications and local updates\nLocal Updates\nNewest\nTest Explorer\nJust now\nA new Cebu discovery\nSynthetic activity post for testing comments and menus.\n+1\nSPOT\n0 Comments\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/activity"
+      }
+    },
+    {
+      "post": {
+        "text": "ACTIVITY\nNotifications and local updates\nLocal Updates\nNewest\nTest Explorer\nJust now\nA new Cebu discovery\nSynthetic activity post for testing comments and menus.\n+1\nSPOT\n0 Comments\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE\nPost\nA new Cebu discovery\nTest Explorer\nJust now\nA new Cebu discovery\nSynthetic activity post for testing comments and menus.\n+1 SPOT\n0 COMMENTS\nComments\nNo comments yet\nStart the conversation.",
+        "overflow": false,
+        "path": "/activity"
+      }
+    },
+    {
+      "name": "07-activity-and-post",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "circles": {
+        "text": "Location sharing is off. Your device position stays on this screen.\nShare location with my circles\nLeave circle\nCIRCLE\n1 friends active now\nJOIN\nMap adapter · synthetic places\nLocation permission denied for this isolated walkthrough.\nTest Explorer\nYour current location\nYOU\nMy Code\nInvite to Weekend Explorers\nNew Circle\nCreate a private squad\nMy Circles\nWeekend Explorers\n2 members\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/circle"
+      }
+    },
+    {
+      "name": "08-circles",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "profile": {
+        "text": "T\nTest Explorer\nCebu City, Philippines\nLEVEL 1\nMilestone\n40 of 100 points toward Level 2\n40%\n40\nSPOT POINTS\nEarned from helpful activity\n0\nRESERVATIONS\nBookings you made\nAccount\nSigned in as\nwalkthrough@example.test\nHome base\nCebu City, Philippines\nQuick Actions\nApp Guide\nReplay the CebSpot walkthrough\nAbout\nOur story, features, and common questions\nCebSpot Rewards\nView XP, badges, history, and rank\nSaved Spots\nBookmark spots to find them here\nShare a Spot\nPost a hidden gem for the community\nActivity\nCheck posts, comments, and alerts\nDelete account\nLOGOUT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/profile"
+      }
+    },
+    {
+      "name": "09-profile",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "savedEmpty": {
+        "text": "SAVED SPOTS\nPlaces you bookmarked from Explore\nNo saved spots yet\nTap the bookmark on a spot in Explore and it will appear here.\nEXPLORE SPOTS\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/saved"
+      }
+    },
+    {
+      "name": "10-saved-true-empty",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "savedError": {
+        "text": "SAVED SPOTS\nPlaces you bookmarked from Explore\nNo saved spots yet\nTap the bookmark on a spot in Explore and it will appear here.\nEXPLORE SPOTS\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/saved"
+      }
+    },
+    {
+      "name": "11-saved-network-error",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "share": {
+        "text": "FOUND A SPOT?\nHelp the community expand the network.\nMEDIA\n0/5\nADD SPOT MEDIA\nPHOTOS\nVIDEO 15S\nSPOT NAME\nDESCRIPTION\nCATEGORIES\nSPECIALTY COFFEE\nOUTDOOR\nSTREET FOOD\nSOCIAL HUB\nRESTAURANT\nCO-WORKING\nCAFE\nCLUB\nBAR\nADDRESS\nLocation pinned: 10.3157, 123.8854\nACCEPTS RESERVATIONS?\nYES\nNO\nSubmitted spots are reviewed before becoming public. Reservation pricing is added by verified owners and checked by admins.\nSUBMIT SPOT\nPrivacy notice\nFor compliance with the Data Privacy Act, any image containing a visible face will have the face automatically blurred before the spot is posted. Select I Agree to continue filling out the spot details.\nNOT NOW\nI AGREE",
+        "overflow": false,
+        "path": "/submit-spot"
+      }
+    },
+    {
+      "name": "12-share-a-spot",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "offline": {
+        "text": "Map adapter · synthetic places\nLive spots could not be loaded. Check your connection and try again.\nNEARBY SPOTS\nSpots are currently unavailable\nLive spots could not be loaded. Check your connection and try again.\nRETRY\nSPOTS UNAVAILABLE\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/"
+      }
+    },
+    {
+      "name": "13-explore-offline",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "retry": {
+        "text": "Map adapter · synthetic places\nWalkthrough Cafe\nWalkthrough Park\nWalkthrough Dining\nNEARBY SPOTS\n3 spots found near you\nWalkthrough Cafe\nSynthetic Cebu address - 0.0km\nSPECIALTY COFFEE\n4.5\nGO TO SPOT\nWalkthrough Park\nSynthetic Cebu park - 0.2km\nOUTDOOR\n4.5\nGO TO SPOT\nWalkthrough Dining\nSynthetic Cebu dining - 0.5km\nSOCIAL DINING\n4.5\nGO TO SPOT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/"
+      }
+    },
+    {
+      "name": "14-retry-discovery",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "width": 320,
+      "profile": {
+        "text": "T\nTest Explorer\nCebu City, Philippines\nLEVEL 1\nMilestone\n40 of 100 points toward Level 2\n40%\n40\nSPOT POINTS\nEarned from helpful activity\n0\nRESERVATIONS\nBookings you made\nAccount\nSigned in as\nwalkthrough@example.test\nHome base\nCebu City, Philippines\nQuick Actions\nApp Guide\nReplay the CebSpot walkthrough\nAbout\nOur story, features, and common questions\nCebSpot Rewards\nView XP, badges, history, and rank\nSaved Spots\n1 spot saved for later\nShare a Spot\nPost a hidden gem for the community\nActivity\nCheck posts, comments, and alerts\nDelete account\nLOGOUT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/profile"
+      }
+    },
+    {
+      "name": "15-layout-320",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "width": 390,
+      "profile": {
+        "text": "T\nTest Explorer\nCebu City, Philippines\nLEVEL 1\nMilestone\n40 of 100 points toward Level 2\n40%\n40\nSPOT POINTS\nEarned from helpful activity\n0\nRESERVATIONS\nBookings you made\nAccount\nSigned in as\nwalkthrough@example.test\nHome base\nCebu City, Philippines\nQuick Actions\nApp Guide\nReplay the CebSpot walkthrough\nAbout\nOur story, features, and common questions\nCebSpot Rewards\nView XP, badges, history, and rank\nSaved Spots\n1 spot saved for later\nShare a Spot\nPost a hidden gem for the community\nActivity\nCheck posts, comments, and alerts\nDelete account\nLOGOUT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/profile"
+      }
+    },
+    {
+      "name": "15-layout-390",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "activityMenu": {
+        "buttonCandidates": [
+          {
+            "tag": "DIV",
+            "role": null,
+            "label": null
+          }
+        ],
+        "visibleChange": false
+      }
+    },
+    {
+      "name": "16-activity-three-dots",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "savedExisting": {
+        "text": "SAVED SPOTS\nPlaces you bookmarked from Explore\nWalkthrough Cafe\nSynthetic Cebu address\nSPECIALTY COFFEE\n4.5\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/saved"
+      }
+    },
+    {
+      "name": "17-saved-existing",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "sharingStopped": {
+        "enabled": false,
+        "generation": null
+      }
+    },
+    {
+      "name": "18-circle-sharing-controls",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "darkProfile": {
+        "text": "T\nTest Explorer\nCebu City, Philippines\nLEVEL 1\nMilestone\n40 of 100 points toward Level 2\n40%\n40\nSPOT POINTS\nEarned from helpful activity\n0\nRESERVATIONS\nBookings you made\nAccount\nSigned in as\nwalkthrough@example.test\nHome base\nCebu City, Philippines\nQuick Actions\nApp Guide\nReplay the CebSpot walkthrough\nAbout\nOur story, features, and common questions\nCebSpot Rewards\nView XP, badges, history, and rank\nSaved Spots\n1 spot saved for later\nShare a Spot\nPost a hidden gem for the community\nActivity\nCheck posts, comments, and alerts\nDelete account\nLOGOUT\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/profile"
+      }
+    },
+    {
+      "name": "19-dark-profile",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "deletion": {
+        "text": "Back\nDelete account\nThis permanently removes your profile, posts, reviews, private files and circle membership. Reservation and payment ledger records retain amounts, dates and provider references with personal details removed.\nClose active bookings and resolve pending payments or refunds first. Assigned venue owners and administrators must transfer their responsibilities. Deletion cannot be cancelled once started.\nConfirm with your password. If you use another sign-in method, sign in again with that method before returning here.\nDelete account permanently",
+        "overflow": false,
+        "path": "/account-deletion"
+      }
+    },
+    {
+      "name": "20-deletion-explanation-only",
+      "result": "observed",
+      "newErrors": []
+    },
+    {
+      "bookmarkJourney": {
+        "text": "SAVED SPOTS\nPlaces you bookmarked from Explore\nWalkthrough Cafe\nSynthetic Cebu address\nSPECIALTY COFFEE\n4.5\nEXPLORE\nCIRCLE\nSHARE\nACTIVITY\nPROFILE",
+        "overflow": false,
+        "path": "/saved"
+      }
+    },
+    {
+      "name": "21-bookmark-from-explore",
+      "result": "observed",
+      "newErrors": []
+    }
+  ],
+  "errors": [],
+  "calls": [
+    {
+      "name": "spotService",
+      "method": "getSpots"
+    },
+    {
+      "name": "spotService",
+      "method": "subscribeToSpots"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "getSavedSpotIds"
+    },
+    {
+      "name": "getPublishedAdminUpdates",
+      "method": "call"
+    },
+    {
+      "name": "subscribeToPublishedAdminUpdates",
+      "method": "call"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "saveSavedSpotIds"
+    },
+    {
+      "name": "spotService",
+      "method": "subscribeToSpotById"
+    },
+    {
+      "name": "spotService",
+      "method": "getSpotById"
+    },
+    {
+      "name": "spotService",
+      "method": "getSpots"
+    },
+    {
+      "name": "reviewService",
+      "method": "getReviewsForSpot"
+    },
+    {
+      "name": "reviewService",
+      "method": "getRepliesForSpot"
+    },
+    {
+      "name": "reviewService",
+      "method": "getHelpfulReviewIds"
+    },
+    {
+      "name": "spotService",
+      "method": "subscribeToSpotById"
+    },
+    {
+      "name": "spotService",
+      "method": "getSpotById"
+    },
+    {
+      "name": "venueTableService",
+      "method": "subscribe"
+    },
+    {
+      "name": "getReservationTableAvailability",
+      "method": "call"
+    },
+    {
+      "name": "localUpdateService",
+      "method": "getLocalUpdates"
+    },
+    {
+      "name": "activityService",
+      "method": "getRecentActivities"
+    },
+    {
+      "name": "localUpdateService",
+      "method": "getSubmissionVotes"
+    },
+    {
+      "name": "localUpdateService",
+      "method": "subscribeToLocalUpdates"
+    },
+    {
+      "name": "activityService",
+      "method": "subscribeToActivities"
+    },
+    {
+      "name": "localUpdateService",
+      "method": "subscribeToSubmissionVotes"
+    },
+    {
+      "name": "localUpdateService",
+      "method": "getComments"
+    },
+    {
+      "name": "localUpdateService",
+      "method": "getPostMedia"
+    },
+    {
+      "name": "localUpdateService",
+      "method": "subscribeToComments"
+    },
+    {
+      "name": "circleService",
+      "method": "getUserCircles"
+    },
+    {
+      "name": "circleService",
+      "method": "getLocationSharing"
+    },
+    {
+      "name": "circleService",
+      "method": "getCircleMembers"
+    },
+    {
+      "name": "circleService",
+      "method": "subscribeToMembers"
+    },
+    {
+      "name": "reservationService",
+      "method": "getUserReservations"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "getSavedSpotIds"
+    },
+    {
+      "name": "gamificationService",
+      "method": "getSummary"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "getSavedSpotIds"
+    },
+    {
+      "name": "spotService",
+      "method": "getSpotsByIds"
+    },
+    {
+      "name": "spotService",
+      "method": "getSpots"
+    },
+    {
+      "name": "spotService",
+      "method": "subscribeToSpots"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "getSavedSpotIds"
+    },
+    {
+      "name": "getPublishedAdminUpdates",
+      "method": "call"
+    },
+    {
+      "name": "subscribeToPublishedAdminUpdates",
+      "method": "call"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "saveSavedSpotIds"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "getSavedSpotIds"
+    },
+    {
+      "name": "spotService",
+      "method": "getSpotsByIds"
+    },
+    {
+      "name": "spotSubmissionDraftService",
+      "method": "get"
+    },
+    {
+      "name": "spotService",
+      "method": "getSpots"
+    },
+    {
+      "name": "spotService",
+      "method": "subscribeToSpots"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "getSavedSpotIds"
+    },
+    {
+      "name": "getPublishedAdminUpdates",
+      "method": "call"
+    },
+    {
+      "name": "subscribeToPublishedAdminUpdates",
+      "method": "call"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "saveSavedSpotIds"
+    },
+    {
+      "name": "spotService",
+      "method": "getSpots"
+    },
+    {
+      "name": "spotService",
+      "method": "subscribeToSpots"
+    },
+    {
+      "name": "reservationService",
+      "method": "getUserReservations"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "getSavedSpotIds"
+    },
+    {
+      "name": "gamificationService",
+      "method": "getSummary"
+    },
+    {
+      "name": "localUpdateService",
+      "method": "getLocalUpdates"
+    },
+    {
+      "name": "activityService",
+      "method": "getRecentActivities"
+    },
+    {
+      "name": "localUpdateService",
+      "method": "getSubmissionVotes"
+    },
+    {
+      "name": "localUpdateService",
+      "method": "subscribeToLocalUpdates"
+    },
+    {
+      "name": "activityService",
+      "method": "subscribeToActivities"
+    },
+    {
+      "name": "localUpdateService",
+      "method": "subscribeToSubmissionVotes"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "getSavedSpotIds"
+    },
+    {
+      "name": "spotService",
+      "method": "getSpotsByIds"
+    },
+    {
+      "name": "circleService",
+      "method": "getUserCircles"
+    },
+    {
+      "name": "circleService",
+      "method": "getLocationSharing"
+    },
+    {
+      "name": "circleService",
+      "method": "getCircleMembers"
+    },
+    {
+      "name": "circleService",
+      "method": "subscribeToMembers"
+    },
+    {
+      "name": "circleService",
+      "method": "setLocationSharing"
+    },
+    {
+      "name": "circleService",
+      "method": "setLocationSharing"
+    },
+    {
+      "name": "reservationService",
+      "method": "getUserReservations"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "getSavedSpotIds"
+    },
+    {
+      "name": "gamificationService",
+      "method": "getSummary"
+    },
+    {
+      "name": "accountDeletionService",
+      "method": "pending"
+    },
+    {
+      "name": "spotService",
+      "method": "getSpots"
+    },
+    {
+      "name": "spotService",
+      "method": "subscribeToSpots"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "getSavedSpotIds"
+    },
+    {
+      "name": "getPublishedAdminUpdates",
+      "method": "call"
+    },
+    {
+      "name": "subscribeToPublishedAdminUpdates",
+      "method": "call"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "saveSavedSpotIds"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "saveSavedSpotIds"
+    },
+    {
+      "name": "savedSpotService",
+      "method": "getSavedSpotIds"
+    },
+    {
+      "name": "spotService",
+      "method": "getSpotsByIds"
+    }
+  ]
+}

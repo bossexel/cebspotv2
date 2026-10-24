@@ -69,6 +69,22 @@
     {
       "name": "20261021000100_admin_owner_request_delete.sql",
       "sha256": "326bd649cfbfffd36d234f594d8c18601f6a83fbc6171f232f7468445e2553b7"
+    },
+    {
+      "name": "20261022000100_admin_spot_submission_delete.sql",
+      "sha256": "a8992f515d010565a4c61dad983307a4d4e4fbaff88fd37c86769098e55170df"
+    },
+    {
+      "name": "20261022000200_admin_updates.sql",
+      "sha256": "e0eca57fb8d0f8e88d826d2fb2c10641daf8d864e515ee5e3e62d90c1b0a6d6a"
+    },
+    {
+      "name": "20261025000100_activity_feed_pagination.sql",
+      "sha256": "93965407e468027b8794ab50027066a4d9ef50c52148357c45ed74246909ad1d"
+    },
+    {
+      "name": "20261025000200_public_media_size_limits.sql",
+      "sha256": "495f1abfcaf1d0f838aa6eb7740aa746d9d6044dfbdc0614e173ae103f622a2b"
     }
   ]
 }

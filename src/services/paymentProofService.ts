@@ -1,3 +1,4 @@
+import { compressPhoto, cleanupMedia, mediaLimits } from './mediaCompression';
 import { isLocalFileUri, readLocalFileAsArrayBuffer } from '../utils/mediaFile';
 import * as FileSystem from 'expo-file-system';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -26,12 +27,16 @@ export const paymentProofService = {
     }
 
     const extension = getFileExtension(uri);
-    const contentType = getContentType(extension);
+    let contentType = getContentType(extension);
     const info = await FileSystem.getInfoAsync(uri);
     if (!info.exists || !('size' in info) || info.size <= 0 || info.size > 5 * 1024 * 1024) {
       throw new Error('Payment proof must be between 1 byte and 5 MiB.');
     }
-    const body = await readLocalFileAsArrayBuffer(uri);
+    const prepared = contentType.startsWith('image/') ? await compressPhoto(uri, mediaLimits.document) : uri;
+    let body: ArrayBuffer;
+    try { body = await readLocalFileAsArrayBuffer(prepared); }
+    finally { await cleanupMedia(prepared, uri); }
+    if (contentType.startsWith('image/')) contentType = 'image/jpeg';
     const { data, error } = await supabase.functions.invoke(
       `private-upload?kind=reservation_proof&resourceId=${encodeURIComponent(reservationId)}`,
       { body, headers: { 'Content-Type': contentType } },

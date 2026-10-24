@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../src/utils/userError';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -260,7 +261,7 @@ export default function SubmitSpotScreen() {
       setExitConfirmationOpen(false);
       router.back();
     } catch (error: any) {
-      Alert.alert('Draft not saved', error.message ?? 'Please try again.');
+      Alert.alert('Draft not saved', userErrorMessage(error, 'We could not save this. Please try again.'));
     } finally {
       setSavingDraft(false);
     }
@@ -326,7 +327,7 @@ export default function SubmitSpotScreen() {
     } catch (error: any) {
       console.error('Submit spot error:', error);
       setShareStatus(null);
-      Alert.alert('Submission failed', error.message ?? 'Please try again.');
+      Alert.alert('Submission failed', userErrorMessage(error, 'We could not save this. Please try again.'));
       setSubmitting(false);
     }
   }

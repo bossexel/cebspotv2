@@ -1,0 +1,11 @@
+{
+  "label": "user-walkthrough-booking-selection-verified-2026-10-24",
+  "command": [
+    "node",
+    "tests/user-walkthrough/booking.cjs"
+  ],
+  "startedAt": "2026-10-23T17:05:37.142Z",
+  "finishedAt": "2026-10-23T17:05:40.849Z",
+  "exitCode": 1,
+  "output": "Expected values to be strictly equal:\n\nnull !== 'true'\n\n"
+}

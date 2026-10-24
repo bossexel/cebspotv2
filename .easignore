@@ -14,3 +14,13 @@ face-blur-service/
 .chrome-video-review/
 .expo-web-check/
 .vscode/
+.expo/
+.idea/
+supabase/.temp/
+tests/performance/.private/
+tests/performance/results/
+tests/performance/local-stack/
+tests/performance/device-artifacts/
+.codex-*.png
+.media-review.diff
+assets/test-cebspot-club/

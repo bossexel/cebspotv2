@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -39,15 +40,15 @@ import {
 } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenContainer } from '../src/components/ScreenContainer';
-import { colors } from '../src/constants/colors';
+import { colors, AppColors } from '../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../src/constants/design';
 import { useAuth } from '../src/hooks/useAuth';
 import { useLocation } from '../src/hooks/useLocation';
 import { useTheme } from '../src/hooks/useTheme';
 import { activityService } from '../src/services/activityService';
-import { localUpdateService } from '../src/services/localUpdateService';
+import { localUpdateService, FeedCursor } from '../src/services/localUpdateService';
 import type { Activity, LocalUpdate, LocalUpdateComment, SpotVoteType } from '../src/types';
-import { calculateHaversineDistanceKm } from '../src/utils/distance';
+import { userErrorMessage } from '../src/utils/userError';
 
 type LocalUpdateSort = 'nearest' | 'newest' | 'popular';
 
@@ -76,15 +77,6 @@ const localUpdateSortOptions: Array<{
     icon: Flame,
   },
 ];
-
-function timestamp(value: string) {
-  const parsed = new Date(value).getTime();
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function hasUpdateCoordinates(update: LocalUpdate) {
-  return Number.isFinite(update.latitude) && Number.isFinite(update.longitude);
-}
 
 function formatUpdateTime(createdAt: string) {
   const elapsedMs = Date.now() - new Date(createdAt).getTime();
@@ -168,6 +160,114 @@ function NotificationTypeIcon({ item, color }: { item: Activity; color: string }
   return <Bell size={21} color={color} />;
 }
 
+const ActivityPostCard = React.memo(function ActivityPostCard({ item, appColors, currentVote, voting, onOpen, onVote }: {
+  item: LocalUpdate; appColors: AppColors; currentVote: SpotVoteType | null; voting: boolean;
+  onOpen: (item: LocalUpdate) => void; onVote: (item: LocalUpdate) => void;
+}) {
+  const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const canVote = item.source_type === 'spot_submission' && !!item.source_id;
+  return (<View style={[styles.updateCard, { backgroundColor: appColors.surfaceLow }]}>
+              <View style={styles.updateHeader}>
+                {item.user_photo_url && failedAvatar !== item.user_photo_url ? (
+                  <Image
+                    source={{ uri: item.user_photo_url }}
+                    style={styles.avatarImage}
+                    onError={() => setFailedAvatar(item.user_photo_url ?? null)}
+                  />
+                ) : (
+                  <View style={[styles.avatarFallback, { backgroundColor: appColors.surfaceHighest }]}>
+                    <User size={20} color={appColors.onSurfaceVariant} />
+                  </View>
+                )}
+                <View style={styles.authorBlock}>
+                  <Text style={[styles.authorName, { color: appColors.onSurface }]} numberOfLines={1}>
+                    {item.user_name}
+                  </Text>
+                  <Text style={[styles.updateTime, { color: appColors.onSurfaceVariant }]}>
+                    {formatUpdateTime(item.created_at)}
+                  </Text>
+                </View>
+                <Pressable style={styles.moreButton}>
+                  <MoreVertical size={18} color={appColors.onSurfaceVariant} />
+                </Pressable>
+              </View>
+
+              <Pressable
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel={`Open post ${item.title}`}
+                accessibilityHint="Shows the full post and comments."
+                style={({ pressed }) => [styles.updateCopy, pressed && styles.pressedCard]}
+                onPress={() => onOpen(item)}
+              >
+                <Text numberOfLines={2} style={styles.updateTitle}>{item.title}</Text>
+                <Text numberOfLines={3} style={[styles.updateBody, { color: appColors.onSurfaceVariant }]}>{item.body}</Text>
+                <View style={styles.locationRow}>
+                  <MapPin size={12} color={appColors.onSurfaceVariant} fill={appColors.onSurfaceVariant} />
+                  <Text numberOfLines={1} style={[styles.locationText, { color: appColors.onSurfaceVariant }]}>{item.location_name}</Text>
+                </View>
+              </Pressable>
+
+              {!isVideoUrl(item.image_url ?? '') && item.image_url && failedImage !== item.image_url ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open post media for ${item.title}`}
+                  onPress={() => onOpen(item)}
+                >
+                  <Image
+                    source={{ uri: item.image_url }}
+                    style={styles.updateImage}
+                    resizeMode="cover"
+                    resizeMethod="resize"
+                    fadeDuration={0}
+                    onError={() => setFailedImage(item.image_url ?? null)}
+                  />
+                </Pressable>
+              ) : null}
+
+              <View style={styles.updateActions}>
+                <Pressable
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel={currentVote === 'up' ? `Remove Spot from ${item.title}` : `Spot ${item.title}`}
+                  accessibilityState={{ selected: currentVote === 'up', disabled: !canVote || voting }}
+                  disabled={!canVote || voting}
+                  hitSlop={10}
+                  style={({ pressed }) => [
+                    styles.spotVoteButton,
+                    !canVote && styles.disabledAction,
+                    pressed && styles.pressedButton,
+                  ]}
+                  onPress={() => onVote(item)}
+                >
+                  <MapPin
+                    size={21}
+                    color={currentVote === 'up' ? colors.primary : canVote ? appColors.onSurface : appColors.onSurfaceVariant}
+                    strokeWidth={2.5}
+                  />
+                  <Text style={[styles.voteScoreText, { color: canVote ? appColors.onSurface : appColors.onSurfaceVariant }]}>
+                    {formatSpotScore(item.spot_count)}
+                  </Text>
+                  <Text style={[styles.voteLabelText, { color: currentVote === 'up' ? colors.primary : appColors.onSurfaceVariant }]}>Spot</Text>
+                </Pressable>
+                <View style={styles.actionSpacer} />
+                <Pressable
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${item.comments_count} comments on ${item.title}`}
+                  style={styles.discussButton}
+                  onPress={() => onOpen(item)}
+                >
+                  <MessageCircle size={22} color={appColors.onSurfaceVariant} />
+                  <Text style={[styles.actionText, { color: appColors.onSurfaceVariant }]}>
+                    {item.comments_count} Comments
+                  </Text>
+                </Pressable>
+              </View>
+            </View>);
+});
+
 export default function ActivityScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ openSubmissionId?: string | string[] }>();
@@ -183,11 +283,18 @@ export default function ActivityScreen() {
   const [localUpdates, setLocalUpdates] = useState<LocalUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedError, setFeedError] = useState<string | null>(null);
+  const [liveFeedPaused, setLiveFeedPaused] = useState(false);
   const [notificationError, setNotificationError] = useState<string | null>(null);
   const [feedRetry, setFeedRetry] = useState(0);
+  const [nextCursor, setNextCursor] = useState<FeedCursor | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [newPostsAvailable, setNewPostsAvailable] = useState(false);
+  const feedGeneration = useRef(0);
+  const pageInFlight = useRef(false);
+  const feedList = useRef<FlatList<LocalUpdate>>(null);
   const [notificationRetry, setNotificationRetry] = useState(0);
   const activitiesOwner = useRef<string | null>(null);
-  const [failedImageIds, setFailedImageIds] = useState<string[]>([]);
+
   const [failedAvatarIds, setFailedAvatarIds] = useState<string[]>([]);
   const [submissionVotes, setSubmissionVotes] = useState<Record<string, SpotVoteType>>({});
   const [votingUpdateIds, setVotingUpdateIds] = useState<string[]>([]);
@@ -218,39 +325,7 @@ export default function ActivityScreen() {
     () => localUpdates.find((item) => item.id === commentThreadUpdateId) ?? null,
     [commentThreadUpdateId, localUpdates]
   );
-  const sortedLocalUpdates = useMemo(() => {
-    const updates = [...localUpdates];
-    const newestFirst = (first: LocalUpdate, second: LocalUpdate) =>
-      timestamp(second.created_at) - timestamp(first.created_at) || first.id.localeCompare(second.id);
-
-    if (localUpdateSort === 'popular') {
-      return updates.sort((first, second) => {
-        const firstEngagement = Number(first.spot_count || 0) + Number(first.comments_count || 0);
-        const secondEngagement = Number(second.spot_count || 0) + Number(second.comments_count || 0);
-        return secondEngagement - firstEngagement || newestFirst(first, second);
-      });
-    }
-
-    if (localUpdateSort === 'nearest' && currentLocation) {
-      return updates.sort((first, second) => {
-        const firstDistance = hasUpdateCoordinates(first)
-          ? calculateHaversineDistanceKm(currentLocation, {
-              latitude: Number(first.latitude),
-              longitude: Number(first.longitude),
-            })
-          : Number.POSITIVE_INFINITY;
-        const secondDistance = hasUpdateCoordinates(second)
-          ? calculateHaversineDistanceKm(currentLocation, {
-              latitude: Number(second.latitude),
-              longitude: Number(second.longitude),
-            })
-          : Number.POSITIVE_INFINITY;
-        return firstDistance - secondDistance || newestFirst(first, second);
-      });
-    }
-
-    return updates.sort(newestFirst);
-  }, [currentLocation, localUpdateSort, localUpdates]);
+  const sortedLocalUpdates = localUpdates;
   const activeSortLabel = localUpdateSortOptions.find((option) => option.value === localUpdateSort)?.label ?? 'Newest';
   const visiblePostMedia = postMediaUrls.filter((url) => !failedPostMediaUrls.includes(url));
   const parentComments = comments.filter((comment) => !comment.parent_comment_id);
@@ -260,34 +335,58 @@ export default function ActivityScreen() {
 
   useEffect(() => {
     let mounted = true;
-    let unsubscribe: (() => void) | undefined;
+    const generation = ++feedGeneration.current;
+    pageInFlight.current = false;
+    setLoadingMore(false);
+    setLoading(true);
+    setNextCursor(null);
+    setLocalUpdates([]);
+    setFeedError(null);
+    setLiveFeedPaused(false);
+    setNewPostsAvailable(false);
+    feedList.current?.scrollToOffset({ offset: 0, animated: false });
+    const unsubscribe = localUpdateService.subscribeToFeedChanges((changes) => {
+      if (!mounted) return;
+      if (changes.some(change => change.eventType === 'INSERT')) setNewPostsAvailable(true);
+      const changed = new Map(changes.map(change => [change.id, change]));
+      setLocalUpdates(current => current.flatMap(item => {
+        const change = changed.get(item.id);
+        return change?.eventType === 'DELETE' ? [] : [change?.item ?? item];
+      }));
+    }, () => { if (mounted) setLiveFeedPaused(true); },
+    () => { if (mounted) setLiveFeedPaused(false); });
+    localUpdateService.getLocalUpdatesPage({ sort: localUpdateSort, location: currentLocation })
+      .then(page => {
+        if (!mounted || feedGeneration.current !== generation) return;
+        setLocalUpdates(page.items); setNextCursor(page.nextCursor);
+      }).catch(error => {
+        console.warn('Activity page could not load', error);
+        if (mounted) setFeedError('Posts could not be loaded. Check your connection and retry.');
+      }).finally(() => { if (mounted) setLoading(false); });
+    return () => { mounted = false; feedGeneration.current += 1; unsubscribe(); };
+  }, [feedRetry, localUpdateSort, localUpdateSort === 'nearest' ? currentLocation?.latitude : null,
+    localUpdateSort === 'nearest' ? currentLocation?.longitude : null]);
 
-    async function loadLocalUpdates() {
-      setLoading(true);
-      try {
-        const updates = await localUpdateService.getLocalUpdates();
-        if (!mounted) return;
-        setLocalUpdates(updates);
-        setFeedError(null);
-        const nextUnsubscribe = localUpdateService.subscribeToLocalUpdates((next) => {
-          if (mounted) { setLocalUpdates(next); setFeedError(null); }
-        }, () => { if (mounted) setFeedError('Local updates could not be refreshed. Cached updates may be out of date.'); });
-        if (mounted) unsubscribe = nextUnsubscribe;
-        else nextUnsubscribe();
-      } catch (error) {
-        if (mounted) console.error('Unable to load local updates:', error);
-        if (mounted) setFeedError('Local updates are unavailable. Check your connection and retry.');
-      } finally {
-        if (mounted) setLoading(false);
-      }
+  const loadMorePosts = useCallback(async () => {
+    if (loading || pageInFlight.current || !nextCursor || feedError) return;
+    pageInFlight.current = true;
+    const generation = feedGeneration.current;
+    setLoadingMore(true);
+    try {
+      const page = await localUpdateService.getLocalUpdatesPage({ cursor: nextCursor, sort: localUpdateSort, location: currentLocation });
+      if (generation !== feedGeneration.current) return;
+      setLocalUpdates(current => {
+        const known = new Set(current.map(item => item.id));
+        return [...current, ...page.items.filter(item => !known.has(item.id))];
+      });
+      setNextCursor(page.nextCursor);
+    } catch (error) {
+      console.warn('Next activity page could not load', error);
+      if (generation === feedGeneration.current) setFeedError('More posts could not be loaded. Pull down to retry.');
+    } finally {
+      if (generation === feedGeneration.current) { pageInFlight.current = false; setLoadingMore(false); }
     }
-
-    void loadLocalUpdates();
-    return () => {
-      mounted = false;
-      unsubscribe?.();
-    };
-  }, [feedRetry]);
+  }, [loading, nextCursor, feedError, localUpdateSort, currentLocation]);
 
   useEffect(() => {
     let mounted = true;
@@ -524,7 +623,7 @@ export default function ActivityScreen() {
         current.map((update) => (update.id === item.id ? { ...update, spot_count: item.spot_count } : update))
       );
       console.error('Unable to vote on spot submission:', error);
-      Alert.alert('Vote failed', error.message ?? 'Please try again.');
+      Alert.alert('Vote failed', userErrorMessage(error, 'We could not save your change. Please try again.'));
     } finally {
       setVotingUpdateIds((current) => current.filter((id) => id !== item.id));
     }
@@ -546,11 +645,11 @@ export default function ActivityScreen() {
     setShowSortOptions(false);
   }
 
-  function openPost(item: LocalUpdate) {
+  const openPost = useCallback((item: LocalUpdate) => {
     setCommentBody('');
     setReplyingToComment(null);
     setCommentThreadUpdateId(item.id);
-  }
+  }, []);
 
   function closeComments() {
     if (sendingComment) return;
@@ -673,6 +772,15 @@ export default function ActivityScreen() {
       router.push('/reservations');
     }
   }
+
+  const voteHandlerRef = useRef(voteForUpdate);
+  voteHandlerRef.current = voteForUpdate;
+  const onVote = useCallback((item: LocalUpdate) => { void voteHandlerRef.current(item); }, []);
+  const renderPost = useCallback(({ item }: { item: LocalUpdate }) => (
+    <ActivityPostCard item={item} appColors={appColors}
+      currentVote={item.source_id ? submissionVotes[item.source_id] ?? null : null}
+      voting={votingUpdateIds.includes(item.id)} onOpen={openPost} onVote={onVote} />
+  ), [appColors, submissionVotes, votingUpdateIds, openPost, onVote]);
 
   if (showNotifications) {
     return (
@@ -804,7 +912,23 @@ export default function ActivityScreen() {
   }
 
   return (
-    <ScreenContainer appColors={appColors} showBottomNav scroll>
+    <ScreenContainer appColors={appColors} showBottomNav padded={false}>
+      <FlatList
+        ref={feedList}
+        data={sortedLocalUpdates}
+        keyExtractor={item => item.id}
+        renderItem={renderPost}
+        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        windowSize={5}
+        updateCellsBatchingPeriod={50}
+        removeClippedSubviews={Platform.OS === 'android'}
+        onEndReached={() => void loadMorePosts()}
+        onEndReachedThreshold={0.5}
+        refreshing={loading}
+        onRefresh={() => setFeedRetry(value => value + 1)}
+        ListHeaderComponent={<>
       <View style={styles.header}>
         <View>
           <Text style={[styles.title, { color: appColors.onSurface }]}>Activity</Text>
@@ -830,7 +954,7 @@ export default function ActivityScreen() {
       <View style={styles.sectionHeader}>
         <View style={styles.sectionHeading}>
           <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Local Updates</Text>
-          {!feedError && <View style={styles.liveDot} />}
+          {!feedError && !liveFeedPaused && <View style={styles.liveDot} />}
         </View>
         <Pressable
           accessible
@@ -856,117 +980,16 @@ export default function ActivityScreen() {
         <Text style={{ color: appColors.onSurface }}>{feedError}</Text>
         <Text style={{ color: colors.primary }}>Retry local updates</Text>
       </Pressable>}
-      {loading && !localUpdates.length ? (
-        <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
-      ) : (
-        <View style={styles.feed}>
-          {sortedLocalUpdates.map((item) => {
-            const canVote = item.source_type === 'spot_submission' && !!item.source_id;
-            const currentVote = item.source_id ? submissionVotes[item.source_id] ?? null : null;
-            const voting = votingUpdateIds.includes(item.id);
 
-            return (
-            <View key={item.id} style={[styles.updateCard, { backgroundColor: appColors.surfaceLow }]}>
-              <View style={styles.updateHeader}>
-                {item.user_photo_url && !failedAvatarIds.includes(item.id) ? (
-                  <Image
-                    source={{ uri: item.user_photo_url }}
-                    style={styles.avatarImage}
-                    onError={() => setFailedAvatarIds((current) => [...new Set([...current, item.id])])}
-                  />
-                ) : (
-                  <View style={[styles.avatarFallback, { backgroundColor: appColors.surfaceHighest }]}>
-                    <User size={20} color={appColors.onSurfaceVariant} />
-                  </View>
-                )}
-                <View style={styles.authorBlock}>
-                  <Text style={[styles.authorName, { color: appColors.onSurface }]} numberOfLines={1}>
-                    {item.user_name}
-                  </Text>
-                  <Text style={[styles.updateTime, { color: appColors.onSurfaceVariant }]}>
-                    {formatUpdateTime(item.created_at)}
-                  </Text>
-                </View>
-                <Pressable style={styles.moreButton}>
-                  <MoreVertical size={18} color={appColors.onSurfaceVariant} />
-                </Pressable>
-              </View>
-
-              <Pressable
-                accessible
-                accessibilityRole="button"
-                accessibilityLabel={`Open post ${item.title}`}
-                accessibilityHint="Shows the full post and comments."
-                style={({ pressed }) => [styles.updateCopy, pressed && styles.pressedCard]}
-                onPress={() => openPost(item)}
-              >
-                <Text style={styles.updateTitle}>{item.title}</Text>
-                <Text style={[styles.updateBody, { color: appColors.onSurfaceVariant }]}>{item.body}</Text>
-                <View style={styles.locationRow}>
-                  <MapPin size={12} color={appColors.onSurfaceVariant} fill={appColors.onSurfaceVariant} />
-                  <Text style={[styles.locationText, { color: appColors.onSurfaceVariant }]}>{item.location_name}</Text>
-                </View>
-              </Pressable>
-
-              {item.image_url && !failedImageIds.includes(item.id) ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open post media for ${item.title}`}
-                  onPress={() => openPost(item)}
-                >
-                  <Image
-                    source={{ uri: item.image_url }}
-                    style={styles.updateImage}
-                    resizeMode="cover"
-                    onError={() => setFailedImageIds((current) => [...new Set([...current, item.id])])}
-                  />
-                </Pressable>
-              ) : null}
-
-              <View style={styles.updateActions}>
-                <Pressable
-                  accessible
-                  accessibilityRole="button"
-                  accessibilityLabel={currentVote === 'up' ? `Remove Spot from ${item.title}` : `Spot ${item.title}`}
-                  accessibilityState={{ selected: currentVote === 'up', disabled: !canVote || voting }}
-                  disabled={!canVote || voting}
-                  hitSlop={10}
-                  style={({ pressed }) => [
-                    styles.spotVoteButton,
-                    !canVote && styles.disabledAction,
-                    pressed && styles.pressedButton,
-                  ]}
-                  onPress={() => voteForUpdate(item)}
-                >
-                  <MapPin
-                    size={21}
-                    color={currentVote === 'up' ? colors.primary : canVote ? appColors.onSurface : appColors.onSurfaceVariant}
-                    strokeWidth={2.5}
-                  />
-                  <Text style={[styles.voteScoreText, { color: canVote ? appColors.onSurface : appColors.onSurfaceVariant }]}>
-                    {formatSpotScore(item.spot_count)}
-                  </Text>
-                  <Text style={[styles.voteLabelText, { color: currentVote === 'up' ? colors.primary : appColors.onSurfaceVariant }]}>Spot</Text>
-                </Pressable>
-                <View style={styles.actionSpacer} />
-                <Pressable
-                  accessible
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open ${item.comments_count} comments on ${item.title}`}
-                  style={styles.discussButton}
-                  onPress={() => openPost(item)}
-                >
-                  <MessageCircle size={22} color={appColors.onSurfaceVariant} />
-                  <Text style={[styles.actionText, { color: appColors.onSurfaceVariant }]}>
-                    {item.comments_count} Comments
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-            );
-          })}
-        </View>
-      )}
+          {liveFeedPaused && <Text style={{ color: appColors.onSurfaceVariant }}>Live updates paused. Pull down to refresh.</Text>}
+          {newPostsAvailable && <Pressable onPress={() => setFeedRetry(value => value + 1)} style={styles.emptyNotificationState}>
+            <Text style={{ color: colors.primary }}>New posts available. Tap to refresh.</Text>
+          </Pressable>}
+        </>}
+        ListEmptyComponent={loading ? <ActivityIndicator color={colors.primary} style={styles.loader} /> :
+          !feedError ? <Text style={{ color: appColors.onSurfaceVariant }}>No posts yet.</Text> : null}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.primary} style={styles.loader} /> : null}
+      />
 
       <Modal
         visible={showSortOptions}
@@ -1542,6 +1565,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   updateCard: {
+    marginBottom: spacing.md,
     borderRadius: radius.xl,
     overflow: 'hidden',
     ...shadow.card,

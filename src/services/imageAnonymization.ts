@@ -1,8 +1,9 @@
 import { isLocalFileUri } from '../utils/mediaFile';
 import * as FileSystem from 'expo-file-system';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { compressPhoto, mediaLimits, cleanupMedia } from './mediaCompression';
+import { withMediaSession } from './mediaSession';
+import { userErrorMessage, UserFacingError } from '../utils/userError';
 import { Platform } from 'react-native';
-import { supabase, hasSupabaseConfig } from '../lib/supabase';
 
 const configuredFaceBlurApiUrl = process.env.EXPO_PUBLIC_FACE_BLUR_API_URL?.replace(/\/+$/, '') ?? '';
 const healthCheckCacheMs = 30_000;
@@ -15,18 +16,9 @@ const jobRequestTimeoutMs = 20_000;
 const jobCreateAttempts = 3;
 const jobRecoveryAttempts = 2;
 const transientRetryDelayMs = 2_000;
-const maxPrivacyUploadDimension = 1800;
-const targetPrivacyUploadBytes = 4 * 1024 * 1024;
-const compressionLevels = [0.78, 0.64, 0.52];
 let lastHealthyCheckAt = 0;
 const transientHttpStatuses = new Set([408, 425, 500, 502, 503, 504]);
 
-async function authenticatedHeaders() {
-  if (!hasSupabaseConfig) throw new PermanentUploadError('Sign in before processing photos.');
-  const { data, error } = await supabase.auth.getSession();
-  if (error || !data.session?.access_token) throw new PermanentUploadError('Your session expired. Sign in before processing photos.');
-  return { Authorization: `Bearer ${data.session.access_token}` };
-}
 
 function assertProductionApiUrlIsSafe() {
   if (__DEV__ || !configuredFaceBlurApiUrl) return;
@@ -56,7 +48,7 @@ type AnonymizationJob = {
 };
 
 class RecoverableJobError extends Error {}
-class PermanentUploadError extends Error {}
+class PermanentUploadError extends UserFacingError {}
 
 function getContentType(extension: string) {
   return extension === 'png' ? 'image/png' : 'image/jpeg';
@@ -68,9 +60,7 @@ function getErrorMessage(error: unknown) {
 }
 
 function privacySafeErrorMessage(error: unknown) {
-  const message = getErrorMessage(error);
-  if (/original photo (?:was not|wasn't) uploaded/i.test(message)) return message;
-  return `${message} The original photo was not uploaded.`;
+  return userErrorMessage(error, 'We could not prepare your photo safely. Please try again shortly. Your original photo was not uploaded.');
 }
 
 function getCacheRoot() {
@@ -92,17 +82,13 @@ async function cleanupTemporaryFile(uri: string) {
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = 10_000) {
-  if (url.startsWith(`${configuredFaceBlurApiUrl}/api/`)) {
-    init = { ...init, headers: { ...init.headers, ...await authenticatedHeaders() } };
-  }
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    return await fetch(url, { ...init, signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
+  const send = async (headers?: { Authorization: string }) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try { return await fetch(url, { ...init, headers: headers ? { ...init.headers, ...headers } : init.headers, signal: controller.signal }); }
+    finally { clearTimeout(timeout); }
+  };
+  return url.startsWith(configuredFaceBlurApiUrl + '/api/') ? withMediaSession(send) : send();
 }
 
 function wait(durationMs: number) {
@@ -111,7 +97,7 @@ function wait(durationMs: number) {
 
 async function assertFaceBlurServiceReachable() {
   if (!configuredFaceBlurApiUrl) {
-    throw new Error('Face anonymization service is not configured. The original photo was not uploaded.');
+    throw new UserFacingError('Photo uploads are temporarily unavailable. Please try again shortly.');
   }
 
   assertProductionApiUrlIsSafe();
@@ -160,7 +146,7 @@ async function prepareImageForUpload(uri: string) {
   const preparedUri = cacheFileUri('cebspot-privacy-source', 'jpg');
 
   try {
-    const compressedUri = await compressImageForPrivacyUpload(uri);
+    const compressedUri = await compressPhoto(uri, mediaLimits.privacyInput);
     await FileSystem.copyAsync({ from: compressedUri, to: preparedUri });
     if (compressedUri !== uri) {
       await cleanupTemporaryFile(compressedUri);
@@ -176,63 +162,6 @@ async function prepareImageForUpload(uri: string) {
   }
 }
 
-async function getFileSize(uri: string) {
-  const info = await FileSystem.getInfoAsync(uri, { size: true });
-  return info.exists && typeof info.size === 'number' ? info.size : null;
-}
-
-async function compressImageForPrivacyUpload(uri: string) {
-  let workingUri = uri;
-  let temporaryInput: string | null = null;
-
-  try {
-    const firstPass = await ImageManipulator.manipulateAsync(
-      uri,
-      [],
-      { compress: compressionLevels[0], format: ImageManipulator.SaveFormat.JPEG }
-    );
-    workingUri = firstPass.uri;
-    temporaryInput = firstPass.uri;
-
-    const longestSide = Math.max(firstPass.width, firstPass.height);
-    if (longestSide > maxPrivacyUploadDimension) {
-      const resize =
-        firstPass.width >= firstPass.height
-          ? { width: maxPrivacyUploadDimension }
-          : { height: maxPrivacyUploadDimension };
-      const resized = await ImageManipulator.manipulateAsync(
-        workingUri,
-        [{ resize }],
-        { compress: compressionLevels[0], format: ImageManipulator.SaveFormat.JPEG }
-      );
-      await cleanupTemporaryFile(workingUri);
-      workingUri = resized.uri;
-      temporaryInput = resized.uri;
-    }
-
-    for (const compression of compressionLevels.slice(1)) {
-      const size = await getFileSize(workingUri);
-      if (size !== null && size <= targetPrivacyUploadBytes) break;
-
-      const recompressed = await ImageManipulator.manipulateAsync(
-        workingUri,
-        [],
-        { compress: compression, format: ImageManipulator.SaveFormat.JPEG }
-      );
-      await cleanupTemporaryFile(workingUri);
-      workingUri = recompressed.uri;
-      temporaryInput = recompressed.uri;
-    }
-
-    return workingUri;
-  } catch (error) {
-    if (temporaryInput) {
-      await cleanupTemporaryFile(temporaryInput);
-    }
-    throw error;
-  }
-}
-
 function parseJobResponse(body: string): AnonymizationJob {
   try {
     return JSON.parse(body) as AnonymizationJob;
@@ -241,38 +170,29 @@ function parseJobResponse(body: string): AnonymizationJob {
   }
 }
 
-async function responseErrorMessage(response: Response) {
-  try {
-    const body = (await response.json()) as AnonymizationJob;
-    const detail = body.detail || body.error || body.message;
-    if (detail) return `${detail} (HTTP ${response.status})`;
-  } catch {
-    // Fall through to a safe generic message.
-  }
-  return `The face anonymizer returned HTTP ${response.status} without an explanation.`;
+function mediaHttpMessage(status: number) {
+  if (status === 401) return 'Please sign in again, then try uploading again.';
+  if (status === 403) return 'Your account is not ready to upload. Please reopen CebSpot and try again.';
+  if (status === 413 || status === 415) return 'This photo could not be opened. Please choose another photo.';
+  if (status === 429) return 'Photo limit reached. Please wait a moment, then try again.';
+  return 'Photo processing is temporarily unavailable. Please try again shortly. Your original photo was not uploaded.';
 }
 
-function uploadErrorMessage(body: string, status: number) {
-  try {
-    const parsed = parseJobResponse(body);
-    return `${parsed.detail || parsed.error || parsed.message || 'The face anonymizer rejected the request.'} (HTTP ${status})`;
-  } catch {
-    return `The face anonymizer returned HTTP ${status} without a readable explanation.`;
-  }
-}
+async function responseErrorMessage(response: Response) { return mediaHttpMessage(response.status); }
+function uploadErrorMessage(_body: string, status: number) { return mediaHttpMessage(status); }
 
 async function createAnonymizationJob(preparedUri: string, contentType: string) {
   let lastError: unknown = new Error('The face anonymizer did not accept the upload.');
 
   for (let attempt = 1; attempt <= jobCreateAttempts; attempt += 1) {
     try {
-      const upload = await FileSystem.uploadAsync(`${configuredFaceBlurApiUrl}/api/anonymize-jobs`, preparedUri, {
+      const upload = await withMediaSession((headers) => FileSystem.uploadAsync(`${configuredFaceBlurApiUrl}/api/anonymize-jobs`, preparedUri, {
         fieldName: 'image',
         httpMethod: 'POST',
         mimeType: contentType,
         uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-        headers: await authenticatedHeaders(),
-      });
+        headers,
+      }));
 
       if (upload.status >= 200 && upload.status < 300) {
         const job = parseJobResponse(upload.body);
@@ -287,7 +207,7 @@ async function createAnonymizationJob(preparedUri: string, contentType: string) 
       });
       if (!transientHttpStatuses.has(upload.status)) throw new PermanentUploadError(getErrorMessage(lastError));
     } catch (error) {
-      if (error instanceof PermanentUploadError) throw error;
+      if (error instanceof PermanentUploadError || error instanceof UserFacingError) throw error;
       lastError = error;
       if (attempt >= jobCreateAttempts) break;
     }
@@ -325,7 +245,7 @@ async function processBrowserImage(uri: string) {
     { method: 'GET' },
     jobRequestTimeoutMs,
   );
-  if (!response.ok) throw new Error(await responseErrorMessage(response));
+  if (!response.ok) throw new UserFacingError(await responseErrorMessage(response));
   const output = await response.blob();
   const outputUri = URL.createObjectURL(output);
   console.info('Photo privacy processing complete', {
@@ -348,6 +268,7 @@ async function waitForAnonymizationJob(jobId: string) {
         jobRequestTimeoutMs
       );
     } catch (error) {
+      if (error instanceof UserFacingError) throw error;
       lastTemporaryError = getErrorMessage(error);
       await wait(jobPollIntervalMs);
       continue;
@@ -383,12 +304,13 @@ async function downloadAnonymizedImage(jobId: string, extension: string) {
 
   for (let attempt = 1; attempt <= jobCreateAttempts; attempt += 1) {
     try {
-      const result = await FileSystem.downloadAsync(
+      const result = await withMediaSession((headers) => FileSystem.downloadAsync(
         `${configuredFaceBlurApiUrl}/api/anonymize-jobs/${jobId}/result`,
         outputUri,
-        { headers: await authenticatedHeaders() }
-      );
+        { headers }
+      ));
       if (result.status >= 200 && result.status < 300) return outputUri;
+      await cleanupTemporaryFile(outputUri);
       if (result.status === 404 || result.status === 410) {
         throw new RecoverableJobError(`The anonymization job result expired (HTTP ${result.status}).`);
       }
@@ -396,7 +318,7 @@ async function downloadAnonymizedImage(jobId: string, extension: string) {
       lastError = new Error(`Unable to download the privacy-protected photo (HTTP ${result.status}).`);
       if (!transientHttpStatuses.has(result.status)) throw new PermanentUploadError(getErrorMessage(lastError));
     } catch (error) {
-      if (error instanceof RecoverableJobError || error instanceof PermanentUploadError) throw error;
+      if (error instanceof RecoverableJobError || error instanceof UserFacingError) { await cleanupTemporaryFile(outputUri); throw error; }
       lastError = error;
       if (attempt >= jobCreateAttempts) break;
     }
@@ -444,7 +366,8 @@ export const imageAnonymizationService = {
   },
 
   async checkAvailability() {
-    await assertFaceBlurServiceReachable();
+    try { await assertFaceBlurServiceReachable(); }
+    catch (error) { throw new UserFacingError(privacySafeErrorMessage(error)); }
   },
 
   async anonymizeImage(uri: string): Promise<string> {
@@ -454,13 +377,21 @@ export const imageAnonymizationService = {
 
     if (Platform.OS === 'web' && /^(blob|data):/i.test(uri)) {
       try {
-        return await processBrowserImage(uri);
+        const prepared = await compressPhoto(uri, mediaLimits.privacyInput);
+        let processed = prepared;
+        try {
+          processed = await processBrowserImage(prepared);
+          return await compressPhoto(processed);
+        } finally {
+          await cleanupMedia(prepared, uri);
+          await cleanupMedia(processed, uri);
+        }
       } catch (error) {
         console.warn('Browser face anonymization failed', {
           url: configuredFaceBlurApiUrl,
           error: getErrorMessage(error),
         });
-        throw new Error(privacySafeErrorMessage(error));
+        throw new UserFacingError(privacySafeErrorMessage(error));
       }
     }
     if (!isLocalFileUri(uri)) {
@@ -477,13 +408,14 @@ export const imageAnonymizationService = {
         facesDetected: Number(completedJob.faces_detected ?? 0),
         processingTimeMs: Number(completedJob.processing_time_ms ?? 0),
       });
-      return outputUri;
+      try { return await compressPhoto(outputUri); }
+      finally { await cleanupTemporaryFile(outputUri); }
     } catch (error) {
       console.warn('Face anonymization job failed', {
         url: configuredFaceBlurApiUrl,
         error: getErrorMessage(error),
       });
-      throw new Error(privacySafeErrorMessage(error));
+      throw new UserFacingError(privacySafeErrorMessage(error));
     } finally {
       await cleanupTemporaryFile(preparedUri);
     }

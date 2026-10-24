@@ -9,6 +9,7 @@ function documents(options={}) {
     functions:{async invoke(name,input){calls.push({name,input});return {data:{path:options.path??`${ids.a}/${draft}/40000000-0000-4000-8000-000000000002.png`},error:null}}},
     storage:{from(){return {async createSignedUrl(path,seconds){calls.push({path,seconds});return {data:{signedUrl:'https://fixture.invalid/signed'},error:null}}}}}};
   const service=load('src/services/ownerVerificationDocumentService.ts',{
+    './mediaCompression':{mediaLimits:{document:{}},async compressPhoto(uri){return uri+'-compressed.jpg'},async cleanupMedia(){}},
     'expo-file-system':{EncodingType:{Base64:'base64'},async getInfoAsync(){return {exists:true,size:options.size??9}},async readAsStringAsync(){reads++;return 'iVBORw0KGgoA'}},
     '../lib/supabase':{hasSupabaseConfig:true,supabase:client},
   }).ownerVerificationDocumentService;
@@ -30,7 +31,7 @@ function face(options={}) {
   const calls=[];let uploads=0;
   const service=load('src/services/imageAnonymization.ts',{
     '../lib/supabase':{hasSupabaseConfig:true,supabase:{auth:{async getSession(){return {data:{session:options.anonymous?null:{access_token:'synthetic-session'}},error:null}}}}},
-    'react-native':{Platform:{OS:'android'}},
+    'react-native':{Platform:{OS:'android'},Image:{getSize(uri,cb){cb(32,32)}}},
     'expo-image-manipulator':{SaveFormat:{JPEG:'jpeg'},async manipulateAsync(){return {uri:'file:///compressed.jpg',width:32,height:32}}},
     'expo-file-system':{cacheDirectory:'file:///cache/',EncodingType:{Base64:'base64'},FileSystemUploadType:{MULTIPART:1},
       async getInfoAsync(){return {exists:true,size:20}},async deleteAsync(){},async copyAsync(){},

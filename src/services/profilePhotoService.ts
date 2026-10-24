@@ -1,11 +1,9 @@
-import { base64ToArrayBuffer } from '../utils/base64';
-import * as FileSystem from 'expo-file-system';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { readMediaBody } from '../utils/mediaFile';
+import { compressPhoto, cleanupMedia, mediaLimits } from './mediaCompression';
 import { supabase } from '../lib/supabase';
 
 const profilePhotosBucket = 'profile-photos';
 const maximumSourceBytes = 10 * 1024 * 1024;
-const maximumAvatarWidth = 720;
 
 type ProfilePhotoInput = {
   uri: string;
@@ -19,35 +17,23 @@ export const profilePhotoService = {
       throw new Error('Choose an image smaller than 10 MB.');
     }
 
-    const actions: ImageManipulator.Action[] =
-      input.width && input.width > maximumAvatarWidth
-        ? [{ resize: { width: maximumAvatarWidth } }]
-        : [];
-    const processed = await ImageManipulator.manipulateAsync(input.uri, actions, {
-      compress: 0.82,
-      format: ImageManipulator.SaveFormat.JPEG,
-      base64: true,
-    });
+    const processed = await compressPhoto(input.uri, mediaLimits.avatar);
 
     try {
-      if (!processed.base64) throw new Error('The selected profile picture could not be processed.');
-
       const path = `${userId}/avatar.jpg`;
       const { error } = await supabase.storage
         .from(profilePhotosBucket)
-        .upload(path, base64ToArrayBuffer(processed.base64), {
+        .upload(path, await readMediaBody(processed, 'The selected profile picture could not be opened.'), {
           contentType: 'image/jpeg',
           cacheControl: '3600',
           upsert: true,
         });
-      if (error) throw new Error(`Unable to upload profile picture: ${error.message}`);
+      if (error) throw new Error('Your profile picture could not be uploaded. Please try again.');
 
       const { data } = supabase.storage.from(profilePhotosBucket).getPublicUrl(path);
       return `${data.publicUrl}?v=${Date.now()}`;
     } finally {
-      if (processed.uri !== input.uri && processed.uri.startsWith('file:')) {
-        await FileSystem.deleteAsync(processed.uri, { idempotent: true }).catch(() => undefined);
-      }
+      await cleanupMedia(processed, input.uri);
     }
   },
 };

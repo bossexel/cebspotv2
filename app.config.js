@@ -1,5 +1,5 @@
 const appJson = require('./app.json');
-const releaseBuildProfiles = new Set(['preview', 'production']);
+const releaseBuildProfiles = new Set(['preview', 'beta', 'production']);
 const isReleaseBuild = releaseBuildProfiles.has(process.env.EAS_BUILD_PROFILE ?? '');
 const isAdminWeb = process.env.EXPO_PUBLIC_CEBSPOT_TARGET === 'admin-web';
 

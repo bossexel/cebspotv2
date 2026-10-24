@@ -57,17 +57,17 @@ class FaceBlurSettings:
             ).resolve(),
             temp_dir=Path(os.getenv("FACE_BLUR_TEMP_DIR", "./temp")).resolve(),
             max_image_bytes=int(os.getenv("FACE_BLUR_MAX_IMAGE_BYTES", str(10 * 1024 * 1024))),
-            max_image_dimension=int(os.getenv("FACE_BLUR_MAX_IMAGE_DIMENSION", "3072")),
+            max_image_dimension=min(1280, int(os.getenv("FACE_BLUR_MAX_IMAGE_DIMENSION", "1280"))),
             max_source_pixels=int(os.getenv("FACE_BLUR_MAX_SOURCE_PIXELS", "80000000")),
-            min_detection_confidence=float(os.getenv("FACE_DETECTION_MIN_CONFIDENCE", "0.5")),
+            min_detection_confidence=max(0.7, float(os.getenv("FACE_DETECTION_MIN_CONFIDENCE", "0.7"))),
             min_suppression_threshold=float(os.getenv("FACE_DETECTION_MIN_SUPPRESSION", "0.5")),
             tile_size=int(os.getenv("FACE_DETECTION_TILE_SIZE", "768")),
             tile_overlap_ratio=float(os.getenv("FACE_DETECTION_TILE_OVERLAP", "0.25")),
-            max_tiles=int(os.getenv("FACE_DETECTION_MAX_TILES", "64")),
+            max_tiles=min(12, int(os.getenv("FACE_DETECTION_MAX_TILES", "12"))),
             duplicate_iou_threshold=float(os.getenv("FACE_DETECTION_DUPLICATE_IOU", "0.35")),
             face_padding_ratio=float(os.getenv("FACE_PADDING_RATIO", "0.25")),
             blur_kernel_ratio=float(os.getenv("FACE_BLUR_KERNEL_RATIO", "0.65")),
-            jpeg_quality=int(os.getenv("FACE_BLUR_JPEG_QUALITY", "92")),
+            jpeg_quality=min(68, int(os.getenv("FACE_BLUR_JPEG_QUALITY", "68"))),
             allowed_origins=[origin.strip() for origin in origins.split(",") if origin.strip()],
         )
 
@@ -152,7 +152,7 @@ class FaceBlurService:
         extension = SUPPORTED_TYPES[media_type]
         request_id = uuid.uuid4().hex
         source_path = self.settings.temp_dir / f"{request_id}-source{extension}"
-        output_path = self.settings.temp_dir / f"{request_id}-anonymized{extension}"
+        output_path = self.settings.temp_dir / f"{request_id}-anonymized.jpg"
 
         logger.info("image processing started: %s", request_id)
 
@@ -189,7 +189,7 @@ class FaceBlurService:
         extension = SUPPORTED_TYPES[normalized_media_type]
         request_id = uuid.uuid4().hex
         source_path = self.settings.temp_dir / f"{request_id}-source{extension}"
-        output_path = self.settings.temp_dir / f"{request_id}-anonymized{extension}"
+        output_path = self.settings.temp_dir / f"{request_id}-anonymized.jpg"
 
         logger.info("image processing started: %s", request_id)
 
@@ -226,7 +226,7 @@ class FaceBlurService:
         logger.info("image anonymized successfully: %s", request_id)
         return AnonymizedImage(
             output_path=output_path,
-            media_type=media_type,
+            media_type="image/jpeg",
             faces_detected=faces_detected,
             processing_time_ms=processing_time_ms,
             cleanup_paths=[source_path, output_path],
@@ -307,26 +307,8 @@ class FaceBlurService:
         blurred_faces = 0
 
         for box in detections:
-            region = self._expanded_region(
-                x=box.x1,
-                y=box.y1,
-                width=box.x2 - box.x1,
-                height=box.y2 - box.y1,
-                image_width=image_bgr.shape[1],
-                image_height=image_bgr.shape[0],
-            )
-            if region is None:
-                continue
-
-            x1, y1, x2, y2 = region
-            face_region = image_bgr[y1:y2, x1:x2]
-            if face_region.size == 0:
-                continue
-
-            kernel = self._kernel_size(face_region.shape[1], face_region.shape[0])
-            blurred = cv2.GaussianBlur(face_region, (kernel, kernel), sigmaX=max(12, kernel / 2))
-            image_bgr[y1:y2, x1:x2] = blurred
-            blurred_faces += 1
+            if self._blur_head(image_bgr, box):
+                blurred_faces += 1
 
         self._write_output(image_bgr, output_path, media_type)
         return blurred_faces
@@ -351,7 +333,7 @@ class FaceBlurService:
 
         longest_side = max(width, height)
         reduction = 1
-        while reduction < 8 and longest_side / reduction > self.settings.max_image_dimension:
+        while reduction < 8 and longest_side / (reduction * 2) >= self.settings.max_image_dimension:
             reduction *= 2
 
         return {
@@ -460,6 +442,8 @@ class FaceBlurService:
             score = 0.0
             if detection.categories:
                 score = float(detection.categories[0].score or 0.0)
+            if score < self.settings.min_detection_confidence or not self._plausible_face(detection, crop_width, crop_height):
+                continue
             boxes.append(FaceBox(x1=x1, y1=y1, x2=x2, y2=y2, score=score))
 
         return boxes
@@ -554,23 +538,80 @@ class FaceBlurService:
             raw_kernel -= 1
         return max(3, raw_kernel)
 
-    def _write_output(self, image_bgr: np.ndarray, output_path: Path, media_type: str) -> None:
+    @staticmethod
+    def _plausible_face(detection, crop_width: int, crop_height: int) -> bool:
+        """Reject malformed/face-like texture detections using BlazeFace's facial landmarks.
+
+        Eyes, nose and mouth must form a plausible face. Ears are deliberately not
+        required: profiles, head turns and cropped faces still need protection.
+        """
+        import math
+        box = detection.bounding_box
+        if box.width < 8 or box.height < 8 or not 0.45 <= box.width / box.height <= 1.9:
+            return False
+        points = detection.keypoints or []
+        if len(points) < 4:
+            return False
+        xy = [(point.x * crop_width, point.y * crop_height) for point in points[:4]]
+        if any(not math.isfinite(v) for point in xy for v in point):
+            return False
+        if any(not (box.origin_x - box.width * .2 <= x <= box.origin_x + box.width * 1.2
+                    and box.origin_y - box.height * .2 <= y <= box.origin_y + box.height * 1.2) for x, y in xy):
+            return False
+        right, left, nose, mouth = xy
+        eye_distance = math.dist(right, left)
+        if not box.width * .08 <= eye_distance <= box.width * .9:
+            return False
+        eye_mid = ((right[0] + left[0]) / 2, (right[1] + left[1]) / 2)
+        # Distances permit roll/profile poses without insisting on upright eyes.
+        return (math.dist(eye_mid, mouth) >= box.height * .12
+                and math.dist(nose, mouth) <= box.height * .65
+                and math.dist(eye_mid, nose) <= box.height * .75)
+
+    def _blur_head(self, image_bgr, box: FaceBox) -> bool:
         import cv2
+        import numpy as np
+        width, height = box.x2 - box.x1, box.y2 - box.y1
+        if width < 3 or height < 3:
+            return False
+        # Extra room above the facial box covers forehead/hair; the oval keeps
+        # corners (food, facade and scenery) outside the mask untouched.
+        pad = self.settings.face_padding_ratio
+        left, right = box.x1 - width * pad, box.x2 + width * pad
+        top, bottom = box.y1 - height * (pad + .3), box.y2 + height * .2
+        image_height, image_width = image_bgr.shape[:2]
+        x1, y1 = max(0, int(left)), max(0, int(top))
+        x2, y2 = min(image_width, int(right + 1)), min(image_height, int(bottom + 1))
+        if x2 <= x1 or y2 <= y1:
+            return False
+        region = image_bgr[y1:y2, x1:x2]
+        yy, xx = np.ogrid[y1:y2, x1:x2]
+        radius = ((xx - (left + right) / 2) / ((right - left) / 2)) ** 2 + ((yy - (top + bottom) / 2) / ((bottom - top) / 2)) ** 2
+        # Feather inward only: pixels outside the ellipse are never altered.
+        alpha = np.clip((1.0 - radius) / .08, 0, 1).astype(np.float32)[..., None]
+        tiny = cv2.resize(region, (8, 8), interpolation=cv2.INTER_AREA)
+        blurred = cv2.resize(cv2.GaussianBlur(tiny, (7, 7), 3), (region.shape[1], region.shape[0]), interpolation=cv2.INTER_LINEAR)
+        image_bgr[y1:y2, x1:x2] = np.rint(region * (1 - alpha) + blurred * alpha).astype(np.uint8)
+        return True
 
-        if media_type == "image/png":
-            extension = ".png"
-            params = [cv2.IMWRITE_PNG_COMPRESSION, 3]
-        else:
-            extension = ".jpg"
-            params = [cv2.IMWRITE_JPEG_QUALITY, self.settings.jpeg_quality]
-
-        success, encoded = cv2.imencode(extension, image_bgr, params)
-        if not success:
-            raise RuntimeError("Unable to encode anonymized image.")
-
-        encoded.tofile(str(output_path))
-        if not output_path.is_file() or output_path.stat().st_size == 0:
-            raise RuntimeError("Anonymized image output was empty.")
+    def _write_output(self, image_bgr, output_path: Path, media_type: str) -> None:
+        import cv2
+        # All public photos become bounded JPEGs, including PNG input. Strip
+        # metadata and enforce a byte ceiling rather than trusting a quality value.
+        quality = self.settings.jpeg_quality
+        for attempt in range(6):
+            success, encoded = cv2.imencode('.jpg', image_bgr, [cv2.IMWRITE_JPEG_QUALITY, quality, cv2.IMWRITE_JPEG_OPTIMIZE, 1])
+            if not success:
+                raise RuntimeError("Unable to encode anonymized image.")
+            if encoded.size <= 320 * 1024:
+                encoded.tofile(str(output_path))
+                return
+            if quality > 44:
+                quality -= 12
+            else:
+                height, width = image_bgr.shape[:2]
+                image_bgr = cv2.resize(image_bgr, (max(1, int(width * .8)), max(1, int(height * .8))), interpolation=cv2.INTER_AREA)
+        raise RuntimeError("Anonymized image could not meet the upload limit.")
 
     def _cleanup_quietly(self, path: Path) -> None:
         try:

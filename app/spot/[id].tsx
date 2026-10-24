@@ -1,3 +1,4 @@
+import { userErrorMessage } from '../../src/utils/userError';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -509,9 +510,7 @@ export default function SpotDetailsScreen() {
       setReviewStatusOverlay(null);
       Alert.alert(
         'Review not posted',
-        error?.message ?? (reviewMedia.length
-          ? 'We could not privacy-process the selected photo. The original photo was not uploaded.'
-          : 'We could not save your review. Please try again.'),
+        userErrorMessage(error, 'We could not save your review. Please try again.'),
       );
     } finally {
       setSubmittingReview(false);
@@ -547,7 +546,7 @@ export default function SpotDetailsScreen() {
       setReviewReplyTarget({ review: reviewReplyTarget.review });
     } catch (error: any) {
       console.error('Create review reply error:', error);
-      Alert.alert('Reply failed', error.message ?? 'Please try again.');
+      Alert.alert('Reply failed', userErrorMessage(error, 'We could not save this. Please try again.'));
     } finally {
       setSubmittingReviewReply(false);
     }
@@ -574,7 +573,7 @@ export default function SpotDetailsScreen() {
         })
       );
     } catch (error: any) {
-      Alert.alert('Unable to mark helpful', error.message ?? 'Please try again.');
+      Alert.alert('Unable to mark helpful', userErrorMessage(error, 'We could not save this. Please try again.'));
     }
   }
 
@@ -701,7 +700,7 @@ export default function SpotDetailsScreen() {
       setReportSubmitted(true);
     } catch (error: any) {
       console.error('Report review error:', error);
-      Alert.alert('Report failed', error?.message ?? 'Please try again.');
+      Alert.alert('Report failed', userErrorMessage(error, 'Please try again.'));
     } finally {
       setSubmittingReport(false);
     }
@@ -745,7 +744,7 @@ export default function SpotDetailsScreen() {
       });
       setEditSuggestionSubmitted(true);
     } catch (error: any) {
-      Alert.alert('Suggestion failed', error?.message ?? 'Please try again.');
+      Alert.alert('Suggestion failed', userErrorMessage(error, 'Please try again.'));
     } finally {
       setSubmittingEditSuggestion(false);
     }

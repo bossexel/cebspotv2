@@ -542,10 +542,14 @@ export default function OwnerDashboardScreen() {
         ownerSupabase,
       );
       setSpot(updatedSpot);
-      if (updatedSpot.id === testCebspotClubSpotId) {
+      if (updatedSpot.id === testCebspotClubSpotId && 'reservation_inventory_verified_at' in updatedSpot) {
         const confirmed = await spotService.confirmReservationInventory(updatedSpot, ownerSupabase);
         setSpot(confirmed);
         Alert.alert('Updated', 'Your actual table inventory is confirmed and reservations are enabled.');
+      } else if (!('reservation_inventory_verified_at' in updatedSpot)) {
+        Alert.alert('Updated', updatedSpot.is_reservable
+          ? 'Your table and pricing settings are saved. Reservations remain enabled.'
+          : 'Your table and pricing settings are saved. This venue is not accepting reservations.');
       } else {
         Alert.alert('Updated', 'Your settings are saved. This venue remains discovery-only.');
       }

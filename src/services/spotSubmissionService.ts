@@ -1,3 +1,4 @@
+import { compressVideo } from './mediaCompression';
 import { isLocalFileUri, isBrowserBlobUri, readMediaBody } from '../utils/mediaFile';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import type {
@@ -60,27 +61,6 @@ function toDatabaseSubmission(submission: NewSpotSubmissionUpload): NewSpotSubmi
   return databaseSubmission;
 }
 
-function getMediaExtension(asset: SpotSubmissionMediaAsset, uri: string) {
-  const fileNameExtension = asset.fileName?.split('.').pop();
-  const cleanUri = uri.split('?')[0] ?? '';
-  const match = cleanUri.match(/\.([a-zA-Z0-9]+)$/);
-  const mimeExtension = asset.mimeType?.split('/').pop();
-  const fallback = asset.type === 'video' ? 'mp4' : 'jpg';
-  const rawExtension = fileNameExtension || match?.[1] || mimeExtension || fallback;
-  const extension = rawExtension.toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (extension === 'jpeg') return 'jpg';
-  if (extension === 'quicktime') return 'mov';
-  return extension || fallback;
-}
-
-function getMediaContentType(asset: SpotSubmissionMediaAsset, extension: string) {
-  if (asset.mimeType) return asset.mimeType;
-  if (asset.type === 'image') return `image/${extension === 'jpg' ? 'jpeg' : extension}`;
-  if (extension === 'mov') return 'video/quicktime';
-  if (extension === 'webm') return 'video/webm';
-  return 'video/mp4';
-}
-
 async function uploadMedia(
   asset: SpotSubmissionMediaAsset,
   submitterId: string,
@@ -98,26 +78,26 @@ async function uploadMedia(
     throw new Error('This photo source cannot be privacy processed, so it was not uploaded.');
   }
   if (asset.type === 'video' && !localFile) {
-    await reportProgress(onProgress, progressAt(1), uploadProgressMessage);
-    return asset.uri;
+    throw new Error('Select a video saved on your phone.');
   }
 
   await reportProgress(onProgress, progressAt(0), uploadProgressMessage);
 
   const processedUri = asset.type === 'image'
     ? await imageAnonymizationService.anonymizeImage(asset.uri)
-    : asset.uri;
+    : await compressVideo(asset.uri);
 
   try {
     await reportProgress(onProgress, progressAt(0.65), uploadProgressMessage);
     const wasProcessed = asset.type === 'image';
-    const extension = wasProcessed ? 'jpg' : getMediaExtension(asset, processedUri);
+    const extension = wasProcessed ? 'jpg' : 'mp4';
     const fileBody = await readMediaBody(processedUri, 'Unable to read the privacy-processed photo.');
     const path = `${submitterId}/${Date.now()}-${index}.${extension}`;
-    const contentType = wasProcessed ? 'image/jpeg' : getMediaContentType(asset, extension);
+    const contentType = wasProcessed ? 'image/jpeg' : 'video/mp4';
     const { error } = await supabase.storage.from(spotImagesBucket).upload(path, fileBody, {
       contentType,
       upsert: false,
+      cacheControl: '31536000',
     });
     if (error) {
       throw new Error(`Unable to upload selected ${mediaLabel} ${index + 1}: ${error.message}`);

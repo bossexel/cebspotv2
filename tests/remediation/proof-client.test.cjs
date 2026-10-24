@@ -8,6 +8,7 @@ function fixture(options={}) {
   const path=`${ids.a}/${reservation}/40000000-0000-4000-8000-000000000002.png`;
   const client={functions:{async invoke(name,input){calls.push({name,input});return {data:{path:options.path??path},error:options.error??null}}},storage:{from(){return {async createSignedUrl(name,seconds){calls.push({name,seconds});return {data:{signedUrl:'https://fixture.invalid/signed'},error:null}}}}}};
   const {paymentProofService}=load('src/services/paymentProofService.ts',{
+    './mediaCompression':{mediaLimits:{document:{}},async compressPhoto(uri){return uri+'-compressed.jpg'},async cleanupMedia(){}},
     'expo-file-system':{EncodingType:{Base64:'base64'},async getInfoAsync(){return {exists:true,size:options.size??9}},async readAsStringAsync(){reads++;return 'iVBORw0KGgoA'}},
     '../lib/supabase':{supabase:client,hasSupabaseConfig:true},
   });
@@ -16,7 +17,7 @@ function fixture(options={}) {
 test('Android proof client sends bytes to authenticated request-bound endpoint',async()=>{
   const f=fixture();assert.equal(await f.service.uploadProof('file:///synthetic.png',ids.a,reservation),f.path);
   assert.equal(f.calls[0].name,`private-upload?kind=reservation_proof&resourceId=${reservation}`);
-  assert.equal(f.calls[0].input.headers['Content-Type'],'image/png');assert.equal(f.calls[0].input.body.byteLength,9);
+  assert.equal(f.calls[0].input.headers['Content-Type'],'image/jpeg');assert.equal(f.calls[0].input.body.byteLength,9);
 });
 test('external URLs, unsupported MIME and oversized local files never enter an upload',async()=>{
   for(const [uri,size] of [['https://fixture.invalid/proof.png',9],['file:///synthetic.svg',9],['file:///synthetic.png',5242881]]) {

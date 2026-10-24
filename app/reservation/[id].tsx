@@ -32,12 +32,12 @@ import { fontSize, radius, shadow, spacing } from '../../src/constants/design';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useTheme } from '../../src/hooks/useTheme';
 import { reservationService } from '../../src/services/reservationService';
+import { getReservationTableAvailability } from '../../src/services/reservationTableService';
 import { spotService } from '../../src/services/spotService';
 import type { ReservationStatus, Spot } from '../../src/types';
 import {
   calculateReservationFee,
   checkReservationAvailability,
-  getReservedTableIds,
   getSpotReservationType,
   isPaymentRequired,
 } from '../../src/utils/reservations';
@@ -925,11 +925,6 @@ export default function ReservationScreen() {
   const availabilityRequest = useRef(0);
   const [selectedGroupId, setSelectedGroupId] = useState<GroupSizeId>('table-for-2');
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
-  const [reservedTableIdsBySlot, setReservedTableIdsBySlot] = useState<Record<SlotId, string[]>>({
-    sunset: [],
-    prime: [],
-    late: [],
-  });
   const [loadingTableAvailability, setLoadingTableAvailability] = useState(true);
   const [additionalInfo, setAdditionalInfo] = useState('');
   const [bookingStatus] = useState<ReservationStatus>('pending');
@@ -956,11 +951,11 @@ export default function ReservationScreen() {
         ...table,
         capacity: live?.capacity ?? table.capacity,
         bookingPolicy: live?.bookingPolicy ?? table.bookingPolicy,
-        isReserved: table.isReserved || !live?.onlineAvailable || reservedTableIdsBySlot[key].includes(table.tableId),
+        isReserved: table.isReserved || !live?.onlineAvailable,
       };
     });
     return { sunset: withReservations('sunset'), prime: withReservations('prime'), late: withReservations('late') };
-  }, [liveTableInventory, reservedTableIdsBySlot, liveTablesBySlot]);
+  }, [liveTableInventory, liveTablesBySlot]);
   const selectedGroup = groupSizes.find((group) => group.id === selectedGroupId) ?? groupSizes[1];
   const selectedSlotAvailability = useMemo(
     () => getSlotAvailability(selectedSlotId, selectedGroupId, selectedDate, availabilityInventory, false),
@@ -984,12 +979,8 @@ export default function ReservationScreen() {
     setLoadingTableAvailability(true);
     setAvailabilityError(false);
     try {
-      const [reservedIds, liveTables] = await Promise.all([
-        getReservedTableIds({ spotId: spot.id, reservationDate: selectedDate, slotId: selectedSlotId }),
-        venueTableService.getAvailability(spot.id, selectedDate, selectedSlotId),
-      ]);
+      const liveTables = await getReservationTableAvailability(spot, selectedDate, selectedSlotId);
       if (requestId !== availabilityRequest.current) return;
-      setReservedTableIdsBySlot((current) => ({ ...current, [selectedSlotId]: reservedIds }));
       setLiveTablesBySlot((current) => ({ ...current, [selectedSlotId]: liveTables }));
       setAvailabilityNotice('');
     } catch (error) {
@@ -1000,7 +991,7 @@ export default function ReservationScreen() {
     } finally {
       if (requestId === availabilityRequest.current) setLoadingTableAvailability(false);
     }
-  }, [selectedDate, spot?.id, selectedSlotId, startTime]);
+  }, [selectedDate, spot, selectedSlotId, startTime]);
   const updateStartTime = (time: string) => {
     availabilityRequest.current += 1;
     setLoadingTableAvailability(true);

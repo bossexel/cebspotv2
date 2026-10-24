@@ -1,5 +1,6 @@
 """Bounded per-process admission and killable image workers. Run one replica."""
 import asyncio
+import base64
 import json
 import logging
 import multiprocessing
@@ -24,11 +25,39 @@ class AdmissionError(Exception):
 
 class SupabaseVerifier:
     def __init__(self):
-        self.url = os.getenv('SUPABASE_URL', '').rstrip('/')
-        self.key = os.getenv('SUPABASE_ANON_KEY', '')
+        self.url = os.getenv('SUPABASE_URL', '').strip().rstrip('/')
+        self.key = (os.getenv('SUPABASE_PUBLISHABLE_KEY') or os.getenv('SUPABASE_ANON_KEY', '')).strip()
         if not self.url.startswith('https://') or not self.key:
             raise RuntimeError('Configure SUPABASE_URL and SUPABASE_ANON_KEY on the server.')
         self.slots = threading.BoundedSemaphore(8)
+
+    def _request_json(self, path, token=None):
+        headers = {'apikey': self.key}
+        if token:
+            headers['Authorization'] = 'Bearer ' + token
+        request = Request(self.url + path, headers=headers)
+        try:
+            with urlopen(request, timeout=5) as response:
+                return json.loads(response.read(65536))
+        except HTTPError as error:
+            # The gateway also returns 401 for a wrong API key. That is a server
+            # configuration failure, not an expired customer session.
+            try:
+                detail = json.loads(error.read(8192))
+            except Exception:
+                detail = {}
+            code = str(detail.get('code') or detail.get('error_code') or '')
+            invalid_key = 'api key' in str(detail.get('message', '')).lower() or code in ('invalid_api_key', 'no_api_key')
+            logger.warning('Supabase verification failed: endpoint=%s status=%s code=%s', path.split('?')[0], error.code, code[:80])
+            if path == '/auth/v1/user' and error.code in (401, 403) and not invalid_key:
+                raise AdmissionError(401, 'Please sign in again to upload photos.') from None
+            raise AdmissionError(503, 'Photo uploads are temporarily unavailable. Please try again shortly.') from None
+
+    async def check_configuration(self):
+        try:
+            await asyncio.to_thread(self._request_json, '/auth/v1/settings')
+        except Exception:
+            raise RuntimeError('Face service cannot validate Supabase credentials. Check SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY/SUPABASE_ANON_KEY.') from None
 
     async def __call__(self, token):
         if not self.slots.acquire(blocking=False):
@@ -37,24 +66,28 @@ class SupabaseVerifier:
         return await asyncio.to_thread(self._lookup, token)
 
     def _lookup(self, token):
-        request = Request(self.url + '/auth/v1/user', headers={'apikey': self.key, 'Authorization': 'Bearer ' + token})
         try:
-            with urlopen(request, timeout=5) as response:
-                user = json.loads(response.read(65536))
+            # Issuer is only a routing/configuration check. Supabase still verifies
+            # the signature, expiry and user on every request; never trust decoded claims.
+            try:
+                payload = token.split('.')[1]
+                issuer = json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4))).get('iss')
+            except Exception:
+                issuer = None
+            if issuer and issuer.rstrip('/') != self.url + '/auth/v1':
+                logger.error('Face service and client Supabase projects do not match')
+                raise AdmissionError(503, 'Photo uploads are temporarily unavailable. Please try again shortly.')
+            user = self._request_json('/auth/v1/user', token)
             owner = str(uuid.UUID(user['id']))
-            profile_request = Request(self.url + '/rest/v1/profiles?select=id&id=eq.' + owner,
-                headers={'apikey': self.key, 'Authorization': 'Bearer ' + token})
-            with urlopen(profile_request, timeout=5) as response:
-                profiles = json.loads(response.read(65536))
+            profiles = self._request_json('/rest/v1/profiles?select=id&id=eq.' + owner, token)
             if not profiles or profiles[0].get('id') != owner:
-                raise AdmissionError(401, 'Account unavailable.')
+                raise AdmissionError(403, 'Your account is not ready to upload. Please reopen CebSpot and try again.')
             return owner
         except AdmissionError:
             raise
-        except HTTPError as error:
-            raise AdmissionError(401 if error.code in (401, 403) else 503, 'Session validation unavailable or expired.') from None
         except Exception:
-            raise AdmissionError(503, 'Session validation unavailable. Retry later.') from None
+            logger.warning('Supabase verification unavailable', exc_info=False)
+            raise AdmissionError(503, 'Photo uploads are temporarily unavailable. Please try again shortly.') from None
         finally:
             self.slots.release()
 

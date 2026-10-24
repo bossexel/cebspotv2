@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { userErrorMessage } from '../utils/userError';
 import type { NewSpotSubmissionUpload } from '../types';
 import { imageAnonymizationService } from './imageAnonymization';
 import { spotSubmissionDraftService } from './spotSubmissionDraftService';
@@ -52,7 +53,7 @@ async function initializeJobs() {
               message: 'Submission was interrupted before it finished. Please submit the spot again.',
               updatedAt: now,
             }
-          : job
+          : job.status === 'failed' ? { ...job, message: userErrorMessage(new Error(job.message), 'Your spot could not be submitted. Please reopen your draft and try again.') } : job
       );
       await persistJobs();
     } catch (error) {
@@ -86,11 +87,7 @@ function createJobId() {
 }
 
 function submissionFailureMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : '';
-  if (/anonym|privacy|face/i.test(message)) {
-    return "Privacy processing failed. The original photo wasn't uploaded.";
-  }
-  return message || 'Please open CebSpot and try again.';
+  return userErrorMessage(error, 'Your spot could not be submitted. Please reopen your draft and try again.');
 }
 
 async function processSubmission(jobId: string, submission: NewSpotSubmissionUpload, userName: string) {

@@ -155,7 +155,7 @@ class SecurityTests(unittest.IsolatedAsyncioTestCase):
                 if profiles: self.assertEqual(await verifier('synthetic'),owner)
                 else:
                     with self.assertRaises(AdmissionError) as failure: await verifier('synthetic')
-                    self.assertEqual(failure.exception.status,401)
+                    self.assertEqual(failure.exception.status,403)
                 self.assertEqual(network.call_count,2)
                 self.assertIn('/rest/v1/profiles?',network.call_args[0][0].full_url)
 

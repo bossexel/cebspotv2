@@ -1,3 +1,4 @@
+import { compressPhoto, cleanupMedia, mediaLimits } from './mediaCompression';
 import { readLocalFileAsArrayBuffer } from '../utils/mediaFile';
 import * as FileSystem from 'expo-file-system';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -45,7 +46,7 @@ export const ownerVerificationDocumentService = {
     const uploadedPaths: string[] = [];
     for (const document of documents) {
       const extension = getFileExtension(document);
-      const contentType = getContentType(extension, document.mimeType);
+      let contentType = getContentType(extension, document.mimeType);
       // Verification documents support file/content URIs only, unlike photo uploads.
       if (!/^(file|content):/i.test(document.uri)) throw new Error('Select a local document.');
 
@@ -53,7 +54,11 @@ export const ownerVerificationDocumentService = {
       if (!info.exists || !('size' in info) || info.size < 1 || info.size > maximumDocumentBytes) {
         throw new Error('Each document must be between 1 byte and 5 MiB.');
       }
-      const body = await readLocalFileAsArrayBuffer(document.uri);
+      const prepared = contentType.startsWith('image/') ? await compressPhoto(document.uri, mediaLimits.document) : document.uri;
+      let body: ArrayBuffer;
+      try { body = await readLocalFileAsArrayBuffer(prepared); }
+      finally { await cleanupMedia(prepared, document.uri); }
+      if (contentType.startsWith('image/')) contentType = 'image/jpeg';
       const { data, error } = await supabase.functions.invoke(
         `private-upload?kind=owner_document&resourceId=${encodeURIComponent(requestKey)}`,
         { body, headers: { 'Content-Type': contentType } },

@@ -1,5 +1,7 @@
 # CebSpot audit closure — local verification and external gates
 
+October 24 user walkthrough: [notes and evidence](docs/user-walkthrough-2026-10-24.md) record 22 completed fixture UI observations, 11 actual map browser checks, 30 isolated client regressions and a booking-selection UI check. No Android device was attached; no production interaction, booking/payment submission or app-code change occurred. The review identifies unfinished menu behavior, misleading saved-load failure and location labels, and wording/accessibility improvements. These remain review findings, not resolved issues or new UAT acceptance.
+
 October 16 preview update attempt: user authorized Android preview/test publication. TypeScript and 278 current tests pass (5 skips). Read-only EAS checks confirm preview/runtime 1.0.3, but preview still uses the existing application's backend and face targets without explicit staging identification. Nothing published; backend classification requested to honor the existing no-production boundary. See [publication record](docs/preview-update-2026-10-16.md). This does not change the UAT NO-GO recommendation.
 
 Updated: 2026-10-13 (Asia/Manila).

@@ -83,6 +83,8 @@ def create_app(settings=None, verifier=None, runtime=None, upload_timeout=30):
     async def lifespan(app):
         nonlocal current_verifier
         current_verifier = current_verifier or SupabaseVerifier()
+        if isinstance(current_verifier, SupabaseVerifier):
+            await current_verifier.check_configuration()
         if not 1 <= settings.max_image_bytes <= 10485760:
             raise RuntimeError('Photo byte limit must be between 1 and 10485760.')
         if not settings.short_model_path.is_file() or not settings.full_model_path.is_file():

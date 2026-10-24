@@ -42,6 +42,11 @@ const localUpdates: LocalUpdate[] = [];
 const localComments = new Map<string, LocalUpdateComment[]>();
 const localVotes = new Map<string, SpotVoteType>();
 
+export type FeedSort = 'newest' | 'popular' | 'nearest';
+export type FeedCursor = { createdAt: string; id: string; rank: number | string; snapshotAt: string };
+export type FeedPage = { items: LocalUpdate[]; nextCursor: FeedCursor | null };
+export type FeedChange = { eventType: string; id: string; item?: LocalUpdate };
+
 function isMissingMediaUrlsColumn(error: { message?: string } | null) {
   return /media_urls|schema cache|column/i.test(error?.message ?? '');
 }
@@ -86,6 +91,53 @@ function normalizeComment(row: any): LocalUpdateComment {
 }
 
 export const localUpdateService = {
+  async getLocalUpdatesPage(options: {
+    cursor?: FeedCursor | null; sort?: FeedSort;
+    location?: { latitude: number; longitude: number } | null;
+  } = {}): Promise<FeedPage> {
+    if (!hasSupabaseConfig) throw new Error('Local updates service is not configured.');
+    const pageSize = 12;
+    // The database supplies the initial snapshot; a phone's clock may be wrong.
+    const snapshotAt = options.cursor?.snapshotAt ?? null;
+    const { data, error } = await supabase.rpc('get_local_updates_page', {
+      page_size: pageSize, sort_mode: options.sort ?? 'newest',
+      cursor_created_at: options.cursor?.createdAt ?? null, cursor_id: options.cursor?.id ?? null,
+      cursor_rank: options.cursor?.rank ?? null,
+      user_latitude: options.location?.latitude ?? null, user_longitude: options.location?.longitude ?? null,
+      snapshot_at: snapshotAt,
+    });
+    if (error) throw error;
+    const rows = data ?? [];
+    const items = rows.slice(0, pageSize).map(normalizeLocalUpdate);
+    const last = rows[pageSize - 1];
+    return { items, nextCursor: rows.length > pageSize && last ? {
+      createdAt: last.created_at, id: last.id, rank: last.feed_rank, snapshotAt: last.feed_snapshot_at,
+    } : null };
+  },
+
+  subscribeToFeedChanges(callback: (changes: FeedChange[]) => void, onError: () => void, onConnected?: () => void) {
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const pending = new Map<string, FeedChange>();
+    const channel = supabase.channel(`activity-pages-${Date.now()}-${Math.random()}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'local_updates' }, (payload) => {
+        if (!active) return;
+        const row = (payload.eventType === 'DELETE' ? payload.old : payload.new) as any;
+        if (!row?.id) return;
+        pending.set(row.id, { eventType: payload.eventType, id: row.id,
+          item: payload.eventType === 'DELETE' ? undefined : normalizeLocalUpdate(row) });
+        if (!timer) timer = setTimeout(() => {
+          timer = undefined;
+          if (active) callback([...pending.values()]);
+          pending.clear();
+        }, 500);
+      }).subscribe((status) => {
+        if (active && (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')) onError();
+        if (active && status === 'SUBSCRIBED') onConnected?.();
+      });
+    return () => { active = false; clearTimeout(timer); pending.clear(); void supabase.removeChannel(channel); };
+  },
+
   async getLocalUpdates(limit = 20): Promise<LocalUpdate[]> {
     if (!hasSupabaseConfig) throw new Error('Local updates service is not configured.');
 

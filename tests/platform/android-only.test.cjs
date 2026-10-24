@@ -7,6 +7,11 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '../..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
+test('Metro excludes generated Codex artifacts from the Android watch graph', () => {
+  const metroConfig = read('metro.config.js');
+  assert.match(metroConfig, /\\\\\.codex-tmp/);
+});
+
 for (const platform of ['web', 'ios']) {
   test(`${platform} cannot initialize app routing or native services`, () => {
     const imports = [];

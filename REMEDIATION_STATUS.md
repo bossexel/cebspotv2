@@ -1,5 +1,7 @@
 # CebSpot remediation status
 
+October 24 user-perspective review: actual screen components were exercised with synthetic adapters (22 observation steps, no final runtime errors); real map runtime 11 passed, focused client regressions 30 passed, and booking table selection/disabled walk-in UI passed. No device was connected and no hosted writes occurred. New reproducible UX findings include an inert Activity menu, Saved Spots treating load failure as empty, and misleading location/presence labels. No app fixes or UAT approval are claimed. See [user walkthrough and remarks](docs/user-walkthrough-2026-10-24.md).
+
 Latest publication check: **2026-10-16**. Android preview update requested; not published yet. Current TypeScript passes and `npm test` has 278 passed / 0 failed / 5 skipped. EAS preview is reachable at runtime 1.0.3, but points to the same backend/face targets as the existing app, with no explicit staging identity. Publication is held at the previously approved no-production boundary pending target classification. See [preview publication record](docs/preview-update-2026-10-16.md) and `tests/remediation/evidence/preview-publish-gate-2026-10-16.json`. The older readiness results below remain historical; no new deployed acceptance is claimed.
 
 Updated: 2026-10-13 (Asia/Manila). Branch: `audit-remediation-2026-10-12`.

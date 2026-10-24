@@ -172,6 +172,32 @@ test('admin members are paged from the full profiles table instead of the 12-row
   assert.doesNotMatch(sql, /from public\.profiles[\s\S]{0,100}limit 12/i);
 });
 
+test('Admin Updates supports protected CRUD and a published-only user feed', () => {
+  const migration = read('supabase/migrations/20261022000200_admin_updates.sql');
+  const service = read('src/services/adminUpdateService.ts');
+  const adminScreen = read('app/admin.tsx');
+  const userScreen = read('app/index.tsx');
+
+  assert.match(migration, /create table if not exists public\.admin_updates/i);
+  assert.match(migration, /admin_updates_published_read[\s\S]*is_published = true/i);
+  for (const operation of ['insert', 'update', 'delete']) {
+    assert.match(
+      migration,
+      new RegExp(`admin_updates_admin_${operation}[\\s\\S]*public\\.is_current_user_admin\\(\\)`, 'i'),
+      operation,
+    );
+  }
+  assert.match(service, /createAdminUpdate/);
+  assert.match(service, /editAdminUpdate/);
+  assert.match(service, /deleteAdminUpdate/);
+  assert.match(service, /getPublishedAdminUpdates/);
+  assert.match(adminScreen, /accessibilityLabel="Open Admin Updates"/);
+  assert.match(adminScreen, /function AdminUpdatesModal/);
+  assert.match(adminScreen, /Only published updates are visible to users/);
+  assert.match(userScreen, />Admin Updates<\/Text>/);
+  assert.match(userScreen, /subscribeToPublishedAdminUpdates/);
+});
+
 test('admin screen exposes live moderation and owner-review handlers', () => {
   const screen = read('app/admin.tsx');
 

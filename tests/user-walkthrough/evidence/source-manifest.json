@@ -1,0 +1,67 @@
+{
+  "kind": "current-working-tree-user-screen-review",
+  "head": "607624ee0423e2316a7ebb8d7d42b24f06549f2b",
+  "sources": [
+    {
+      "file": "app/login.tsx",
+      "sha256": "8311e9cd8f6b07f3d3f8b5b36a750bf263201d07af804a2ba5baa80720df511e"
+    },
+    {
+      "file": "app/index.tsx",
+      "sha256": "e0211aba674654a2a5f2f3e2e4b473726390b9096672faa2f33137eeaf644736"
+    },
+    {
+      "file": "app/spot/[id].tsx",
+      "sha256": "e7d446d141c118e2ba1ad1a9e85a27783c6c547753440733614fa76e26351607"
+    },
+    {
+      "file": "app/reservation/[id].tsx",
+      "sha256": "12047c281b4c31d22d6d1c378394fa57112e88aeef6be216628d9e778c0cb284"
+    },
+    {
+      "file": "app/activity.tsx",
+      "sha256": "3e812f617a25eee696a71453322e1f62f95ae2c92f4d30572edad945bd265b3c"
+    },
+    {
+      "file": "app/circle.tsx",
+      "sha256": "5b8379209dc7fcc2444e51052657b0297e9e5e213cbb20a0374ab733cbf22358"
+    },
+    {
+      "file": "app/profile.tsx",
+      "sha256": "cd28cb6f6e94bde9ec5764ae47898324b7f957277996f854a2429f07eae80c55"
+    },
+    {
+      "file": "app/saved.tsx",
+      "sha256": "44aa7f54657ded455a0ee00e8ab0b67b0bf3e12e2038dd47c5469dbcd8ccb7cd"
+    },
+    {
+      "file": "app/submit-spot.tsx",
+      "sha256": "ad595b4dd69ccb921e9e3780c6478fcddb0e0413155e00cbde1e56482e646812"
+    },
+    {
+      "file": "app/privacy.tsx",
+      "sha256": "61e5eb2eed2093195d07c4548a2d804e9742055532fd385a1a1ed2dd8986b992"
+    },
+    {
+      "file": "app/account-deletion.tsx",
+      "sha256": "cbbfc54798a1f6dfbb81645daa9e3866127c088900742e6548f45a8c834ed2af"
+    },
+    {
+      "file": "src/components/CirclePrivacyControls.tsx",
+      "sha256": "f29f28dd17d49f5732870d34ce9b14c42286e9aa062ed644261eb0c0f25acf6e"
+    },
+    {
+      "file": "src/components/GuestTableChoices.tsx",
+      "sha256": "6b4dcb8acf13b64440529c290ced6843af436f95963b346238114f3c80e50150"
+    },
+    {
+      "file": "tests/user-walkthrough/browser.cjs",
+      "sha256": "97e4c9ed0480cfb485eb0c08ac3f97617bf00b96665405b33c0b4df2216734fb"
+    },
+    {
+      "file": "tests/user-walkthrough/booking.cjs",
+      "sha256": "70fb30021053d4e2039ef76351f6b1fe13f3b2ae5d06f4dfd89a42b2252ddf44"
+    }
+  ],
+  "limitation": "Synthetic screen adapters; current user edits preserved; not a deployed binary or native-device acceptance."
+}

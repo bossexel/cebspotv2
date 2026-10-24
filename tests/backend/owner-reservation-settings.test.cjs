@@ -100,6 +100,7 @@ test('price and table inventory publish together without introducing a duration'
   assert.equal(api.updates[0].gcash_amount, 250);
   assert.equal(api.updates[0].reservation_duration_minutes, undefined);
   assert.equal(api.updates[0].table_inventory, inventory);
+  assert.equal(Object.hasOwn(api.updates[0], 'is_reservable'), false);
   assert.equal(saved.reservation_fee, 250);
 });
 

@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { getPrototypeRoleForEmail } from '../constants/authRoles';
 import { clearSupabaseAuthStorage, hasSupabaseConfig, supabase, supabaseAuthStorageKeys } from '../lib/supabase';
 import { profileService } from '../services/profileService';
@@ -170,6 +170,16 @@ async function hasActivePasswordRecoveryMarker() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    if (Platform.OS === 'web' || !hasSupabaseConfig) return;
+    const syncRefresh = (state: string) => {
+      if (state === 'active') void supabase.auth.startAutoRefresh();
+      else void supabase.auth.stopAutoRefresh();
+    };
+    syncRefresh(AppState.currentState);
+    const subscription = AppState.addEventListener('change', syncRefresh);
+    return () => { subscription.remove(); void supabase.auth.stopAutoRefresh(); };
+  }, []);
   const [session, setSession] = useState<Session | null>(null);
   const [demoUser, setDemoUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);

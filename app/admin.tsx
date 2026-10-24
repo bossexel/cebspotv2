@@ -53,6 +53,7 @@ import {
   Mail,
   Map,
   MapPin,
+  Megaphone,
   MoreHorizontal,
   Plus,
   Radio,
@@ -81,6 +82,13 @@ import { getAuthErrorMessage } from '../src/utils/auth';
 import { platformAlert as Alert } from '../src/utils/platformAlert';
 import { getSpotCategoryColor } from '../src/utils/spotCategory';
 import { ownerVerificationDocumentService } from '../src/services/ownerVerificationDocumentService';
+import {
+  createAdminUpdate,
+  deleteAdminUpdate,
+  editAdminUpdate,
+  getAllAdminUpdates,
+  type AdminUpdate,
+} from '../src/services/adminUpdateService';
 import {
   applySpotEditSuggestion,
   approveSpotSubmission,
@@ -189,6 +197,7 @@ export default function AdminConsoleScreen() {
   const [reviewingOwnerRequestId, setReviewingOwnerRequestId] = useState<string | null>(null);
   const [deletingOwnerRequestId, setDeletingOwnerRequestId] = useState<string | null>(null);
   const [approvalNotice, setApprovalNotice] = useState<{ tone: 'success' | 'error'; title: string; copy: string } | null>(null);
+  const [updatesOpen, setUpdatesOpen] = useState(false);
 
   const activeNav = navItems.find((item) => item.id === activeSection) ?? navItems[0];
   const compact = width < 1180;
@@ -787,10 +796,15 @@ export default function AdminConsoleScreen() {
             <IconButton icon={RefreshCw} onPress={refreshDashboard} loading={dashboardLoading} />
             <IconButton icon={Bell} dot />
             <View style={styles.topbarDivider} />
-            <View style={[styles.liveBadge, dashboard?.source === 'sample' && styles.sampleBadge]}>
-              <Radio size={14} color={colors.white} fill={colors.white} />
-              <Text style={styles.liveBadgeText}>{dashboard?.source === 'sample' ? 'Sample' : 'Live'}</Text>
-            </View>
+            <Pressable
+              accessibilityLabel="Open Admin Updates"
+              accessibilityRole="button"
+              onPress={() => setUpdatesOpen(true)}
+              style={[styles.liveBadge, styles.adminUpdatesButton, mobile && styles.adminUpdatesButtonMobile]}
+            >
+              <Megaphone size={15} color={colors.white} />
+              {!mobile && <Text style={styles.liveBadgeText}>Admin Updates</Text>}
+            </Pressable>
           </View>
         </View>
 
@@ -861,7 +875,260 @@ export default function AdminConsoleScreen() {
           )}
         </ScrollView>
       </View>
+
+      <AdminUpdatesModal
+        client={client}
+        visible={updatesOpen}
+        onClose={() => setUpdatesOpen(false)}
+      />
     </View>
+  );
+}
+
+function AdminUpdatesModal({
+  client,
+  visible,
+  onClose,
+}: {
+  client: SupabaseClient;
+  visible: boolean;
+  onClose: () => void;
+}) {
+  const { width } = useWindowDimensions();
+  const compact = width < 760;
+  const [updates, setUpdates] = useState<AdminUpdate[]>([]);
+  const [message, setMessage] = useState('');
+  const [isPublished, setIsPublished] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const resetEditor = useCallback(() => {
+    setEditingId(null);
+    setMessage('');
+    setIsPublished(true);
+  }, []);
+
+  const loadUpdates = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setUpdates(await getAllAdminUpdates(client));
+    } catch (loadError: any) {
+      setError(loadError?.message ?? 'Unable to load Admin Updates.');
+    } finally {
+      setLoading(false);
+    }
+  }, [client]);
+
+  useEffect(() => {
+    if (!visible) return;
+    resetEditor();
+    setNotice(null);
+    void loadUpdates();
+  }, [loadUpdates, resetEditor, visible]);
+
+  function startEditing(update: AdminUpdate) {
+    setEditingId(update.id);
+    setMessage(update.message);
+    setIsPublished(update.isPublished);
+    setError(null);
+    setNotice(null);
+  }
+
+  async function saveUpdate() {
+    if (!message.trim()) {
+      setError('Write a message before saving the update.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError(null);
+      setNotice(null);
+      const saved = editingId
+        ? await editAdminUpdate(editingId, { message, isPublished }, client)
+        : await createAdminUpdate({ message, isPublished }, client);
+
+      setUpdates((current) => {
+        const withoutSaved = current.filter((update) => update.id !== saved.id);
+        return [saved, ...withoutSaved].sort(
+          (first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime(),
+        );
+      });
+      setNotice(editingId ? 'Update saved.' : isPublished ? 'Update published to CebSpot users.' : 'Draft saved.');
+      resetEditor();
+    } catch (saveError: any) {
+      setError(saveError?.message ?? 'Unable to save the update.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function confirmDelete(update: AdminUpdate) {
+    Alert.alert(
+      'Delete this update?',
+      update.isPublished
+        ? 'This permanently removes the message from the user app.'
+        : 'This permanently removes the draft.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              try {
+                setDeletingId(update.id);
+                setError(null);
+                await deleteAdminUpdate(update.id, client);
+                setUpdates((current) => current.filter((item) => item.id !== update.id));
+                if (editingId === update.id) resetEditor();
+                setNotice('Update deleted.');
+              } catch (deleteError: any) {
+                setError(deleteError?.message ?? 'Unable to delete the update.');
+              } finally {
+                setDeletingId(null);
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }
+
+  return (
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
+      <View style={styles.adminUpdatesBackdrop}>
+        <Pressable accessibilityLabel="Close Admin Updates" onPress={onClose} style={styles.adminUpdatesScrim} />
+        <View style={[styles.adminUpdatesModal, compact && styles.adminUpdatesModalCompact]}>
+          <View style={styles.adminUpdatesHeader}>
+            <View style={styles.adminUpdatesHeaderIcon}>
+              <Megaphone size={21} color={adminPalette.primary} />
+            </View>
+            <View style={styles.adminUpdatesHeaderCopy}>
+              <Text style={styles.adminUpdatesEyebrow}>BETA COMMUNICATIONS</Text>
+              <Text style={styles.adminUpdatesTitle}>Admin Updates</Text>
+              <Text style={styles.adminUpdatesSubtitle}>Post what is new on CebSpot. Only published updates are visible to users.</Text>
+            </View>
+            <Pressable accessibilityLabel="Close Admin Updates" onPress={onClose} style={styles.adminUpdatesClose}>
+              <X size={21} color={adminPalette.onSurfaceVariant} />
+            </Pressable>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.adminUpdatesContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.adminUpdateComposer}>
+              <View style={styles.adminUpdateComposerTop}>
+                <View>
+                  <Text style={styles.adminUpdateComposerTitle}>{editingId ? 'Edit update' : 'Create an update'}</Text>
+                  <Text style={styles.adminUpdateComposerHint}>The user card always uses the headline “Admin Updates.”</Text>
+                </View>
+                {editingId && (
+                  <Pressable accessibilityRole="button" onPress={resetEditor} style={styles.adminUpdateCancelEdit}>
+                    <Text style={styles.adminUpdateCancelEditText}>Cancel edit</Text>
+                  </Pressable>
+                )}
+              </View>
+              <TextInput
+                accessibilityLabel="Admin update message"
+                editable={!saving}
+                maxLength={1000}
+                multiline
+                onChangeText={setMessage}
+                placeholder="Share a beta feature, fix, maintenance notice, or community update..."
+                placeholderTextColor={adminPalette.outline}
+                style={styles.adminUpdateInput}
+                value={message}
+              />
+              <View style={styles.adminUpdateComposerFooter}>
+                <View style={styles.adminUpdateStatusControl}>
+                  {(['draft', 'published'] as const).map((status) => {
+                    const selected = status === 'published' ? isPublished : !isPublished;
+                    return (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        key={status}
+                        onPress={() => setIsPublished(status === 'published')}
+                        style={[styles.adminUpdateStatusOption, selected && styles.adminUpdateStatusOptionActive]}
+                      >
+                        <Text style={[styles.adminUpdateStatusText, selected && styles.adminUpdateStatusTextActive]}>
+                          {status === 'published' ? 'Publish' : 'Draft'}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={styles.adminUpdateCharacterCount}>{message.length}/1000</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={saving || !message.trim()}
+                  onPress={() => void saveUpdate()}
+                  style={[styles.adminUpdateSave, (saving || !message.trim()) && styles.adminUpdateSaveDisabled]}
+                >
+                  {saving ? <ActivityIndicator color={colors.white} size="small" /> : <Megaphone size={15} color={colors.white} />}
+                  <Text style={styles.adminUpdateSaveText}>{editingId ? 'Save changes' : isPublished ? 'Publish update' : 'Save draft'}</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {error && <InlineNotice title="Admin Updates unavailable" copy={error} tone="error" />}
+            {notice && <InlineNotice title="Changes saved" copy={notice} tone="success" />}
+
+            <View style={styles.adminUpdateListHeader}>
+              <Text style={styles.adminUpdateListTitle}>Update history</Text>
+              <Text style={styles.adminUpdateListCount}>{updates.length} {updates.length === 1 ? 'message' : 'messages'}</Text>
+            </View>
+
+            {loading ? (
+              <View style={styles.adminUpdateState}><ActivityIndicator color={adminPalette.primary} /></View>
+            ) : updates.length === 0 ? (
+              <View style={styles.adminUpdateState}>
+                <Megaphone size={25} color={adminPalette.outline} />
+                <Text style={styles.adminUpdateStateTitle}>No updates yet</Text>
+                <Text style={styles.adminUpdateStateText}>Create the first beta update above.</Text>
+              </View>
+            ) : (
+              <View style={styles.adminUpdateList}>
+                {updates.map((update) => (
+                  <View key={update.id} style={styles.adminUpdateListItem}>
+                    <View style={styles.adminUpdateListItemTop}>
+                      <StatusBadge label={update.isPublished ? 'Published' : 'Draft'} />
+                      <Text style={styles.adminUpdateDate}>
+                        {new Date(update.publishedAt ?? update.updatedAt).toLocaleString('en-PH', {
+                          month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
+                    <Text style={styles.adminUpdateMessage}>{update.message}</Text>
+                    <View style={styles.adminUpdateItemActions}>
+                      <Pressable accessibilityLabel="Edit update" onPress={() => startEditing(update)} style={styles.adminUpdateItemButton}>
+                        <Edit3 size={14} color={adminPalette.primary} />
+                        <Text style={styles.adminUpdateItemButtonText}>Edit</Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityLabel="Delete update"
+                        disabled={deletingId === update.id}
+                        onPress={() => confirmDelete(update)}
+                        style={[styles.adminUpdateItemButton, styles.adminUpdateDeleteButton]}
+                      >
+                        {deletingId === update.id
+                          ? <ActivityIndicator color={adminPalette.error} size="small" />
+                          : <Trash2 size={14} color={adminPalette.error} />}
+                        <Text style={styles.adminUpdateDeleteText}>Delete</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
