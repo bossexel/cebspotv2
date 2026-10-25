@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-25",
+  "channel": "preview",
+  "environment": "preview",
+  "legacy": [
+    {
+      "id": "01a171e7-ebfb-7e52-a7b2-1dbaaa69fcea",
+      "group": "187db439-2c07-42d6-82a5-6dded18544d2",
+      "runtimeVersion": "1.0.3",
+      "gitCommitHash": "5643743b80a77135dbb1e61969d69866551e3e53",
+      "message": "CebSpot 1.0.4 installer available in the app"
+    }
+  ],
+  "current": [
+    {
+      "id": "01a171e9-2922-7d1d-9b49-d2ae5616658d",
+      "group": "d604a0b8-5fec-48c9-842d-86f14b3ec55f",
+      "runtimeVersion": "1.0.4",
+      "gitCommitHash": "78814b5fac9f0bf1b7646f5300a46b73974bc9aa",
+      "message": "Media compression, smoother Activity feed and session fixes"
+    }
+  ],
+  "delivery": [
+    {
+      "runtime": "1.0.3",
+      "id": "01a171e7-ebfb-7e52-a7b2-1dbaaa69fcea",
+      "createdAt": "2026-10-25T07:13:07.067Z",
+      "assets": 64,
+      "launchAssetKey": "9d305ee446006a4e6eb7e810940a0af1",
+      "version": "1.0.3",
+      "bundleBytes": 8301060,
+      "hashVerified": true,
+      "installerLinkPresent": true
+    },
+    {
+      "runtime": "1.0.4",
+      "id": "01a171e9-2922-7d1d-9b49-d2ae5616658d",
+      "createdAt": "2026-10-25T07:14:28.258Z",
+      "assets": 64,
+      "launchAssetKey": "6249101ed234f87278bd65a7036ab140",
+      "version": "1.0.4",
+      "bundleBytes": 8531543,
+      "hashVerified": true,
+      "installerLinkPresent": true
+    }
+  ],
+  "validation": {
+    "updateFlowTests": 4,
+    "passedInBothCheckouts": true,
+    "typecheckPassed": true,
+    "bothExportsPassed": true,
+    "physicalDeviceTested": false
+  }
+}

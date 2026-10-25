@@ -15,6 +15,8 @@ APK size: 106,003,096 bytes. SHA-256: `30a3d4865737048425f562bfc83e33574bfd4598c
 
 Users must install this APK to receive the native video compressor and new app behavior. No incompatible OTA was sent to runtime 1.0.3, and no Play Store publication was performed.
 
+An [in-app upgrade update](eas-updates-2026-10-25.md) was subsequently published for existing 1.0.3 users, alongside a normal OTA for 1.0.4. The older runtime receives a compatible installer prompt, not the new native encoder.
+
 ## Live verification
 
 - Final full JavaScript suite: **321 passed, 5 existing skips, 0 failed** (326 tests). Earlier TypeScript, Python security/quality checks and Android/admin exports also passed; see the implementation notes for their scope.
