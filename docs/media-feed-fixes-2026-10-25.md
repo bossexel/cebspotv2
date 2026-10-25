@@ -38,10 +38,10 @@ Activity uses a memoized card and `FlatList` with three initial cards and a five
 
 1. Apply `20261025000100_activity_feed_pagination.sql` and `20261025000200_public_media_size_limits.sql` to the intended Supabase project. The new Activity screen requires the RPC.
 2. Redeploy `face-blur-service` with the updated `render.yaml`. Confirm `SUPABASE_URL` matches the app and either `SUPABASE_PUBLISHABLE_KEY` or `SUPABASE_ANON_KEY` is valid for that project. Never put a service-role key in the app. The service now fails startup if the credentials cannot be checked.
-3. Build/install Android 1.0.4 with the compressor plugin. Run the existing preview preflight and use `eas build --platform android --profile preview`; release after device acceptance. JavaScript export success is not a native compilation or device-performance result.
+3. Build/install Android 1.0.4 with the compressor plugin. The existing live installation uses `eas build --platform android --profile beta`, which pins the approved public backend and uses the preview EAS environment/channel. The `preview` profile instead requires isolated staging. JavaScript export success is not a native compilation or device-performance result.
 4. Test a login left idle/backgrounded, a portrait, group/profile photos, food and facade photos, a 15-second video, network interruption, and a long Activity scroll. Check that feed refresh/sort changes discard stale page responses and that upload failures preserve the submission draft.
 
-No production migration, deployment, or app-store publication was performed by this patch. Existing oversized media requires a separately planned migration if storage must also be reclaimed.
+The user authorized deployment on 25 October 2026. The two media/feed migrations and both Render services have now been deployed, and Android 1.0.4 has been built and signed. See [the deployment record](deployment-2026-10-25.md). Existing oversized media was not rewritten; reclaiming that storage requires a separate migration.
 
 ## Validation
 

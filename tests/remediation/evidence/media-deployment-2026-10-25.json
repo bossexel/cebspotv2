@@ -1,0 +1,175 @@
+{
+  "releaseDate": "2026-10-25",
+  "sourceCommit": "50400371d93ec73bf0a6e3804235a8c0ea641b16",
+  "projectRef": "fathkdyxgeeokxeobxqp",
+  "migrations": [
+    {
+      "file": "20261025000100_activity_feed_pagination.sql",
+      "sha256": "93965407e468027b8794ab50027066a4d9ef50c52148357c45ed74246909ad1d"
+    },
+    {
+      "file": "20261025000200_public_media_size_limits.sql",
+      "sha256": "495f1abfcaf1d0f838aa6eb7740aa746d9d6044dfbdc0614e173ae103f622a2b"
+    }
+  ],
+  "render": {
+    "admin": {
+      "deployment": "dep-dbehkjss728c73ckgpe0",
+      "status": "live"
+    },
+    "face": {
+      "deployment": "dep-dbehkkb4qb4c739pnnp0",
+      "status": "live"
+    }
+  },
+  "android": {
+    "id": "d3cf2032-c39d-4c41-90c3-f05b8fbfbb5f",
+    "status": "FINISHED",
+    "version": "1.0.4",
+    "versionCode": "12",
+    "commit": "50400371d93ec73bf0a6e3804235a8c0ea641b16",
+    "artifacts": {
+      "buildUrl": "https://expo.dev/artifacts/eas/4aKd8iEFWeuOc2YLGJDTmrpLmnoQajvRWgX96sP3bus.apk",
+      "applicationArchiveUrl": "https://expo.dev/artifacts/eas/4aKd8iEFWeuOc2YLGJDTmrpLmnoQajvRWgX96sP3bus.apk"
+    },
+    "bytes": 106003096,
+    "sha256": "30a3d4865737048425f562bfc83e33574bfd4598c6dbd49dbf65252391a60d1d",
+    "signatureV2Verified": true
+  },
+  "feed": {
+    "checkedAt": "2026-10-25T04:28:25.679Z",
+    "results": [
+      {
+        "sort": "newest",
+        "pages": 2,
+        "uniqueRows": 19
+      },
+      {
+        "sort": "popular",
+        "pages": 2,
+        "uniqueRows": 19
+      },
+      {
+        "sort": "nearest",
+        "pages": 2,
+        "uniqueRows": 19
+      }
+    ]
+  },
+  "database": [
+    {
+      "check_name": "feed_function",
+      "details": {
+        "anon_execute": true,
+        "authenticated_execute": true,
+        "security_definer": false
+      }
+    },
+    {
+      "check_name": "buckets",
+      "details": [
+        {
+          "file_size_limit": 3145728,
+          "id": "spot-images"
+        },
+        {
+          "file_size_limit": 262144,
+          "id": "profile-photos"
+        }
+      ]
+    },
+    {
+      "check_name": "feed_indexes",
+      "details": [
+        {
+          "definition": "CREATE INDEX local_updates_feed_newest_idx ON public.local_updates USING btree (created_at DESC, id DESC)",
+          "name": "local_updates_feed_newest_idx"
+        },
+        {
+          "definition": "CREATE INDEX local_updates_feed_popular_idx ON public.local_updates USING btree ((((COALESCE(spot_count, 0))::double precision + (COALESCE(comments_count, 0))::double precision)) DESC, created_at DESC, id DESC)",
+          "name": "local_updates_feed_popular_idx"
+        }
+      ]
+    }
+  ],
+  "food": {
+    "checkedAt": "2026-10-25T04:29:36.350Z",
+    "feed": {
+      "status": 200,
+      "rows": 3
+    },
+    "adminUpdates": {
+      "status": 200,
+      "rows": 0
+    },
+    "testSignIn": {
+      "status": 200
+    },
+    "refresh": {
+      "status": 200
+    },
+    "sample": "coffee",
+    "unauthenticatedStatus": 401,
+    "faceAdmission": {
+      "status": 202,
+      "elapsedMs": 1507
+    },
+    "faceOutput": {
+      "status": 200,
+      "mime": "image/jpeg",
+      "bytes": 35236,
+      "faces": 0,
+      "processingMs": 2403
+    }
+  },
+  "portrait": {
+    "checkedAt": "2026-10-25T04:28:43.653Z",
+    "feed": {
+      "status": 200,
+      "rows": 3
+    },
+    "adminUpdates": {
+      "status": 200,
+      "rows": 0
+    },
+    "testSignIn": {
+      "status": 200
+    },
+    "refresh": {
+      "status": 200
+    },
+    "sample": "astronaut",
+    "unauthenticatedStatus": 401,
+    "faceAdmission": {
+      "status": 202,
+      "elapsedMs": 2221
+    },
+    "faceOutput": {
+      "status": 200,
+      "mime": "image/jpeg",
+      "bytes": 31998,
+      "faces": 1,
+      "processingMs": 3227
+    }
+  },
+  "admin": {
+    "adminStatus": 200,
+    "bundles": 1,
+    "expoBundle": true,
+    "bundleStatus": 200,
+    "adminUpdatesPresent": true,
+    "bundleBytes": 4118954
+  },
+  "limits": [
+    "No connected Android device: native video/FPS not measured",
+    "Render free instance cold starts remain",
+    "Older reservation/account/private-upload backend not deployed; scope decision pending"
+  ],
+  "finalTests": {
+    "command": "npm test",
+    "tests": 326,
+    "passed": 321,
+    "skipped": 5,
+    "failed": 0
+  }
+}
