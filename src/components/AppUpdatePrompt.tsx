@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Image, Linking, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Updates from 'expo-updates';
 import { colors } from '../constants/colors';
 import { fontSize, radius, shadow, spacing } from '../constants/design';
@@ -9,8 +9,11 @@ type UpdateState = 'idle' | 'available' | 'updating' | 'failed';
 
 const checkCooldownMs = 5 * 60 * 1000;
 const cebspotLogo = require('../../assets/cebspot-logo.png');
+const androidUpgradeUrl = 'https://expo.dev/artifacts/eas/4aKd8iEFWeuOc2YLGJDTmrpLmnoQajvRWgX96sP3bus.apk';
 
 export function AppUpdatePrompt() {
+  // An OTA cannot add the video encoder to the already-installed 1.0.3 binary.
+  const requiresInstallation = Updates.runtimeVersion === '1.0.3';
   const { appColors } = useTheme();
   const [state, setState] = useState<UpdateState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -23,6 +26,12 @@ export function AppUpdatePrompt() {
     if (now - lastCheckRef.current < checkCooldownMs) return;
     lastCheckRef.current = now;
 
+    if (requiresInstallation) {
+      setErrorMessage(null);
+      setState('available');
+      return;
+    }
+
     try {
       const update = await Updates.checkForUpdateAsync();
       if (update.isAvailable) {
@@ -32,7 +41,7 @@ export function AppUpdatePrompt() {
     } catch (error) {
       console.warn('Unable to check for app updates:', error);
     }
-  }, [state]);
+  }, [requiresInstallation, state]);
 
   useEffect(() => {
     void checkForUpdate();
@@ -54,6 +63,11 @@ export function AppUpdatePrompt() {
     try {
       setErrorMessage(null);
       setState('updating');
+      if (requiresInstallation) {
+        await Linking.openURL(androidUpgradeUrl);
+        setState('idle');
+        return;
+      }
       const fetched = await Updates.fetchUpdateAsync();
       if (fetched.isNew || fetched.isRollBackToEmbedded) {
         await Updates.reloadAsync();
@@ -62,7 +76,9 @@ export function AppUpdatePrompt() {
       setState('idle');
     } catch (error) {
       console.warn('Unable to apply app update:', error);
-      setErrorMessage('Update failed. Please check your connection and try again.');
+      setErrorMessage(requiresInstallation
+        ? 'We could not open the download. Please check your connection and try again.'
+        : 'Update failed. Please check your connection and try again.');
       setState('failed');
     }
   }
@@ -93,17 +109,19 @@ export function AppUpdatePrompt() {
             style={styles.logo}
           />
           <Text style={[styles.title, { color: appColors.onSurface }]}>
-            {updating ? 'Updating CebSpot' : 'New update is available'}
+            {updating ? (requiresInstallation ? 'Opening your update' : 'Updating CebSpot') : 'New update is available'}
           </Text>
           <Text style={[styles.message, { color: appColors.onSurfaceVariant }]}>
-            {updating
-              ? 'Downloading your update. CebSpot will restart when it is ready.'
-              : 'Tap Update to get the latest improvements. CebSpot will restart to apply them.'}
+            {requiresInstallation
+              ? 'Get faster photo uploads and video compression. Tap Download update, then open the downloaded file and choose Install. Keep your current app installed.'
+              : updating
+                ? 'Downloading your update. CebSpot will restart when it is ready.'
+                : 'Tap Update to get the latest improvements. CebSpot will restart to apply them.'}
           </Text>
           {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Update CebSpot"
+            accessibilityLabel={requiresInstallation ? 'Download CebSpot update' : 'Update CebSpot'}
             disabled={updating}
             onPress={() => void applyUpdate()}
             style={({ pressed }) => [styles.updateButton, updating && styles.disabled, pressed && styles.pressed]}
@@ -111,7 +129,7 @@ export function AppUpdatePrompt() {
             {updating ? (
               <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={styles.updateText}>Update</Text>
+              <Text style={styles.updateText}>{requiresInstallation ? 'Download update' : 'Update'}</Text>
             )}
           </Pressable>
           {!updating && (
