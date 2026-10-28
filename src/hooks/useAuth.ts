@@ -9,6 +9,7 @@ import { clearSupabaseAuthStorage, hasSupabaseConfig, supabase, supabaseAuthStor
 import { profileService } from '../services/profileService';
 import type { UserProfile } from '../types';
 import { getAuthErrorMessage, normalizeEmail } from '../utils/auth';
+import { isEmailChangeCallback } from '../utils/emailChange';
 
 interface AuthContextValue {
   user: User | null;
@@ -90,6 +91,8 @@ function makeFallbackProfile(user: User): UserProfile {
   return {
     id: user.id,
     email,
+    first_name: (user.user_metadata?.first_name as string | undefined) ?? null,
+    last_name: (user.user_metadata?.last_name as string | undefined) ?? null,
     role: getPrototypeRoleForEmail(email),
     display_name:
       (user.user_metadata?.display_name as string | undefined) ??
@@ -316,6 +319,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     async function handleRecoveryUrl(url: string | null) {
       if (!url) return;
+      if (isEmailChangeCallback(url)) {
+        // Email links confirm on the Auth server. The dedicated return screen
+        // checks the existing signed-in account; do not replace it with link tokens.
+        clearSensitiveAuthParamsFromBrowserUrl();
+        return;
+      }
       const params = getSupabaseAuthParams(url);
       const isSupabaseAuthLink = Boolean(params.code || (params.accessToken && params.refreshToken));
       const isPasswordRecoveryLink =

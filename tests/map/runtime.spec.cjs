@@ -247,3 +247,32 @@ test('two-finger pinch zoom is continuous and keeps the pin aligned', async ({ p
   expect(Math.abs(bounds.y + bounds.height / 2 - 390)).toBeLessThan(3);
   expect(errors).toEqual([]);
 });
+
+test('precision coordinate entry jumps immediately without a camera flight or viewport echo', async ({ page }) => {
+  const { errors } = await setup(page);
+  await page.evaluate(() => {
+    window.__map.flyTo = () => { throw Error('Coordinate entry must not fly'); };
+    window.__map.panTo = () => { throw Error('Coordinate entry must not pan'); };
+    window.cebspotMapUpdate({ ...window.__payload, center: { latitude: -33.8688, longitude: 151.2093 },
+      zoom: 17, transitionKey: 1, animateCamera: false });
+  });
+  const point = await page.evaluate(() => window.__map.getCenter());
+  expect(point.lat).toBeCloseTo(-33.8688, 7);
+  expect(point.lng).toBeCloseTo(151.2093, 7);
+  expect(await page.evaluate(() => window.__map.getZoom())).toBe(17);
+  expect(await page.evaluate(() => window.__messages.filter(item => item.type === 'viewport'))).toHaveLength(0);
+  expect(errors).toEqual([]);
+});
+
+test('lifting one pinch finger keeps the parent scroll locked until the last pointer ends', async ({ page }) => {
+  await setup(page);
+  await page.evaluate(() => {
+    const node = document.getElementById('map');
+    for (const pointerId of [1, 2]) node.dispatchEvent(new PointerEvent('pointerdown', { pointerId, bubbles: true }));
+    node.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, bubbles: true }));
+  });
+  expect(await page.evaluate(() => window.__messages.filter(item => item.type === 'interactionStart'))).toHaveLength(1);
+  expect(await page.evaluate(() => window.__messages.filter(item => item.type === 'interactionEnd'))).toHaveLength(0);
+  await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 2 })));
+  expect(await page.evaluate(() => window.__messages.filter(item => item.type === 'interactionEnd'))).toHaveLength(1);
+});

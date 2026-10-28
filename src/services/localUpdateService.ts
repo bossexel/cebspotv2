@@ -46,6 +46,10 @@ export type FeedSort = 'newest' | 'popular' | 'nearest';
 export type FeedCursor = { createdAt: string; id: string; rank: number | string; snapshotAt: string };
 export type FeedPage = { items: LocalUpdate[]; nextCursor: FeedCursor | null };
 export type FeedChange = { eventType: string; id: string; item?: LocalUpdate };
+export type SpotPostCursor = { createdAt: string; id: string };
+export type SpotPostPage = { items: LocalUpdate[]; nextCursor: SpotPostCursor | null };
+
+const spotPostFields = 'id,user_id,user_name,user_photo_url,title,body,location_name,latitude,longitude,image_url,spot_id,source_type,source_id,spot_count,comments_count,created_at';
 
 function isMissingMediaUrlsColumn(error: { message?: string } | null) {
   return /media_urls|schema cache|column/i.test(error?.message ?? '');
@@ -91,6 +95,38 @@ function normalizeComment(row: any): LocalUpdateComment {
 }
 
 export const localUpdateService = {
+  async getPostsForSpot(spotId: string, cursor?: SpotPostCursor | null): Promise<SpotPostPage> {
+    if (!hasSupabaseConfig) throw new Error('Local updates service is not configured.');
+    const pageSize = 6;
+    let query = supabase.from('local_updates').select(spotPostFields)
+      .eq('spot_id', spotId).in('source_type', ['spot_submission', 'community'])
+      .order('created_at', { ascending: false }).order('id', { ascending: false });
+    if (cursor) {
+      // These values enter a PostgREST filter expression, so validate them
+      // before interpolation. Place identity itself always uses a bound eq.
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cursor.id)
+        || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/.test(cursor.createdAt)
+        || !Number.isFinite(Date.parse(cursor.createdAt))) throw new Error('Invalid post cursor.');
+      // Keep PostgreSQL's microseconds; Date.toISOString would truncate them
+      // and skip older posts sharing that millisecond.
+      const createdAt = cursor.createdAt;
+      query = query.or(`created_at.lt.${createdAt},and(created_at.eq.${createdAt},id.lt.${cursor.id})`);
+    }
+    const { data, error } = await query.limit(pageSize + 1);
+    if (error) throw error;
+    const items = (data ?? []).slice(0, pageSize).map(normalizeLocalUpdate);
+    const last = items[items.length - 1];
+    return { items, nextCursor: data && data.length > pageSize && last
+      ? { createdAt: last.created_at, id: last.id } : null };
+  },
+
+  async getLocalUpdateById(postId: string): Promise<LocalUpdate | null> {
+    if (!hasSupabaseConfig) throw new Error('Local updates service is not configured.');
+    const { data, error } = await supabase.from('local_updates').select('*').eq('id', postId).maybeSingle();
+    if (error) throw error;
+    return data ? normalizeLocalUpdate(data) : null;
+  },
+
   async getLocalUpdatesPage(options: {
     cursor?: FeedCursor | null; sort?: FeedSort;
     location?: { latitude: number; longitude: number } | null;
@@ -160,7 +196,7 @@ export const localUpdateService = {
     const { data, error } = await supabase
       .from('local_updates')
       .select('*')
-      .eq('source_type', 'spot_submission')
+      .in('source_type', ['spot_submission', 'community'])
       .eq('source_id', submissionId)
       .order('created_at', { ascending: true })
       .limit(1)
@@ -204,27 +240,14 @@ export const localUpdateService = {
       .map((url) => (typeof url === 'string' ? url.trim() : ''))
       .filter((url, index, urls): url is string => Boolean(url) && urls.indexOf(url) === index);
 
-    if (!hasSupabaseConfig || update.source_type !== 'spot_submission' || !update.source_id) {
+    if (!hasSupabaseConfig) {
       return fallbackMedia;
     }
 
-    const groupedMedia = await supabase.rpc('get_spot_submission_group_media', {
-      target_submission_id: update.source_id,
-    });
-    if (!groupedMedia.error) {
-      const groupedRows = (groupedMedia.data ?? []) as Array<{ media_url?: unknown }>;
-      const mediaUrls = groupedRows
-        .map((row: { media_url?: unknown }) => (typeof row.media_url === 'string' ? row.media_url.trim() : ''))
-        .filter((url: string): url is string => Boolean(url));
-      if (mediaUrls.length) return [...new Set(mediaUrls)];
-    } else if (!/get_spot_submission_group_media|schema cache|function/i.test(groupedMedia.error.message ?? '')) {
-      console.error('Unable to load grouped spot media:', groupedMedia.error);
-    }
-
     const { data, error } = await supabase
-      .from('spot_submissions')
-      .select('images')
-      .eq('id', update.source_id)
+      .from('local_updates')
+      .select('media_urls,image_url')
+      .eq('id', update.id)
       .maybeSingle();
 
     if (error) {
@@ -232,11 +255,17 @@ export const localUpdateService = {
       return fallbackMedia;
     }
 
-    const submissionMedia = Array.isArray(data?.images)
-      ? data.images.map((url: unknown) => (typeof url === 'string' ? url.trim() : '')).filter(Boolean)
+    const postMedia = Array.isArray(data?.media_urls)
+      ? data.media_urls.map((url: unknown) => (typeof url === 'string' ? url.trim() : '')).filter(Boolean)
       : [];
 
-    return submissionMedia.length ? [...new Set(submissionMedia)] : fallbackMedia;
+    return postMedia.length ? [...new Set(postMedia)] : fallbackMedia;
+  },
+
+  async getLinkedSpotId(updateId: string): Promise<string | null> {
+    const { data, error } = await supabase.from('local_updates').select('spot_id').eq('id', updateId).maybeSingle();
+    if (error) throw error;
+    return data?.spot_id ?? null;
   },
 
   async voteOnSpotSubmission(submissionId: string, voteType: SpotVoteType): Promise<SpotVoteResult> {

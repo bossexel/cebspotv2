@@ -17,7 +17,7 @@ export interface ReferencePolicySection {
 
 // Supplied reference policy, preserved verbatim. This is CebSpot's
 // content, not a statement of CebSpot practices. The CebSpot draft remains in privacy.ts.
-export const tarakapePrivacyContent = {
+export const CebspotContent = {
   title: 'Privacy Policy',
   effectiveDate: 'Effective Date: June 27, 2026',
   searchLabel: 'Search privacy topics', searchPlaceholder: 'Search privacy topics…',
@@ -60,6 +60,7 @@ export const tarakapePrivacyContent = {
     { id: 'changes', icon: 'edit', title: 'Changes to This Privacy Policy', blocks: [{ id: 'changes', paragraphs: ['We may update this Privacy Policy from time to time. Any changes will become effective once the updated policy is posted on this page. We encourage you to review it periodically.'] }] },
     { id: 'contact', icon: 'mail', title: 'Contact Us', blocks: [
       { id: 'contact', paragraphs: ['If you have questions, concerns, or requests regarding this Privacy Policy, please contact the developer:', 'Jithrix Exiel Bolambao', 'Developer, CebSpot'], email: { label: 'Email: jithrixexiel2@gmail.com', url: 'mailto:jithrixexiel2@gmail.com' } },
+      { id: 'clyde', paragraphs: ['Clyde Hans Sadudaquil', 'Developer, CebSpot'], email: { label: 'Email: clyde6@gmail.com', url: 'mailto:0clyde6@gmail.com' } },
       { id: 'thanks', paragraphs: ['Thank you for using CebSpot!.'] },
     ] },
   ] as ReferencePolicySection[],

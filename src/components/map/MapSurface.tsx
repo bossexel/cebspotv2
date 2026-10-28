@@ -48,7 +48,9 @@ export function MapSurface({ payload, onMessage, onTouchStart, onTouchEnd }: Map
       textZoom={100}
       androidLayerType="hardware"
       onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
+      onTouchEnd={(event) => {
+        if (!event.nativeEvent.touches.length) onTouchEnd?.();
+      }}
       onTouchCancel={onTouchEnd}
       onMessage={(event) => {
         if (event.nativeEvent.data === 'ready') setGeneration((value) => value + 1);

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ChevronRight, Hash, LocateFixed, LogIn, Navigation, Plus, Share2, UserRound, Users, X } from 'lucide-react-native';
+import { ChevronRight, Hash, LocateFixed, LogIn, Navigation, Plus, Settings, Share2, UserRound, Users, X } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { TileMap } from '../src/components/TileMap';
@@ -65,6 +65,7 @@ export default function CircleScreen() {
   const [mapCenter, setMapCenter] = useState(defaultMapCenter);
   const [mapInteracting, setMapInteracting] = useState(false);
   const [failedPhotoIds, setFailedPhotoIds] = useState<string[]>([]);
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const [joinVisible, setJoinVisible] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [joining, setJoining] = useState(false);
@@ -336,10 +337,10 @@ export default function CircleScreen() {
 
   return (
     <ScreenContainer appColors={appColors} showBottomNav scroll scrollEnabled={!mapInteracting}>
-      {previewCircle && <CirclePrivacyControls circleId={previewCircle.id}
+      <CirclePrivacyControls circleId={previewCircle?.id ?? ''} circleName={previewCircle?.name} visible={settingsVisible} onClose={() => setSettingsVisible(false)}
         onSharingChanged={state => { sharingGenerationRef.current = state.enabled ? state.generation : null; }}
         onEnabled={() => { void refreshUserLocation(true); }}
-        onLeft={() => { sharingGenerationRef.current = null; setMembers([]); setCircleInvite(null); setCircles(current => current.filter(item => item.id !== previewCircle.id)); }} />}
+        onLeft={() => { if (!previewCircle) return; setSettingsVisible(false); sharingGenerationRef.current = null; setMembers([]); setCircleInvite(null); setCircles(current => current.filter(item => item.id !== previewCircle.id)); }} />
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <Text style={[styles.title, { color: appColors.onSurface }]}>Circle</Text>
@@ -356,8 +357,12 @@ export default function CircleScreen() {
           <LogIn size={16} color={colors.white} />
           <Text style={styles.joinButtonText}>Join</Text>
         </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Open Circle settings" onPress={() => setSettingsVisible(true)} disabled={!previewCircle} accessibilityState={{ disabled: !previewCircle }} style={{padding:12,opacity:previewCircle ? 1 : 0.4}}>
+          <Settings size={24} color={appColors.onSurface} />
+        </Pressable>
       </View>
 
+      {previewCircle && <>
       <View style={styles.mapCard}>
         <TileMap
           style={styles.map}
@@ -428,6 +433,8 @@ export default function CircleScreen() {
         )}
       </View>
 
+      </>}
+
       <View style={styles.quickGrid}>
         <Pressable
           accessibilityRole="button"
@@ -465,13 +472,14 @@ export default function CircleScreen() {
         </Pressable>
       </View>
 
+
       <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>My Circles</Text>
       {loading ? (
         <ActivityIndicator color={colors.primary} />
       ) : circles.length === 0 ? (
         <View style={[styles.emptyCircles, { borderColor: appColors.outlineVariant }]}>
           <Users size={22} color={appColors.onSurfaceVariant} />
-          <Text style={[styles.emptyCircleText, { color: appColors.onSurfaceVariant }]}>No circles yet</Text>
+          <Text style={[styles.emptyCircleText, { color: appColors.onSurfaceVariant }]}>No circles yet. Create a circle or join with an invite code.</Text>
         </View>
       ) : (
         circles.map((circle) => {

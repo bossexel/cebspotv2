@@ -33,7 +33,7 @@ const RESET_COOLDOWN_SECONDS = 60;
 
 export default function ResetPasswordScreen({ adminOnly = false }: { adminOnly?: boolean } = {}) {
   const router = useRouter();
-  const params = useLocalSearchParams<{ email?: string; requested?: string; returnTo?: string }>();
+  const params = useLocalSearchParams<{ email?: string; requested?: string; returnTo?: string; from?: string }>();
   const { appColors } = useTheme();
   const {
     completePasswordRecovery,
@@ -48,6 +48,7 @@ export default function ResetPasswordScreen({ adminOnly = false }: { adminOnly?:
   const initialEmail = normalizeEmail(typeof params.email === 'string' ? params.email : '');
   const resetWasAlreadyRequested = params.requested === '1' && isValidEmail(initialEmail);
   const returnToAdmin = adminOnly || params.returnTo === 'admin';
+  const fromAccount = params.from === 'account';
   const [email, setEmail] = useState(initialEmail);
   const [submittedEmail, setSubmittedEmail] = useState(resetWasAlreadyRequested ? initialEmail : '');
   const [emailSent, setEmailSent] = useState(resetWasAlreadyRequested);
@@ -180,7 +181,7 @@ export default function ResetPasswordScreen({ adminOnly = false }: { adminOnly?:
         ? 'Choose your account password'
         : emailSent
           ? 'Enter verification code'
-          : 'Forgot password?';
+          : fromAccount ? 'Change password' : 'Forgot password?';
 
   const supportingCopy = passwordUpdated
     ? 'Your new password is ready to use.'
@@ -190,7 +191,7 @@ export default function ResetPasswordScreen({ adminOnly = false }: { adminOnly?:
         ? 'Create a secure password for this CebSpot account.'
         : emailSent
           ? 'Enter the six-digit code sent to your email.'
-          : 'Enter your account email to receive a verification code.';
+          : fromAccount ? 'Verify your account email before choosing a new password.' : 'Enter your account email to receive a verification code.';
 
   return (
     <KeyboardAvoidingView

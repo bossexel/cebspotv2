@@ -29,6 +29,8 @@ export interface TileMapProps {
   onInteractionStart?: () => void;
   onInteractionEnd?: () => void;
   transitionKey?: string | number;
+  /** Jump directly for precise coordinate entry instead of flying the camera. */
+  animateCamera?: boolean;
   routeLine?: MapCoordinate[];
   routeLineColor?: string;
   showAttribution?: boolean;
@@ -41,6 +43,7 @@ export interface MapPayload {
   center: MapCoordinate;
   zoom: number;
   transitionKey?: string | number;
+  animateCamera?: boolean;
   markers: TileMapMarker[];
   routeLine: MapCoordinate[];
   routeLineColor: string;

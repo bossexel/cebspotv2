@@ -5,7 +5,7 @@ The latest attachment explicitly requests the original CebSpot branding, date, d
 ## Changed files
 
 - `app/privacy.tsx`: eleven beige rounded policy cards, warm background, rounded back/header, calendar/date row, search, outline icons, uppercase subsection labels, dividers, location inset, green statement, service category grid, warning panel, and email link. All cards start expanded and can independently collapse/reopen. Search matches section titles and all supporting text, opens results, supports empty results, and clears back to all eleven sections.
-- `src/constants/tarakapePrivacy.ts`: editable supplied policy, fixed date, UI labels, section icons, and structured blocks. Paragraphs, lists, panels, and email link can be edited without changing the screen component.
+- `src/constants/Cebspot.ts`: editable supplied policy, fixed date, UI labels, section icons, and structured blocks. Paragraphs, lists, panels, and email link can be edited without changing the screen component.
 - `tests/about/privacy-reference.cjs`: full content parity and native-screen browser checks.
 - `tests/about/privacy-reference.txt`: exact supplied policy as a test fixture, copied from the user attachment with UTF-8 preserved.
 - `tests/about/about.cjs`: updates existing About/documentation regression checks for the new reference policy, including phone/tablet layouts, search, expansion, offline reading, and larger rendered text.

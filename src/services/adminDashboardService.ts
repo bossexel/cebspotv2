@@ -916,6 +916,17 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
   return dashboard;
 }
 
+export async function linkSpotSubmission(submissionId: string, spotId: string, client: SupabaseClient = supabase) {
+  const { data, error } = await client.rpc('link_spot_submission', { target_submission_id: submissionId, target_spot_id: spotId });
+  if (error) throw error;
+  return data;
+}
+
+export async function confirmDistinctSpotSubmission(submissionId: string, client: SupabaseClient = supabase) {
+  const { error } = await client.rpc('confirm_distinct_spot_submission', { target_submission_id: submissionId });
+  if (error) throw error;
+}
+
 export async function approveSpotSubmission(submissionId: string, client: SupabaseClient = supabase) {
   if (!hasSupabaseConfig) return null;
 

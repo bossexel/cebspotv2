@@ -66,7 +66,7 @@ async function ensureScopedProfile(client: SupabaseClient, user: User): Promise<
   if (existing) {
     const updates: Partial<UserProfile> = {};
     if (prototypeRole !== 'user' && existing.role !== prototypeRole) updates.role = prototypeRole;
-    if (email && existing.email !== email) updates.email = email;
+    // Email is synchronized by the Auth trigger, never from a cached session.
     if (!existing.display_name && displayName) updates.display_name = displayName;
     if (!existing.photo_url && photoUrl) updates.photo_url = photoUrl;
     if (!Object.keys(updates).length) return existing as UserProfile;

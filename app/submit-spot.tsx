@@ -14,22 +14,15 @@ import {
   Modal,
   View,
 } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
   ArrowLeft,
   Camera,
   Check,
-  ChevronRight,
-  Coffee,
-  Martini,
   MapPin,
-  Music2,
   Play,
   ShieldCheck,
-  Sparkles,
-  Trees,
-  Utensils,
   Video,
   X,
 } from 'lucide-react-native';
@@ -37,14 +30,16 @@ import { AppButton } from '../src/components/AppButton';
 import { CategoryChip } from '../src/components/CategoryChip';
 import { ConfirmationModal } from '../src/components/ConfirmationModal';
 import { ScreenContainer } from '../src/components/ScreenContainer';
-import { TileMap } from '../src/components/TileMap';
+import { SpotLocationPicker } from '../src/components/SpotLocationPicker';
+import type { MapCoordinate } from '../src/components/map/types';
 import { colors } from '../src/constants/colors';
 import { categories, fontSize, radius, shadow, spacing } from '../src/constants/design';
 import { useAuth } from '../src/hooks/useAuth';
-import { useLocation } from '../src/hooks/useLocation';
 import { useTheme } from '../src/hooks/useTheme';
 import { spotSubmissionDraftService } from '../src/services/spotSubmissionDraftService';
 import { spotSubmissionQueueService } from '../src/services/spotSubmissionQueueService';
+import { findMatchingSpots, type SpotMatch } from '../src/services/spotMatchingService';
+import { spotService } from '../src/services/spotService';
 import type { SpotSubmissionDraft, SpotSubmissionMediaAsset } from '../src/types';
 
 const maxMediaItems = 5;
@@ -61,34 +56,17 @@ function formatDuration(durationMs?: number | null) {
   return `0:${seconds.toString().padStart(2, '0')}`;
 }
 
-function getCategoryIcon(category = '') {
-  const lower = category.toLowerCase();
-  if (lower.includes('coffee') || lower.includes('cafe') || lower.includes('co-working')) return Coffee;
-  if (lower.includes('club') || lower.includes('pulse') || lower.includes('night')) return Music2;
-  if (lower.includes('bar') || lower.includes('chill')) return Martini;
-  if (lower.includes('outdoor') || lower.includes('garden') || lower.includes('park')) return Trees;
-  return Utensils;
-}
-
-function CenterPin({ category }: { category: string | null }) {
-  const Icon = category ? getCategoryIcon(category) : null;
-
-  return (
-    <View pointerEvents="none" style={styles.centerPinWrap}>
-      <View style={styles.centerPinHead}>
-        {Icon ? <Icon size={17} color={colors.secondary} strokeWidth={2.8} /> : <View style={styles.centerPinDot} />}
-      </View>
-      <View style={styles.centerPinTip} />
-    </View>
-  );
-}
-
 export default function SubmitSpotScreen() {
   const router = useRouter();
+  const { spotId } = useLocalSearchParams<{ spotId?: string }>();
   const { appColors } = useTheme();
   const { profile } = useAuth();
-  const { getCurrentLocation, loading: locating } = useLocation();
   const [name, setName] = useState('');
+  const [matches, setMatches] = useState<SpotMatch[]>([]);
+  const [linkedSpot, setLinkedSpot] = useState<SpotSubmissionDraft['linkedSpot']>(null);
+  const [differentPlace, setDifferentPlace] = useState(false);
+  const [matching, setMatching] = useState(false);
+  const [matchError, setMatchError] = useState(false);
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -96,6 +74,10 @@ export default function SubmitSpotScreen() {
   const [media, setMedia] = useState<SpotSubmissionMediaAsset[]>([]);
   const [latitude, setLatitude] = useState(10.3157);
   const [longitude, setLongitude] = useState(123.8854);
+  const [locationOrigin, setLocationOrigin] = useState({ latitude: 10.3157, longitude: 123.8854 });
+  const [coordinatesValid, setCoordinatesValid] = useState(true);
+  const [locationEdited, setLocationEdited] = useState(false);
+  const [mapInteracting, setMapInteracting] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [shareStatus, setShareStatus] = useState<'sharing' | 'success' | null>(null);
@@ -112,13 +94,13 @@ export default function SubmitSpotScreen() {
           address.trim() ||
           selectedCategories.length ||
           acceptsReservations !== null ||
-          media.length
+          media.length || locationEdited
       ),
-    [acceptsReservations, address, description, media.length, name, selectedCategories.length]
+    [acceptsReservations, address, description, media.length, name, selectedCategories.length, locationEdited]
   );
 
   useEffect(() => {
-    if (!profile?.id) return;
+    if (!profile?.id || spotId) return;
     let active = true;
 
     spotSubmissionDraftService
@@ -126,6 +108,8 @@ export default function SubmitSpotScreen() {
       .then((draft) => {
         if (!active || !draft) return;
         setDraftId(draft.id);
+        setLinkedSpot(draft.linkedSpot ?? null);
+        setDifferentPlace(draft.differentPlace ?? false);
         setName(draft.name);
         setDescription(draft.description);
         setAddress(draft.address);
@@ -133,6 +117,8 @@ export default function SubmitSpotScreen() {
         setAcceptsReservations(draft.acceptsReservations);
         setLatitude(draft.latitude);
         setLongitude(draft.longitude);
+        setLocationOrigin({ latitude: draft.latitude, longitude: draft.longitude });
+        setCoordinatesValid(true);
         setMedia(draft.media);
       })
       .catch((error) => console.warn('Unable to restore spot draft:', error));
@@ -140,7 +126,44 @@ export default function SubmitSpotScreen() {
     return () => {
       active = false;
     };
-  }, [profile?.id]);
+  }, [profile?.id, spotId]);
+
+  useEffect(() => {
+    if (!spotId) return;
+    let active = true;
+    spotService.getSpotById(spotId).then((spot) => {
+      if (!active || !spot || !spot.is_public) return;
+      setLinkedSpot({ id: spot.id, name: spot.name, address: spot.address, latitude: spot.latitude, longitude: spot.longitude });
+      setDifferentPlace(false);
+      setName(spot.name);
+      setAddress(spot.address);
+      setLatitude(spot.latitude);
+      setLongitude(spot.longitude);
+      setLocationOrigin({ latitude: spot.latitude, longitude: spot.longitude });
+      setCoordinatesValid(true);
+    }).catch(() => { if (active) setMatchError(true); });
+    return () => { active = false; };
+  }, [spotId]);
+
+  useEffect(() => {
+    let active = true;
+    setMatching(name.trim().length >= 2);
+    setMatches([]);
+    setMatchError(false);
+    if (name.trim().length < 2 || !coordinatesValid || mapInteracting) { setMatching(false); return; }
+    const timer = setTimeout(() => {
+      findMatchingSpots(name, latitude, longitude)
+        .then((items) => { if (active) setMatches(items); })
+        .catch(() => { if (active) setMatchError(true); })
+        .finally(() => { if (active) setMatching(false); });
+    }, 350);
+    return () => { active = false; clearTimeout(timer); };
+  }, [name, latitude, longitude, coordinatesValid, mapInteracting]);
+
+  function resetPlaceChoice() {
+    setLinkedSpot(null);
+    setDifferentPlace(false);
+  }
 
   function toggleCategory(item: string) {
     setSelectedCategories((current) =>
@@ -206,13 +229,15 @@ export default function SubmitSpotScreen() {
     setMedia((current) => current.filter((asset) => asset.id !== assetId));
   }
 
-  async function useCurrentLocation() {
-    const current = await getCurrentLocation();
-    if (!current) return;
-    setLatitude(current.latitude);
-    setLongitude(current.longitude);
-    setShowMap(true);
-  }
+  const updateSpotCoordinate = useCallback((coordinate: MapCoordinate | null) => {
+    setLocationEdited(true);
+    setCoordinatesValid(coordinate !== null);
+    if (!coordinate) return;
+    setLinkedSpot(null); setDifferentPlace(false);
+    setLatitude(coordinate.latitude); setLongitude(coordinate.longitude);
+  }, []);
+
+  const closeLocationMap = useCallback(() => { setShowMap(false); setMapInteracting(false); }, []);
 
   const requestExit = useCallback(() => {
     if (submitting || savingDraft) return;
@@ -237,6 +262,8 @@ export default function SubmitSpotScreen() {
   function buildDraft(id: string): SpotSubmissionDraft {
     return {
       id,
+      linkedSpot,
+      differentPlace,
       name,
       description,
       address,
@@ -282,12 +309,20 @@ export default function SubmitSpotScreen() {
       Alert.alert('Authentication required', 'Please sign in again to submit a spot.');
       return;
     }
-    if (!name.trim() || !address.trim() || !primaryCategory) {
+    if (!linkedSpot && (!coordinatesValid || mapInteracting)) {
+      Alert.alert('Choose a location', 'Enter valid latitude and longitude, or place the pin on the map.');
+      return;
+    }
+    if (!linkedSpot && (!name.trim() || !address.trim() || !primaryCategory)) {
       Alert.alert('Missing details', 'Spot name, address, and category are required.');
       return;
     }
-    if (acceptsReservations === null) {
+    if (!linkedSpot && acceptsReservations === null) {
       Alert.alert('Missing reservation info', 'Please choose whether this spot accepts reservations.');
+      return;
+    }
+    if (matching || (matches.length > 0 && !linkedSpot && !differentPlace)) {
+      Alert.alert('Confirm the place', 'Is this the spot you’re posting about? Select a match or choose “This is a different place”.');
       return;
     }
     if (!media.some((asset) => asset.type === 'image')) {
@@ -301,20 +336,22 @@ export default function SubmitSpotScreen() {
 
       await spotSubmissionQueueService.enqueue(
         {
-          name: name.trim(),
+          name: linkedSpot?.name ?? name.trim(),
+          spot_id: linkedSpot?.id ?? null,
+          different_place: differentPlace,
           description: description.trim() || null,
-          address: address.trim(),
-          category: primaryCategory,
+          address: linkedSpot?.address ?? address.trim(),
+          category: primaryCategory ?? 'Community',
           categories: selectedCategories,
-          latitude,
-          longitude,
+          latitude: linkedSpot?.latitude ?? latitude,
+          longitude: linkedSpot?.longitude ?? longitude,
           images: media.map((asset) => asset.uri),
           media,
           draftId: draftId ?? undefined,
           reservation_fee: 0,
           reservation_type: 'free',
           payment_required: false,
-          is_reservable: acceptsReservations,
+          is_reservable: acceptsReservations ?? false,
           submitter_id: profile.id,
         },
         profile.display_name || 'Explorer'
@@ -333,7 +370,7 @@ export default function SubmitSpotScreen() {
   }
 
   return (
-    <ScreenContainer appColors={appColors} scroll>
+    <ScreenContainer appColors={appColors} scroll scrollEnabled={!mapInteracting}>
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
@@ -461,7 +498,7 @@ export default function SubmitSpotScreen() {
           <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Spot Name</Text>
           <TextInput
             value={name}
-            onChangeText={setName}
+            onChangeText={(value) => { resetPlaceChoice(); setName(value); }}
             placeholder="e.g. Neon Brew Terminal"
             placeholderTextColor={appColors.onSurfaceVariant}
             selectionColor={appColors.primary}
@@ -477,7 +514,26 @@ export default function SubmitSpotScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Description</Text>
+          {matching && <Text style={{ color: appColors.onSurfaceVariant }}>Looking for matching spots…</Text>}
+          {matchError && <Text style={{ color: appColors.onSurfaceVariant }}>Spot suggestions are unavailable. Your submission will still need admin place verification.</Text>}
+          {matches.length > 0 && <Text style={[styles.label, { color: appColors.onSurface }]}>Is this the spot you’re posting about?</Text>}
+          {matches.map((spot) => (
+            <Pressable key={spot.id} accessibilityRole="button" accessibilityState={{ selected: linkedSpot?.id === spot.id }}
+              onPress={() => { setLocationOrigin({ latitude, longitude }); setLinkedSpot(spot); setDifferentPlace(false); }}
+              style={[styles.input, { borderColor: linkedSpot?.id === spot.id ? colors.primary : appColors.inputBorder }]}>
+              <Text style={{ color: appColors.onSurface }}>{spot.name}{linkedSpot?.id === spot.id ? ' ✓' : ''}</Text>
+              <Text style={{ color: appColors.onSurfaceVariant }}>{spot.address} · {Math.round(spot.distance_m)} m away</Text>
+            </Pressable>
+          ))}
+          {(matches.length > 0 || linkedSpot) && <Pressable accessibilityRole="button" accessibilityState={{ selected: differentPlace }}
+            onPress={() => { setLinkedSpot(null); setDifferentPlace(true); }} style={styles.locationNote}>
+            <Text style={{ color: colors.primary }}>This is a different place{differentPlace ? ' ✓' : ''}</Text>
+          </Pressable>}
+          {linkedSpot && <Text style={{ color: appColors.onSurfaceVariant }}>Your post will link to {linkedSpot.name}. Your caption, media and comments belong to this post.</Text>}
+        </View>
+
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Caption</Text>
           <TextInput
             value={description}
             onChangeText={setDescription}
@@ -497,6 +553,7 @@ export default function SubmitSpotScreen() {
           />
         </View>
 
+        {!linkedSpot && <>
         <View style={styles.field}>
           <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Categories</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
@@ -522,49 +579,23 @@ export default function SubmitSpotScreen() {
           >
             <TextInput
               value={address}
-              onChangeText={setAddress}
+              onChangeText={(value) => { resetPlaceChoice(); setAddress(value); }}
               placeholder="Street, Barangay, City"
               placeholderTextColor={appColors.onSurfaceVariant}
               selectionColor={appColors.primary}
               style={[styles.addressInput, { color: appColors.onSurface }]}
             />
-            <Pressable style={styles.pinButton} onPress={useCurrentLocation}>
-              {locating ? <Sparkles size={17} color={colors.primary} /> : <MapPin size={17} color={colors.primary} />}
+            <Pressable accessibilityRole="button" accessibilityLabel="Choose spot location on map"
+              accessibilityState={{ expanded: showMap }} style={styles.pinButton} onPress={() => setShowMap(true)}>
+              <MapPin size={20} color={colors.primary} />
             </Pressable>
           </View>
-          <Pressable style={styles.locationNote} onPress={() => setShowMap((value) => !value)}>
-            <Check size={12} color={colors.primary} />
-            <Text style={styles.locationText}>
-              Location pinned: {latitude.toFixed(4)}, {longitude.toFixed(4)}
-            </Text>
-            <ChevronRight size={13} color={colors.primary} />
-          </Pressable>
         </View>
 
-        {showMap && (
-          <View style={styles.mapBox}>
-            <TileMap
-              style={styles.map}
-              center={{
-                latitude,
-                longitude,
-              }}
-              zoom={15}
-              onCenterChange={(coordinate) => {
-                setLatitude(coordinate.latitude);
-                setLongitude(coordinate.longitude);
-              }}
-              onPressCoordinate={(coordinate) => {
-                setLatitude(coordinate.latitude);
-                setLongitude(coordinate.longitude);
-              }}
-            />
-            <CenterPin category={primaryCategory} />
-            <Pressable style={styles.closeMap} onPress={() => setShowMap(false)}>
-              <X size={16} color={colors.white} />
-            </Pressable>
-          </View>
-        )}
+        <SpotLocationPicker key={`${locationOrigin.latitude}:${locationOrigin.longitude}`} purpose="posting"
+          latitude={locationOrigin.latitude} longitude={locationOrigin.longitude} category={primaryCategory ?? ''}
+          mapVisible={showMap} onCloseMap={closeLocationMap}
+          onChange={updateSpotCoordinate} onInteractionChange={setMapInteracting} />
 
         <View style={styles.field}>
           <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Accepts Reservations?</Text>
@@ -600,17 +631,18 @@ export default function SubmitSpotScreen() {
           </View>
         </View>
 
+        </>}
         <View style={styles.policy}>
           <ShieldCheck size={16} color={colors.primary} />
           <Text style={[styles.policyText, { color: appColors.onSurfaceVariant }]}>
-            Submitted spots are reviewed before becoming public. Reservation pricing is added by verified owners and checked by admins.
+            New places need admin approval for the map. Each community post follows its own moderation rules. Ratings and reviews belong in the spot’s review section.
           </Text>
         </View>
       </View>
 
       <AppButton
-        label={submitting ? 'Spot uploading...' : 'Submit Spot'}
-        disabled={savingDraft}
+        label={submitting ? 'Spot uploading...' : linkedSpot ? 'Post about this spot' : 'Submit Spot'}
+        disabled={savingDraft || matching || (!linkedSpot && (!coordinatesValid || mapInteracting))}
         loading={submitting}
         onPress={submit}
       />
@@ -909,68 +941,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-  },
-  locationText: {
-    color: colors.primary,
-    fontSize: fontSize.xs,
-    fontWeight: '800',
-  },
-  mapBox: {
-    height: 230,
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-  },
-  centerPinWrap: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: 38,
-    height: 48,
-    marginLeft: -19,
-    marginTop: -45,
-    alignItems: 'center',
-  },
-  centerPinHead: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: colors.white,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadow.card,
-  },
-  centerPinDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: colors.white,
-  },
-  centerPinTip: {
-    width: 15,
-    height: 15,
-    marginTop: -9,
-    borderRightWidth: 2,
-    borderBottomWidth: 2,
-    borderColor: colors.white,
-    backgroundColor: colors.primary,
-    transform: [{ rotateZ: '45deg' }],
-  },
-  closeMap: {
-    position: 'absolute',
-    right: spacing.md,
-    top: spacing.md,
-    width: 34,
-    height: 34,
-    borderRadius: radius.pill,
-    backgroundColor: colors.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   reservationChoiceRow: {
     flexDirection: 'row',

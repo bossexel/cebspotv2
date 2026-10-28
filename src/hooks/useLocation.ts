@@ -24,15 +24,20 @@ export function useLocation() {
     return true;
   }, []);
 
-  const getCurrentLocation = useCallback(async () => {
+  const getCurrentLocation = useCallback(async (options: { fresh?: boolean } = {}) => {
     setLoading(true);
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
       const allowed = await requestPermissions();
       if (!allowed) return null;
 
-      const current = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+      const position = Location.getCurrentPositionAsync({
+        accuracy: options.fresh ? Location.Accuracy.High : Location.Accuracy.Balanced,
       });
+      const current = await (options.fresh ? Promise.race([
+        position,
+        new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error('Fresh location timed out')), 15000); }),
+      ]) : position);
 
       const nextLocation: LocationData = {
         latitude: current.coords.latitude,
@@ -41,8 +46,13 @@ export function useLocation() {
         timestamp: current.timestamp,
       };
       setLocation(nextLocation);
+      setError(null);
       return nextLocation;
     } catch (locationError) {
+      if (options.fresh) {
+        setError('Unable to get a fresh location. Check your GPS and try again.');
+        return null;
+      }
       try {
         const lastKnown = await Location.getLastKnownPositionAsync();
         if (lastKnown) {
@@ -69,6 +79,7 @@ export function useLocation() {
       setError('Unable to get your current location.');
       return null;
     } finally {
+      if (timeout) clearTimeout(timeout);
       setLoading(false);
     }
   }, [requestPermissions]);

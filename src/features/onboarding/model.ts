@@ -43,7 +43,7 @@ export function canOfferGuide(ready: boolean, signedIn: boolean, accountId: stri
 
 export function shouldStartHomeGuide(input: {
   eligible: boolean; account?: string; path: string; homeReady: boolean; active: boolean;
-  deepLink: boolean; requested: boolean; storedAccount?: string; status?: OnboardingStatus; offered: boolean;
+  deepLink: boolean; requested: boolean; storedAccount?: string; status?: OnboardingStatus | null; offered: boolean;
 }) {
   if (!input.eligible || !input.account || input.path !== '/' || !input.homeReady || input.active || input.deepLink) return false;
   return input.requested || (input.storedAccount === input.account && input.status === 'not_started' && !input.offered);

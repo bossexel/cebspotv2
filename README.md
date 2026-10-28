@@ -6,6 +6,8 @@ See [code structure and regression checks](docs/code-structure.md) for dashboard
 
 See [media/feed changes and rollout](docs/media-feed-fixes-2026-10-25.md) for compression limits, the Activity pagination migrations, and the Android 1.0.4 native rebuild required for video compression.
 
+See [independent spot posts](docs/independent-spot-posts.md) for the separate community-post/listing workflow and historical relationship review, and [the latest user-testing release](docs/deployment-2026-10-28.md) for rollout status and email-testing limits.
+
 ## Run
 
 ```bash
@@ -36,7 +38,7 @@ EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-Then run `supabase-schema.sql` in Supabase.
+Database setup uses the timestamped migration chain described in [Supabase migrations](supabase/MIGRATIONS.md). Root SQL files are archived baselines and must not overwrite the current schema.
 
 ## EAS Preview And Updates
 

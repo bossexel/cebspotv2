@@ -16,9 +16,9 @@ export const aboutContent = {
   team: [
     { name: 'Clyde Hans Sadudaquil', role: 'Capstone project team' },
     { name: 'Jithrix Exiel Bolambao', role: 'Capstone project team' },
-    { name: 'Ms. Cyrille Shane A. Pador', role: 'Research adviser' },
   ],
-  acknowledgments: 'The team gives thanks to God Almighty; research adviser Ms. Cyrille Shane A. Pador for her guidance and feedback; the University of Southern Philippines Foundation for its academic environment and resources; the study respondents for their participation; and our families, friends, and batchmates for their support.',
+
+  acknowledgments: '',
   // Add only verified public contacts/policy destinations. Empty arrays render no buttons.
   supportLinks: [] as AboutLink[],
   policyLinks: [] as AboutLink[],

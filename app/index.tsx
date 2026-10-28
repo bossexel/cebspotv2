@@ -18,9 +18,7 @@ import type { NativeScrollEvent, NativeSyntheticEvent, ViewToken } from 'react-n
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Bookmark,
-  ChevronRight,
   Layers,
-  Megaphone,
   Search,
   SlidersHorizontal,
   Star,
@@ -35,11 +33,6 @@ import { useLocation } from '../src/hooks/useLocation';
 import { useTheme } from '../src/hooks/useTheme';
 import { HomeGuideReady, useGuideTarget } from '../src/features/onboarding/GuideProvider';
 import { savedSpotService } from '../src/services/savedSpotService';
-import {
-  getPublishedAdminUpdates,
-  subscribeToPublishedAdminUpdates,
-  type AdminUpdate,
-} from '../src/services/adminUpdateService';
 import { hasSupabaseConfig, supabase } from '../src/lib/supabase';
 import { spotService } from '../src/services/spotService';
 import type { Spot } from '../src/types';
@@ -123,8 +116,6 @@ export default function ExploreScreen() {
   const [mapTransitionKey, setMapTransitionKey] = useState(0);
   const [favoriteSpotIds, setFavoriteSpotIds] = useState<string[]>([]);
   const [favoritesLoaded, setFavoritesLoaded] = useState(false);
-  const [adminUpdates, setAdminUpdates] = useState<AdminUpdate[]>([]);
-  const [adminUpdatesOpen, setAdminUpdatesOpen] = useState(false);
   const [filters, setFilters] = useState({
     category: 'All',
     minRating: 0,
@@ -231,29 +222,6 @@ export default function ExploreScreen() {
       console.error('Unable to save favorite spots:', error);
     });
   }, [favoriteSpotIds, favoritesLoaded]);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const loadUpdates = async () => {
-      try {
-        const nextUpdates = await getPublishedAdminUpdates(5);
-        if (mounted) setAdminUpdates(nextUpdates);
-      } catch (error) {
-        // Updates are helpful but should never block discovery if the optional
-        // feed is unavailable or its migration has not reached an environment.
-        console.warn('Unable to load Admin Updates:', error);
-        if (mounted) setAdminUpdates([]);
-      }
-    };
-
-    void loadUpdates();
-    const unsubscribe = subscribeToPublishedAdminUpdates(() => void loadUpdates());
-    return () => {
-      mounted = false;
-      unsubscribe();
-    };
-  }, []);
 
   useEffect(() => {
     if (requestedInitialLocationRef.current) return;
@@ -553,29 +521,9 @@ export default function ExploreScreen() {
               {spotLoadError}
             </Text>
           ) : null}
-          {adminUpdates[0] && (
-            <Pressable
-              accessibilityHint="Opens all published CebSpot updates"
-              accessibilityLabel={`Admin Updates. ${adminUpdates[0].message}`}
-              accessibilityRole="button"
-              onPress={() => setAdminUpdatesOpen(true)}
-              style={[styles.adminUpdateCard, { backgroundColor: appColors.surfaceHighest }]}
-            >
-              <View style={styles.adminUpdateIcon}>
-                <Megaphone size={17} color={colors.white} />
-              </View>
-              <View style={styles.adminUpdateCardCopy}>
-                <Text style={[styles.adminUpdateCardTitle, { color: appColors.onSurface }]}>Admin Updates</Text>
-                <Text numberOfLines={2} style={[styles.adminUpdateCardMessage, { color: appColors.onSurfaceVariant }]}>
-                  {adminUpdates[0].message}
-                </Text>
-              </View>
-              <ChevronRight size={17} color={appColors.onSurfaceVariant} />
-            </Pressable>
-          )}
         </View>
 
-        <View style={[styles.mapActions, adminUpdates[0] && styles.mapActionsWithUpdate]}>
+        <View style={styles.mapActions}>
           <Pressable style={[styles.iconButton, { backgroundColor: appColors.surfaceContainer }]} onPress={centerOnUser}>
             {locating ? <ActivityIndicator color={colors.primary} /> : <Target size={18} color={colors.primary} />}
           </Pressable>
@@ -651,54 +599,7 @@ export default function ExploreScreen() {
           )}
         </View>
 
-        <Modal visible={adminUpdatesOpen} transparent animationType="fade" onRequestClose={() => setAdminUpdatesOpen(false)}>
-          <Pressable style={styles.updateModalBackdrop} onPress={() => setAdminUpdatesOpen(false)}>
-            <Pressable style={[styles.updateModal, { backgroundColor: appColors.surface }]} onPress={() => undefined}>
-              <View style={styles.updateModalHeader}>
-                <View style={styles.updateModalHeadingIcon}>
-                  <Megaphone size={19} color={colors.white} />
-                </View>
-                <View style={styles.updateModalHeadingCopy}>
-                  <Text style={[styles.updateModalEyebrow, { color: colors.primary }]}>WHAT'S LATEST ON CEBSPOT</Text>
-                  <Text style={[styles.updateModalTitle, { color: appColors.onSurface }]}>Admin Updates</Text>
-                </View>
-                <Pressable
-                  accessibilityLabel="Close Admin Updates"
-                  onPress={() => setAdminUpdatesOpen(false)}
-                  style={[styles.closeButton, { backgroundColor: appColors.surfaceContainer }]}
-                >
-                  <X size={18} color={appColors.onSurfaceVariant} />
-                </Pressable>
-              </View>
-              <ScrollView contentContainerStyle={styles.updateModalContent} showsVerticalScrollIndicator={false}>
-                {adminUpdates.map((update, index) => (
-                  <View
-                    key={update.id}
-                    style={[
-                      styles.updateModalItem,
-                      {
-                        backgroundColor: index === 0 ? colors.primary + '0D' : appColors.surfaceLow,
-                        borderColor: index === 0 ? colors.primary + '35' : appColors.outlineVariant + '44',
-                      },
-                    ]}
-                  >
-                    <View style={styles.updateModalItemTop}>
-                      <Text style={[styles.updateModalItemLabel, { color: index === 0 ? colors.primary : appColors.onSurfaceVariant }]}>
-                        {index === 0 ? 'LATEST UPDATE' : 'ADMIN UPDATE'}
-                      </Text>
-                      <Text style={[styles.updateModalDate, { color: appColors.onSurfaceVariant }]}>
-                        {new Date(update.publishedAt ?? update.updatedAt).toLocaleDateString('en-PH', {
-                          month: 'short', day: 'numeric', year: 'numeric',
-                        })}
-                      </Text>
-                    </View>
-                    <Text style={[styles.updateModalMessage, { color: appColors.onSurface }]}>{update.message}</Text>
-                  </View>
-                ))}
-              </ScrollView>
-            </Pressable>
-          </Pressable>
-        </Modal>
+
 
         <Modal visible={filterOpen} transparent animationType="slide" onRequestClose={() => setFilterOpen(false)}>
           <Pressable style={styles.modalBackdrop} onPress={() => setFilterOpen(false)}>
@@ -1033,44 +934,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     fontSize: fontSize.xs,
   },
-  adminUpdateCard: {
-    width: '100%',
-    maxWidth: 460,
-    minHeight: 78,
-    alignSelf: 'flex-start',
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.primary + '22',
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    ...shadow.card,
-  },
-  adminUpdateIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
-  adminUpdateCardCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  adminUpdateCardTitle: {
-    fontSize: fontSize.sm,
-    fontWeight: '900',
-  },
-  adminUpdateCardMessage: {
-    fontSize: fontSize.xs,
-    lineHeight: 17,
-    fontWeight: '600',
-    marginTop: 2,
-  },
   searchBar: {
     minHeight: 52,
     borderRadius: radius.pill,
@@ -1105,9 +968,6 @@ const styles = StyleSheet.create({
     top: 84,
     gap: spacing.sm,
   },
-  mapActionsWithUpdate: {
-    top: 178,
-  },
   iconButton: {
     width: 42,
     height: 42,
@@ -1117,83 +977,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.outlineVariant + '24',
     ...shadow.card,
-  },
-  updateModalBackdrop: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.md,
-    backgroundColor: 'rgba(15, 15, 15, 0.64)',
-  },
-  updateModal: {
-    width: '100%',
-    maxWidth: 560,
-    maxHeight: '82%',
-    borderRadius: radius.xxl,
-    overflow: 'hidden',
-    ...shadow.card,
-  },
-  updateModalHeader: {
-    minHeight: 86,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.outlineVariant + '33',
-  },
-  updateModalHeadingIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
-  updateModalHeadingCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  updateModalEyebrow: {
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1.1,
-  },
-  updateModalTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: '900',
-    marginTop: 2,
-  },
-  updateModalContent: {
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  updateModalItem: {
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  updateModalItemTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  updateModalItemLabel: {
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  updateModalDate: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  updateModalMessage: {
-    fontSize: fontSize.sm,
-    lineHeight: 21,
-    fontWeight: '600',
   },
   explorePanel: {
     position: 'absolute',

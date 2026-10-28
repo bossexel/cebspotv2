@@ -16,7 +16,7 @@ function validCoordinate(value: unknown): value is MapCoordinate {
 export const TileMap = React.memo(function TileMap(props: TileMapProps) {
   const {
     center, zoom = 14, markers, routeLine, routeLineColor = '#16a36a', transitionKey, style,
-    showAttribution = true, attributionPosition = 'bottomleft', attributionInset = 10,
+    showAttribution = true, attributionPosition = 'bottomleft', attributionInset = 10, animateCamera = true,
   } = props;
   const callbacks = useRef(props);
   callbacks.current = props;
@@ -65,11 +65,11 @@ export const TileMap = React.memo(function TileMap(props: TileMapProps) {
 
   const payload = useMemo<MapPayload>(() => ({
     center: { latitude: center.latitude, longitude: center.longitude },
-    zoom, markers: markers ?? [], routeLine: routeLine ?? [], routeLineColor, transitionKey,
+    zoom, markers: markers ?? [], routeLine: routeLine ?? [], routeLineColor, transitionKey, animateCamera,
     tileUrl: staticMapTileUrl, fallbackTileUrl: fallbackStaticMapTileUrl,
     attribution: staticMapAttributionHtml, showAttribution, attributionPosition, attributionInset, reduceMotion,
   }), [center.latitude, center.longitude, zoom, markers, routeLine, routeLineColor, transitionKey,
-    showAttribution, attributionPosition, attributionInset, reduceMotion]);
+    showAttribution, attributionPosition, attributionInset, reduceMotion, animateCamera]);
 
   return (
     <View style={[styles.container, style]}>

@@ -11,6 +11,7 @@ import {
   Info,
   LogOut,
   MapPin,
+  NotebookPen,
   Moon,
   Plus,
   Settings,
@@ -18,6 +19,8 @@ import {
   Star,
   Store,
   Sun,
+  Trash2,
+  UserRound,
 } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ConfirmationModal } from '../src/components/ConfirmationModal';
@@ -329,6 +332,17 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Account</Text>
         <View style={[styles.accountCard, { backgroundColor: appColors.surfaceLow }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Account Details"
+            onPress={() => router.push('/account-details')}
+            style={({ pressed }) => [styles.accountRow, pressed && styles.pressed]}>
+            <View style={styles.settingIcon}><UserRound size={20} color={colors.primary} /></View>
+            <View style={styles.listCopy}>
+              <Text style={[styles.listTitle, { color: appColors.onSurface }]}>Account Details</Text>
+              <Text style={[styles.listSub, { color: appColors.onSurfaceVariant }]}>Manage your name, password, and profile picture</Text>
+            </View>
+            <ChevronRight size={20} color={appColors.onSurfaceVariant} />
+          </Pressable>
+          <View style={[styles.accountDivider, { backgroundColor: appColors.outlineVariant }]} />
           <View style={styles.accountRow}>
             <View style={styles.settingIcon}>
               <ShieldCheck size={20} color={colors.primary} />
@@ -353,6 +367,19 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Quick Actions</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Your Posts"
+          style={({ pressed }) => [styles.listItem, { backgroundColor: appColors.surfaceLow }, pressed && styles.pressed]}
+          onPress={() => router.push('/your-posts')}
+        >
+          <View style={styles.settingIcon}><NotebookPen size={20} color={colors.primary} /></View>
+          <View style={styles.listCopy}>
+            <Text style={[styles.listTitle, { color: appColors.onSurface }]}>Your Posts</Text>
+            <Text style={[styles.listSub, { color: appColors.onSurfaceVariant }]}>See the spots you shared and their status</Text>
+          </View>
+          <ChevronRight size={20} color={appColors.onSurfaceVariant} />
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="App Guide"
@@ -438,10 +465,6 @@ export default function ProfileScreen() {
         </Pressable>
       </View>
 
-      <Pressable accessibilityRole="button" style={styles.listItem} onPress={() => router.push('/account-deletion')}>
-        <Text style={[styles.listTitle, { color: colors.danger }]}>Delete account</Text>
-      </Pressable>
-
       <Pressable style={styles.logout} onPress={() => setLogoutConfirmationOpen(true)}>
         <LogOut size={20} color={colors.white} />
         <Text style={styles.logoutText}>Logout</Text>
@@ -511,6 +534,22 @@ export default function ProfileScreen() {
               <View style={[styles.switchTrack, { backgroundColor: isDarkMode ? colors.primary : appColors.outlineVariant }]}>
                 <View style={[styles.switchThumb, isDarkMode && styles.switchOn]} />
               </View>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Delete account"
+              style={({ pressed }) => [styles.listItem, { backgroundColor: appColors.surfaceLow }, pressed && styles.pressed]}
+              onPress={() => {
+                setSettingsOpen(false);
+                router.push('/account-deletion');
+              }}
+            >
+              <View style={styles.settingIcon}><Trash2 size={20} color={appColors.danger} /></View>
+              <View style={styles.listCopy}>
+                <Text style={[styles.listTitle, { color: appColors.danger }]}>Delete account</Text>
+                <Text style={[styles.listSub, { color: appColors.onSurfaceVariant }]}>Review permanent account deletion</Text>
+              </View>
+              <ChevronRight size={20} color={appColors.onSurfaceVariant} />
             </Pressable>
           </Pressable>
         </Pressable>

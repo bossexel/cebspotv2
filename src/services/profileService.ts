@@ -22,7 +22,8 @@ export const profileService = {
     if (existing) {
       const updates: Partial<UserProfile> = {};
       if (prototypeRole !== 'user' && existing.role !== prototypeRole) updates.role = prototypeRole;
-      if (input.email && existing.email !== input.email) updates.email = input.email;
+      // Auth's identity trigger owns email. A cached session can still contain
+      // the old address after confirmation; never write it back over the server.
       if (!existing.display_name && input.display_name) updates.display_name = input.display_name;
       if (!existing.photo_url && input.photo_url) updates.photo_url = input.photo_url;
       if (!Object.keys(updates).length) return existing;

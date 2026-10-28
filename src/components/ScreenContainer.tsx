@@ -11,6 +11,7 @@ interface ScreenContainerProps {
   scroll?: boolean;
   scrollRef?: React.RefObject<ScrollView>;
   scrollEnabled?: boolean;
+  keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
   showBottomNav?: boolean;
   bottomNavOverlay?: boolean;
   onBottomNavHeightChange?: (height: number) => void;
@@ -24,6 +25,7 @@ export function ScreenContainer({
   scroll,
   scrollRef,
   scrollEnabled = true,
+  keyboardShouldPersistTaps,
   showBottomNav,
   bottomNavOverlay = false,
   onBottomNavHeightChange,
@@ -45,6 +47,7 @@ export function ScreenContainer({
             style={styles.flex}
             contentContainerStyle={contentStyle}
             scrollEnabled={scrollEnabled}
+            keyboardShouldPersistTaps={keyboardShouldPersistTaps}
             showsVerticalScrollIndicator={false}
           >
             {children}

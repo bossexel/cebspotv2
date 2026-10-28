@@ -43,8 +43,11 @@ import {
 import { AppButton } from '../../src/components/AppButton';
 import { CategoryChip } from '../../src/components/CategoryChip';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
-import { SpotCategoryIcon } from '../../src/components/SpotCategoryIcon';
+import { SimilarPlacesSection } from '../../src/features/spot-details/SimilarPlacesSection';
+import { SimilarPostsSection } from '../../src/features/spot-details/SimilarPostsSection';
 import { TileMap } from '../../src/components/TileMap';
+import { SpotLocationPicker } from '../../src/components/SpotLocationPicker';
+import { SpotEditSuggestionModal } from '../../src/components/SpotEditSuggestionModal';
 import { colors } from '../../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../../src/constants/design';
 import { REVIEW_REPORT_CATEGORIES } from '../../src/constants/reportCategories';
@@ -203,7 +206,11 @@ export default function SpotDetailsScreen() {
   const { width } = useWindowDimensions();
   const { appColors } = useTheme();
   const { profile } = useAuth();
-  const { getCurrentLocation, location } = useLocation();
+  const { getCurrentLocation, location, loading: locatingRoute } = useLocation();
+  const [routeRefreshKey, setRouteRefreshKey] = useState(0);
+  const [routeCameraCenter, setRouteCameraCenter] = useState<MapCoordinate | null>(null);
+  const routeSpotId = useRef(id);
+  routeSpotId.current = id;
   const screenScrollRef = useRef<ScrollView>(null);
   const guideOffsets = useRef({ sheet: 0, overview: 0, reviews: 0 });
   const startSpotGuide = useSpotGuide();
@@ -240,6 +247,7 @@ export default function SpotDetailsScreen() {
   const [editSuggestionField, setEditSuggestionField] = useState(editSuggestionFields[0]);
   const [editSuggestionValue, setEditSuggestionValue] = useState('');
   const [editSuggestionCoordinate, setEditSuggestionCoordinate] = useState<MapCoordinate | null>(null);
+  const [editMapInteracting, setEditMapInteracting] = useState(false);
   const [editSuggestionNote, setEditSuggestionNote] = useState('');
   const [editSuggestionSubmitted, setEditSuggestionSubmitted] = useState(false);
   const [submittingEditSuggestion, setSubmittingEditSuggestion] = useState(false);
@@ -250,6 +258,7 @@ export default function SpotDetailsScreen() {
 
   useEffect(() => {
     let active = true;
+    setRouteCameraCenter(null);
     screenScrollRef.current?.scrollTo({ y: 0, animated: false });
     setActiveImageIndex(0);
     setLoading(true);
@@ -363,7 +372,7 @@ export default function SpotDetailsScreen() {
       cancelled = true;
       routeRequestController.abort();
     };
-  }, [location?.latitude, location?.longitude, spot?.id, spot?.latitude, spot?.longitude]);
+  }, [location?.latitude, location?.longitude, spot?.id, spot?.latitude, spot?.longitude, routeRefreshKey]);
 
   const similarSpots = useMemo(
     () => (spot ? rankSimilarSpots(spot, availableSpots) : []),
@@ -404,7 +413,21 @@ export default function SpotDetailsScreen() {
   const spotCategoryColor = getSpotCategoryColor(spot.category, spot.categories);
   const spotCoordinate = { latitude: spot.latitude, longitude: spot.longitude };
   const userCoordinate = location ? { latitude: location.latitude, longitude: location.longitude } : null;
-  const transitCenter = userCoordinate ? midpoint(userCoordinate, spotCoordinate) : spotCoordinate;
+  const transitCenter = routeCameraCenter ?? (userCoordinate ? midpoint(userCoordinate, spotCoordinate) : spotCoordinate);
+  async function refreshRouteLocation() {
+    if (locatingRoute) return;
+    const targetSpot = spot!;
+    const current = await getCurrentLocation({ fresh: true });
+    if (routeSpotId.current !== targetSpot.id) return;
+    if (!current) {
+      Alert.alert('Location unavailable', 'Enable GPS and location access, then tap Route Line again.');
+      return;
+    }
+    const nextCenter = { latitude: current.latitude, longitude: current.longitude };
+    routeCache.delete(routeCacheKey(nextCenter, { latitude: targetSpot.latitude, longitude: targetSpot.longitude }));
+    setRouteCameraCenter(nextCenter);
+    setRouteRefreshKey(value => value + 1);
+  }
   const transitMarkers = [
     ...(userCoordinate
       ? [
@@ -630,6 +653,7 @@ export default function SpotDetailsScreen() {
   }
 
   function openEditSuggestionForm(field = 'Location / map pin') {
+    setEditMapInteracting(false);
     setEditSuggestionField(field);
     setEditSuggestionValue('');
     setEditSuggestionCoordinate(spot ? { latitude: spot.latitude, longitude: spot.longitude } : null);
@@ -639,12 +663,15 @@ export default function SpotDetailsScreen() {
   }
 
   function selectEditSuggestionField(field: string) {
+    if (field === editSuggestionField) return;
+    setEditMapInteracting(false);
     setEditSuggestionField(field);
     setEditSuggestionValue('');
     setEditSuggestionCoordinate(spot ? { latitude: spot.latitude, longitude: spot.longitude } : null);
   }
 
   function closeEditSuggestionForm() {
+    setEditMapInteracting(false);
     setEditSuggestionOpen(false);
     setEditSuggestionField(editSuggestionFields[0]);
     setEditSuggestionValue('');
@@ -751,31 +778,6 @@ export default function SpotDetailsScreen() {
   }
 
   const editSuggestionIsLocation = editSuggestionField === 'Location / map pin';
-  const editSuggestionMapCenter = editSuggestionCoordinate ?? (spot ? { latitude: spot.latitude, longitude: spot.longitude } : null);
-  const editSuggestionMarkers = spot && editSuggestionCoordinate
-    ? [
-        {
-          id: 'original-location',
-          latitude: spot.latitude,
-          longitude: spot.longitude,
-          label: 'Current pin',
-          category: spot.category,
-          color: appColors.onSurfaceVariant,
-          variant: 'circle' as const,
-          size: 'small' as const,
-        },
-        {
-          id: 'suggested-location',
-          latitude: editSuggestionCoordinate.latitude,
-          longitude: editSuggestionCoordinate.longitude,
-          label: 'Suggested pin',
-          category: spot.category,
-          color: colors.primary,
-          selected: true,
-          variant: 'pin' as const,
-        },
-      ]
-    : [];
 
   return (
     <ScreenContainer appColors={appColors} scroll scrollRef={screenScrollRef} padded={false}>
@@ -904,7 +906,7 @@ export default function SpotDetailsScreen() {
             <View ref={reviewsTarget} collapsable={false}>
               <Text style={[styles.sectionTitle, { color: appColors.onSurfaceVariant }]}>Community Reviews</Text>
             </View>
-            <Text style={styles.reviewCount}>{reviews.length} posts</Text>
+            <Text style={styles.reviewCount}>{reviews.length} reviews</Text>
           </View>
 
           <View style={[styles.reviewComposer, { backgroundColor: appColors.surfaceLow }]}>
@@ -1142,17 +1144,20 @@ export default function SpotDetailsScreen() {
         </View>
 
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Refresh my location and recenter route map"
+            accessibilityHint="Gets your current GPS location and returns the route map to your position."
+            disabled={locatingRoute} onPress={() => void refreshRouteLocation()} style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: appColors.onSurfaceVariant }]}>Route Line</Text>
             <View testID="route-line-badge" style={[styles.routeBadge, { backgroundColor: spotCategoryColor + '18' }]}>
-              <Navigation size={13} color={spotCategoryColor} />
+              {locatingRoute ? <ActivityIndicator size="small" color={spotCategoryColor} /> : <Navigation size={13} color={spotCategoryColor} />}
               <Text style={[styles.routeBadgeText, { color: spotCategoryColor }]}>Route Line</Text>
             </View>
-          </View>
+          </Pressable>
           <View style={styles.mapCard}>
             <TileMap
               style={styles.map}
               center={transitCenter}
+              transitionKey={`${spot.id}:${routeRefreshKey}`}
               zoom={15}
               markers={transitMarkers}
               routeLine={routeCoordinates}
@@ -1178,58 +1183,10 @@ export default function SpotDetailsScreen() {
               Contact us.
             </Text>
           </Text>
-          {similarSpots.length > 0 && (
-            <View style={styles.similarPlaces}>
-              <Text style={[styles.similarPlacesTitle, { color: appColors.onSurface }]}>Similar Places</Text>
-              <FlatList
-                data={similarSpots}
-                keyExtractor={({ spot: similarSpot }) => similarSpot.id}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.similarPlacesList}
-                renderItem={({ item: { spot: similarSpot, distanceKm } }) => {
-                  const similarImage = similarSpot.images?.[0] ?? fallbackImage;
-                  const similarCategoryColor = getSpotCategoryColor(similarSpot.category, similarSpot.categories);
-                  return (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Open similar place ${similarSpot.name}`}
-                      style={({ pressed }) => [styles.similarPlaceCard, pressed && styles.similarPlaceCardPressed]}
-                      onPress={() => router.push(`/spot/${similarSpot.id}`)}
-                    >
-                      <View style={styles.similarPlaceImageWrap}>
-                        <Image source={{ uri: similarImage }} style={styles.similarPlaceImage} />
-                        <View
-                          testID={`similar-place-category-badge-${similarSpot.id}`}
-                          style={[
-                            styles.similarPlaceCategoryIcon,
-                            {
-                              backgroundColor: similarCategoryColor + '18',
-                              borderColor: similarCategoryColor + '66',
-                            },
-                          ]}
-                        >
-                          <SpotCategoryIcon
-                            category={similarSpot.category}
-                            categories={similarSpot.categories}
-                            color={similarCategoryColor}
-                            size={18}
-                          />
-                        </View>
-                      </View>
-                      <Text style={[styles.similarPlaceName, { color: appColors.onSurface }]} numberOfLines={2}>
-                        {similarSpot.name}
-                      </Text>
-                      <Text style={[styles.similarPlaceMeta, { color: appColors.onSurfaceVariant }]} numberOfLines={1}>
-                        {similarSpot.category} · {distanceKm < 10 ? distanceKm.toFixed(1) : Math.round(distanceKm)} km
-                      </Text>
-                    </Pressable>
-                  );
-                }}
-              />
-            </View>
-          )}
         </View>
+
+        <SimilarPostsSection key={spot.id} spotId={spot.id} onOpenPost={(postId) => router.push(`/post/${postId}`)} />
+        <SimilarPlacesSection places={similarSpots} onOpenSpot={(spotId) => router.push(`/spot/${spotId}`)} />
       </View>
 
       <Modal visible={Boolean(reportingReview)} transparent animationType="fade" onRequestClose={closeReportForm}>
@@ -1328,9 +1285,7 @@ export default function SpotDetailsScreen() {
         </Pressable>
       </Modal>
 
-      <Modal visible={editSuggestionOpen} transparent animationType="fade" onRequestClose={closeEditSuggestionForm}>
-        <Pressable style={styles.reportBackdrop} onPress={closeEditSuggestionForm}>
-          <Pressable style={[styles.reportSheet, { backgroundColor: appColors.surface }]} onPress={(event) => event.stopPropagation()}>
+      <SpotEditSuggestionModal visible={editSuggestionOpen} onClose={closeEditSuggestionForm} mapInteracting={editMapInteracting}>
             {editSuggestionSubmitted ? (
               <View style={styles.reportSuccess}>
                 <View style={styles.reportSuccessIcon}>
@@ -1348,7 +1303,7 @@ export default function SpotDetailsScreen() {
               <>
                 <View style={styles.reportHeader}>
                   <Text style={[styles.reportTitle, { color: appColors.onSurface }]}>Suggest an Edit</Text>
-                  <Pressable style={[styles.reportClose, { backgroundColor: appColors.surfaceLow }]} onPress={closeEditSuggestionForm}>
+                  <Pressable accessibilityRole="button" accessibilityLabel="Close edit suggestion" style={[styles.reportClose, { backgroundColor: appColors.surfaceLow }]} onPress={closeEditSuggestionForm}>
                     <X size={18} color={appColors.onSurface} />
                   </Pressable>
                 </View>
@@ -1380,25 +1335,9 @@ export default function SpotDetailsScreen() {
                   ))}
                 </ScrollView>
 
-                {editSuggestionIsLocation && editSuggestionMapCenter ? (
-                  <View style={styles.editLocationPicker}>
-                    <View style={[styles.editLocationMap, { borderColor: appColors.outlineVariant + '55' }]}>
-                      <TileMap
-                        style={styles.map}
-                        center={editSuggestionMapCenter}
-                        zoom={16}
-                        markers={editSuggestionMarkers}
-                        onCenterChange={setEditSuggestionCoordinate}
-                        onPressCoordinate={setEditSuggestionCoordinate}
-                      />
-                    </View>
-                    <View style={[styles.editLocationHint, { backgroundColor: appColors.surfaceLow }]}>
-                      <MapPin size={16} color={colors.primary} />
-                      <Text style={[styles.editLocationHintText, { color: appColors.onSurface }]}>
-                        Place the pin where this spot should appear on the map.
-                      </Text>
-                    </View>
-                  </View>
+                {editSuggestionIsLocation ? (
+                  <SpotLocationPicker latitude={spot.latitude} longitude={spot.longitude} category={spot.category}
+                    onChange={setEditSuggestionCoordinate} onInteractionChange={setEditMapInteracting} />
                 ) : (
                   <TextInput
                     value={editSuggestionValue}
@@ -1425,9 +1364,10 @@ export default function SpotDetailsScreen() {
                   ]}
                 />
                 <Pressable
-                  style={[styles.submitReportButton, submittingEditSuggestion && styles.disabledButton]}
+                  accessibilityRole="button"
+                  style={[styles.submitReportButton, (submittingEditSuggestion || (editSuggestionIsLocation && (!editSuggestionCoordinate || editMapInteracting))) && styles.disabledButton]}
                   onPress={submitEditSuggestion}
-                  disabled={submittingEditSuggestion}
+                  disabled={submittingEditSuggestion || (editSuggestionIsLocation && (!editSuggestionCoordinate || editMapInteracting))}
                 >
                   {submittingEditSuggestion ? (
                     <ActivityIndicator color={colors.white} />
@@ -1437,9 +1377,7 @@ export default function SpotDetailsScreen() {
                 </Pressable>
               </>
             )}
-          </Pressable>
-        </Pressable>
-      </Modal>
+      </SpotEditSuggestionModal>
 
       <Modal visible={Boolean(websitePreviewUrl)} transparent animationType="slide" onRequestClose={closeWebsitePreview}>
         <View style={styles.websiteBackdrop}>
@@ -2487,59 +2425,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textDecorationLine: 'underline',
   },
-  similarPlaces: {
-    marginTop: spacing.md,
-    gap: spacing.md,
-  },
-  similarPlacesTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: '900',
-  },
-  similarPlacesList: {
-    gap: spacing.md,
-    paddingRight: spacing.lg,
-  },
-  similarPlaceCard: {
-    width: 174,
-    gap: spacing.sm,
-  },
-  similarPlaceCardPressed: {
-    opacity: 0.75,
-    transform: [{ scale: 0.98 }],
-  },
-  similarPlaceImageWrap: {
-    width: 174,
-    height: 174,
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-    backgroundColor: colors.surfaceContainer,
-  },
-  similarPlaceImage: {
-    width: '100%',
-    height: '100%',
-  },
-  similarPlaceCategoryIcon: {
-    position: 'absolute',
-    right: spacing.sm,
-    bottom: spacing.sm,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    ...shadow.card,
-  },
-  similarPlaceName: {
-    minHeight: 40,
-    fontSize: fontSize.md,
-    lineHeight: 20,
-    fontWeight: '900',
-  },
-  similarPlaceMeta: {
-    fontSize: fontSize.xs,
-    fontWeight: '700',
-  },
   reportBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.38)',
@@ -2718,30 +2603,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-  },
-  editLocationPicker: {
-    gap: spacing.sm,
-  },
-  editLocationMap: {
-    height: 260,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-  },
-  editLocationHint: {
-    minHeight: 44,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  editLocationHintText: {
-    flex: 1,
-    fontSize: fontSize.sm,
-    lineHeight: 18,
-    fontWeight: '800',
   },
   currentValueBox: {
     borderRadius: radius.lg,

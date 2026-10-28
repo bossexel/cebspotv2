@@ -30,6 +30,7 @@ import {
   ListFilter,
   MapPin,
   MessageCircle,
+  Megaphone,
   MoreVertical,
   Navigation,
   PlayCircle,
@@ -49,6 +50,8 @@ import { activityService } from '../src/services/activityService';
 import { localUpdateService, FeedCursor } from '../src/services/localUpdateService';
 import type { Activity, LocalUpdate, LocalUpdateComment, SpotVoteType } from '../src/types';
 import { userErrorMessage } from '../src/utils/userError';
+import { getPublishedAdminUpdates, subscribeToPublishedAdminUpdates, type AdminUpdate } from '../src/services/adminUpdateService';
+import { mergeActivityNotifications } from '../src/utils/activityNotifications';
 
 type LocalUpdateSort = 'nearest' | 'newest' | 'popular';
 
@@ -103,6 +106,7 @@ function getReadStorageKey(userId?: string) {
 }
 
 function getNotificationTitle(item: Activity) {
+  if (item.type === 'admin_update') return 'Admin Updates';
   if (item.type === 'spot_comment') return 'New comment';
   if (item.type === 'spot_liked') return 'New like';
   if (item.type === 'review_comment') return 'Review comment';
@@ -150,6 +154,7 @@ function formatSpotScore(score: number) {
 }
 
 function NotificationTypeIcon({ item, color }: { item: Activity; color: string }) {
+  if (item.type === 'admin_update') return <Megaphone size={21} color={color} />;
   if (item.type.includes('reservation')) return <CalendarCheck2 size={21} color={color} />;
   if (item.type.includes('circle')) return <Users size={21} color={color} />;
   if (item.type === 'review_liked') return <Heart size={21} color={color} />;
@@ -160,9 +165,10 @@ function NotificationTypeIcon({ item, color }: { item: Activity; color: string }
   return <Bell size={21} color={color} />;
 }
 
-const ActivityPostCard = React.memo(function ActivityPostCard({ item, appColors, currentVote, voting, onOpen, onVote }: {
+const ActivityPostCard = React.memo(function ActivityPostCard({ item, appColors, currentVote, voting, onOpen, onOpenSpot, onVote }: {
   item: LocalUpdate; appColors: AppColors; currentVote: SpotVoteType | null; voting: boolean;
   onOpen: (item: LocalUpdate) => void; onVote: (item: LocalUpdate) => void;
+  onOpenSpot: (item: LocalUpdate) => void;
 }) {
   const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
   const [failedImage, setFailedImage] = useState<string | null>(null);
@@ -197,9 +203,9 @@ const ActivityPostCard = React.memo(function ActivityPostCard({ item, appColors,
                 accessible
                 accessibilityRole="button"
                 accessibilityLabel={`Open post ${item.title}`}
-                accessibilityHint="Shows the full post and comments."
+                accessibilityHint="Opens the associated spot, or the post if its place is awaiting approval."
                 style={({ pressed }) => [styles.updateCopy, pressed && styles.pressedCard]}
-                onPress={() => onOpen(item)}
+                onPress={() => onOpenSpot(item)}
               >
                 <Text numberOfLines={2} style={styles.updateTitle}>{item.title}</Text>
                 <Text numberOfLines={3} style={[styles.updateBody, { color: appColors.onSurfaceVariant }]}>{item.body}</Text>
@@ -270,7 +276,7 @@ const ActivityPostCard = React.memo(function ActivityPostCard({ item, appColors,
 
 export default function ActivityScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ openSubmissionId?: string | string[] }>();
+  const params = useLocalSearchParams<{ openSubmissionId?: string | string[]; openPostId?: string | string[] }>();
   const { appColors } = useTheme();
   const { user, profile, isSignedIn } = useAuth();
   const {
@@ -280,6 +286,8 @@ export default function ActivityScreen() {
   } = useLocation();
   const { width: viewportWidth } = useWindowDimensions();
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [adminUpdates, setAdminUpdates] = useState<AdminUpdate[]>([]);
+  const [adminUpdatesError, setAdminUpdatesError] = useState<string | null>(null);
   const [localUpdates, setLocalUpdates] = useState<LocalUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedError, setFeedError] = useState<string | null>(null);
@@ -299,6 +307,7 @@ export default function ActivityScreen() {
   const [submissionVotes, setSubmissionVotes] = useState<Record<string, SpotVoteType>>({});
   const [votingUpdateIds, setVotingUpdateIds] = useState<string[]>([]);
   const [commentThreadUpdateId, setCommentThreadUpdateId] = useState<string | null>(null);
+  const [openedPost, setOpenedPost] = useState<LocalUpdate | null>(null);
   const [comments, setComments] = useState<LocalUpdateComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentBody, setCommentBody] = useState('');
@@ -314,17 +323,25 @@ export default function ActivityScreen() {
   const [localUpdateSort, setLocalUpdateSort] = useState<LocalUpdateSort>('newest');
   const [readActivityIds, setReadActivityIds] = useState<string[]>([]);
   const [readStateReady, setReadStateReady] = useState(false);
-  const openedSubmissionParamRef = useRef<string | null>(null);
+  const openedPostParamRef = useRef<string | null>(null);
   const postMediaWidth = Math.min(680, Math.max(260, viewportWidth - spacing.lg * 2));
 
+  const notificationItems = useMemo(() => mergeActivityNotifications(activities, adminUpdates), [activities, adminUpdates]);
   const unreadCount = useMemo(
-    () => (readStateReady ? activities.filter((item) => !readActivityIds.includes(item.id)).length : 0),
-    [activities, readActivityIds, readStateReady]
+    () => (readStateReady ? notificationItems.filter((item) => !readActivityIds.includes(item.id)).length : 0),
+    [notificationItems, readActivityIds, readStateReady]
   );
   const selectedCommentUpdate = useMemo(
-    () => localUpdates.find((item) => item.id === commentThreadUpdateId) ?? null,
-    [commentThreadUpdateId, localUpdates]
+    () => localUpdates.find((item) => item.id === commentThreadUpdateId)
+      ?? (openedPost?.id === commentThreadUpdateId ? openedPost : null),
+    [commentThreadUpdateId, localUpdates, openedPost]
   );
+  const openPost = useCallback((item: LocalUpdate) => {
+    setOpenedPost(item);
+    setCommentBody('');
+    setReplyingToComment(null);
+    setCommentThreadUpdateId(item.id);
+  }, []);
   const sortedLocalUpdates = localUpdates;
   const activeSortLabel = localUpdateSortOptions.find((option) => option.value === localUpdateSort)?.label ?? 'Newest';
   const visiblePostMedia = postMediaUrls.filter((url) => !failedPostMediaUrls.includes(url));
@@ -332,6 +349,7 @@ export default function ActivityScreen() {
   const openSubmissionId = Array.isArray(params.openSubmissionId)
     ? params.openSubmissionId[0]
     : params.openSubmissionId;
+  const openPostId = Array.isArray(params.openPostId) ? params.openPostId[0] : params.openPostId;
 
   useEffect(() => {
     let mounted = true;
@@ -425,6 +443,21 @@ export default function ActivityScreen() {
       unsubscribe?.();
     };
   }, [user?.id, notificationRetry]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadUpdates() {
+      try {
+        const updates = await getPublishedAdminUpdates(30);
+        if (active) { setAdminUpdates(updates); setAdminUpdatesError(null); }
+      } catch {
+        if (active) setAdminUpdatesError('Admin updates could not be loaded.');
+      }
+    }
+    void loadUpdates();
+    const unsubscribe = subscribeToPublishedAdminUpdates(() => void loadUpdates());
+    return () => { active = false; unsubscribe(); };
+  }, [notificationRetry, user?.id]);
 
   useEffect(() => {
     let mounted = true;
@@ -540,30 +573,33 @@ export default function ActivityScreen() {
   }, [selectedCommentUpdate]);
 
   useEffect(() => {
-    if (!openSubmissionId) return;
-    if (openedSubmissionParamRef.current === openSubmissionId) return;
-
-    const submissionId = openSubmissionId;
+    const requestKey = openPostId ? `post:${openPostId}` : openSubmissionId ? `submission:${openSubmissionId}` : null;
+    if (!requestKey) { openedPostParamRef.current = null; return; }
+    if (openedPostParamRef.current === requestKey) return;
     let cancelled = false;
 
     async function openSubmissionPost() {
-      const existingPost = localUpdates.find(
-        (item) => item.source_type === 'spot_submission' && item.source_id === submissionId
-      );
-      const post = existingPost ?? await localUpdateService.getLocalUpdateForSpotSubmission(submissionId);
-      if (cancelled || !post) return;
-
-      openedSubmissionParamRef.current = submissionId;
-      setShowNotifications(false);
-      setLocalUpdates((current) => (current.some((item) => item.id === post.id) ? current : [post, ...current]));
-      openPost(post);
+      try {
+        const post = openPostId ? await localUpdateService.getLocalUpdateById(openPostId)
+          : await localUpdateService.getLocalUpdateForSpotSubmission(openSubmissionId!);
+        if (cancelled) return;
+        openedPostParamRef.current = requestKey;
+        if (!post) {
+          Alert.alert('Post unavailable', 'This post is no longer available or is awaiting moderation.');
+          return;
+        }
+        setShowNotifications(false);
+        openPost(post);
+      } catch {
+        if (!cancelled) Alert.alert('Post unavailable', 'This post could not be loaded. Please try again.');
+      }
     }
 
     void openSubmissionPost();
     return () => {
       cancelled = true;
     };
-  }, [localUpdates, openSubmissionId]);
+  }, [openPostId, openSubmissionId, openPost]);
 
   async function voteForUpdate(item: LocalUpdate) {
     if (item.source_type !== 'spot_submission' || !item.source_id) {
@@ -645,15 +681,21 @@ export default function ActivityScreen() {
     setShowSortOptions(false);
   }
 
-  const openPost = useCallback((item: LocalUpdate) => {
-    setCommentBody('');
-    setReplyingToComment(null);
-    setCommentThreadUpdateId(item.id);
-  }, []);
+  const openPostSpot = useCallback(async (item: LocalUpdate) => {
+    try {
+      const spotId = item.spot_id ?? await localUpdateService.getLinkedSpotId(item.id);
+      if (spotId) router.push(`/spot/${spotId}`);
+      else openPost(item);
+    } catch {
+      Alert.alert('Spot unavailable', 'Unable to open the linked spot. Please try again.');
+    }
+  }, [openPost, router]);
 
   function closeComments() {
     if (sendingComment) return;
     setCommentThreadUpdateId(null);
+    setOpenedPost(null);
+    router.setParams({ openPostId: '', openSubmissionId: '' });
     setCommentBody('');
     setReplyingToComment(null);
   }
@@ -697,6 +739,8 @@ export default function ActivityScreen() {
             : update
         )
       );
+      setOpenedPost((current) => current?.id === commentThreadUpdateId
+        ? { ...current, comments_count: Math.max(current.comments_count, comments.length + 1) } : current);
       setCommentBody('');
       setReplyingToComment(null);
     } catch (error: any) {
@@ -723,11 +767,12 @@ export default function ActivityScreen() {
 
   function markAllNotificationsRead() {
     if (!unreadCount) return;
-    saveReadActivityIds([...new Set([...readActivityIds, ...activities.map((item) => item.id)])]);
+    saveReadActivityIds([...new Set([...readActivityIds, ...notificationItems.map((item) => item.id)])]);
   }
 
   async function openNotification(item: Activity) {
     markNotificationRead(item);
+    if (item.type === 'admin_update') return;
 
     if (item.type === 'spot_comment' || item.type === 'spot_liked') {
       const submissionId = item.target_id;
@@ -740,7 +785,6 @@ export default function ActivityScreen() {
         return;
       }
       setShowNotifications(false);
-      setLocalUpdates((current) => (current.some((update) => update.id === post.id) ? current : [post, ...current]));
       openPost(post);
       return;
     }
@@ -779,8 +823,8 @@ export default function ActivityScreen() {
   const renderPost = useCallback(({ item }: { item: LocalUpdate }) => (
     <ActivityPostCard item={item} appColors={appColors}
       currentVote={item.source_id ? submissionVotes[item.source_id] ?? null : null}
-      voting={votingUpdateIds.includes(item.id)} onOpen={openPost} onVote={onVote} />
-  ), [appColors, submissionVotes, votingUpdateIds, openPost, onVote]);
+      voting={votingUpdateIds.includes(item.id)} onOpen={openPost} onOpenSpot={openPostSpot} onVote={onVote} />
+  ), [appColors, submissionVotes, votingUpdateIds, openPost, openPostSpot, onVote]);
 
   if (showNotifications) {
     return (
@@ -799,11 +843,11 @@ export default function ActivityScreen() {
           <View style={styles.headerBalance} />
         </View>
 
-        {notificationError && <Pressable accessibilityRole="button" onPress={() => setNotificationRetry(value => value + 1)} style={styles.emptyNotificationState}>
-          <Text style={{ color: appColors.onSurface }}>{notificationError}</Text>
+        {(notificationError || adminUpdatesError) && <Pressable accessibilityRole="button" onPress={() => setNotificationRetry(value => value + 1)} style={styles.emptyNotificationState}>
+          <Text style={{ color: appColors.onSurface }}>{notificationError || adminUpdatesError}</Text>
           <Text style={{ color: colors.primary }}>Retry notifications</Text>
         </Pressable>}
-        {!isSignedIn ? (
+        {!isSignedIn && !notificationItems.length ? (
           <View style={styles.emptyNotificationState}>
             <Bell size={22} color={colors.primary} />
             <Text style={[styles.emptyNotificationTitle, { color: appColors.onSurface }]}>Sign in to see notifications</Text>
@@ -811,7 +855,7 @@ export default function ActivityScreen() {
               Reservation approvals, alerts, circle activity, and spot updates will appear here.
             </Text>
           </View>
-        ) : activities.length ? (
+        ) : notificationItems.length ? (
           <View style={styles.notificationFeed}>
             <View style={[styles.notificationSectionBar, { backgroundColor: appColors.surfaceContainer }]}>
               <Text style={[styles.notificationSectionTitle, { color: appColors.onSurfaceVariant }]}>Recent updates</Text>
@@ -829,7 +873,7 @@ export default function ActivityScreen() {
               </Pressable>
             </View>
 
-            {activities.map((item) => {
+            {notificationItems.map((item) => {
               const isReservationNotification = item.type.includes('reservation');
               const isUnread = !readActivityIds.includes(item.id);
               const title = getNotificationTitle(item);

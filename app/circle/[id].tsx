@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, Pressable, Share, StyleSheet, Text, View } from 'react-native';
-import { ArrowLeft, Crown, LocateFixed, Navigation, RefreshCw, Share2, UserPlus, UserRound, Users, X } from 'lucide-react-native';
+import { ArrowLeft, Crown, LocateFixed, Navigation, RefreshCw, Settings, Share2, UserPlus, UserRound, Users, X } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScreenContainer } from '../../src/components/ScreenContainer';
 import { TileMap } from '../../src/components/TileMap';
@@ -57,6 +57,7 @@ export default function CircleDetailsScreen() {
   const [mapCenter, setMapCenter] = useState(defaultMapCenter);
   const [mapInteracting, setMapInteracting] = useState(false);
   const [failedPhotoIds, setFailedPhotoIds] = useState<string[]>([]);
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const [inviteVisible, setInviteVisible] = useState(false);
   const [invite, setInvite] = useState<CircleInvite | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
@@ -263,10 +264,10 @@ export default function CircleDetailsScreen() {
 
   return (
     <ScreenContainer appColors={appColors} scroll scrollEnabled={!mapInteracting}>
-      <CirclePrivacyControls circleId={circle.id}
+      <CirclePrivacyControls circleId={circle.id} circleName={circle.name} visible={settingsVisible} onClose={() => setSettingsVisible(false)}
         onSharingChanged={state => { sharingGenerationRef.current = state.enabled ? state.generation : null; }}
         onEnabled={() => { void refreshUserLocation(true); }}
-        onLeft={() => { sharingGenerationRef.current = null; setMembers([]); setCircle(null); setInvite(null); router.replace('/circle'); }} />
+        onLeft={() => { setSettingsVisible(false); sharingGenerationRef.current = null; setMembers([]); setCircle(null); setInvite(null); router.replace('/circle'); }} />
       <View style={styles.header}>
         <Pressable accessibilityRole="button" accessibilityLabel="Back to Circle" style={styles.iconButton} onPress={() => router.back()}>
           <ArrowLeft size={23} color={appColors.onSurface} />
@@ -285,6 +286,9 @@ export default function CircleDetailsScreen() {
         >
           <UserPlus size={16} color={colors.white} />
           <Text style={styles.inviteButtonText}>Invite</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Open Circle settings" onPress={() => setSettingsVisible(true)} style={styles.iconButton}>
+          <Settings size={24} color={appColors.onSurface} />
         </Pressable>
       </View>
 
@@ -324,7 +328,7 @@ export default function CircleDetailsScreen() {
           accessibilityLabel="Refresh circle members"
           disabled={refreshingMembers}
           style={styles.refreshButton}
-          onPress={() => loadMembers(true)}
+          onPress={() => void loadMembers(true)}
         >
           {refreshingMembers ? (
             <ActivityIndicator size="small" color={colors.primary} />
@@ -332,6 +336,8 @@ export default function CircleDetailsScreen() {
             <RefreshCw size={19} color={colors.primary} />
           )}
         </Pressable>
+
+
       </View>
 
       <View style={styles.memberList}>
@@ -518,10 +524,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   refreshButton: {
-    width: 40,
-    height: 40,
+    minHeight: 48,
+    flexDirection: 'row',
+    gap: spacing.sm,
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
   },
   memberList: {
     marginBottom: spacing.xl,

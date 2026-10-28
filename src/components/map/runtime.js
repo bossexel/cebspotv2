@@ -10,6 +10,7 @@
   var pendingCameraScheduled = false;
   var markers = new Map();
   var interacting = false;
+  var activePointers = new Set();
   var gestureMoved = false;
   var programmatic = false;
   var cameraRevision = 0;
@@ -215,13 +216,20 @@
       send({ type: 'coordinatePress', center: { latitude: event.latlng.lat, longitude: event.latlng.wrap().lng } });
     });
     // Native onTouchStart also blocks the enclosing ScrollView before the bridge round trip.
-    container.addEventListener('pointerdown', startInteraction, { passive: true });
+    container.addEventListener('pointerdown', function (event) {
+      activePointers.add(event.pointerId);
+      startInteraction();
+    }, { passive: true });
     container.addEventListener('touchstart', startInteraction, { passive: true });
-    window.addEventListener('pointerup', endInteraction, { passive: true });
-    window.addEventListener('pointercancel', endInteraction, { passive: true });
+    function releasePointer(event) {
+      activePointers.delete(event.pointerId);
+      if (!activePointers.size) endInteraction();
+    }
+    window.addEventListener('pointerup', releasePointer, { passive: true });
+    window.addEventListener('pointercancel', releasePointer, { passive: true });
     window.addEventListener('touchend', function (event) { if (!event.touches.length) endInteraction(); }, { passive: true });
     window.addEventListener('touchcancel', endInteraction, { passive: true });
-    window.addEventListener('blur', endInteraction);
+    window.addEventListener('blur', function () { activePointers.clear(); endInteraction(); });
     container.addEventListener('wheel', function () { startInteraction(); endInteraction(); }, { passive: true, capture: true });
     container.addEventListener('keydown', function () { startInteraction(); endInteraction(); }, true);
     new ResizeObserver(function () {
@@ -256,7 +264,7 @@
     if (!map.getSize().x || !map.getSize().y) map.invalidateSize({ pan: false });
     var target = latLng(payload.center);
     var delta = map.project(target).distanceTo(map.project(map.getCenter()));
-    var reduceMotion = payload.reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var reduceMotion = payload.animateCamera === false || payload.reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduceMotion || (delta < 1 && targetZoom === map.getZoom())) {
       map.setView(target, targetZoom, { animate: false });
     } else if (targetZoom === map.getZoom() && delta < Math.max(map.getSize().x, map.getSize().y)) {

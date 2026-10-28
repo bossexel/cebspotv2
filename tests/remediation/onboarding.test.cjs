@@ -148,7 +148,7 @@ test('missing/corrupt/old-version state is safely treated as not started', () =>
 
 test('storage rejection never prevents skip/finish or reopens the guide in this process', async () => {
   const service = storage({ getItem: async () => { throw Error('unavailable'); }, setItem: async () => { throw Error('disk full'); } });
-  assert.equal(await service.read('alice'), 'not_started');
+  assert.equal(await service.read('alice'), null);
   await service.write('alice', 'skipped');
   assert.equal(await service.read('alice'), 'skipped');
   await service.write('alice', 'completed');
@@ -157,7 +157,21 @@ test('storage rejection never prevents skip/finish or reopens the guide in this 
 
 test('a stalled restore times out without blocking the application', async () => {
   const service = storage({ getItem: () => new Promise(() => {}) }, { setTimeout: fn => setTimeout(fn, 1) });
-  assert.equal(await service.read('alice'), 'not_started');
+  assert.equal(await service.read('alice'), null);
+});
+
+test('a slow completed-guide restore never becomes a new-user state or overwrites completion', async () => {
+  let release;
+  let calls = 0;
+  const service = storage({
+    getItem: () => ++calls === 1 ? new Promise(resolve => { release = resolve; }) : Promise.resolve('completed'),
+    setItem: async () => { throw Error('A restore must not write onboarding state.'); },
+  }, { setTimeout: fn => setTimeout(fn, 1) });
+  assert.equal(await service.read('alice'), null);
+  release('completed');
+  assert.equal(await service.read('alice'), 'completed');
+  assert.equal(model.shouldStartHomeGuide({ eligible:true,account:'alice',storedAccount:'alice',status:null,
+    path:'/',homeReady:true,active:false,deepLink:false,requested:false,offered:false }),false);
 });
 
 test('late restore cannot overwrite a skip made during a Help restart', async () => {

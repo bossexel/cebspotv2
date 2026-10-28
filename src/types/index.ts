@@ -164,6 +164,7 @@ export type LocalUpdateSourceType = 'recommendation' | 'spot_submission' | 'comm
 
 export interface LocalUpdate {
   id: string;
+  spot_id?: string | null;
   user_id?: string | null;
   user_name: string;
   user_photo_url?: string | null;
@@ -206,6 +207,8 @@ export interface SpotVoteResult {
 
 export interface SpotSubmission {
   id: string;
+  spot_id?: string | null;
+  different_place?: boolean;
   name: string;
   description?: string | null;
   category: string;
@@ -383,6 +386,8 @@ export type NewSpotSubmissionUpload = NewSpotSubmission & {
 
 export interface SpotSubmissionDraft {
   id: string;
+  linkedSpot?: { id: string; name: string; address: string; latitude?: number; longitude?: number } | null;
+  differentPlace?: boolean;
   name: string;
   description: string;
   address: string;

@@ -6,11 +6,11 @@ const ts = require('typescript');
 
 // Compare every supplied policy line with the editable module, including accents,
 // punctuation, names, date, contact, lists, and the order of sections.
-const source = fs.readFileSync(path.join(__dirname, '../../src/constants/tarakapePrivacy.ts'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '../../src/constants/Cebspot.ts'), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const moduleExports = {};
 new Function('exports', compiled)(moduleExports);
-const content = moduleExports.tarakapePrivacyContent;
+const content = moduleExports.CebspotContent;
 const actual = [content.title, content.effectiveDate, ...content.sections.flatMap(section => [section.title,
   ...section.blocks.flatMap(block => [block.heading, ...(block.paragraphs || []), ...(block.items || []), block.email?.label].filter(Boolean)),
 ])];

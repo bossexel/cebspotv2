@@ -9,7 +9,6 @@ import type {
 } from '../types';
 import { activityService } from './activityService';
 import { imageAnonymizationService } from './imageAnonymization';
-import { localUpdateService } from './localUpdateService';
 
 const spotImagesBucket = 'spot-images';
 const uploadProgressMessage = 'Spot uploading...';
@@ -121,41 +120,6 @@ function submissionMedia(submission: NewSpotSubmissionUpload): SpotSubmissionMed
   }));
 }
 
-async function publishSubmissionLocalUpdate(
-  submission: NewSpotSubmission,
-  submissionId: string,
-  userName: string
-) {
-  if (hasSupabaseConfig) {
-    const { error } = await supabase.rpc('publish_spot_submission_local_update', {
-      target_submission_id: submissionId,
-    });
-
-    if (!error) return;
-
-    const missingGroupingRpc = /publish_spot_submission_local_update|schema cache|function/i.test(error.message ?? '');
-    if (!missingGroupingRpc) {
-      console.error('Unable to group submitted spot in Activity:', error);
-    }
-  }
-
-  await localUpdateService.createLocalUpdate({
-    user_id: submission.submitter_id,
-    user_name: userName || 'Explorer',
-    title: submission.name,
-    body: submission.description || 'Shared a new spot for the CebSpot community.',
-    location_name: submission.address,
-    latitude: submission.latitude,
-    longitude: submission.longitude,
-    image_url: submission.images?.[0] ?? null,
-    media_urls: submission.images ?? [],
-    source_type: 'spot_submission',
-    source_id: submissionId,
-    spot_count: 0,
-    comments_count: 0,
-  });
-}
-
 async function uploadSubmissionMedia(
   submission: NewSpotSubmissionUpload,
   uploadedPaths: string[],
@@ -222,12 +186,15 @@ export const spotSubmissionService = {
         spot_name: submission.name,
       });
       await reportProgress(options.onProgress, 70, uploadProgressMessage);
-      await publishSubmissionLocalUpdate(databaseSubmission, created.id, userName);
       await reportProgress(options.onProgress, 100, 'Spot submitted for review');
       return created;
     }
 
     const uploadedPaths: string[] = [];
+    const { data: workflowVersion, error: workflowError } = await supabase.rpc('spot_post_workflow_version');
+    if (workflowError || workflowVersion !== 1) {
+      throw new Error('Independent spot posts need the database update before posting. Your draft can be saved and retried.');
+    }
     const submissionWithUploadedImages = await uploadSubmissionMedia(submission, uploadedPaths, options.onProgress);
     if (!submissionMedia(submission).length) {
       await reportProgress(options.onProgress, 80, uploadProgressMessage);
@@ -273,13 +240,7 @@ export const spotSubmissionService = {
       console.error('Submission was saved, but its activity could not be published:', activityError);
     }
 
-    await reportProgress(options.onProgress, 96, uploadProgressMessage);
-    try {
-      await publishSubmissionLocalUpdate(submissionWithUploadedImages, data.id, userName);
-    } catch (localUpdateError) {
-      console.error('Unable to publish local update for submitted spot:', localUpdateError);
-    }
-
+    // The database creates this submission's Activity post atomically.
     await reportProgress(options.onProgress, 100, 'Spot submitted for review');
     return data as SpotSubmission;
   },

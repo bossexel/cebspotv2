@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions
 import { CalendarDays, CheckCircle2, ChevronDown, ChevronUp, MapPin, Search, TriangleAlert, X } from 'lucide-react-native';
 import { InformationScreen, informationStyles as shared } from '../src/components/InformationScreen';
 import { ContentIcon, contentStyles } from '../src/components/InformationContent';
-import { tarakapePrivacyContent as content, referencePolicySearchText, type ReferencePolicyBlock } from '../src/constants/tarakapePrivacy';
+import { CebspotContent as content, referencePolicySearchText, type ReferencePolicyBlock } from '../src/constants/Cebspot';
 import { openInformationLink } from '../src/utils/externalLinks';
 import { useTheme } from '../src/hooks/useTheme';
 import { colors } from '../src/constants/colors';

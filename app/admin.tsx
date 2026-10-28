@@ -92,6 +92,8 @@ import {
 import {
   applySpotEditSuggestion,
   approveSpotSubmission,
+  linkSpotSubmission,
+  confirmDistinctSpotSubmission,
   deleteAdminOwnerRequest,
   deleteAdminSpot,
   deleteAdminSpotSubmission,
@@ -328,7 +330,7 @@ export default function AdminConsoleScreen() {
       setApprovalNotice({
         tone: 'success',
         title: 'Spot approved',
-        copy: `${submission.name} is now public and will appear on the map.`,
+        copy: `${submission.name} is approved and linked to its map listing.`,
       });
       refreshDashboard().catch((error: any) => {
         setDashboardError(error?.message ?? 'Spot was approved, but dashboard refresh failed.');
@@ -1775,8 +1777,11 @@ function SpotsSection({
         />
       </View>
 
+      <HistoricalSpotPostAudit client={client} />
+
       <DataPanel title="Pending Spot Submissions" right={<Text style={styles.exportLink}>{pendingSubmissions.length} Pending</Text>}>
         <PendingSubmissionsTable
+          client={client}
           submissions={pendingSubmissions}
           expandedSubmissionId={expandedSubmissionId}
           approvingSubmissionId={approvingSubmissionId}
@@ -2156,6 +2161,7 @@ function SpotMapOverviewModal({
 }
 
 function PendingSubmissionsTable({
+  client,
   submissions,
   expandedSubmissionId,
   approvingSubmissionId,
@@ -2164,6 +2170,7 @@ function PendingSubmissionsTable({
   onApproveSubmission,
   onDeleteSubmission,
 }: {
+  client: SupabaseClient;
   submissions: AdminSpotSubmissionRow[];
   expandedSubmissionId: string | null;
   approvingSubmissionId: string | null;
@@ -2264,7 +2271,7 @@ function PendingSubmissionsTable({
                 </View>
               </View>
             </View>
-            {expanded && <ExpandedSpotSubmission submission={submission} />}
+            {expanded && <><ExpandedSpotSubmission submission={submission} /><SubmissionPlaceLink submission={submission} client={client} /></>}
           </React.Fragment>
         );
       })}
@@ -2272,6 +2279,97 @@ function PendingSubmissionsTable({
     </View>
     </ScrollView>
   );
+}
+
+function HistoricalSpotPostAudit({ client }: { client: SupabaseClient }) {
+  const [rows, setRows] = useState<Array<{ id: string; submission_id: string | null; reason: string; snapshot: any }>>([]);
+  const [offset, setOffset] = useState(0);
+  const [more, setMore] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  async function load() {
+    setBusy(true);
+    const { data, error } = await client.from('spot_post_relationship_audit')
+      .select('id,submission_id,reason,snapshot').is('resolved_at', null)
+      .order('created_at').order('id').range(offset, offset + 19);
+    if (error) setNotice(error.message);
+    else {
+      setRows(current => [...current, ...(data ?? [])]);
+      setOffset(current => current + (data?.length ?? 0));
+      setMore(data?.length === 20);
+      setNotice(data?.length ? 'Historical interactions remain on their original posts. Review these relationships before making corrections.' : 'No further unresolved relationships.');
+    }
+    setBusy(false);
+  }
+  return <DataPanel title="Historical post relationships">
+    <Text style={styles.tableMini}>Flagged authorship, combined media and unconfirmed listing links. No attribution is inferred.</Text>
+    {rows.map(row => {
+      const name = row.snapshot?.submission?.name ?? row.snapshot?.name ?? 'Historical post';
+      return <View key={row.id}>
+        <Pressable onPress={() => setExpandedId(current => current === row.id ? null : row.id)}>
+          <Text style={styles.tablePrimary}>{name}: {row.reason.replace(/_/g, ' ')}</Text>
+        </Pressable>
+        {expandedId === row.id && row.submission_id && <SubmissionPlaceLink submission={{ id: row.submission_id, name }} client={client} />}
+      </View>;
+    })}
+    {more && <Pressable disabled={busy} onPress={() => void load()}><Text style={styles.tablePrimary}>{busy ? 'Loading…' : 'Load flagged relationships'}</Text></Pressable>}
+    {!!notice && <Text accessibilityRole="alert" style={styles.tableMuted}>{notice}</Text>}
+  </DataPanel>;
+}
+
+function SubmissionPlaceLink({ submission, client }: { submission: Pick<AdminSpotSubmissionRow, 'id' | 'name'>; client: SupabaseClient }) {
+  const [query, setQuery] = useState(submission.name);
+  const [spots, setSpots] = useState<Array<{ id: string; name: string; address: string }>>([]);
+  const [linkedId, setLinkedId] = useState<string | null>(null);
+  const [notice, setNotice] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let active = true;
+    client.from('spot_submissions').select('spot_id,different_place').eq('id', submission.id).single()
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) { setNotice(error.message); return; }
+        setLinkedId(data.spot_id);
+        if (data.spot_id) setNotice(`Linked to listing ${data.spot_id}. Post approval remains separate.`);
+        else if (data.different_place) setNotice('Marked as a different place.');
+      });
+    return () => { active = false; };
+  }, [client, submission.id]);
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(() => {
+      if (query.trim().length < 2) { setSpots([]); return; }
+      client.from('spots').select('id,name,address').eq('is_public', true)
+        .ilike('name', `%${query.trim().replace(/[%_]/g, '')}%`).limit(12)
+        .then(({ data, error }) => { if (active) { setSpots(data ?? []); if (error) setNotice(error.message); } });
+    }, 300);
+    return () => { active = false; clearTimeout(timer); };
+  }, [client, query]);
+  async function link(spotId: string) {
+    setBusy(true);
+    try {
+      await linkSpotSubmission(submission.id, spotId, client);
+      setLinkedId(spotId);
+      setNotice('Linked to existing spot. Post, reactions and comments preserved. Use Approve to review this post separately.');
+    } catch (error: any) { setNotice(error.message); }
+    finally { setBusy(false); }
+  }
+  return <View style={styles.expandedSubmission}>
+    <Text style={styles.tableStrong}>Link to existing spot</Text>
+    <Text style={styles.tableMini}>Check the name and address. Linking preserves the independent post and does not approve it.</Text>
+    <TextInput value={query} onChangeText={setQuery} placeholder="Search existing spot names" accessibilityLabel="Find existing spot" style={styles.notesInput} />
+    {spots.map((spot) => <Pressable key={spot.id} disabled={busy} onPress={() => void link(spot.id)} style={styles.submissionSpotButton}>
+      <Text style={styles.tablePrimary}>{linkedId === spot.id ? 'Linked: ' : 'Link to existing spot: '}{spot.name} — {spot.address}</Text>
+    </Pressable>)}
+    {!linkedId && <Pressable disabled={busy} onPress={async () => {
+      setBusy(true);
+      try { await confirmDistinctSpotSubmission(submission.id, client); setNotice('Confirmed as a different place. It can now be reviewed for a new map listing.'); }
+      catch (error: any) { setNotice(error.message); }
+      finally { setBusy(false); }
+    }}><Text style={styles.tablePrimary}>This is a different place</Text></Pressable>}
+    {!!notice && <Text accessibilityRole="alert" style={styles.tableMuted}>{notice}</Text>}
+  </View>;
 }
 
 function ExpandedSpotSubmission({ submission }: { submission: AdminSpotSubmissionRow }) {

@@ -30,7 +30,7 @@ export function GuideProvider({ ready, children }: { ready: boolean; children: R
   const consumedReplay = useRef<string>();
   const tapTime = useRef(0);
   const [homeReadiness, setHomeReady] = useState({ ready: false, settled: false });
-  const [stored, setStored] = useState<{ account: string; status: OnboardingStatus } | null>(null);
+  const [stored, setStored] = useState<{ account: string; status: OnboardingStatus | null } | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const sessionAllowed = eligible && !(session?.kind === 'home' && (params.focusSpotId || params.openSpot));
 

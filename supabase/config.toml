@@ -19,6 +19,10 @@ enabled = false
 enabled = true
 port = 54353
 
+[inbucket]
+enabled = true
+port = 54354
+
 [storage]
 enabled = true
 file_size_limit = "10MiB"
@@ -26,12 +30,14 @@ file_size_limit = "10MiB"
 [auth]
 enabled = true
 site_url = "http://localhost:8081"
-additional_redirect_urls = ["cebspot://**", "http://localhost:8084/**"]
+additional_redirect_urls = ["cebspot://auth/email-change", "cebspot://**", "http://localhost:8084/**"]
 enable_signup = true
 
 [auth.email]
 enable_signup = true
 enable_confirmations = true
+double_confirm_changes = true
+max_frequency = "1m"
 
 [analytics]
 enabled = false
@@ -57,3 +63,7 @@ verify_jwt = false
 [auth.email.template.recovery]
 subject = "Your CebSpot password reset code"
 content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your CebSpot email change"
+content_path = "./supabase/templates/email-change.html"

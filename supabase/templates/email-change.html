@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirm your CebSpot email change</title>
+  </head>
+  <body style="margin: 0; background: #f8f7f3; color: #1c1b17; font-family: Arial, sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: #f8f7f3;">
+      <tr>
+        <td align="center" style="padding: 32px 16px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 520px; background: #ffffff; border: 1px solid #e4e3dd;">
+            <tr>
+              <td style="padding: 32px;">
+                <p style="margin: 0 0 8px; color: #fa5f00; font-size: 14px; font-weight: 700;">CEBSPOT</p>
+                <h1 style="margin: 0 0 20px; font-size: 24px; line-height: 32px;">Confirm your email change</h1>
+                <p style="margin: 0 0 16px; color: #4a463d; font-size: 16px; line-height: 24px;"><strong>Dear Spotter:</strong></p>
+                <p style="margin: 0 0 20px; color: #4a463d; font-size: 16px; line-height: 24px; overflow-wrap: anywhere;">
+                  You requested to change your CebSpot email address to <strong>{{ .NewEmail }}</strong>.
+                </p>
+                <p style="margin: 0 0 24px;">
+                  <a href="{{ .ConfirmationURL }}" style="display: inline-block; background: #fa5f00; color: #ffffff; padding: 14px 22px; text-decoration: none; font-size: 15px; font-weight: 700;">Confirm email change</a>
+                </p>
+                <p style="margin: 0 0 16px; color: #4a463d; font-size: 14px; line-height: 22px;">
+                  Check both your current and new inboxes. If you receive a confirmation in each, open both links to complete the change. Your current address stays active until confirmation is complete.
+                </p>
+                <p style="margin: 0 0 16px; color: #4a463d; font-size: 14px; line-height: 22px;">
+                  Then return to CebSpot, open Profile &gt; Account &gt; Account Details, and tap Check status. You can return to the app manually if the link does not reopen it.
+                </p>
+                <p style="margin: 0 0 8px; color: #4a463d; font-size: 13px; line-height: 20px;">If the button does not work, open this link in your browser:</p>
+                <p style="margin: 0; overflow-wrap: anywhere; word-break: break-all; font-size: 12px; line-height: 18px;">
+                  <a href="{{ .ConfirmationURL }}" style="color: #b84400;">{{ .ConfirmationURL }}</a>
+                </p>
+                <p style="margin: 24px 0 0; color: #4a463d; font-size: 16px; line-height: 24px;">The CebSpot Team</p>
+              </td>
+            </tr>
+          </table>
+          <p style="max-width: 520px; margin: 16px 0 0; color: #7d7767; font-size: 12px; line-height: 18px;">If you did not request this change, do not confirm it or share this link. Your email will stay unchanged.</p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

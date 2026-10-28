@@ -176,7 +176,7 @@ test('Admin Updates supports protected CRUD and a published-only user feed', () 
   const migration = read('supabase/migrations/20261022000200_admin_updates.sql');
   const service = read('src/services/adminUpdateService.ts');
   const adminScreen = read('app/admin.tsx');
-  const userScreen = read('app/index.tsx');
+  const userScreen = read('app/activity.tsx');
 
   assert.match(migration, /create table if not exists public\.admin_updates/i);
   assert.match(migration, /admin_updates_published_read[\s\S]*is_published = true/i);
@@ -194,8 +194,9 @@ test('Admin Updates supports protected CRUD and a published-only user feed', () 
   assert.match(adminScreen, /accessibilityLabel="Open Admin Updates"/);
   assert.match(adminScreen, /function AdminUpdatesModal/);
   assert.match(adminScreen, /Only published updates are visible to users/);
-  assert.match(userScreen, />Admin Updates<\/Text>/);
+  assert.match(userScreen, /item\.type === 'admin_update'/);
   assert.match(userScreen, /subscribeToPublishedAdminUpdates/);
+  assert.doesNotMatch(read('app/index.tsx'), /getPublishedAdminUpdates|adminUpdateCard/);
 });
 
 test('admin screen exposes live moderation and owner-review handlers', () => {

@@ -85,6 +85,14 @@
     {
       "name": "20261025000200_public_media_size_limits.sql",
       "sha256": "495f1abfcaf1d0f838aa6eb7740aa746d9d6044dfbdc0614e173ae103f622a2b"
+    },
+    {
+      "name": "20261027000100_independent_spot_posts.sql",
+      "sha256": "6d43b20c43dfe74f87ed36216c53ade5d524121e7ae1397baf77469de51e8087"
+    },
+    {
+      "name": "20261028000100_beta_identity_prerequisites.sql",
+      "sha256": "c9a64d90522ab031c6a3e13d2aaa525c34751e8666805f4636628145faabc37b"
     }
   ]
 }
