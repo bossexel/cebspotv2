@@ -1,0 +1,12 @@
+{
+  "label": "resume-2026-10-28-reservation-create-verified",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/reservation-create-contract.test.cjs"
+  ],
+  "startedAt": "2026-10-28T15:25:22.976Z",
+  "finishedAt": "2026-10-28T15:25:24.015Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: missing backend configuration never produces a fake confirmed reservation\nok 1 - missing backend configuration never produces a fake confirmed reservation\n  ---\n  duration_ms: 280.1824\n  type: 'test'\n  ...\n# Subtest: schema mismatch never retries a reservation after dropping guest, table and payment fields\nok 2 - schema mismatch never retries a reservation after dropping guest, table and payment fields\n  ---\n  duration_ms: 146.4833\n  type: 'test'\n  ...\n# Subtest: configured creation submits one complete contact/table snapshot and uses the server result\nok 3 - configured creation submits one complete contact/table snapshot and uses the server result\n  ---\n  duration_ms: 113.8457\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 946.8152\n"
+}

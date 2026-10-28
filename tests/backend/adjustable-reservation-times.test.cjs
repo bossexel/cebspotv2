@@ -74,6 +74,7 @@ test('manual arrival times keep existing inventory keys without rounding the cho
 function availability(result = { data: [], error: null }) {
   const calls = [];
   const utils = load('src/utils/reservations.ts', {
+    './userError': require('../remediation/load-client.cjs')('src/utils/userError.ts'),
     '../lib/supabase': { hasSupabaseConfig: true, supabase: { rpc: async (name, args) => {
       calls.push({ name, args });
       return result;

@@ -1,5 +1,6 @@
 import type { PaymentStatus, Reservation, ReservationStatus, ReservationType, Spot } from '../types';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
+import { UserFacingError } from './userError';
 
 export const testCebspotSpotId = '66666666-6666-4666-8666-666666666666';
 
@@ -197,9 +198,8 @@ export async function getReservedTableIds(input: ReservedTableIdsInput = {}) {
 export async function checkReservationAvailability(input: ReservationAvailabilityInput = {}) {
   const { spotId, reservationDate, slotId, tableId, excludeReservationId } = input;
 
-  if (!hasSupabaseConfig || !spotId || !reservationDate || !slotId || !tableId) {
-    return true;
-  }
+  if (!hasSupabaseConfig) throw new UserFacingError('Booking availability is unavailable until the service is configured.');
+  if (!spotId || !reservationDate || !slotId || !tableId) throw new UserFacingError('Choose a venue, date, time and table before checking availability.');
 
   const { data, error } = await supabase.rpc('check_reservation_slot_available', {
     target_spot_id: spotId,

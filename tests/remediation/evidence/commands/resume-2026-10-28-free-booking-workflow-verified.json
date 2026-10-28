@@ -1,0 +1,11 @@
+{
+  "label": "resume-2026-10-28-free-booking-workflow-verified",
+  "command": [
+    "node",
+    "tests/user-walkthrough/free-booking.cjs"
+  ],
+  "startedAt": "2026-10-28T15:27:06.485Z",
+  "finishedAt": "2026-10-28T15:27:12.670Z",
+  "exitCode": 1,
+  "output": "X [ERROR] No matching export in \"fixture:react-native-svg\" for import \"Text\"\n\n    app/reservation/[id].tsx:5:29:\n      5 │ import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-s...\n        ╵                              ~~~~\n\nError: Build failed with 1 error:\napp/reservation/[id].tsx:5:29: ERROR: No matching export in \"fixture:react-native-svg\" for import \"Text\"\n    at failureErrorWithLog (C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:1752:15)\n    at C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:1211:25\n    at runOnEndCallbacks (C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:1592:45)\n    at buildResponseToResult (C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:1209:7)\n    at C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:1236:16\n    at responseCallbacks.<computed> (C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:886:9)\n    at handleIncomingPacket (C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:941:12)\n    at Socket.readFromStdout (C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:864:7)\n    at Socket.emit (node:events:518:28)\n    at addChunk (node:internal/streams/readable:561:12)\n"
+}

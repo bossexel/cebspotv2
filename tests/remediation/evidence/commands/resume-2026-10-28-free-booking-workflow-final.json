@@ -1,0 +1,11 @@
+{
+  "label": "resume-2026-10-28-free-booking-workflow-final",
+  "command": [
+    "node",
+    "tests/user-walkthrough/free-booking.cjs"
+  ],
+  "startedAt": "2026-10-28T15:27:33.048Z",
+  "finishedAt": "2026-10-28T15:27:42.932Z",
+  "exitCode": 1,
+  "output": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n2 !== 1\n\n    at main (C:\\Users\\9real\\Downloads\\cebspotv3\\tests\\user-walkthrough\\free-booking.cjs:56:10)\n"
+}

@@ -1,0 +1,11 @@
+{
+  "label": "resume-2026-10-28-free-booking-workflow",
+  "command": [
+    "node",
+    "tests/user-walkthrough/free-booking.cjs"
+  ],
+  "startedAt": "2026-10-28T15:26:41.855Z",
+  "finishedAt": "2026-10-28T15:26:50.801Z",
+  "exitCode": 1,
+  "output": "X [ERROR] Expected \"}\" but found \")\"\n\n    additional-fixture:../lib/supabase:1:400:\n      1 │ ...ull}}catch(e){return {data:null,error:{message:e.message}}}})})})};\n        │                                                                ^\n        ╵                                                                }\n\nError: Build failed with 1 error:\nadditional-fixture:../lib/supabase:1:400: ERROR: Expected \"}\" but found \")\"\n    at failureErrorWithLog (C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:1752:15)\n    at C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:1211:25\n    at runOnEndCallbacks (C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:1592:45)\n    at buildResponseToResult (C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:1209:7)\n    at C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:1236:16\n    at responseCallbacks.<computed> (C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:886:9)\n    at handleIncomingPacket (C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:941:12)\n    at Socket.readFromStdout (C:\\Users\\9real\\Downloads\\cebspotv3\\.codex-tmp\\user-walkthrough-tools\\node_modules\\esbuild\\lib\\main.js:864:7)\n    at Socket.emit (node:events:518:28)\n    at addChunk (node:internal/streams/readable:561:12)\n"
+}

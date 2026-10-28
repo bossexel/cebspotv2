@@ -1,0 +1,12 @@
+{
+  "label": "resume-2026-10-28-reservation-create-reproduced",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/reservation-create-contract.test.cjs"
+  ],
+  "startedAt": "2026-10-28T15:23:22.316Z",
+  "finishedAt": "2026-10-28T15:23:23.710Z",
+  "exitCode": 1,
+  "output": "TAP version 13\n# Subtest: missing backend configuration never produces a fake confirmed reservation\nnot ok 1 - missing backend configuration never produces a fake confirmed reservation\n  ---\n  duration_ms: 563.5783\n  type: 'test'\n  location: 'C:\\\\Users\\\\9real\\\\Downloads\\\\cebspotv3\\\\tests\\\\remediation\\\\reservation-create-contract.test.cjs:17:1'\n  failureType: 'testCodeFailure'\n  error: 'Missing expected rejection.'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected:\n  operator: 'rejects'\n  stack: |-\n    async TestContext.<anonymous> (C:\\Users\\9real\\Downloads\\cebspotv3\\tests\\remediation\\reservation-create-contract.test.cjs:18:25)\n    async Test.run (node:internal/test_runner/test:1054:7)\n    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)\n  ...\n# Subtest: schema mismatch never retries a reservation after dropping guest, table and payment fields\nnot ok 2 - schema mismatch never retries a reservation after dropping guest, table and payment fields\n  ---\n  duration_ms: 169.7162\n  type: 'test'\n  location: 'C:\\\\Users\\\\9real\\\\Downloads\\\\cebspotv3\\\\tests\\\\remediation\\\\reservation-create-contract.test.cjs:20:1'\n  failureType: 'testCodeFailure'\n  error: 'Missing expected rejection.'\n  code: 'ERR_ASSERTION'\n  name: 'AssertionError'\n  expected:\n  operator: 'rejects'\n  stack: |-\n    async TestContext.<anonymous> (C:\\Users\\9real\\Downloads\\cebspotv3\\tests\\remediation\\reservation-create-contract.test.cjs:22:2)\n    async Test.run (node:internal/test_runner/test:1054:7)\n    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)\n  ...\n# Subtest: configured creation submits one complete contact/table snapshot and uses the server result\nok 3 - configured creation submits one complete contact/table snapshot and uses the server result\n  ---\n  duration_ms: 112.3393\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 1\n# fail 2\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 1292.6902\n"
+}

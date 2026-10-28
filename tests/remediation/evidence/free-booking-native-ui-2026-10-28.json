@@ -1,0 +1,17 @@
+{
+  "kind": "actual-screen-and-client-to-isolated-native-postgresql",
+  "result": "PASS",
+  "invalidContactDisabled": true,
+  "insertCount": 1,
+  "snapshot": {
+    "guest_name": "Synthetic Guest",
+    "guest_email": "a@fixture.example.test",
+    "guest_phone": "+639171234567",
+    "slot_id": "sunset",
+    "reservation_time": "20:00:00",
+    "status": "pending",
+    "payment_status": "not_required",
+    "payment_required": false
+  },
+  "limitations": "Synthetic Auth/Storage contracts, no Android device or hosted data/provider used."
+}

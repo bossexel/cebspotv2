@@ -45,6 +45,7 @@ import { createEmptyTableInventory, normalizeStoredTableInventory, type TableBoo
 import { venueTableService, type VenueTableAvailability } from '../../src/services/venueTableService';
 import { GuestTableChoices } from '../../src/components/GuestTableChoices';
 import { getReservationTimeSlot } from '../../src/utils/reservationTimeSlot';
+import { getReservationContact } from '../../src/utils/reservationContact';
 
 const testCebspotSpotId = '66666666-6666-4666-8666-666666666666';
 const tableHoldDurationSeconds = 5 * 60;
@@ -927,6 +928,9 @@ export default function ReservationScreen() {
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [loadingTableAvailability, setLoadingTableAvailability] = useState(true);
   const [additionalInfo, setAdditionalInfo] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
+  const freeContact = getReservationContact(profile,guestPhone);
+  useEffect(() => { setGuestPhone(''); },[profile?.id]);
   const [bookingStatus] = useState<ReservationStatus>('pending');
   const [availabilityNotice, setAvailabilityNotice] = useState('');
   const [availabilityError, setAvailabilityError] = useState(false);
@@ -1012,6 +1016,7 @@ export default function ReservationScreen() {
         !loadingTableAvailability &&
         !availabilityError &&
         adjustmentAcknowledged &&
+        (isPaymentRequired(spot) || Boolean(freeContact)) &&
         !holdExpired &&
         holdSecondsRemaining > 0
     ) &&
@@ -1212,6 +1217,10 @@ export default function ReservationScreen() {
         Alert.alert('Authentication required', 'Please sign in again to complete this reservation.');
         return;
       }
+      if (!freeContact) {
+        Alert.alert('Contact details required','Enter a valid Philippine mobile number and check your profile name and email before booking.');
+        return;
+      }
 
       try {
         setSubmitting(true);
@@ -1221,6 +1230,7 @@ export default function ReservationScreen() {
           user_id: profile.id,
           spot_id: spot.id,
           spot_name: spot.name,
+          ...freeContact,
           reservation_date: selectedDate,
           reservation_time: selectedSlot.startTime,
           reservation_time_start: selectedSlot.startTime,
@@ -1337,6 +1347,16 @@ export default function ReservationScreen() {
         <GuestTableChoices tables={liveTablesBySlot[selectedSlotId] || []} partySize={getRequiredCapacity(selectedGroupId)}
           selectedId={selectedTable?.tableId || null} loading={loadingTableAvailability || availabilityError}
           onSelect={setSelectedTableId} />
+        {!paymentRequired && <View style={{gap:spacing.sm,marginVertical:spacing.lg}}>
+          <Text style={{fontSize:fontSize.lg,fontWeight:'800',color:appColors.onSurface}}>Contact details</Text>
+          <Text style={{color:appColors.onSurfaceVariant}}>Name: {[profile?.first_name,profile?.last_name].filter(Boolean).join(' ').trim() || profile?.display_name || 'Update your name in Account Details'}</Text>
+          <Text style={{color:appColors.onSurfaceVariant}}>Email: {profile?.email || 'Update your email in Account Details'}</Text>
+          <TextInput accessibilityLabel="Reservation phone number" value={guestPhone} onChangeText={setGuestPhone}
+            keyboardType="phone-pad" textContentType="telephoneNumber" autoComplete="tel" maxLength={24}
+            placeholder="09XXXXXXXXX" placeholderTextColor={appColors.onSurfaceVariant}
+            style={{minHeight:52,borderWidth:1,borderColor:guestPhone&&!freeContact?colors.danger:appColors.outlineVariant,borderRadius:radius.md,padding:spacing.md,color:appColors.onSurface,backgroundColor:appColors.surfaceRaised}} />
+          <Text style={{color:appColors.onSurfaceVariant}}>The venue uses these details to contact you about your booking.</Text>
+        </View>}
         <AdditionalInfoInput value={additionalInfo} onChangeText={setAdditionalInfo} appColors={appColors} />
         <ReservationAdjustmentsCard
           appColors={appColors}

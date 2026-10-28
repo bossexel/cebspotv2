@@ -8,6 +8,7 @@ import {
   getSpotReservationType,
 } from '../utils/reservations';
 import { activityService } from './activityService';
+import { UserFacingError } from '../utils/userError';
 
 const localReservations: Reservation[] = [];
 
@@ -131,47 +132,6 @@ async function attachGuestDetails(reservations: Reservation[], client: SupabaseC
   }
 }
 
-function toLegacyReservation(reservation: NewReservation) {
-  const {
-    guest_count,
-    note,
-    reservation_type,
-    reservation_fee,
-    payment_required,
-    payment_method,
-    payment_reference,
-    table_id,
-    slot_id,
-    group_size_type,
-    reservation_time_start,
-    reservation_time_end,
-    payment_proof_url,
-    payer_gcash_number,
-    refund_status,
-    adjustment_acknowledged,
-    adjustment_acknowledged_at,
-    guest_name,
-    guest_email,
-    guest_phone,
-    payment_terms_accepted,
-    payment_terms_accepted_at,
-    ...legacy
-  } = reservation;
-
-  return {
-    ...legacy,
-    guests: legacy.guests ?? guest_count ?? 1,
-    fee: legacy.fee ?? reservation_fee ?? 0,
-    status: reservation_type === 'paid' && legacy.status === 'pending_payment' ? 'pending' : legacy.status,
-    payment_status:
-      reservation.payment_status === 'not_required'
-        ? 'on-site'
-        : reservation.payment_status === 'pending'
-          ? 'unpaid'
-          : reservation.payment_status,
-  };
-}
-
 function getCancellationFields(reservation: Reservation, reason?: string) {
   const updatedAt = new Date().toISOString();
   const cancellationReason = reason?.trim() || null;
@@ -250,39 +210,18 @@ export const reservationService = {
     // The database owns price and payment state for every venue.
     const reservationToCreate: NewReservation = reservation;
 
-    if (!hasSupabaseConfig) {
-      const created: Reservation = {
-        id: `local-res-${Date.now()}`,
-        created_at: new Date().toISOString(),
-        ...reservationToCreate,
-      };
-      localReservations.unshift(created);
-      await activityService.logActivity({
-        user_id: created.user_id,
-        user_name: 'Demo Explorer',
-        action: 'reserved',
-        target_id: created.id,
-        target_name: created.spot_name,
-        type: 'reservation',
-        spot_id: created.spot_id,
-        spot_name: created.spot_name,
-      });
-      return created;
-    }
+    if (!hasSupabaseConfig) throw new UserFacingError('Reservations are unavailable. Please try again when the booking service is configured.');
 
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from('reservations')
       .insert(reservationToCreate)
       .select('*')
       .single();
-    if (error && /column|schema cache|payment_required|reservation_type|guest_count|guest_name|guest_email|guest_phone|payment_terms_accepted|note|payment_proof_url|payer_gcash_number/i.test(error.message)) {
-      const legacyReservation = toLegacyReservation(reservationToCreate);
-      const retry = await supabase.from('reservations').insert(legacyReservation).select('*').single();
-      data = retry.data;
-      error = retry.error;
-    }
     if (error) {
       if (isReservationSlotConflict(error)) throwReservationSlotConflict();
+      if (['PGRST202','PGRST204','42703'].includes(error.code)) {
+        throw new UserFacingError('Reservations are unavailable until the booking service is updated. Please try again later.');
+      }
       throw error;
     }
 

@@ -1,0 +1,12 @@
+{
+  "label": "resume-2026-10-28-reservation-create-red",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/reservation-create-contract.test.cjs"
+  ],
+  "startedAt": "2026-10-28T15:23:11.694Z",
+  "finishedAt": "2026-10-28T15:23:11.997Z",
+  "exitCode": 1,
+  "output": "TAP version 13\n# C:\\\\Users\\\\9real\\\\Downloads\\\\cebspotv3\\\\tests\\\\remediation\\\\reservation-create-contract.test.cjs:4\n# function fixture(configured=true,firstError=null){const inserts=[],events=[];const supabase={from:()=>({insert:attrs=>{inserts.push(attrs);return {select:()=>({single:async()=>inserts.length===1&&firstError?{data:null,error:firstError}:{data:{id:'synthetic',created_at:new Date().toISOString(),...attrs},error:null}})}})};return {inserts,events,service:load('src/services/reservationService.ts',{'../lib/supabase':{hasSupabaseConfig:configured,supabase},'./activityService':{activityService:{logActivity:async e=>events.push(e)}}}).reservationService};}\n#                                                                                                                                                                                                                                                                                                                                ^\n# SyntaxError: Unexpected token ')'\n#     at wrapSafe (node:internal/modules/cjs/loader:1620:18)\n#     at Module._compile (node:internal/modules/cjs/loader:1662:20)\n#     at Object..js (node:internal/modules/cjs/loader:1820:10)\n#     at Module.load (node:internal/modules/cjs/loader:1423:32)\n#     at Function._load (node:internal/modules/cjs/loader:1246:12)\n#     at TracingChannel.traceSync (node:diagnostics_channel:322:14)\n#     at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)\n#     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n#     at node:internal/main/run_main_module:36:49\n# Node.js v22.18.0\n# Subtest: tests\\\\remediation\\\\reservation-create-contract.test.cjs\nnot ok 1 - tests\\\\remediation\\\\reservation-create-contract.test.cjs\n  ---\n  duration_ms: 96.9587\n  type: 'test'\n  location: 'C:\\\\Users\\\\9real\\\\Downloads\\\\cebspotv3\\\\tests\\\\remediation\\\\reservation-create-contract.test.cjs:1:1'\n  failureType: 'testCodeFailure'\n  exitCode: 1\n  signal: ~\n  error: 'test failed'\n  code: 'ERR_TEST_FAILURE'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 0\n# fail 1\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 126.9821\n"
+}
