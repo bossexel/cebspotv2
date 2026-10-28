@@ -19,7 +19,8 @@ import { reservationService } from '../../src/services/reservationService';
 import { spotService } from '../../src/services/spotService';
 import type { NewReservation, Reservation, Spot } from '../../src/types';
 import { checkReservationAvailability } from '../../src/utils/reservations';
-import { venueTableService } from '../../src/services/venueTableService';
+import { getLiveReservationTableAvailability } from '../../src/services/reservationTableService';
+import { userErrorMessage } from '../../src/utils/userError';
 
 const testCebspotSpotId = '66666666-6666-4666-8666-666666666666';
 const paymongoGcashEnabled = process.env.EXPO_PUBLIC_PAYMONGO_GCASH_ENABLED === 'true';
@@ -271,7 +272,7 @@ export default function CheckoutScreen() {
     if (!profile) throw new Error('Authentication required.');
     if (pendingReservation.current) return pendingReservation.current;
 
-    const liveTables = await venueTableService.getAvailability(spotId, date, slotId);
+    const liveTables = await getLiveReservationTableAvailability(spotId, date, slotId);
     const liveTable = liveTables.find(table => table.tableId === tableId);
     if (!liveTable?.onlineAvailable) {
       throw new Error(liveTable?.bookingPolicy === 'walk_in_only'
@@ -332,14 +333,14 @@ export default function CheckoutScreen() {
   async function showCheckoutError(title: string, error: any) {
     const unavailable = /walk-ins only|table.*(no longer|just booked|occupied|cleaning|unavailable)/i.test(error.message || '');
     if (!unavailable) {
-      Alert.alert(title, error.message || 'Please try again.');
+      Alert.alert(title, userErrorMessage(error, 'Checkout is temporarily unavailable. Please try again.'));
       return;
     }
-    let message = error.message;
+    let message = 'This table is no longer available online. Please choose another table.';
     try {
       // The policy can change between the read and the INSERT. Re-read after a
       // server rejection; provider checkout is never reached on that failure.
-      const live = await venueTableService.getAvailability(spotId, date, slotId);
+      const live = await getLiveReservationTableAvailability(spotId, date, slotId);
       if (live.find(table => table.tableId === tableId)?.bookingPolicy === 'walk_in_only') {
         message = 'Walk-ins only: this table cannot be reserved online. Choose another available table.';
       }

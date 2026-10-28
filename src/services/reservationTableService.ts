@@ -9,6 +9,27 @@ import {
   type TableSlotId,
 } from '../utils/tableInventory';
 import { venueTableService, type VenueTableAvailability } from './venueTableService';
+import { UserFacingError } from '../utils/userError';
+
+export async function getLiveReservationTableAvailability(
+  spotId: string,
+  date: string,
+  slotId: string | null,
+  client: SupabaseClient = supabase,
+): Promise<VenueTableAvailability[]> {
+  if (slotId !== 'sunset' && slotId !== 'prime' && slotId !== 'late') {
+    throw new UserFacingError('Please choose a reservation time slot before continuing.');
+  }
+  // Checkout must re-read stored inventory: the owner may have changed a table
+  // since the user opened the booking screen. Select * also supports schemas
+  // that predate the inventory-verification columns.
+  const { data, error } = await client.from('spots').select('*').eq('id', spotId).maybeSingle();
+  if (error) throw error;
+  if (!data || data.id !== spotId) {
+    throw new UserFacingError('This spot is no longer available. Return to the map and choose another spot.');
+  }
+  return getReservationTableAvailability(data as Spot, date, slotId, client);
+}
 
 export async function getReservationTableAvailability(
   spot: Spot,

@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const load = require('../remediation/load-client.cjs');
-const { getReservationTableAvailability: availability } = load('src/services/reservationTableService.ts', {
+const { getReservationTableAvailability: availability, getLiveReservationTableAvailability: liveAvailability } = load('src/services/reservationTableService.ts', {
   '../lib/supabase': { supabase: {} },
 });
 
@@ -85,4 +85,27 @@ test('legacy availability never invents inventory or enables a disabled venue', 
   }
   const tables = await availability({ ...legacy, is_reservable: false }, '2030-01-01', 'prime', client([]));
   assert.ok(tables.every(t => !t.onlineAvailable));
+});
+
+test('checkout re-reads current inventory before using the legacy reservation API', async () => {
+  const api=client([]),reads=[];
+  api.from=table=>({select:fields=>({eq:(key,value)=>({maybeSingle:async()=>{
+    reads.push({table,fields,key,value});
+    return {data:{...legacy,table_inventory:{prime:[{tableId:'owner-changed-table',capacity:2,bookingPolicy:'walk_in_only'}]}},error:null};
+  }})})});
+  const tables=await liveAvailability(legacy.id,'2030-01-01','prime',api);
+  assert.equal(tables.length,1);assert.equal(tables[0].tableId,'owner-changed-table');assert.equal(tables[0].onlineAvailable,false);
+  assert.deepEqual(reads,[{table:'spots',fields:'*',key:'id',value:legacy.id}]);
+  assert.equal(api.calls.length,2);
+});
+
+test('checkout never checks or books tables after a missing venue, changed identity or failed inventory read', async () => {
+  for(const result of [{data:null,error:null},{data:{...legacy,id:'other-venue'},error:null},{data:null,error:Error('Network request failed')}]){
+    const api=client([]);api.from=()=>({select:()=>({eq:()=>({maybeSingle:async()=>result})})});
+    await assert.rejects(liveAvailability(legacy.id,'2030-01-01','prime',api));assert.equal(api.calls.length,0);
+  }
+  for(const slot of [null,'','unknown']){
+    const api=client([]);await assert.rejects(liveAvailability(legacy.id,'2030-01-01',slot,api),/choose a reservation time slot/);
+    assert.equal(api.calls.length,0);
+  }
 });
