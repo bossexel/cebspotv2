@@ -40,10 +40,26 @@ The user confirmed there is **no custom SMTP sender**. The built-in Supabase sen
 - Existing independent-post, account-details and email synchronization database scenarios passed locally.
 - TypeScript and generated map-source checks passed. All **13 map interaction tests** passed.
 - Actual-screen fixtures passed for location edits, posting coordinates and email changes, including network recovery and resend cooldown.
-- Admin web export passed. Additional release checks and publication identifiers are recorded below as rollout completes.
+- Admin web export passed. Circle settings, Your Posts and Account Details screen fixtures also passed.
+- Final focused migration/identity/email checks: **15 passed**; these overlap earlier suites and are not summed as unique tests.
+- The approved hosted preview environment passed Auth, spots/submissions REST, Storage and face-service health checks. The free face service initially timed out during cold start, then returned healthy and passed the repeated preflight.
+- Published Android and admin artifacts were scanned against the local private credentials; no matches were found across 69 artifact files. Private environment files, snapshots and browser profiles were not committed.
 
 No Android phone is attached; native touch/performance and real inbox acceptance are not claimed. The older account-erasure/private-upload/payment-maintenance rollout described in the October 25 release record is a separate existing backend limitation; this focused patch does not silently install that booking overhaul.
 
 ## Publication
 
-Backend configuration is deployed and verified. Admin/Expo publication and final identifiers are pending in this record until their deployment checks finish.
+Release source: [`8d0e830c6f5b092f7e9604ee66b289746045f7cb`](https://github.com/bossexel/cebspotv2/commit/8d0e830c6f5b092f7e9604ee66b289746045f7cb), pushed to `main` with the configured user author and no assistant attribution.
+
+| Target | Published release | Verification |
+| --- | --- | --- |
+| Admin web | [CebSpot admin](https://cebspot-admin-web.onrender.com/admin); Render deployment `dep-dbgq11ei0phs73cnif3g` | Render reports Live at `8d0e830`, duration 1m16s. The page and updated JS bundle return HTTP 200; the deployed bundle contains the new linking and historical-review code. |
+| Android preview | [Update group `90130292-a322-4908-9c0c-2fd272dc1772`](https://expo.dev/accounts/exl123/projects/cebspot/updates/90130292-a322-4908-9c0c-2fd272dc1772) | Android runtime 1.0.4, preview branch/channel/environment, source `8d0e830`. Update ID `01a1815e-fbde-7fdf-b19a-9e9642d13d5f`, published `2026-10-28T07:17:28.158Z`. |
+| Device update endpoint | Exact new Android update ID and runtime returned using the installed-app headers | HTTP 200, 64 assets plus the launch bundle. The downloaded 5,378,044-byte launch bundle matches the manifest's SHA-256 and contains Similar Posts, Circle settings, Account Details and Your Posts. |
+| Older Android runtime | Existing 1.0.3 installer-prompt update remains served | Its downloaded bundle hash and 1.0.4 installer link were verified. No incompatible new code was published to 1.0.3. |
+
+For testers already on Android **1.0.4**, fully close and reopen the installed CebSpot preview app, then tap **Update** when prompted. This patch adds no native dependency, so a new binary is unnecessary for existing 1.0.4 installations.
+
+For a new tester or someone still on **1.0.3**, [install the existing signed 1.0.4 APK](https://expo.dev/artifacts/eas/4aKd8iEFWeuOc2YLGJDTmrpLmnoQajvRWgX96sP3bus.apk), reopen CebSpot, and accept the new in-app update. The APK's embedded bundle predates this patch; its preview channel delivers the verified latest update. Expo Go does not receive this release.
+
+No new paid hosting plan, email provider or Play Store release was created. Real-phone acceptance and general-user email delivery remain limitations described above.
