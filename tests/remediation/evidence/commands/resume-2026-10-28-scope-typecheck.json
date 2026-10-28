@@ -1,0 +1,12 @@
+{
+  "label": "resume-2026-10-28-scope-typecheck",
+  "command": [
+    "npm",
+    "run",
+    "typecheck"
+  ],
+  "startedAt": "2026-10-28T15:19:41.653Z",
+  "finishedAt": "2026-10-28T15:20:47.028Z",
+  "exitCode": 0,
+  "output": "\n> cebspot@1.0.0 typecheck\n> tsc --noEmit\n\n"
+}

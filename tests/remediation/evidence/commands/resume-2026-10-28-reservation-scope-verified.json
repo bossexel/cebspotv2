@@ -1,0 +1,13 @@
+{
+  "label": "resume-2026-10-28-reservation-scope-verified",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/release-scope-regression.test.cjs",
+    "tests/remediation/inventory-client.test.cjs"
+  ],
+  "startedAt": "2026-10-28T15:17:17.465Z",
+  "finishedAt": "2026-10-28T15:17:19.969Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: stored inventory never creates missing table IDs or capacities\nok 1 - stored inventory never creates missing table IDs or capacities\n  ---\n  duration_ms: 13.015\n  type: 'test'\n  ...\n# Subtest: client advertises only the confirmed sole venue with active online inventory\nok 2 - client advertises only the confirmed sole venue with active online inventory\n  ---\n  duration_ms: 2.7454\n  type: 'test'\n  ...\n# Subtest: legacy reservation flags cannot enable venues without verified inventory\nok 3 - legacy reservation flags cannot enable venues without verified inventory\n  ---\n  duration_ms: 0.6811\n  type: 'test'\n  ...\n# Subtest: missing verification columns never enable a venue, even with active stored tables\nok 4 - missing verification columns never enable a venue, even with active stored tables\n  ---\n  duration_ms: 4.7405\n  type: 'test'\n  ...\n# Subtest: availability cannot advertise a discovery or unverified venue even if its RPC claims availability\nok 5 - availability cannot advertise a discovery or unverified venue even if its RPC claims availability\n  ---\n  duration_ms: 5.6311\n  type: 'test'\n  ...\n# Subtest: checkout fresh reads cannot turn a legacy stored reservation flag into permission\nok 6 - checkout fresh reads cannot turn a legacy stored reservation flag into permission\n  ---\n  duration_ms: 1.456\n  type: 'test'\n  ...\n1..6\n# tests 6\n# suites 0\n# pass 6\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 2114.3659\n"
+}

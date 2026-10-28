@@ -11,11 +11,8 @@ export function isReleaseReservable(spot: {
   id?: string; is_public?: boolean; is_reservable?: boolean;
   reservation_inventory_verified_at?: string | null; table_inventory?: unknown;
 }): boolean {
-  if (!spot.is_public || !spot.is_reservable) return false;
-  // Older deployments use the stored reservation flag and do not implement
-  // inventory confirmation. A present-but-null verification still blocks booking.
-  if (!hasReservationInventoryVerification(spot)) return true;
-  if (spot.id !== reservationClientVenueId || !spot.reservation_inventory_verified_at) return false;
+  if (spot.id !== reservationClientVenueId || !spot.is_public || !spot.is_reservable
+    || !spot.reservation_inventory_verified_at) return false;
   const inventory = normalizeStoredTableInventory(spot.table_inventory);
   return Object.values(inventory).some(tables => tables.some(table => !table.isReserved && table.bookingPolicy !== 'walk_in_only'));
 }

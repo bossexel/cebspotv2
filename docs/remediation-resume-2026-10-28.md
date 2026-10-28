@@ -1,0 +1,30 @@
+# Resumed Android remediation — October 28, 2026
+
+The current worktree, not the October 13 handoff, is the baseline. Entry HEAD is `6f0cb72`, on `audit-remediation-2026-10-12`. Only `.media-review.diff` and `docs/final-defense-scenario.md` were untracked on entry; both are preserved. No AGENTS.md was found in the repository search.
+
+The previous walkthrough produced new evidence and identified next work. It was a progress turn, not a wait. This resumed turn first re-ran TypeScript and the complete current JavaScript suite: **376 passed, 0 failed, 5 skipped**. Those results do not establish deployed database, provider or native-device acceptance.
+
+## LA-03 regression: missing verification no longer grants reservations
+
+The newer compatibility path in `isReleaseReservable` returned true for any public venue with `is_reservable=true` when inventory-confirmation metadata was absent. This contradicted the approved one-client/verified-inventory release rule. The availability/checkout compatibility service could also accept an old reserved-ID response without verification. Three new regression tests reproduced all three failures before the code change; the failing command is retained.
+
+Local correction:
+
+- Require the sole client UUID, public/reservable flags, inventory confirmation and real active online table inventory for all client versions.
+- Guest table availability refuses unverified/discovery venues before requesting availability. A missing modern availability RPC is an unavailable-service state, not permission to reconstruct bookable tables from a legacy API.
+- Checkout still re-reads current stored inventory. Owner changes to walk-in-only inventory stop it before any payment/session creation.
+- Existing server reservation guards and payment logic are unchanged. Database migrations remain authoritative; no hosted schema or record was changed.
+
+Evidence: `resume-2026-10-28-reservation-scope-red` fails 3/3 before the fix; `resume-2026-10-28-reservation-scope-verified` passes 6/6. `resume-2026-10-28-inventory-and-checkout` passes **26/26**, including complete current migration replay/upgrade, six-role activity privacy and reservation-scope SQL checks. The complete current migration chain has 23 timestamped files; its refreshed checksum manifest is retained by the replay test. Source test expectations that explicitly permitted unverified legacy booking were corrected to the approved acceptance rule, not used as proof of safety.
+
+## Current external acceptance boundary
+
+The October 28 deployment record documents an existing public beta on runtime 1.0.4 and an installed-APK distribution path. Those facts supersede earlier statements that no APK or publication existed. That deployment intentionally did not apply the original full reservation/payment overhaul to the existing database. It therefore does not establish acceptance of this goal's inventory verification, private activities, bounded holds, durable checkout or account-erasure schema. The shared backend contains real/mixed data, as the user confirmed.
+
+Exact next steps before reservation acceptance: provide a new isolated Supabase target, apply all timestamped migrations in lexical order there, deploy matching test-only Edge functions and face service, create synthetic six-role accounts, confirm the real client venue's actual inventory through its protected owner workflow, and execute the booking/payment interruption and duplicate-event cases. A separate reviewed operation would be needed to align the real-data deployment; do not apply the complete foundations/overhaul to it blindly or reset it.
+
+No device is attached according to this turn's `adb devices -l`. Docker/Supabase CLI/Deno were not available from the command discovery check. Native Windows PostgreSQL fixture tests remain a substitute for local SQL verification only, not a full Supabase/PostgREST/Storage or matching PostgreSQL-17 acceptance.
+
+The deployment record also reports no custom SMTP sender and restricted default email delivery. General testers' confirmation/recovery/email-change journeys need a verified sender and actual delivery testing; do not disable email confirmation. Native APK flows, real Storage cleanup/timeouts, test-provider callbacks, deployed policies and email delivery remain specific external gates. Do not perform a live charge to close a test-mode requirement.
+
+No production/public-beta deployment, hosted write, real payment, destructive existing-database operation, credential rotation or Git-history rewrite was performed by this resumed audit. Local fixes require their own reviewed deployment; they are not declared installed on users' devices.
