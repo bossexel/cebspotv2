@@ -1,5 +1,7 @@
 # CebSpot: remarks from a user's perspective
 
+Remediation follow-up after this review: the current local source removes the inactive menu, clarifies fallback distances and Circle location labels, adds Clear filters semantics, corrects the photo notice and reservation-time wording, and preserves account-bound Saved recovery. The updated walkthrough completes 26 observations without runtime errors (`resume-2026-10-28-ux-journeys`). The original remarks and original evidence below are retained as the before-fix review; they are not a claim that the corrected local behavior is deployed. Share wording and explicit default-pin confirmation remain UX suggestions.
+
 October 28, 2026. Tested the current local source on `audit-remediation-2026-10-12`, entry HEAD `dab9514`. Existing uncommitted Saved Spots changes were included in the test and preserved. This report describes the local source, not what is installed on testers' phones.
 
 **My overall remark:** "I can understand how to find places, save them, and check a venue. I would want clearer location information and working menu buttons before relying on the app when planning a visit."

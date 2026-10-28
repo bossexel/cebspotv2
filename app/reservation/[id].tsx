@@ -375,12 +375,12 @@ function ExperienceSlotSelector({
 }) {
   return (
     <View style={styles.sectionBlock}>
-      <SectionTitle title="Experience Slot" appColors={appColors} icon={<Clock3 size={16} color={colors.primary} />} />
+      <SectionTitle title="Reservation time" appColors={appColors} icon={<Clock3 size={16} color={colors.primary} />} />
       <Text style={[styles.timePickerHelp, { color: appColors.onSurfaceVariant }]}>
         Adjust the hours and minutes with the arrows. Tap AM or PM to switch.
       </Text>
       <View style={[styles.timePickerPanel, { backgroundColor: appColors.surfaceRaised, borderColor: appColors.outlineVariant }]}>
-        <Text style={[styles.timePickerLabel, { color: appColors.onSurface }]}>Reservation time</Text>
+        <Text style={[styles.timePickerLabel, { color: appColors.onSurface }]}>Arrival time</Text>
         <AdjustableTimePicker value={time} onChange={onChangeTime} appColors={appColors} />
       </View>
       <Text accessibilityLiveRegion="polite" style={[styles.timePickerHelp, { color: appColors.onSurfaceVariant }]}>

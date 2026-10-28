@@ -690,7 +690,7 @@ export default function SubmitSpotScreen() {
       <ConfirmationModal
         visible={!privacyNoticeAccepted}
         title="Privacy notice"
-        message="For compliance with the Data Privacy Act, any image containing a visible face will have the face automatically blurred before the spot is posted. Select I Agree to continue filling out the spot details."
+        message="Photos are processed to blur detected faces before posting. Automated detection can miss faces. Review the processed photos and avoid sharing sensitive images. Select I Agree to continue filling out the spot details."
         onRequestClose={() => router.back()}
         actions={[
           {

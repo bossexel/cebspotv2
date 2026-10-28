@@ -12,21 +12,9 @@ import { useTheme } from '../../src/hooks/useTheme';
 import { circleService } from '../../src/services/circleService';
 import { CirclePrivacyControls } from '../../src/components/CirclePrivacyControls';
 import type { Circle, CircleInvite, CircleMember } from '../../src/types';
+import { getMemberCoordinate, hasRecentLocation } from '../../src/utils/circleLocation';
 
 const defaultMapCenter = { latitude: 10.321, longitude: 123.901 };
-const activeLocationWindowMs = 15 * 60 * 1000;
-
-function getMemberCoordinate(member: CircleMember) {
-  const latitude = Number(member.location?.lat);
-  const longitude = Number(member.location?.lng);
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  return { latitude, longitude };
-}
-
-function hasRecentLocation(member: CircleMember) {
-  if (!member.last_location_update || !getMemberCoordinate(member)) return false;
-  return Date.now() - new Date(member.last_location_update).getTime() <= activeLocationWindowMs;
-}
 
 function formatInviteExpiry(value: string) {
   return new Date(value).toLocaleString('en-PH', {
@@ -343,7 +331,7 @@ export default function CircleDetailsScreen() {
       <View style={styles.memberList}>
         {visibleMembers.map((member) => {
           const isCurrentUser = member.id === user?.id;
-          const active = isCurrentUser || hasRecentLocation(member);
+          const active = isCurrentUser ? Boolean(location) : hasRecentLocation(member);
           const memberName = member.display_name || (isCurrentUser ? 'You' : 'Circle member');
           const showPhoto = Boolean(member.photo_url && !failedPhotoIds.includes(member.id));
 
@@ -365,7 +353,7 @@ export default function CircleDetailsScreen() {
                 <View style={styles.memberMeta}>
                   {active ? <Navigation size={12} color={colors.primary} /> : null}
                   <Text style={[styles.memberStatus, { color: appColors.onSurfaceVariant }]}>
-                    {isCurrentUser ? 'You' : active ? 'Location active' : 'Location unavailable'}
+                    {active ? (isCurrentUser ? 'Your device location' : 'Recent shared location') : 'Location unavailable'}
                   </Text>
                   {member.is_owner ? (
                     <View style={styles.ownerLabel}>

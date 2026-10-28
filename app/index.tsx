@@ -541,9 +541,9 @@ export default function ExploreScreen() {
         }]} pointerEvents="box-none">
           <View ref={discoverTarget} collapsable={false} style={styles.sectionHeader}>
             <View>
-              <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>Nearby Spots</Text>
+              <Text style={[styles.sectionTitle, { color: appColors.onSurface }]}>{location ? 'Nearby Spots' : 'Explore Cebu'}</Text>
               <Text style={[styles.sectionSub, { color: appColors.onSurfaceVariant }]}>
-                {spotLoadError ? (spots.length ? 'Showing cached spots; refresh unavailable' : 'Spots are currently unavailable') : `${filteredSpots.length} spots found near you`}
+                {spotLoadError ? (spots.length ? 'Showing cached spots; refresh unavailable' : 'Spots are currently unavailable') : location ? `${filteredSpots.length} spots found near you` : `${filteredSpots.length} spots · distances from Cebu reference point`}
               </Text>
             </View>
           </View>
@@ -593,7 +593,7 @@ export default function ExploreScreen() {
               ]}
             >
               <Text style={[styles.emptyTitle, { color: appColors.onSurface }]}>{spotLoadError ? 'Spots unavailable' : 'No matches found'}</Text>
-              {!spotLoadError && <Pressable onPress={resetFilters}>
+              {!spotLoadError && <Pressable accessibilityRole="button" accessibilityLabel="Clear filters" hitSlop={8} onPress={resetFilters} style={{minHeight:44,justifyContent:'center'}}>
                 <Text style={styles.clearFilters}>Clear filters</Text>
               </Pressable>}
             </View>

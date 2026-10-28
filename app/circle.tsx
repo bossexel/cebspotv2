@@ -12,9 +12,9 @@ import { useTheme } from '../src/hooks/useTheme';
 import { circleService } from '../src/services/circleService';
 import { CirclePrivacyControls } from '../src/components/CirclePrivacyControls';
 import type { Circle, CircleInvite, CircleMember } from '../src/types';
+import { getMemberCoordinate, hasRecentLocation } from '../src/utils/circleLocation';
 
 const defaultMapCenter = { latitude: 10.321, longitude: 123.901 };
-const activeLocationWindowMs = 15 * 60 * 1000;
 
 function formatInviteInput(value: string) {
   const compact = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
@@ -32,18 +32,6 @@ function formatInviteExpiry(value: string) {
 
 function getMemberCount(circle: Circle) {
   return new Set([circle.owner_id, ...circle.members]).size;
-}
-
-function getMemberCoordinate(member: CircleMember) {
-  const latitude = Number(member.location?.lat);
-  const longitude = Number(member.location?.lng);
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  return { latitude, longitude };
-}
-
-function hasRecentLocation(member: CircleMember) {
-  if (!member.last_location_update || !getMemberCoordinate(member)) return false;
-  return Date.now() - new Date(member.last_location_update).getTime() <= activeLocationWindowMs;
 }
 
 export default function CircleScreen() {
@@ -333,7 +321,7 @@ export default function CircleScreen() {
     }
   }, [circleName, creatingCircle, router, user?.id]);
 
-  const activeFriends = visibleMembers.filter((member) => member.id === user?.id || hasRecentLocation(member)).length;
+  const activeFriends = visibleMembers.filter((member) => member.id !== user?.id && hasRecentLocation(member)).length;
 
   return (
     <ScreenContainer appColors={appColors} showBottomNav scroll scrollEnabled={!mapInteracting}>
@@ -345,7 +333,7 @@ export default function CircleScreen() {
         <View style={styles.headerCopy}>
           <Text style={[styles.title, { color: appColors.onSurface }]}>Circle</Text>
           <Text style={[styles.subtitle, { color: appColors.onSurfaceVariant }]}>
-            {activeFriends} friends active now
+            {activeFriends} friends with recent shared location
           </Text>
         </View>
         <Pressable
@@ -398,7 +386,7 @@ export default function CircleScreen() {
         ) : (
           visibleMembers.map((member) => {
             const isCurrentUser = member.id === user?.id;
-            const active = isCurrentUser || hasRecentLocation(member);
+            const active = isCurrentUser ? Boolean(location) : hasRecentLocation(member);
             const showPhoto = Boolean(member.photo_url && !failedPhotoIds.includes(member.id));
             return (
               <View key={member.id} style={[styles.friendCard, { backgroundColor: appColors.surfaceLow }]}>
@@ -420,12 +408,12 @@ export default function CircleScreen() {
                   <View style={styles.friendStatusRow}>
                     {active ? <Navigation size={12} color={colors.primary} /> : null}
                     <Text style={[styles.friendStatus, { color: appColors.onSurfaceVariant }]}>
-                      {isCurrentUser ? 'Your current location' : active ? 'Location active' : 'Location unavailable'}
+                      {active ? (isCurrentUser ? 'Your device location' : 'Recent shared location') : 'Location unavailable'}
                     </Text>
                   </View>
                 </View>
                 <Text style={[styles.friendMode, { color: active ? colors.primary : appColors.onSurfaceVariant }]}>
-                  {isCurrentUser ? 'You' : active ? 'Active' : 'Away'}
+                  {isCurrentUser ? 'You' : active ? 'Recent' : 'Unavailable'}
                 </Text>
               </View>
             );

@@ -1,0 +1,13 @@
+{
+  "label": "resume-2026-10-28-ux-unit",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/circle-location.test.cjs",
+    "tests/remediation/circle-privacy.test.cjs"
+  ],
+  "startedAt": "2026-10-28T15:50:54.364Z",
+  "finishedAt": "2026-10-28T15:51:04.527Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: recent valid coordinates are usable while missing, null, invalid and out-of-range values are not\nok 1 - recent valid coordinates are usable while missing, null, invalid and out-of-range values are not\n  ---\n  duration_ms: 2.3279\n  type: 'test'\n  ...\n# Subtest: stale, invalid, missing or future timestamps never imply current location\nok 2 - stale, invalid, missing or future timestamps never imply current location\n  ---\n  duration_ms: 0.7868\n  type: 'test'\n  ...\n# Subtest: location is private by default and cannot be inserted into a general profile\nok 3 - location is private by default and cannot be inserted into a general profile\n  ---\n  duration_ms: 9167.0178\n  type: 'test'\n  ...\n# Subtest: only opted-in circle members can publish; direct raw coordinate reads remain own-account only\nok 4 - only opted-in circle members can publish; direct raw coordinate reads remain own-account only\n  ---\n  duration_ms: 41.9299\n  type: 'test'\n  ...\n# Subtest: stopping clears coordinates and invalidates queued updates even after re-enabling\nok 5 - stopping clears coordinates and invalidates queued updates even after re-enabling\n  ---\n  duration_ms: 18.8446\n  type: 'test'\n  ...\n# Subtest: invalid and stale coordinates cannot be shared\nok 6 - invalid and stale coordinates cannot be shared\n  ---\n  duration_ms: 15.4945\n  type: 'test'\n  ...\n# Subtest: concurrent stop and publish finish with no retained/shared location\nok 7 - concurrent stop and publish finish with no retained/shared location\n  ---\n  duration_ms: 222.5224\n  type: 'test'\n  ...\n# Subtest: leaving transfers ownership, revokes old invites, removes membership and stops sharing\nok 8 - leaving transfers ownership, revokes old invites, removes membership and stops sharing\n  ---\n  duration_ms: 19.7048\n  type: 'test'\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 10001.9846\n"
+}

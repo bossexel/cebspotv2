@@ -31,7 +31,6 @@ import {
   MapPin,
   MessageCircle,
   Megaphone,
-  MoreVertical,
   Navigation,
   PlayCircle,
   Send,
@@ -194,9 +193,6 @@ const ActivityPostCard = React.memo(function ActivityPostCard({ item, appColors,
                     {formatUpdateTime(item.created_at)}
                   </Text>
                 </View>
-                <Pressable style={styles.moreButton}>
-                  <MoreVertical size={18} color={appColors.onSurfaceVariant} />
-                </Pressable>
               </View>
 
               <Pressable
@@ -1645,12 +1641,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: fontSize.xs,
     fontWeight: '800',
-  },
-  moreButton: {
-    width: 28,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   updateCopy: {
     paddingHorizontal: spacing.md,

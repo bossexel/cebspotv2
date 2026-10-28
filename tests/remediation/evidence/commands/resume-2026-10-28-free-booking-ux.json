@@ -1,0 +1,11 @@
+{
+  "label": "resume-2026-10-28-free-booking-ux",
+  "command": [
+    "node",
+    "tests/user-walkthrough/free-booking.cjs"
+  ],
+  "startedAt": "2026-10-28T15:52:20.263Z",
+  "finishedAt": "2026-10-28T15:52:58.404Z",
+  "exitCode": 0,
+  "output": "PASS: actual free-booking screen blocks invalid contact, saves one normalized contact/table snapshot through the actual client into fresh PostgreSQL, and opens confirmation without payment.\n"
+}
