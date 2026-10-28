@@ -1,5 +1,7 @@
 # CebSpot remediation status
 
+Current consolidated handoff: [October 29 release review, LA mapping, evidence, blockers, staging, manual tests and rollback](docs/android-release-candidate-2026-10-29.md). Application/dependency source: `023f5a0`. All applicable external gates remain explicitly open; no production/UAT GO is claimed.
+
 Latest local verification: **October 29, 2026**. After four compatible lockfile patches, 391 JavaScript/database/handler tests pass (5 optional legacy skips); TypeScript/lint, Android Hermes, separate admin export/browser, web denial and source/export secret scan pass. All 22 face tests and Python dependency/audit checks pass after targeted updates. Npm retains 30 affected packages (3 high), requiring review. No native device or isolated staging target is available. **NO-GO for unrestricted UAT/production; local compilation and fixture verification only.** See [resumed audit](docs/remediation-resume-2026-10-28.md) and [current dependency triage](docs/dependency-release-triage.md). No hosted writes/deployment occurred in this resumed work.
 
 October 29 dependency refresh: a fresh Python audit found new advisories in four installed packages. Targeted local updates and tested Pillow/certifi/Docker setuptools pins restore a clean installed-environment audit; dependency consistency and all 22 face tests pass. Linux image build/scan remains open. See [resumed security evidence](docs/remediation-resume-2026-10-28.md).

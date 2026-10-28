@@ -1,0 +1,12 @@
+{
+  "label": "resume-2026-10-29-evidence-integrity",
+  "command": [
+    "node",
+    "-e",
+    "const fs=require('fs'),c=require('crypto'),assert=require('assert/strict');const hash=p=>c.createHash('sha256').update(fs.readFileSync(p)).digest('hex');const s=require('./tests/remediation/evidence/release-source-manifest.json'),a=require('./tests/remediation/evidence/resume-2026-10-29-artifacts.json');for(const r of s.sources)assert.equal(hash(r.file),r.sha256,r.file);for(const r of s.migrationOrder)assert.equal(hash('supabase/migrations/'+r.name),r.sha256,r.name);for(const r of a.files){assert.equal(hash(r.path),r.sha256,r.path);assert.equal(fs.statSync(r.path).size,r.bytes)}assert.equal(s.migrationOrder.length,fs.readdirSync('supabase/migrations').filter(n=>/^\\d{14}_.*\\.sql$/.test(n)).length);assert.equal(require('./tests/remediation/evidence/final-android-export.json').backendConfigured,false);const audit=require('./tests/remediation/evidence/dependency-triage.json');assert.equal(audit.counts.total,30);assert.ok(a.files.some(r=>r.path.endsWith('.hbc')&&r.bytes>0));console.log(JSON.stringify({sourceHashes:s.sources.length,migrations:s.migrationOrder.length,artifactHashes:a.files.length,result:'PASS',scope:'Current-file integrity only; no hosted or native acceptance'}))"
+  ],
+  "startedAt": "2026-10-28T16:17:31.523Z",
+  "finishedAt": "2026-10-28T16:17:31.948Z",
+  "exitCode": 0,
+  "output": "{\"sourceHashes\":246,\"migrations\":23,\"artifactHashes\":7,\"result\":\"PASS\",\"scope\":\"Current-file integrity only; no hosted or native acceptance\"}\n"
+}

@@ -2,11 +2,11 @@
   "kind": "npm-registry-advisory-triage",
   "counts": {
     "info": 0,
-    "low": 0,
-    "moderate": 29,
-    "high": 36,
+    "low": 7,
+    "moderate": 20,
+    "high": 3,
     "critical": 0,
-    "total": 65
+    "total": 30
   },
   "disposition": "Not closed. Remaining Expo/RN tooling/runtime reachability requires review; no automatic force fix or incompatible SDK downgrade. Run native/staging acceptance before release.",
   "packages": [
@@ -24,21 +24,18 @@
       ],
       "proposedByRegistry": {
         "name": "expo",
-        "version": "44.0.6",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
     {
       "name": "@expo/cli",
-      "severity": "high",
+      "severity": "moderate",
       "direct": false,
       "nodes": [
         "node_modules/@expo/cli"
       ],
       "via": [
-        {
-          "dependency": "@expo/code-signing-certificates"
-        },
         {
           "dependency": "@expo/config"
         },
@@ -56,41 +53,11 @@
         },
         {
           "dependency": "@expo/rudder-sdk-node"
-        },
-        {
-          "dependency": "@react-native/dev-middleware"
-        },
-        {
-          "dependency": "fast-glob"
-        },
-        {
-          "dependency": "node-forge"
-        },
-        {
-          "dependency": "tempy"
         }
       ],
       "proposedByRegistry": {
         "name": "expo",
-        "version": "44.0.6",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "@expo/code-signing-certificates",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/@expo/code-signing-certificates"
-      ],
-      "via": [
-        {
-          "dependency": "node-forge"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "expo-updates",
-        "version": "0.11.7",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
@@ -104,11 +71,14 @@
       "via": [
         {
           "dependency": "@expo/config-plugins"
+        },
+        {
+          "dependency": "deepmerge"
         }
       ],
       "proposedByRegistry": {
         "name": "expo",
-        "version": "44.0.6",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
@@ -128,8 +98,8 @@
         }
       ],
       "proposedByRegistry": {
-        "name": "expo-updates",
-        "version": "0.11.7",
+        "name": "expo",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
@@ -150,7 +120,7 @@
       ],
       "proposedByRegistry": {
         "name": "expo",
-        "version": "44.0.6",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
@@ -182,7 +152,7 @@
       ],
       "proposedByRegistry": {
         "name": "expo",
-        "version": "44.0.6",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
@@ -203,7 +173,7 @@
       ],
       "proposedByRegistry": {
         "name": "expo-splash-screen",
-        "version": "57.0.10",
+        "version": "58.0.12",
         "isSemVerMajor": true
       }
     },
@@ -224,198 +194,7 @@
       ],
       "proposedByRegistry": {
         "name": "expo",
-        "version": "44.0.6",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "@istanbuljs/load-nyc-config",
-      "severity": "moderate",
-      "direct": false,
-      "nodes": [
-        "node_modules/@istanbuljs/load-nyc-config"
-      ],
-      "via": [
-        {
-          "dependency": "js-yaml"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "@jest/environment",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/@jest/environment"
-      ],
-      "via": [
-        {
-          "dependency": "@jest/fake-timers"
-        }
-      ],
-      "proposedByRegistry": true
-    },
-    {
-      "name": "@jest/fake-timers",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/@jest/fake-timers"
-      ],
-      "via": [
-        {
-          "dependency": "jest-message-util"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "@jest/transform",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/@jest/transform"
-      ],
-      "via": [
-        {
-          "dependency": "babel-plugin-istanbul"
-        },
-        {
-          "dependency": "jest-haste-map"
-        },
-        {
-          "dependency": "micromatch"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "@react-native/babel-plugin-codegen",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/@react-native/babel-plugin-codegen"
-      ],
-      "via": [
-        {
-          "dependency": "@react-native/codegen"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "expo",
-        "version": "44.0.6",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "@react-native/babel-preset",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/@react-native/babel-preset"
-      ],
-      "via": [
-        {
-          "dependency": "@react-native/babel-plugin-codegen"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "expo",
-        "version": "44.0.6",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "@react-native/codegen",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/@react-native/codegen"
-      ],
-      "via": [
-        {
-          "dependency": "jscodeshift"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "@react-native/community-cli-plugin",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/@react-native/community-cli-plugin"
-      ],
-      "via": [
-        {
-          "dependency": "@react-native/dev-middleware"
-        },
-        {
-          "dependency": "@react-native/metro-babel-transformer"
-        },
-        {
-          "dependency": "metro"
-        },
-        {
-          "dependency": "metro-config"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "@react-native/dev-middleware",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/@react-native/dev-middleware"
-      ],
-      "via": [
-        {
-          "dependency": "selfsigned"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "expo",
-        "version": "44.0.6",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "@react-native/metro-babel-transformer",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/@react-native/metro-babel-transformer"
-      ],
-      "via": [
-        {
-          "dependency": "@react-native/babel-preset"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
@@ -438,8 +217,7 @@
       "severity": "high",
       "direct": false,
       "nodes": [
-        "node_modules/@xmldom/xmldom",
-        "node_modules/plist/node_modules/@xmldom/xmldom"
+        "node_modules/@xmldom/xmldom"
       ],
       "via": [
         {
@@ -470,47 +248,17 @@
         {
           "title": "xmldom: XML fragment injection via invalid EntityReference.nodeName during requireWellFormed serialization",
           "url": "https://github.com/advisories/GHSA-6gmq-8vp8-gcm6",
-          "range": ">=0.9.0 <=0.9.11"
-        },
-        {
-          "title": "xmldom: XML fragment injection via invalid EntityReference.nodeName during requireWellFormed serialization",
-          "url": "https://github.com/advisories/GHSA-6gmq-8vp8-gcm6",
           "range": ">=0.7.0 <=0.8.14"
         },
         {
-          "title": "xmldom: HTML raw-text closing-tag case mismatch causes output amplification",
-          "url": "https://github.com/advisories/GHSA-6mj3-qw4j-hgrw",
-          "range": ">=0.9.0-beta.1 <=0.9.11"
-        },
-        {
-          "title": "xmldom PI grammar regex ReDoS: quadratic backtracking on unterminated processing instructions",
-          "url": "https://github.com/advisories/GHSA-g53g-w8rj-fmg7",
-          "range": ">=0.9.0-beta.9 <=0.9.10"
-        },
-        {
           "title": "xmldom: Element name injection via createElement() bypasses requireWellFormed",
           "url": "https://github.com/advisories/GHSA-w2rr-34g9-rvrj",
           "range": ">=0.7.0 <=0.8.13"
         },
         {
-          "title": "xmldom: Element name injection via createElement() bypasses requireWellFormed",
-          "url": "https://github.com/advisories/GHSA-w2rr-34g9-rvrj",
-          "range": ">=0.9.0 <=0.9.10"
-        },
-        {
           "title": "xmldom: Attribute name injection via setAttribute() bypasses requireWellFormed",
           "url": "https://github.com/advisories/GHSA-4w3w-2rp5-g8jm",
           "range": ">=0.7.0 <=0.8.13"
-        },
-        {
-          "title": "xmldom: Attribute name injection via setAttribute() bypasses requireWellFormed",
-          "url": "https://github.com/advisories/GHSA-4w3w-2rp5-g8jm",
-          "range": ">=0.9.0 <=0.9.10"
-        },
-        {
-          "title": "xmldom: Processing Instruction Target Injection Bypasses requireWellFormed",
-          "url": "https://github.com/advisories/GHSA-c7q8-3ch8-vqpv",
-          "range": ">=0.9.0 <=0.9.11"
         },
         {
           "title": "xmldom: Processing Instruction Target Injection Bypasses requireWellFormed",
@@ -520,37 +268,12 @@
         {
           "title": "xmldom: DocType `name` Injection Bypasses requireWellFormed",
           "url": "https://github.com/advisories/GHSA-27p8-2357-5qqv",
-          "range": ">=0.9.0 <=0.9.11"
-        },
-        {
-          "title": "xmldom: DocType `name` Injection Bypasses requireWellFormed",
-          "url": "https://github.com/advisories/GHSA-27p8-2357-5qqv",
           "range": ">=0.7.0 <=0.8.14"
-        },
-        {
-          "title": "xmldom: Creation-time XML Name/QName validation is bypassable via an embedded line terminator, allowing injection on the default serialization path",
-          "url": "https://github.com/advisories/GHSA-3px3-54cx-rmw9",
-          "range": ">=0.9.0 <=0.9.11"
-        },
-        {
-          "title": "xmldom: requireWellFormed DocType publicId/systemId validation is bypassable via an embedded line terminator",
-          "url": "https://github.com/advisories/GHSA-vr34-hp96-76pp",
-          "range": ">=0.9.10 <=0.9.11"
-        },
-        {
-          "title": "xmldom: Parser silently accepts a not-well-formed end tag whose name is followed by a line break and trailing content",
-          "url": "https://github.com/advisories/GHSA-6h8r-xr42-gp59",
-          "range": ">=0.9.0 <=0.9.11"
         },
         {
           "title": "xmldom: Parser silently accepts a not-well-formed end tag whose name is followed by a line break and trailing content",
           "url": "https://github.com/advisories/GHSA-6h8r-xr42-gp59",
           "range": ">=0.7.0 <=0.8.14"
-        },
-        {
-          "title": "xmldom: Quadratic-time attribute deduplication",
-          "url": "https://github.com/advisories/GHSA-8344-3jmq-59r6",
-          "range": ">=0.9.0 <=0.9.11"
         },
         {
           "title": "xmldom: Quadratic-time attribute deduplication",
@@ -565,17 +288,7 @@
         {
           "title": "xmldom: Quadratic-memory consumption",
           "url": "https://github.com/advisories/GHSA-965w-775f-mr7g",
-          "range": ">=0.9.0 <=0.9.11"
-        },
-        {
-          "title": "xmldom: Quadratic-memory consumption",
-          "url": "https://github.com/advisories/GHSA-965w-775f-mr7g",
           "range": ">=0.7.0 <=0.8.14"
-        },
-        {
-          "title": "xmldom: Quadratic-time parsing via the malformed-input recovery path — `parseElementStartPart` re-scan and `normalize()` adjacent-text merge",
-          "url": "https://github.com/advisories/GHSA-93r5-fhx6-vmg9",
-          "range": ">=0.9.0 <=0.9.11"
         },
         {
           "title": "xmldom: Quadratic-time parsing via the malformed-input recovery path — `parseElementStartPart` re-scan and `normalize()` adjacent-text merge",
@@ -585,7 +298,7 @@
       ],
       "proposedByRegistry": {
         "name": "expo",
-        "version": "44.0.6",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
@@ -605,120 +318,7 @@
       ],
       "proposedByRegistry": {
         "name": "expo-dev-client",
-        "version": "57.0.20",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "argparse",
-      "severity": "moderate",
-      "direct": false,
-      "nodes": [
-        "node_modules/argparse"
-      ],
-      "via": [
-        {
-          "dependency": "sprintf-js"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "babel-jest",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/babel-jest"
-      ],
-      "via": [
-        {
-          "dependency": "@jest/transform"
-        },
-        {
-          "dependency": "babel-plugin-istanbul"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "babel-plugin-istanbul",
-      "severity": "moderate",
-      "direct": false,
-      "nodes": [
-        "node_modules/babel-plugin-istanbul"
-      ],
-      "via": [
-        {
-          "dependency": "@istanbuljs/load-nyc-config"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "babel-preset-expo",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/babel-preset-expo"
-      ],
-      "via": [
-        {
-          "dependency": "@react-native/babel-preset"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "expo",
-        "version": "44.0.6",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "braces",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/braces"
-      ],
-      "via": [
-        {
-          "title": "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns",
-          "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
-          "range": "<=3.0.3"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "expo",
-        "version": "44.0.6",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "cosmiconfig",
-      "severity": "moderate",
-      "direct": false,
-      "nodes": [
-        "node_modules/cosmiconfig"
-      ],
-      "via": [
-        {
-          "dependency": "js-yaml"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
+        "version": "58.0.17",
         "isSemVerMajor": true
       }
     },
@@ -739,26 +339,28 @@
       "proposedByRegistry": true
     },
     {
-      "name": "del",
-      "severity": "high",
+      "name": "deepmerge",
+      "severity": "low",
       "direct": false,
       "nodes": [
-        "node_modules/del"
+        "node_modules/deepmerge"
       ],
       "via": [
         {
-          "dependency": "globby"
+          "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+          "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+          "range": ">=4.2.0 <=4.3.1"
         }
       ],
       "proposedByRegistry": {
         "name": "expo",
-        "version": "44.0.6",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
     {
       "name": "expo",
-      "severity": "high",
+      "severity": "moderate",
       "direct": true,
       "nodes": [
         "node_modules/expo"
@@ -777,27 +379,21 @@
           "dependency": "@expo/metro-config"
         },
         {
-          "dependency": "babel-preset-expo"
-        },
-        {
           "dependency": "expo-asset"
         },
         {
           "dependency": "expo-constants"
-        },
-        {
-          "dependency": "expo-modules-autolinking"
         }
       ],
       "proposedByRegistry": {
         "name": "expo",
-        "version": "44.0.6",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
     {
       "name": "expo-asset",
-      "severity": "moderate",
+      "severity": "low",
       "direct": true,
       "nodes": [
         "node_modules/expo-asset"
@@ -809,13 +405,13 @@
       ],
       "proposedByRegistry": {
         "name": "expo-asset",
-        "version": "57.0.19",
+        "version": "58.0.19",
         "isSemVerMajor": true
       }
     },
     {
       "name": "expo-constants",
-      "severity": "moderate",
+      "severity": "low",
       "direct": true,
       "nodes": [
         "node_modules/expo-constants"
@@ -827,7 +423,7 @@
       ],
       "proposedByRegistry": {
         "name": "expo-constants",
-        "version": "57.0.21",
+        "version": "58.0.14",
         "isSemVerMajor": true
       }
     },
@@ -848,7 +444,7 @@
       ],
       "proposedByRegistry": {
         "name": "expo-dev-client",
-        "version": "57.0.20",
+        "version": "58.0.17",
         "isSemVerMajor": true
       }
     },
@@ -869,13 +465,13 @@
       ],
       "proposedByRegistry": {
         "name": "expo-dev-client",
-        "version": "57.0.20",
+        "version": "58.0.17",
         "isSemVerMajor": true
       }
     },
     {
       "name": "expo-linking",
-      "severity": "moderate",
+      "severity": "low",
       "direct": true,
       "nodes": [
         "node_modules/expo-linking"
@@ -887,13 +483,13 @@
       ],
       "proposedByRegistry": {
         "name": "expo-linking",
-        "version": "57.0.12",
+        "version": "58.0.15",
         "isSemVerMajor": true
       }
     },
     {
       "name": "expo-manifests",
-      "severity": "moderate",
+      "severity": "low",
       "direct": false,
       "nodes": [
         "node_modules/expo-manifests"
@@ -905,31 +501,13 @@
       ],
       "proposedByRegistry": {
         "name": "expo-dev-client",
-        "version": "57.0.20",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "expo-modules-autolinking",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/expo-modules-autolinking"
-      ],
-      "via": [
-        {
-          "dependency": "fast-glob"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "expo",
-        "version": "44.0.6",
+        "version": "58.0.17",
         "isSemVerMajor": true
       }
     },
     {
       "name": "expo-router",
-      "severity": "moderate",
+      "severity": "low",
       "direct": true,
       "nodes": [
         "node_modules/expo-router"
@@ -944,13 +522,13 @@
       ],
       "proposedByRegistry": {
         "name": "expo-router",
-        "version": "57.0.26",
+        "version": "58.0.28",
         "isSemVerMajor": true
       }
     },
     {
       "name": "expo-splash-screen",
-      "severity": "moderate",
+      "severity": "low",
       "direct": true,
       "nodes": [
         "node_modules/expo-splash-screen"
@@ -962,21 +540,18 @@
       ],
       "proposedByRegistry": {
         "name": "expo-splash-screen",
-        "version": "57.0.10",
+        "version": "58.0.12",
         "isSemVerMajor": true
       }
     },
     {
       "name": "expo-updates",
-      "severity": "high",
+      "severity": "moderate",
       "direct": true,
       "nodes": [
         "node_modules/expo-updates"
       ],
       "via": [
-        {
-          "dependency": "@expo/code-signing-certificates"
-        },
         {
           "dependency": "@expo/config"
         },
@@ -985,50 +560,11 @@
         },
         {
           "dependency": "expo-manifests"
-        },
-        {
-          "dependency": "fast-glob"
         }
       ],
       "proposedByRegistry": {
         "name": "expo-updates",
-        "version": "0.11.7",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "fast-glob",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/fast-glob"
-      ],
-      "via": [
-        {
-          "dependency": "micromatch"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "expo",
-        "version": "44.0.6",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "globby",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/globby"
-      ],
-      "via": [
-        {
-          "dependency": "fast-glob"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "expo",
-        "version": "44.0.6",
+        "version": "58.0.19",
         "isSemVerMajor": true
       }
     },
@@ -1052,210 +588,6 @@
         }
       ],
       "proposedByRegistry": true
-    },
-    {
-      "name": "jest-environment-node",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/jest-environment-node"
-      ],
-      "via": [
-        {
-          "dependency": "@jest/environment"
-        },
-        {
-          "dependency": "@jest/fake-timers"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "jest-haste-map",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/jest-haste-map"
-      ],
-      "via": [
-        {
-          "dependency": "micromatch"
-        }
-      ],
-      "proposedByRegistry": true
-    },
-    {
-      "name": "jest-message-util",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/jest-message-util"
-      ],
-      "via": [
-        {
-          "dependency": "micromatch"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "js-yaml",
-      "severity": "moderate",
-      "direct": false,
-      "nodes": [
-        "node_modules/js-yaml"
-      ],
-      "via": [
-        {
-          "dependency": "argparse"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "jscodeshift",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/jscodeshift"
-      ],
-      "via": [
-        {
-          "dependency": "micromatch"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "metro",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/metro"
-      ],
-      "via": [
-        {
-          "dependency": "metro-config"
-        },
-        {
-          "dependency": "metro-file-map"
-        },
-        {
-          "dependency": "metro-transform-worker"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "metro-config",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/metro-config"
-      ],
-      "via": [
-        {
-          "dependency": "cosmiconfig"
-        },
-        {
-          "dependency": "metro"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "metro-file-map",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/metro-file-map"
-      ],
-      "via": [
-        {
-          "dependency": "micromatch"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "metro-transform-worker",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/metro-transform-worker"
-      ],
-      "via": [
-        {
-          "dependency": "metro"
-        }
-      ],
-      "proposedByRegistry": true
-    },
-    {
-      "name": "micromatch",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/micromatch"
-      ],
-      "via": [
-        {
-          "dependency": "braces"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "expo",
-        "version": "44.0.6",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "node-forge",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/node-forge"
-      ],
-      "via": [
-        {
-          "title": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
-          "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
-          "range": "<=1.4.0"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "expo-updates",
-        "version": "0.11.7",
-        "isSemVerMajor": true
-      }
     },
     {
       "name": "postcss",
@@ -1288,7 +620,7 @@
       ],
       "proposedByRegistry": {
         "name": "expo",
-        "version": "44.0.6",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
@@ -1307,33 +639,6 @@
       "proposedByRegistry": true
     },
     {
-      "name": "react-native",
-      "severity": "high",
-      "direct": true,
-      "nodes": [
-        "node_modules/react-native"
-      ],
-      "via": [
-        {
-          "dependency": "@react-native/codegen"
-        },
-        {
-          "dependency": "@react-native/community-cli-plugin"
-        },
-        {
-          "dependency": "babel-jest"
-        },
-        {
-          "dependency": "jest-environment-node"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
       "name": "react-native-notify-kit",
       "severity": "moderate",
       "direct": true,
@@ -1345,67 +650,7 @@
           "dependency": "xcode"
         }
       ],
-      "proposedByRegistry": {
-        "name": "react-native-notify-kit",
-        "version": "9.7.0",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "selfsigned",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/selfsigned"
-      ],
-      "via": [
-        {
-          "dependency": "node-forge"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "expo",
-        "version": "44.0.6",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "sprintf-js",
-      "severity": "moderate",
-      "direct": false,
-      "nodes": [
-        "node_modules/sprintf-js"
-      ],
-      "via": [
-        {
-          "title": "sprintf-js vulnerable to denial of service through unbounded precision specifiers",
-          "url": "https://github.com/advisories/GHSA-hp3w-g68c-fv3c",
-          "range": "<=1.1.3"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "react-native",
-        "version": "0.87.1",
-        "isSemVerMajor": true
-      }
-    },
-    {
-      "name": "tempy",
-      "severity": "high",
-      "direct": false,
-      "nodes": [
-        "node_modules/tempy"
-      ],
-      "via": [
-        {
-          "dependency": "del"
-        }
-      ],
-      "proposedByRegistry": {
-        "name": "expo",
-        "version": "44.0.6",
-        "isSemVerMajor": true
-      }
+      "proposedByRegistry": true
     },
     {
       "name": "uuid",
@@ -1425,8 +670,8 @@
         }
       ],
       "proposedByRegistry": {
-        "name": "react-native-notify-kit",
-        "version": "9.7.0",
+        "name": "expo",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     },
@@ -1443,8 +688,8 @@
         }
       ],
       "proposedByRegistry": {
-        "name": "react-native-notify-kit",
-        "version": "9.7.0",
+        "name": "expo",
+        "version": "51.0.39",
         "isSemVerMajor": true
       }
     }

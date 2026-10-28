@@ -1,0 +1,112 @@
+{
+  "capturedAt": "2026-10-28T16:15:44.034Z",
+  "applicationSourceCommit": "023f5a0",
+  "kind": "actual-screen-fixture-verification-not-native-acceptance",
+  "commandReport": "tests/remediation/evidence/commands/resume-2026-10-28-ux-journeys.json",
+  "files": [
+    {
+      "file": "app/index.tsx",
+      "sha256": "9e7109966f3e377bc870bfdb092fb10c2f9fa6e89fb7c382ab4cb917b015ba2b"
+    },
+    {
+      "file": "app/login.tsx",
+      "sha256": "8311e9cd8f6b07f3d3f8b5b36a750bf263201d07af804a2ba5baa80720df511e"
+    },
+    {
+      "file": "app/privacy.tsx",
+      "sha256": "608b8b353b0cd9e0453ce9e730036367c3ecc33b278a5aa503a1734ba2231ffe"
+    },
+    {
+      "file": "app/spot/[id].tsx",
+      "sha256": "83cb01342b54466a9df1155eaa53aa91e601aa8be1e14fb4db3fe829673f3fef"
+    },
+    {
+      "file": "app/reservation/[id].tsx",
+      "sha256": "88fe9b7865409ec16e3464f83153ae683d7ecbd4d029e4fb8c49041ad42eb5a1"
+    },
+    {
+      "file": "app/activity.tsx",
+      "sha256": "018b112c9dab60be16dd0374ff63d9fe28fe34599c335b38fe04b3f5783b327d"
+    },
+    {
+      "file": "app/saved.tsx",
+      "sha256": "0986c068f2f791b5a787ce1da0aee65ea8e0ff9ec8ee9540b08abe0355603e60"
+    },
+    {
+      "file": "app/circle.tsx",
+      "sha256": "80601197be519142387e4cd4d4ab911154bf7eff7468d04c7345634988d5288e"
+    },
+    {
+      "file": "app/profile.tsx",
+      "sha256": "68f3f33aaefeb7d98063b7b60164fac796c52f11d9d89720ea472c24bb23ddfc"
+    },
+    {
+      "file": "app/submit-spot.tsx",
+      "sha256": "e68fb2c8206298e29b3078ebede1c381c36c1dc6033b4d8f2c39e59925824e8f"
+    },
+    {
+      "file": "app/account-deletion.tsx",
+      "sha256": "cbbfc54798a1f6dfbb81645daa9e3866127c088900742e6548f45a8c834ed2af"
+    },
+    {
+      "file": "app/account-details.tsx",
+      "sha256": "8d0137f7a77b003c6eafe9e1b9ee32d8df9c22a29751448b9bb7b2b0d526f02e"
+    },
+    {
+      "file": "app/auth/email-change.tsx",
+      "sha256": "56e27f77aed83a286489cbb6edd647d090c972cbdc0a00913c78b8670a3d630a"
+    },
+    {
+      "file": "app/your-posts.tsx",
+      "sha256": "ee74ad01226071791ae6aee8eb8fbccbb9d6a1c9fa4e84fb8c80970f39788d06"
+    },
+    {
+      "file": "src/components/CircleSettingsSheet.tsx",
+      "sha256": "3e6c6e1de1d108f77040a2abaf9e68699b990d11376ee6ffa7a8642eea4d7755"
+    },
+    {
+      "file": "src/services/savedSpotService.ts",
+      "sha256": "17ca4da75c84631404cb1ab23683701565c5c5dbeddf8d80b3b8b629a6540cc1"
+    },
+    {
+      "file": "tests/user-walkthrough/browser.cjs",
+      "sha256": "d72cf6b65367745944356b8ff55cc6079c91c1793b52ef6ba3fa6efb30f4b07e"
+    },
+    {
+      "file": "tests/user-walkthrough/booking.cjs",
+      "sha256": "68c9185b72adcbf3bbfb671c3d80e0fc8bfa8ba6c0b47ffeb819623dc198cbdb"
+    },
+    {
+      "file": "tests/user-walkthrough/saved-recovery.cjs",
+      "sha256": "df1b12bbaec5744968e0b4ef7db5161487b7d40fba0b937a3ef7656557019a96"
+    },
+    {
+      "file": "tests/user-walkthrough/circle-settings.cjs",
+      "sha256": "410d15867c1158eb373f42ea8ba8d3e7411d976ea9f570f3dd6f04e45524e36e"
+    },
+    {
+      "file": "tests/user-walkthrough/account-details.cjs",
+      "sha256": "72659c071c882609a913df2d1b223735cf93a22012e51fabe7df8ebe632026e7"
+    },
+    {
+      "file": "tests/user-walkthrough/email-change.cjs",
+      "sha256": "f01c7a60d7a2b391dfde31fa4c015d930303feab8c4c7a1532b6f0db06b2630f"
+    },
+    {
+      "file": "tests/user-walkthrough/your-posts.cjs",
+      "sha256": "c009f56f66763b59d24e2c2d987f24d04097936e75a6d862946021995449faf1"
+    },
+    {
+      "file": "src/utils/circleLocation.ts",
+      "sha256": "e6836b1190bcdfbbf8ffc8f2035d281a4ebdb8083cf067a216c591fce9c1cefc"
+    },
+    {
+      "file": "app/circle/[id].tsx",
+      "sha256": "016c32068678c234b1c25ca3d7cc733861e9884a075eae90a481e004bff49a89"
+    },
+    {
+      "file": "tests/user-walkthrough/explore-bookmarks.cjs",
+      "sha256": "90eecdc073fb3d32ccb46010d2d122d29592ed7ffe610aef50fe3d52a6921d74"
+    }
+  ]
+}

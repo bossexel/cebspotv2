@@ -1,5 +1,7 @@
 # Android release handoff — October 13, 2026
 
+Historical handoff. See the [October 29 current review](android-release-candidate-2026-10-29.md) for updated source, 23-migration order, test/dependency results, existing-beta acknowledgement and remaining acceptance gates. Operational staging/rollback guidance below remains relevant, but older counts and publication state are not current.
+
 **NO-GO for user testing or production.** Local remediation and verification are complete for the available tooling; isolated staging, actual Auth/Storage/PayMongo test integration and physical Android acceptance remain blocked. The final Hermes export deliberately has no backend configuration. It demonstrates compilation, not a usable release APK. Deadline: Saturday, October 17, 2026.
 
 ## Verified locally

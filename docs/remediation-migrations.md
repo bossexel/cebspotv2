@@ -19,5 +19,13 @@ Apply all timestamped migrations in this lexical order on a new isolated project
 | 13 | [20261013000700_circle_location_controls.sql](../supabase/migrations/20261013000700_circle_location_controls.sql) | `1e036ebcbb0b962116e02fa3ba9683399edc7bc64b6878d010b89b3c821c88fd` |
 | 14 | [20261013000800_account_erasure.sql](../supabase/migrations/20261013000800_account_erasure.sql) | `4171be5264f8385d74034a48d90b1e7b192a1521cac07e059a8b57b9080dfc98` |
 | 15 | [20261013000900_block_deleting_owner_assignments.sql](../supabase/migrations/20261013000900_block_deleting_owner_assignments.sql) | `c74ddd052955285973859f6bf75e87df05eecc969772607879a7b8311cafecdc` |
+| 16 | [20261020000100_admin_spot_delete.sql](../supabase/migrations/20261020000100_admin_spot_delete.sql) | `6ac899cd4d6ca6cb2355b0e10f32c6772dffc3fb90383c4bb5f307549d74d35d` |
+| 17 | [20261021000100_admin_owner_request_delete.sql](../supabase/migrations/20261021000100_admin_owner_request_delete.sql) | `326bd649cfbfffd36d234f594d8c18601f6a83fbc6171f232f7468445e2553b7` |
+| 18 | [20261022000100_admin_spot_submission_delete.sql](../supabase/migrations/20261022000100_admin_spot_submission_delete.sql) | `a8992f515d010565a4c61dad983307a4d4e4fbaff88fd37c86769098e55170df` |
+| 19 | [20261022000200_admin_updates.sql](../supabase/migrations/20261022000200_admin_updates.sql) | `e0eca57fb8d0f8e88d826d2fb2c10641daf8d864e515ee5e3e62d90c1b0a6d6a` |
+| 20 | [20261025000100_activity_feed_pagination.sql](../supabase/migrations/20261025000100_activity_feed_pagination.sql) | `93965407e468027b8794ab50027066a4d9ef50c52148357c45ed74246909ad1d` |
+| 21 | [20261025000200_public_media_size_limits.sql](../supabase/migrations/20261025000200_public_media_size_limits.sql) | `495f1abfcaf1d0f838aa6eb7740aa746d9d6044dfbdc0614e173ae103f622a2b` |
+| 22 | [20261027000100_independent_spot_posts.sql](../supabase/migrations/20261027000100_independent_spot_posts.sql) | `6d43b20c43dfe74f87ed36216c53ade5d524121e7ae1397baf77469de51e8087` |
+| 23 | [20261028000100_beta_identity_prerequisites.sql](../supabase/migrations/20261028000100_beta_identity_prerequisites.sql) | `c9a64d90522ab031c6a3e13d2aaa525c34751e8666805f4636628145faabc37b` |
 
 Migrations 007 and 008 remove legacy location fields and prepare irreversible erasure operations. They were tested only in newly created synthetic clusters. Deploy matching app/Edge/face-service code; SQL migrations alone do not establish deployed acceptance.

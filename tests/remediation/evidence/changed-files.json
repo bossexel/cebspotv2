@@ -1,6 +1,6 @@
 {
   "baseline": "eb839e6",
-  "head": "ae9b0241ac6a663083f9e806891c7610a1741ece",
+  "head": "023f5a05aff563bc96ffeb9082b06988a4949db2",
   "trackedChanges": [
     {
       "status": "D",
@@ -4013,6 +4013,12 @@
     {
       "status": "M",
       "files": [
+        ".easignore"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
         ".env.example"
       ]
     },
@@ -4043,7 +4049,19 @@
     {
       "status": "A",
       "files": [
+        "AUDIT.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "FINAL_AUDIT_CLOSURE.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "LAUNCH_AUDIT_2026-10-12.md"
       ]
     },
     {
@@ -4155,6 +4173,12 @@
       ]
     },
     {
+      "status": "A",
+      "files": [
+        "app/account-details.tsx"
+      ]
+    },
+    {
       "status": "M",
       "files": [
         "app/activity.tsx"
@@ -4188,6 +4212,12 @@
       "status": "M",
       "files": [
         "app/admin.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "app/auth/email-change.tsx"
       ]
     },
     {
@@ -4233,6 +4263,12 @@
       ]
     },
     {
+      "status": "A",
+      "files": [
+        "app/onboarding.tsx"
+      ]
+    },
+    {
       "status": "M",
       "files": [
         "app/owner-access.tsx"
@@ -4242,6 +4278,12 @@
       "status": "M",
       "files": [
         "app/owner-dashboard.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "app/post/[id].tsx"
       ]
     },
     {
@@ -4287,9 +4329,27 @@
       ]
     },
     {
+      "status": "M",
+      "files": [
+        "app/submit-spot.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "app/your-posts.tsx"
+      ]
+    },
+    {
       "status": "A",
       "files": [
         "config/staging-public.env.example"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/about-cebspot.md"
       ]
     },
     {
@@ -4301,13 +4361,67 @@
     {
       "status": "A",
       "files": [
+        "docs/account-details-email-assessment.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/adjustable-reservation-times.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "docs/android-only.md"
       ]
     },
     {
       "status": "A",
       "files": [
+        "docs/android-release-candidate.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/code-structure.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "docs/dependency-release-triage.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/deployment-2026-10-25.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/deployment-2026-10-28.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/documentation-privacy.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/eas-updates-2026-10-25.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/independent-spot-posts.md"
       ]
     },
     {
@@ -4319,13 +4433,121 @@
     {
       "status": "A",
       "files": [
+        "docs/media-feed-fixes-2026-10-25.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/onboarding.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/owner-dashboard-compatibility.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/paper-alignment-review.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "docs/payment-release-verification.md"
       ]
     },
     {
       "status": "A",
       "files": [
+        "docs/paymongo-billing-fix.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/preview-update-2026-10-16.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/privacy-reference.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/qrph-checkout-fix-2026-10-28.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/remediation-command-record.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/remediation-migrations.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/remediation-resume-2026-10-28.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/technical-documentation.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/uat-audit-alignment-2026-10-13.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/uat-plan-review.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "docs/upload-release-verification.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/user-walkthrough-2026-10-24.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/user-walkthrough-2026-10-28.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "docs/walk-in-table-policy.md"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "eas.json"
       ]
     },
     {
@@ -4359,9 +4581,27 @@
       ]
     },
     {
+      "status": "M",
+      "files": [
+        "face-blur-service/services/face_blur.py"
+      ]
+    },
+    {
       "status": "A",
       "files": [
         "face-blur-service/services/job_runtime.py"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "face-blur-service/services/mediapipe_face_runtime.py"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "face-blur-service/tests/test_media_quality.py"
       ]
     },
     {
@@ -4449,6 +4689,12 @@
       ]
     },
     {
+      "status": "A",
+      "files": [
+        "scripts/check-paymongo-billing.mjs"
+      ]
+    },
+    {
       "status": "M",
       "files": [
         "scripts/check-paymongo-sandbox.mjs"
@@ -4499,6 +4745,12 @@
     {
       "status": "A",
       "files": [
+        "scripts/sql/hide-mock-spots.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "src/components/AdjustableTimePicker.tsx"
       ]
     },
@@ -4509,9 +4761,27 @@
       ]
     },
     {
+      "status": "M",
+      "files": [
+        "src/components/BottomNav.tsx"
+      ]
+    },
+    {
       "status": "A",
       "files": [
         "src/components/CirclePrivacyControls.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/components/CircleSettingsSheet.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/components/EmailChangeCard.tsx"
       ]
     },
     {
@@ -4539,6 +4809,30 @@
       ]
     },
     {
+      "status": "M",
+      "files": [
+        "src/components/ScreenContainer.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/components/SpotEditSuggestionModal.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/components/SpotLocationPicker.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/components/TileMap.tsx"
+      ]
+    },
+    {
       "status": "A",
       "files": [
         "src/components/admin-sandbox/AdminSandboxScreen.tsx"
@@ -4548,6 +4842,12 @@
       "status": "A",
       "files": [
         "src/components/admin-studio/AdminStudioScreens.tsx"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/components/map/MapSurface.tsx"
       ]
     },
     {
@@ -4566,6 +4866,18 @@
       "status": "M",
       "files": [
         "src/components/map/runtime.js"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/components/map/types.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/constants/Cebspot.ts"
       ]
     },
     {
@@ -4601,7 +4913,85 @@
     {
       "status": "A",
       "files": [
-        "src/constants/Cebspot.ts"
+        "src/constants/privacy.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/features/admin-dashboard/components.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/features/admin-dashboard/presentation.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/features/admin-dashboard/styles.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/features/onboarding/GuideArtwork.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/features/onboarding/GuideOverlay.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/features/onboarding/GuideProvider.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/features/onboarding/model.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/features/onboarding/storage.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/features/onboarding/welcomeStorage.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/features/owner-dashboard/model.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/features/owner-dashboard/styles.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/features/spot-details/SimilarPlacesSection.tsx"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/features/spot-details/SimilarPostsSection.tsx"
       ]
     },
     {
@@ -4611,9 +5001,27 @@
       ]
     },
     {
+      "status": "M",
+      "files": [
+        "src/hooks/useLocation.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/hooks/useScopedAuth.ts"
+      ]
+    },
+    {
       "status": "A",
       "files": [
         "src/services/accountDeletionService.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/services/accountDetailsService.ts"
       ]
     },
     {
@@ -4623,15 +5031,39 @@
       ]
     },
     {
+      "status": "A",
+      "files": [
+        "src/services/admin-dashboard/analytics.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/services/admin-dashboard/types.ts"
+      ]
+    },
+    {
       "status": "M",
       "files": [
         "src/services/adminDashboardService.ts"
       ]
     },
     {
+      "status": "A",
+      "files": [
+        "src/services/adminUpdateService.ts"
+      ]
+    },
+    {
       "status": "M",
       "files": [
         "src/services/circleService.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/services/emailChangeService.ts"
       ]
     },
     {
@@ -4644,6 +5076,18 @@
       "status": "M",
       "files": [
         "src/services/localUpdateService.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/services/mediaCompression.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/services/mediaSession.ts"
       ]
     },
     {
@@ -4673,6 +5117,24 @@
     {
       "status": "M",
       "files": [
+        "src/services/paymongoCheckoutService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/profilePhotoService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/profileService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
         "src/services/reservationReminderService.ts"
       ]
     },
@@ -4680,6 +5142,12 @@
       "status": "M",
       "files": [
         "src/services/reservationService.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/services/reservationTableService.ts"
       ]
     },
     {
@@ -4695,9 +5163,21 @@
       ]
     },
     {
+      "status": "A",
+      "files": [
+        "src/services/spotMatchingService.ts"
+      ]
+    },
+    {
       "status": "M",
       "files": [
         "src/services/spotService.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "src/services/spotSubmissionQueueService.ts"
       ]
     },
     {
@@ -4713,9 +5193,39 @@
       ]
     },
     {
+      "status": "A",
+      "files": [
+        "src/services/yourPostsService.ts"
+      ]
+    },
+    {
       "status": "M",
       "files": [
         "src/types/index.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/utils/activityNotifications.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/utils/base64.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/utils/circleLocation.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/utils/emailChange.ts"
       ]
     },
     {
@@ -4727,7 +5237,25 @@
     {
       "status": "A",
       "files": [
+        "src/utils/mapCoordinates.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/utils/mediaFile.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "src/utils/platformAlert.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/utils/reservationContact.ts"
       ]
     },
     {
@@ -4746,6 +5274,18 @@
       "status": "M",
       "files": [
         "src/utils/tableInventory.ts"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "src/utils/userError.ts"
+      ]
+    },
+    {
+      "status": "M",
+      "files": [
+        "supabase-admin-dashboard.sql"
       ]
     },
     {
@@ -4913,6 +5453,96 @@
     {
       "status": "A",
       "files": [
+        "supabase/migrations/20261020000100_admin_spot_delete.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261021000100_admin_owner_request_delete.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261022000100_admin_spot_submission_delete.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261022000200_admin_updates.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261025000100_activity_feed_pagination.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261025000200_public_media_size_limits.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261027000100_independent_spot_posts.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/migrations/20261028000100_beta_identity_prerequisites.sql"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "supabase/templates/email-change.html"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/about/about.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/about/documentation-screen.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/about/documentation.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/about/privacy-reference.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/about/privacy-reference.txt"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/backend/activity-spot-vote.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "tests/backend/adjustable-reservation-times.test.cjs"
       ]
     },
@@ -4973,6 +5603,12 @@
     {
       "status": "A",
       "files": [
+        "tests/backend/reservation-table-compatibility.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "tests/backend/walk-ins-database.test.cjs"
       ]
     },
@@ -4989,9 +5625,513 @@
       ]
     },
     {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/browser-errors.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/browser.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/database-probes.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/browser-errors.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/browser.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/database-probes.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/face-health-retry.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/face-local.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/live-readonly.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/media-probes.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/npm-audit.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/offline-17-seconds.png"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/payment-probes.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/routes.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/secret-scan.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/web-320-missing-audit-page.png"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/web-320-profile.png"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/web-320-reservation.png"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/web-offline.png"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/evidence/web-slow.png"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/face-local.py"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/live-readonly.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/media-probes.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/owner-browser-followup.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/payment-probes.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/routes.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/launch-audit/secret-scan.cjs"
+      ]
+    },
+    {
       "status": "M",
       "files": [
         "tests/map/runtime.spec.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/owner-dashboard/browser.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/ANDROID.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/ASSESSMENT.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/README.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/concurrency-booking.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/execution-blockers.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/face-1791407815966.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/face-server-snapshot.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/algorithm-samples.jsonl"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/backend-regression.tap"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/mock-replay-samples.jsonl"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/source-manifest.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/suite-self-tests.tap"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/summary.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/algorithm-samples.jsonl"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/backend-regression.tap"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/mock-replay-samples.jsonl"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/source-manifest.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/suite-self-tests.tap"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/summary.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/algorithm-samples.jsonl"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/backend-regression.tap"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/mock-replay-samples.jsonl"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/source-manifest.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/suite-self-tests.tap"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/summary.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/map-2026-10-07T21-18-36-512Z.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/map-initial-error-context.md"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/map-initial-observation.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/prerequisites.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/sanitization.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/source-final.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/evidence/suite-final.tap"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/app-logic.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/browser-evidence.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/client.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/concurrency.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/config.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/face-check.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/fixtures.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/journeys.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/load.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/local-evidence.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/make-media.ps1"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/preflight.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/prepare-local.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/prerequisites.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/report.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/sanitize-evidence.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/stats.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/suite.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/isolated/verify-source.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/perf.env.example"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/report-generator.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/run-suite.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/performance/supabase-client.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/platform/admin-map-web.cjs"
       ]
     },
     {
@@ -5015,6 +6155,72 @@
     {
       "status": "A",
       "files": [
+        "tests/refactoring/account-details.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/refactoring/activity-notifications.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/refactoring/checkout.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/refactoring/dashboard.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/refactoring/email-change.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/refactoring/fresh-location.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/refactoring/independent-spot-posts.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/refactoring/map-coordinates.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/refactoring/media.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/refactoring/similar-spot-posts.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/refactoring/your-posts.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "tests/remediation/account-deletion-handler.test.cjs"
       ]
     },
@@ -5027,6 +6233,12 @@
     {
       "status": "A",
       "files": [
+        "tests/remediation/account-details.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "tests/remediation/activity-privacy.test.cjs"
       ]
     },
@@ -5034,6 +6246,24 @@
       "status": "A",
       "files": [
         "tests/remediation/android-recovery.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/app-update.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/beta-release-compatibility.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/circle-location.test.cjs"
       ]
     },
     {
@@ -5063,6 +6293,18 @@
     {
       "status": "A",
       "files": [
+        "tests/remediation/email-change.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/changed-files.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "tests/remediation/evidence/commands/deletion-assignment-concurrency.json"
       ]
     },
@@ -5081,7 +6323,31 @@
     {
       "status": "A",
       "files": [
+        "tests/remediation/evidence/commands/final-admin-browser.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-admin-export.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "tests/remediation/evidence/commands/final-android-hermes-link-guard.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-android-hermes.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-backend-and-platform.json"
       ]
     },
     {
@@ -5099,6 +6365,36 @@
     {
       "status": "A",
       "files": [
+        "tests/remediation/evidence/commands/final-closure-secret-scan.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-existing-isolated-tests.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-face-patched-environment.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-lint-after-dependencies.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-lint.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "tests/remediation/evidence/commands/final-lockfile-install-online.json"
       ]
     },
@@ -5106,6 +6402,12 @@
       "status": "A",
       "files": [
         "tests/remediation/evidence/commands/final-lockfile-install.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-map-source.json"
       ]
     },
     {
@@ -5124,6 +6426,48 @@
       "status": "A",
       "files": [
         "tests/remediation/evidence/commands/final-public-credential-guard.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-remediation-after-owner-guard.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-remediation.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-secret-scan.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-source-and-export-secret-scan.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-typecheck-after-dependencies.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/final-web-distribution-denied.json"
       ]
     },
     {
@@ -5693,6 +7037,504 @@
     {
       "status": "A",
       "files": [
+        "tests/remediation/evidence/commands/publish-preflight-refactoring-2026-10-16.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/publish-preflight-regression-2026-10-16.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/publish-preflight-typecheck-2026-10-16.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-admin-browser.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-admin-export.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-android-export.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-availability-red.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-baseline-tests.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-baseline-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-booking-contacts.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-booking-regression.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-booking-suite-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-booking-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-compatible-dependency-preview.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-explore-bookmark-isolation.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-face-tests-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-face-tests.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-final-lint.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-final-tests.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-free-booking-accepted.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-free-booking-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-free-booking-ux.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-free-booking-workflow-final.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-free-booking-workflow-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-free-booking-workflow.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-inventory-and-checkout.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-npm-audit.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-python-audit.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-python-security-updates.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-reservation-create-red.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-reservation-create-reproduced.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-reservation-create-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-reservation-scope-red.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-reservation-scope-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-saved-account-contract.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-saved-recovery-final.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-saved-recovery-red.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-saved-recovery-verified.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-saved-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-scope-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-ux-journeys.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-ux-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-ux-unit.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-28-web-denial.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-artifact-hashes.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-compatible-dependency-updates.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-face-security-regression.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-final-admin-browser.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-final-admin-export.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-final-android-export.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-final-artifact-hashes.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-final-lint.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-final-secret-scan.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-final-tests.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-final-typecheck.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-final-web-denial.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-npm-audit-final.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-python-audit.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/resume-2026-10-29-python-dependencies.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-account-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-booking-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-booking-final-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-circle-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-email-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-map-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-posts-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-saved-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-screens-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-screens-accepted-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-screens-complete-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-screens-diagnostic-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-screens-final-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-screens-verified-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-perspective-types-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-walkthrough-booking-selection-2026-10-24.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-walkthrough-booking-selection-final-2026-10-24.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-walkthrough-booking-selection-verified-2026-10-24.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-walkthrough-core-2026-10-24.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-walkthrough-map-2026-10-24.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-walkthrough-screens-2026-10-24.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/commands/user-walkthrough-screens-final-2026-10-24.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/dependency-triage.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/eas-updates-2026-10-25.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "tests/remediation/evidence/final-android-export.json"
       ]
     },
@@ -5705,7 +7547,25 @@
     {
       "status": "A",
       "files": [
+        "tests/remediation/evidence/final-secret-scan.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "tests/remediation/evidence/foundation-sources.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/free-booking-native-ui-2026-10-28.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/media-deployment-2026-10-25.json"
       ]
     },
     {
@@ -5723,7 +7583,43 @@
     {
       "status": "A",
       "files": [
+        "tests/remediation/evidence/preview-publish-gate-2026-10-16.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/release-source-manifest.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/resume-2026-10-28-artifacts.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/evidence/resume-2026-10-29-artifacts.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/feed-pagination.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "tests/remediation/fixtures.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/independent-spot-posts.test.cjs"
       ]
     },
     {
@@ -5753,6 +7649,12 @@
     {
       "status": "A",
       "files": [
+        "tests/remediation/media-efficiency.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "tests/remediation/migrations.test.cjs"
       ]
     },
@@ -5760,6 +7662,12 @@
       "status": "A",
       "files": [
         "tests/remediation/native-links.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/onboarding.test.cjs"
       ]
     },
     {
@@ -5807,7 +7715,31 @@
     {
       "status": "A",
       "files": [
+        "tests/remediation/release-scope-regression.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/reservation-contact.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/reservation-create-contract.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
         "tests/remediation/reservation-details.test.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/remediation/saved-account-binding.test.cjs"
       ]
     },
     {
@@ -5835,6 +7767,114 @@
       ]
     },
     {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/account-details.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/booking.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/browser.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/circle-settings.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/email-change.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/evidence/2026-10-28/booking-selection.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/evidence/2026-10-28/observations.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/evidence/2026-10-28/source-manifest.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/evidence/booking-selection.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/evidence/observations.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/evidence/source-manifest.json"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/explore-bookmarks.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/free-booking.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/location-edit.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/post-location.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/qrph-checkout.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/saved-recovery.cjs"
+      ]
+    },
+    {
+      "status": "A",
+      "files": [
+        "tests/user-walkthrough/your-posts.cjs"
+      ]
+    },
+    {
       "status": "M",
       "files": [
         "tsconfig.json"
@@ -5848,133 +7888,67 @@
     }
   ],
   "untrackedUserOrPendingFiles": [
-    "AUDIT.md",
-    "LAUNCH_AUDIT_2026-10-12.md",
-    "docs/about-cebspot.md",
-    "docs/adjustable-reservation-times.md",
-    "docs/android-release-candidate.md",
-    "docs/documentation-privacy.md",
-    "docs/owner-dashboard-compatibility.md",
-    "docs/paper-alignment-review.md",
-    "docs/paymongo-billing-fix.md",
-    "docs/privacy-reference.md",
-    "docs/remediation-command-record.md",
-    "docs/remediation-migrations.md",
-    "docs/technical-documentation.md",
-    "docs/uat-audit-alignment-2026-10-13.md",
-    "docs/uat-plan-review.md",
-    "docs/walk-in-table-policy.md",
-    "scripts/check-paymongo-billing.mjs",
-    "src/constants/privacy.ts",
-    "tests/about/about.cjs",
-    "tests/about/documentation-screen.cjs",
-    "tests/about/documentation.cjs",
-    "tests/about/privacy-reference.cjs",
-    "tests/about/privacy-reference.txt",
-    "tests/launch-audit/browser-errors.cjs",
-    "tests/launch-audit/browser.cjs",
-    "tests/launch-audit/database-probes.cjs",
-    "tests/launch-audit/evidence/browser-errors.json",
-    "tests/launch-audit/evidence/browser.json",
-    "tests/launch-audit/evidence/database-probes.json",
-    "tests/launch-audit/evidence/face-health-retry.json",
-    "tests/launch-audit/evidence/face-local.json",
-    "tests/launch-audit/evidence/live-readonly.json",
-    "tests/launch-audit/evidence/media-probes.json",
-    "tests/launch-audit/evidence/npm-audit.json",
-    "tests/launch-audit/evidence/offline-17-seconds.png",
-    "tests/launch-audit/evidence/payment-probes.json",
-    "tests/launch-audit/evidence/routes.json",
-    "tests/launch-audit/evidence/secret-scan.json",
-    "tests/launch-audit/evidence/web-320-missing-audit-page.png",
-    "tests/launch-audit/evidence/web-320-profile.png",
-    "tests/launch-audit/evidence/web-320-reservation.png",
-    "tests/launch-audit/evidence/web-offline.png",
-    "tests/launch-audit/evidence/web-slow.png",
-    "tests/launch-audit/face-local.py",
-    "tests/launch-audit/live-readonly.cjs",
-    "tests/launch-audit/media-probes.cjs",
-    "tests/launch-audit/owner-browser-followup.cjs",
-    "tests/launch-audit/payment-probes.cjs",
-    "tests/launch-audit/routes.cjs",
-    "tests/launch-audit/secret-scan.cjs",
-    "tests/owner-dashboard/browser.cjs",
-    "tests/performance/ANDROID.md",
-    "tests/performance/ASSESSMENT.md",
-    "tests/performance/README.md",
-    "tests/performance/concurrency-booking.cjs",
-    "tests/performance/evidence/execution-blockers.json",
-    "tests/performance/evidence/face-1791407815966.json",
-    "tests/performance/evidence/face-server-snapshot.json",
-    "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/algorithm-samples.jsonl",
-    "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/backend-regression.tap",
-    "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/mock-replay-samples.jsonl",
-    "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/source-manifest.json",
-    "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/suite-self-tests.tap",
-    "tests/performance/evidence/local-2026-10-07T20-50-47-434Z/summary.json",
-    "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/algorithm-samples.jsonl",
-    "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/backend-regression.tap",
-    "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/mock-replay-samples.jsonl",
-    "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/source-manifest.json",
-    "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/suite-self-tests.tap",
-    "tests/performance/evidence/local-2026-10-07T21-04-04-247Z/summary.json",
-    "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/algorithm-samples.jsonl",
-    "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/backend-regression.tap",
-    "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/mock-replay-samples.jsonl",
-    "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/source-manifest.json",
-    "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/suite-self-tests.tap",
-    "tests/performance/evidence/local-2026-10-07T21-09-58-459Z/summary.json",
-    "tests/performance/evidence/map-2026-10-07T21-18-36-512Z.json",
-    "tests/performance/evidence/map-initial-error-context.md",
-    "tests/performance/evidence/map-initial-observation.json",
-    "tests/performance/evidence/prerequisites.json",
-    "tests/performance/evidence/sanitization.json",
-    "tests/performance/evidence/source-final.json",
-    "tests/performance/evidence/suite-final.tap",
-    "tests/performance/isolated/app-logic.cjs",
-    "tests/performance/isolated/browser-evidence.cjs",
-    "tests/performance/isolated/client.cjs",
-    "tests/performance/isolated/concurrency.cjs",
-    "tests/performance/isolated/config.cjs",
-    "tests/performance/isolated/face-check.cjs",
-    "tests/performance/isolated/fixtures.cjs",
-    "tests/performance/isolated/journeys.cjs",
-    "tests/performance/isolated/load.cjs",
-    "tests/performance/isolated/local-evidence.cjs",
-    "tests/performance/isolated/make-media.ps1",
-    "tests/performance/isolated/preflight.cjs",
-    "tests/performance/isolated/prepare-local.cjs",
-    "tests/performance/isolated/prerequisites.cjs",
-    "tests/performance/isolated/report.cjs",
-    "tests/performance/isolated/sanitize-evidence.cjs",
-    "tests/performance/isolated/stats.cjs",
-    "tests/performance/isolated/suite.test.cjs",
-    "tests/performance/isolated/verify-source.cjs",
-    "tests/performance/perf.env.example",
-    "tests/performance/report-generator.cjs",
-    "tests/performance/run-suite.cjs",
-    "tests/performance/supabase-client.cjs",
-    "tests/remediation/evidence/changed-files.json",
-    "tests/remediation/evidence/commands/final-admin-browser.json",
-    "tests/remediation/evidence/commands/final-admin-export.json",
-    "tests/remediation/evidence/commands/final-android-hermes.json",
-    "tests/remediation/evidence/commands/final-backend-and-platform.json",
-    "tests/remediation/evidence/commands/final-closure-secret-scan.json",
-    "tests/remediation/evidence/commands/final-existing-isolated-tests.json",
-    "tests/remediation/evidence/commands/final-face-patched-environment.json",
-    "tests/remediation/evidence/commands/final-lint-after-dependencies.json",
-    "tests/remediation/evidence/commands/final-lint.json",
-    "tests/remediation/evidence/commands/final-map-source.json",
-    "tests/remediation/evidence/commands/final-remediation-after-owner-guard.json",
-    "tests/remediation/evidence/commands/final-remediation.json",
-    "tests/remediation/evidence/commands/final-secret-scan.json",
-    "tests/remediation/evidence/commands/final-source-and-export-secret-scan.json",
-    "tests/remediation/evidence/commands/final-typecheck-after-dependencies.json",
-    "tests/remediation/evidence/commands/final-typecheck.json",
-    "tests/remediation/evidence/commands/final-web-distribution-denied.json",
-    "tests/remediation/evidence/dependency-triage.json",
-    "tests/remediation/evidence/final-secret-scan.json",
-    "tests/remediation/evidence/release-source-manifest.json"
+    ".media-review.diff",
+    "docs/android-release-candidate-2026-10-29.md",
+    "docs/final-defense-scenario.md",
+    "tests/launch-audit/evidence/2026-10-28-rerun/live-readonly.json",
+    "tests/launch-audit/evidence/2026-10-29-rerun/booking-race.json",
+    "tests/launch-audit/evidence/2026-10-29-rerun/deployed-artifacts-protocol-v1.json",
+    "tests/launch-audit/evidence/2026-10-29-rerun/deployed-artifacts.json",
+    "tests/launch-audit/evidence/2026-10-29-rerun/live-readonly.json",
+    "tests/launch-audit/evidence/2026-10-29-rerun/source-and-secret-scan.json",
+    "tests/launch-audit/rerun-concurrency.cjs",
+    "tests/launch-audit/rerun-deployment.cjs",
+    "tests/launch-audit/rerun-qrph-ui.cjs",
+    "tests/launch-audit/rerun-readonly.cjs",
+    "tests/launch-audit/rerun-secrets.cjs",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-28-full-tests.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-28-hosted-readonly.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-28-npm-advisories.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-28-typecheck.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-50-user-race.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-account-details.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-admin-browser.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-admin-export-final.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-admin-export.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-admin-map.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-android-export-final.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-android-export.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-artifact-delivery-diagnostic.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-circle-settings.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-current-dependency-compatibility.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-email-change.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-explore-bookmarks.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-face-tests.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-final-frozen-tests.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-free-booking.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-hosted-readonly.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-location-picker.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-map.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-npm-advisories-final.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-performance-harness.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-post-location.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-public-artifacts-extensions.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-public-artifacts-native-headers.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-public-artifacts-protocol-v1.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-public-artifacts.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-python-advisories.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-qrph-ui-current-contract.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-qrph-ui.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-saved-recovery.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-secret-scan.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-typecheck-final.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-walkthrough.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-your-posts-isolated.json",
+    "tests/remediation/evidence/commands/rerun-audit-2026-10-29-your-posts.json",
+    "tests/remediation/evidence/commands/resume-2026-10-29-evidence-integrity.json",
+    "tests/remediation/evidence/commands/resume-2026-10-29-handoff-secret-scan.json",
+    "tests/remediation/evidence/commands/resume-2026-10-29-release-report.json",
+    "tests/user-walkthrough/evidence/2026-10-29-remediated/activity-menu-removed.png",
+    "tests/user-walkthrough/evidence/2026-10-29-remediated/circle-without-location.png",
+    "tests/user-walkthrough/evidence/2026-10-29-remediated/explore-without-location.png",
+    "tests/user-walkthrough/evidence/2026-10-29-remediated/observations.json",
+    "tests/user-walkthrough/evidence/2026-10-29-remediated/source-manifest.json"
   ],
   "limitation": "Includes inherited user changes retained in focused commits; initial diff snapshots distinguish authorship. Generated-file removals are included, not hidden."
 }

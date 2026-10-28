@@ -1,0 +1,11 @@
+{
+  "label": "resume-2026-10-29-release-report",
+  "command": [
+    "node",
+    "scripts/remediation-release-report.cjs"
+  ],
+  "startedAt": "2026-10-28T16:14:14.608Z",
+  "finishedAt": "2026-10-28T16:14:23.528Z",
+  "exitCode": 0,
+  "output": "warning: in the working copy of 'docs/android-release-candidate.md', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'docs/remediation-command-record.md', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'docs/remediation-migrations.md', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'scripts/remediation-release-report.cjs', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'docs/android-release-candidate.md', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'docs/remediation-command-record.md', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'docs/remediation-migrations.md', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'scripts/remediation-release-report.cjs', LF will be replaced by CRLF the next time Git touches it\nRetained 236 command reports, 23 ordered migrations and 246 source hashes.\n"
+}
