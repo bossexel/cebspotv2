@@ -1,0 +1,11 @@
+{
+  "label": "resume-2026-10-28-saved-recovery-verified",
+  "command": [
+    "node",
+    "tests/user-walkthrough/saved-recovery.cjs"
+  ],
+  "startedAt": "2026-10-28T15:34:31.273Z",
+  "finishedAt": "2026-10-28T15:34:35.148Z",
+  "exitCode": 0,
+  "output": "PASS: saved error/empty distinction, retry, cached refresh, account switch and stale-response isolation.\n"
+}

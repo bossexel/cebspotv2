@@ -1,6 +1,6 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require('@playwright/test');
-const out=path.resolve(__dirname,'../../.codex-tmp/user-walkthrough-2026-10-24');
+const out=path.resolve(__dirname,'../../.codex-tmp',process.env.USER_WALKTHROUGH_RUN||'user-walkthrough-2026-10-24');
 (async()=>{
  const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
  try{

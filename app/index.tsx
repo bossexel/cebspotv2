@@ -1,6 +1,7 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   FlatList,
   Image,
@@ -30,10 +31,11 @@ import { TileMap } from '../src/components/TileMap';
 import { AppColors, colors } from '../src/constants/colors';
 import { bottomNavLayout, fontSize, radius, shadow, spacing } from '../src/constants/design';
 import { useLocation } from '../src/hooks/useLocation';
+import { useAuth } from '../src/hooks/useAuth';
 import { useTheme } from '../src/hooks/useTheme';
 import { HomeGuideReady, useGuideTarget } from '../src/features/onboarding/GuideProvider';
 import { savedSpotService } from '../src/services/savedSpotService';
-import { hasSupabaseConfig, supabase } from '../src/lib/supabase';
+import { hasSupabaseConfig } from '../src/lib/supabase';
 import { spotService } from '../src/services/spotService';
 import type { Spot } from '../src/types';
 import { calculateHaversineDistanceKm, type GeoCoordinate } from '../src/utils/distance';
@@ -93,6 +95,8 @@ export default function ExploreScreen() {
   const { width } = useWindowDimensions();
   const [navigationHeight, setNavigationHeight] = useState(bottomNavLayout.minHeight);
   const { appColors } = useTheme();
+  const { user } = useAuth();
+  const favoriteOwnerId = user?.id ?? null;
   const { getCurrentLocation, location, loading: locating } = useLocation();
   const listRef = useRef<FlatList<EnhancedSpot> | null>(null);
   const programmaticCardTarget = useRef<string | null>(null);
@@ -114,8 +118,9 @@ export default function ExploreScreen() {
   const [mapCenter, setMapCenter] = useState(cebuRegion);
   const [mapZoom, setMapZoom] = useState(14);
   const [mapTransitionKey, setMapTransitionKey] = useState(0);
-  const [favoriteSpotIds, setFavoriteSpotIds] = useState<string[]>([]);
-  const [favoritesLoaded, setFavoritesLoaded] = useState(false);
+  const [favorites, setFavorites] = useState<{ ownerId: string | null; ids: string[]; loaded: boolean }>({ ownerId: favoriteOwnerId, ids: [], loaded: false });
+  const favoriteSpotIds = favorites.ownerId === favoriteOwnerId ? favorites.ids : [];
+  const favoritesLoaded = favorites.ownerId === favoriteOwnerId && favorites.loaded;
   const [filters, setFilters] = useState({
     category: 'All',
     minRating: 0,
@@ -193,35 +198,27 @@ export default function ExploreScreen() {
     let mounted = true;
 
     async function loadFavorites() {
+      setFavorites({ ownerId: favoriteOwnerId, ids: [], loaded: false });
+      if (!favoriteOwnerId) return;
       try {
-        const savedIds = await savedSpotService.getSavedSpotIds();
-        if (mounted) setFavoriteSpotIds(savedIds);
+        const savedIds = await savedSpotService.getSavedSpotIds(favoriteOwnerId);
+        if (mounted) setFavorites({ ownerId: favoriteOwnerId, ids: savedIds, loaded: true });
       } catch (error) {
         console.error('Unable to load favorite spots:', error);
-      } finally {
-        if (mounted) setFavoritesLoaded(true);
       }
     }
 
     void loadFavorites();
-    const { data: authState } = supabase.auth.onAuthStateChange(() => {
-      if (!mounted) return;
-      setFavoritesLoaded(false);
-      setFavoriteSpotIds([]);
-      void loadFavorites();
-    });
-    return () => {
-      mounted = false;
-      authState.subscription.unsubscribe();
-    };
-  }, []);
+    return () => { mounted = false; };
+  }, [favoriteOwnerId]);
 
   useEffect(() => {
-    if (!favoritesLoaded) return;
-    savedSpotService.saveSavedSpotIds(favoriteSpotIds).catch((error) => {
+    if (!favoriteOwnerId || !favoritesLoaded) return;
+    savedSpotService.saveSavedSpotIds(favoriteSpotIds, favoriteOwnerId).catch((error) => {
       console.error('Unable to save favorite spots:', error);
+      Alert.alert('Bookmark not saved', 'Open Saved Spots to check your saved places and retry.');
     });
-  }, [favoriteSpotIds, favoritesLoaded]);
+  }, [favorites, favoriteOwnerId]);
 
   useEffect(() => {
     if (requestedInitialLocationRef.current) return;
@@ -420,10 +417,14 @@ export default function ExploreScreen() {
   ).current;
 
   const toggleFavorite = useCallback((spotId: string) => {
-    setFavoriteSpotIds((current) =>
-      current.includes(spotId) ? current.filter((id) => id !== spotId) : [...current, spotId]
-    );
-  }, []);
+    if (!favoriteOwnerId || !favoritesLoaded) {
+      Alert.alert('Bookmarks unavailable', 'Open Saved Spots to check your saved places and retry.');
+      return;
+    }
+    setFavorites(current => current.ownerId === favoriteOwnerId && current.loaded ? {
+      ...current, ids: current.ids.includes(spotId) ? current.ids.filter(id => id !== spotId) : [...current.ids, spotId],
+    } : current);
+  }, [favoriteOwnerId, favoritesLoaded]);
 
   const resetFilters = useCallback(() => {
     setFilters({ category: 'All', minRating: 0, maxDistance: 10 });

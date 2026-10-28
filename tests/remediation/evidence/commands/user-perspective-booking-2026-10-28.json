@@ -1,0 +1,11 @@
+{
+  "label": "user-perspective-booking-2026-10-28",
+  "command": [
+    "node",
+    "tests/user-walkthrough/booking.cjs"
+  ],
+  "startedAt": "2026-10-28T15:41:15.027Z",
+  "finishedAt": "2026-10-28T15:41:17.992Z",
+  "exitCode": 0,
+  "output": "PASS: available table selected; walk-in-only table disabled; no booking/payment submitted.\n"
+}

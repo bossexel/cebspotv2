@@ -1,0 +1,11 @@
+{
+  "label": "user-perspective-posts-2026-10-28",
+  "command": [
+    "node",
+    "tests/user-walkthrough/your-posts.cjs"
+  ],
+  "startedAt": "2026-10-28T15:38:57.842Z",
+  "finishedAt": "2026-10-28T15:39:05.455Z",
+  "exitCode": 0,
+  "output": "PASS: tappable cards without Open post buttons, batched post links, cached return/scroll position, 48-post virtualized list, one preview per card, pagination, moderation/error/empty states, Settings deletion navigation, light/dark layout.\n"
+}

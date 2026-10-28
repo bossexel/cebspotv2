@@ -1,0 +1,8 @@
+{
+  "kind": "actual-booking-screen-synthetic-service-interaction",
+  "availableTableSelected": true,
+  "walkInOnlyDisabled": true,
+  "bookingOrPaymentSubmitted": false,
+  "pageErrors": [],
+  "limitation": "No native APK, deployed availability RPC, booking transaction or payment provider acceptance."
+}

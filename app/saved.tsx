@@ -1,11 +1,12 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Bookmark, MapPin, Star, Trash2 } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { colors } from '../src/constants/colors';
 import { fontSize, radius, shadow, spacing } from '../src/constants/design';
 import { useTheme } from '../src/hooks/useTheme';
+import { useAuth } from '../src/hooks/useAuth';
 import { savedSpotService } from '../src/services/savedSpotService';
 import { spotService } from '../src/services/spotService';
 import type { Spot } from '../src/types';
@@ -16,32 +17,56 @@ const fallbackImage =
 export default function SavedSpotsScreen() {
   const router = useRouter();
   const { appColors } = useTheme();
-  const [savedSpots, setSavedSpots] = useState<Spot[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const ownerId = user?.id ?? null;
+  const currentOwner = useRef(ownerId);
+  currentOwner.current = ownerId;
+  const request = useRef(0);
+  const inFlight = useRef<number | null>(null);
+  const [state,setState] = useState<{ownerId:string|null;spots:Spot[];loading:boolean;error:string|null}>({ownerId,spots:[],loading:true,error:null});
+  const [removal,setRemoval] = useState<{ ownerId: string; spotId: string } | null>(null);
+  const removing = removal?.ownerId === ownerId ? removal?.spotId : null;
+  const visible = state.ownerId === ownerId ? state : {ownerId,spots:[],loading:true,error:null};
+  const {spots:savedSpots,loading,error} = visible;
 
-  async function loadSavedSpots() {
+  const loadSavedSpots = useCallback(async () => {
+    if (inFlight.current !== null) return;
+    const id = ++request.current;
+    inFlight.current = id;
+    setState(previous=>({ownerId,spots:previous.ownerId===ownerId?previous.spots:[],loading:true,error:null}));
     try {
-      setLoading(true);
-      const savedIds = await savedSpotService.getSavedSpotIds();
+      if (!ownerId) throw new Error('Signed-in account required.');
+      const savedIds = await savedSpotService.getSavedSpotIds(ownerId);
       const spots = await spotService.getSpotsByIds(savedIds);
-      setSavedSpots(spots);
+      if (id === request.current && currentOwner.current === ownerId) setState({ownerId,spots,loading:false,error:null});
     } catch (error) {
       console.error('Unable to load saved spots:', error);
-      setSavedSpots([]);
+      if (id === request.current && currentOwner.current === ownerId) setState(previous=>({ownerId,spots:previous.ownerId===ownerId?previous.spots:[],loading:false,error:ownerId?'Saved spots could not be loaded. Check your connection and retry.':'Sign in to load your saved spots.'}));
     } finally {
-      setLoading(false);
+      if (inFlight.current === id) inFlight.current = null;
     }
-  }
+  },[ownerId]);
 
   useFocusEffect(
     useCallback(() => {
       void loadSavedSpots();
-    }, [])
+      return () => { request.current++; inFlight.current=null; };
+    }, [loadSavedSpots])
   );
 
   async function removeSavedSpot(spotId: string) {
-    const nextIds = await savedSpotService.removeSavedSpotId(spotId);
-    setSavedSpots((current) => current.filter((spot) => nextIds.includes(spot.id)));
+    if (!ownerId || removing) return;
+    setRemoval({ownerId,spotId});
+    request.current++; inFlight.current=null;
+    try {
+      const nextIds = await savedSpotService.removeSavedSpotId(spotId,ownerId);
+      if(currentOwner.current===ownerId) {
+        request.current++; inFlight.current=null;
+        setState(previous=>previous.ownerId===ownerId?{...previous,spots:previous.spots.filter(spot=>nextIds.includes(spot.id)),loading:false,error:null}:previous);
+      }
+    } catch {
+      if(currentOwner.current===ownerId) setState(previous=>previous.ownerId===ownerId?{...previous,loading:false,error:'This saved spot could not be removed. Try its remove button again.'}:previous);
+    } finally { setRemoval(previous=>previous?.ownerId===ownerId&&previous.spotId===spotId?null:previous); }
   }
 
   return (
@@ -58,7 +83,13 @@ export default function SavedSpotsScreen() {
         </View>
       </View>
 
-      {loading ? (
+      {error && <View accessibilityRole="alert" style={[styles.emptyCard,{backgroundColor:appColors.surfaceLow,marginBottom:spacing.md}]}>
+        <Text style={[styles.emptyText,{color:appColors.onSurface}]}>{error}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Retry saved spots" disabled={loading} style={styles.exploreButton} onPress={()=>void loadSavedSpots()}>
+          <Text style={styles.exploreButtonText}>{loading?'Loading…':'Retry'}</Text>
+        </Pressable>
+      </View>}
+      {loading && !savedSpots.length ? (
         <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
       ) : savedSpots.length ? (
         <View style={styles.list}>
@@ -83,6 +114,7 @@ export default function SavedSpotsScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Remove ${spot.name} from saved spots`}
+                    disabled={Boolean(removing)}
                     hitSlop={8}
                     style={styles.removeButton}
                     onPress={(event) => {
@@ -114,7 +146,7 @@ export default function SavedSpotsScreen() {
             </Pressable>
           ))}
         </View>
-      ) : (
+      ) : !error && !loading ? (
         <View style={[styles.emptyCard, { backgroundColor: appColors.surfaceLow }]}>
           <Bookmark size={28} color={colors.primary} />
           <Text style={[styles.emptyTitle, { color: appColors.onSurface }]}>No saved spots yet</Text>
@@ -125,7 +157,7 @@ export default function SavedSpotsScreen() {
             <Text style={styles.exploreButtonText}>Explore Spots</Text>
           </Pressable>
         </View>
-      )}
+      ) : null}
     </ScreenContainer>
   );
 }

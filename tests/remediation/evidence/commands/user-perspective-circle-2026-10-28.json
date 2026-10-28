@@ -1,0 +1,11 @@
+{
+  "label": "user-perspective-circle-2026-10-28",
+  "command": [
+    "node",
+    "tests/user-walkthrough/circle-settings.cjs"
+  ],
+  "startedAt": "2026-10-28T15:38:32.447Z",
+  "finishedAt": "2026-10-28T15:38:38.724Z",
+  "exitCode": 0,
+  "output": "PASS settings visibility, sharing switch, retained consent, unavailable status, recovery, lost response and leave confirmation\nScreenshots: .codex-tmp/circle-settings-review\n"
+}

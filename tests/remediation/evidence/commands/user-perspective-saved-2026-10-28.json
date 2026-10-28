@@ -1,0 +1,11 @@
+{
+  "label": "user-perspective-saved-2026-10-28",
+  "command": [
+    "node",
+    "tests/user-walkthrough/saved-recovery.cjs"
+  ],
+  "startedAt": "2026-10-28T15:39:46.444Z",
+  "finishedAt": "2026-10-28T15:39:51.563Z",
+  "exitCode": 0,
+  "output": "PASS: saved error/empty distinction, retry, cached refresh, account switch and stale-response isolation.\n"
+}

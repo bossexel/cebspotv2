@@ -1,0 +1,11 @@
+{
+  "label": "user-perspective-account-2026-10-28",
+  "command": [
+    "node",
+    "tests/user-walkthrough/account-details.cjs"
+  ],
+  "startedAt": "2026-10-28T15:38:46.219Z",
+  "finishedAt": "2026-10-28T15:38:49.751Z",
+  "exitCode": 0,
+  "output": "PASS: Profile Account Details navigation, names/picture saves and persistence, permission/error recovery, confirmed email display, verified password flow with validation, light/dark and small-screen layouts.\n"
+}

@@ -1,0 +1,99 @@
+{
+  "capturedAt": "2026-10-28T15:45:01.800Z",
+  "entryHead": "dab9514",
+  "kind": "local-working-tree-including-existing-saved-changes",
+  "files": [
+    {
+      "file": "app/index.tsx",
+      "sha256": "c8f3147139348d80ab5e2d0920cc19aadd3ac7470d7fe36f774d8f10eb91fa66"
+    },
+    {
+      "file": "app/login.tsx",
+      "sha256": "8311e9cd8f6b07f3d3f8b5b36a750bf263201d07af804a2ba5baa80720df511e"
+    },
+    {
+      "file": "app/privacy.tsx",
+      "sha256": "608b8b353b0cd9e0453ce9e730036367c3ecc33b278a5aa503a1734ba2231ffe"
+    },
+    {
+      "file": "app/spot/[id].tsx",
+      "sha256": "83cb01342b54466a9df1155eaa53aa91e601aa8be1e14fb4db3fe829673f3fef"
+    },
+    {
+      "file": "app/reservation/[id].tsx",
+      "sha256": "c5a98d5e88d331b99e0a10f1f518b0a55e118cebc4b7092c1242580d68942d88"
+    },
+    {
+      "file": "app/activity.tsx",
+      "sha256": "1b5a7d563823ad1f908ce75e528466fa8411f600fd25d865ad3a6f4e655bd1c3"
+    },
+    {
+      "file": "app/saved.tsx",
+      "sha256": "f21ef6b0b3987c36acbe2fae18084bbc9b99e8c9bcde958dd32387f355ba92a1"
+    },
+    {
+      "file": "app/circle.tsx",
+      "sha256": "937a5764605598dd70c0e882fbfb96e8dedddc292bbd73822eb85a986225fca0"
+    },
+    {
+      "file": "app/profile.tsx",
+      "sha256": "68f3f33aaefeb7d98063b7b60164fac796c52f11d9d89720ea472c24bb23ddfc"
+    },
+    {
+      "file": "app/submit-spot.tsx",
+      "sha256": "40eb485661e93417eb805d47e8c1fe043b0b03d28a60600a2efc74cbf417e6e8"
+    },
+    {
+      "file": "app/account-deletion.tsx",
+      "sha256": "cbbfc54798a1f6dfbb81645daa9e3866127c088900742e6548f45a8c834ed2af"
+    },
+    {
+      "file": "app/account-details.tsx",
+      "sha256": "8d0137f7a77b003c6eafe9e1b9ee32d8df9c22a29751448b9bb7b2b0d526f02e"
+    },
+    {
+      "file": "app/auth/email-change.tsx",
+      "sha256": "56e27f77aed83a286489cbb6edd647d090c972cbdc0a00913c78b8670a3d630a"
+    },
+    {
+      "file": "app/your-posts.tsx",
+      "sha256": "ee74ad01226071791ae6aee8eb8fbccbb9d6a1c9fa4e84fb8c80970f39788d06"
+    },
+    {
+      "file": "src/components/CircleSettingsSheet.tsx",
+      "sha256": "3e6c6e1de1d108f77040a2abaf9e68699b990d11376ee6ffa7a8642eea4d7755"
+    },
+    {
+      "file": "src/services/savedSpotService.ts",
+      "sha256": "2daa4ae2a0ca4167e63e41a659f989c4a0a8f5fa184fa2f2cf8474fa20564c4e"
+    },
+    {
+      "file": "tests/user-walkthrough/browser.cjs",
+      "sha256": "94aa3bedcbe50236a5ee7b736d9295a27d7c4fe69491b1aac0108f7f0f3be707"
+    },
+    {
+      "file": "tests/user-walkthrough/booking.cjs",
+      "sha256": "68c9185b72adcbf3bbfb671c3d80e0fc8bfa8ba6c0b47ffeb819623dc198cbdb"
+    },
+    {
+      "file": "tests/user-walkthrough/saved-recovery.cjs",
+      "sha256": "1e10e5981f09356602c8cd38915aae56335c422254b26cba64791a0a3de7fe71"
+    },
+    {
+      "file": "tests/user-walkthrough/circle-settings.cjs",
+      "sha256": "410d15867c1158eb373f42ea8ba8d3e7411d976ea9f570f3dd6f04e45524e36e"
+    },
+    {
+      "file": "tests/user-walkthrough/account-details.cjs",
+      "sha256": "72659c071c882609a913df2d1b223735cf93a22012e51fabe7df8ebe632026e7"
+    },
+    {
+      "file": "tests/user-walkthrough/email-change.cjs",
+      "sha256": "f01c7a60d7a2b391dfde31fa4c015d930303feab8c4c7a1532b6f0db06b2630f"
+    },
+    {
+      "file": "tests/user-walkthrough/your-posts.cjs",
+      "sha256": "c009f56f66763b59d24e2c2d987f24d04097936e75a6d862946021995449faf1"
+    }
+  ]
+}

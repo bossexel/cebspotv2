@@ -1,0 +1,11 @@
+{
+  "label": "resume-2026-10-28-explore-bookmark-isolation",
+  "command": [
+    "node",
+    "tests/user-walkthrough/explore-bookmarks.cjs"
+  ],
+  "startedAt": "2026-10-28T15:48:05.712Z",
+  "finishedAt": "2026-10-28T15:48:10.811Z",
+  "exitCode": 0,
+  "output": "PASS: Explore ignores stale account reads, isolates bookmark writes, preserves old account storage and never overwrites a failed load.\n"
+}
