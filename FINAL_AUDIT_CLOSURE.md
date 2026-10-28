@@ -1,5 +1,7 @@
 # CebSpot audit closure — local verification and external gates
 
+October 29 Python security refresh: current audit reports no known findings after targeted updates to four packages; all 22 face regressions and dependency consistency pass. The initially nonzero audit is retained and historical clean results are not substituted for the new scan. Service dependency pins and Docker setuptools pin reflect the tested versions; Linux image/native/hosted acceptance remains open.
+
 October 28 face-test follow-up: all **22 tests pass** after measuring API cold start in a fresh process. The prior combined-discovery failure is explained and retained; no service behavior was weakened. Native images, Linux container/hosted memory and distributed cleanup are not accepted by these synthetic checks.
 
 October 28 UX group verified locally: removed inactive menu, truthful location/presence wording, shared coordinate validation, accessible filter recovery and corrected photo notice. Full current JavaScript/SQL/handler suite passes **391 tests with 5 optional legacy skips**; 26 updated fixture-screen observations, eight location/privacy checks, TypeScript and actual free-booking workflow pass. These results do not establish native or hosted acceptance. Face-service combined discovery exposed a cold-start test isolation failure; it is being investigated separately and is not declared passed here.

@@ -1,5 +1,7 @@
 # CebSpot remediation status
 
+October 29 dependency refresh: a fresh Python audit found new advisories in four installed packages. Targeted local updates and tested Pillow/certifi/Docker setuptools pins restore a clean installed-environment audit; dependency consistency and all 22 face tests pass. Linux image build/scan remains open. See [resumed security evidence](docs/remediation-resume-2026-10-28.md).
+
 October 28 face verification: complete Python discovery now passes **22 tests**. The API cold-start check runs in a fresh process so earlier image-quality tests cannot contaminate its module-state assertion; the earlier failed run is retained. This changes test isolation, not service authorization/admission behavior. Representative photo quality, hosted/Linux memory and distributed cleanup remain external gates.
 
 October 28 UX corrections: inactive Activity menu removed; truthful fallback-distance and Circle location labels, shared coordinate validation, accessible Clear filters and accurate face-detection wording are locally verified. Current full JavaScript/database/handler suite: **391 passed, 0 failed, 5 skipped**. Updated screen journey: 26 observations without runtime errors; location/privacy SQL group: 8 passed; free-booking workflow and TypeScript pass. Native/deployed/provider gates remain open. See [current resumed audit](docs/remediation-resume-2026-10-28.md).

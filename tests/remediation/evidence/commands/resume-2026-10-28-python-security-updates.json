@@ -1,0 +1,19 @@
+{
+  "label": "resume-2026-10-28-python-security-updates",
+  "command": [
+    ".venv/Scripts/python.exe",
+    "-m",
+    "pip",
+    "install",
+    "--upgrade",
+    "Pillow>=13,<14",
+    "certifi>=2026.10.19",
+    "filelock>=4.2.1",
+    "setuptools>=84.1.0",
+    "--use-feature=truststore"
+  ],
+  "startedAt": "2026-10-28T16:00:12.378Z",
+  "finishedAt": "2026-10-28T16:00:45.382Z",
+  "exitCode": 0,
+  "output": "WARNING: The following features are always enabled: truststore. \r\nCollecting Pillow<14,>=13\r\n  Downloading pillow-13.0.0-cp311-cp311-win_amd64.whl.metadata (9.3 kB)\r\nCollecting certifi>=2026.10.19\r\n  Downloading certifi-2026.10.23-py3-none-any.whl.metadata (2.5 kB)\r\nCollecting filelock>=4.2.1\r\n  Downloading filelock-4.2.4-py3-none-any.whl.metadata (2.0 kB)\r\nCollecting setuptools>=84.1.0\r\n  Downloading setuptools-84.2.1-py3-none-any.whl.metadata (6.6 kB)\r\nDownloading pillow-13.0.0-cp311-cp311-win_amd64.whl (7.3 MB)\r\n   ---------------------------------------- 7.3/7.3 MB 6.3 MB/s  0:00:01\r\nDownloading certifi-2026.10.23-py3-none-any.whl (135 kB)\r\nDownloading filelock-4.2.4-py3-none-any.whl (162 kB)\r\nDownloading setuptools-84.2.1-py3-none-any.whl (876 kB)\r\n   ---------------------------------------- 876.3/876.3 kB 854.1 kB/s  0:00:00\r\nInstalling collected packages: setuptools, Pillow, filelock, certifi\r\n  Attempting uninstall: setuptools\r\n    Found existing installation: setuptools 83.0.0\r\n    Uninstalling setuptools-83.0.0:\r\n      Successfully uninstalled setuptools-83.0.0\r\n  Attempting uninstall: Pillow\r\n    Found existing installation: pillow 12.3.0\r\n    Uninstalling pillow-12.3.0:\r\n      Successfully uninstalled pillow-12.3.0\r\n  Attempting uninstall: filelock\r\n    Found existing installation: filelock 4.1.1\r\n    Uninstalling filelock-4.1.1:\r\n      Successfully uninstalled filelock-4.1.1\r\n  Attempting uninstall: certifi\r\n    Found existing installation: certifi 2026.7.22\r\n    Uninstalling certifi-2026.7.22:\r\n      Successfully uninstalled certifi-2026.7.22\r\n\r\nSuccessfully installed Pillow-13.0.0 certifi-2026.10.23 filelock-4.2.4 setuptools-84.2.1\r\n\r\n[notice] A new release of pip is available: 26.2 -> 26.2.2\r\n[notice] To update, run: C:\\Users\\9real\\Downloads\\cebspotv3\\.venv\\Scripts\\python.exe -m pip install --upgrade pip\r\n"
+}

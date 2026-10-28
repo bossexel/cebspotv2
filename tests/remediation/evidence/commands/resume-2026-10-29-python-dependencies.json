@@ -1,0 +1,13 @@
+{
+  "label": "resume-2026-10-29-python-dependencies",
+  "command": [
+    ".venv/Scripts/python.exe",
+    "-m",
+    "pip",
+    "check"
+  ],
+  "startedAt": "2026-10-28T16:01:12.681Z",
+  "finishedAt": "2026-10-28T16:01:20.119Z",
+  "exitCode": 0,
+  "output": "No broken requirements found.\r\n"
+}
