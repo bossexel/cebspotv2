@@ -1,5 +1,7 @@
 # CebSpot remediation status
 
+October 28 face verification: complete Python discovery now passes **22 tests**. The API cold-start check runs in a fresh process so earlier image-quality tests cannot contaminate its module-state assertion; the earlier failed run is retained. This changes test isolation, not service authorization/admission behavior. Representative photo quality, hosted/Linux memory and distributed cleanup remain external gates.
+
 October 28 UX corrections: inactive Activity menu removed; truthful fallback-distance and Circle location labels, shared coordinate validation, accessible Clear filters and accurate face-detection wording are locally verified. Current full JavaScript/database/handler suite: **391 passed, 0 failed, 5 skipped**. Updated screen journey: 26 observations without runtime errors; location/privacy SQL group: 8 passed; free-booking workflow and TypeScript pass. Native/deployed/provider gates remain open. See [current resumed audit](docs/remediation-resume-2026-10-28.md).
 
 October 28 Saved follow-up: error/empty separation, retry, retained cached cards and failed-removal recovery now pass the actual-screen fixture journey. Explore and storage operations bind bookmarks to the originating account, ignore old responses and preserve existing IDs on failed reads. Four service regressions and the delayed-account-switch Explore journey pass; TypeScript passes. See [resumed evidence](docs/remediation-resume-2026-10-28.md). No hosted changes or deployment occurred.

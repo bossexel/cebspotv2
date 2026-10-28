@@ -70,8 +70,14 @@ class SecurityTests(unittest.IsolatedAsyncioTestCase):
         self.temp.cleanup()
 
     async def test_app_parent_keeps_native_image_runtime_unloaded(self):
-        self.assertNotIn('cv2', sys.modules)
-        self.assertNotIn('mediapipe', sys.modules)
+        # Other quality tests deliberately load these modules in this runner.
+        # Measure a fresh API parent rather than depending on discovery order.
+        code = ("import json,sys; from app import create_app; "
+                "print(json.dumps([name for name in ('cv2','mediapipe') if name in sys.modules]))")
+        result = subprocess.run([sys.executable, '-c', code], cwd=ROOT,
+                                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr[-1000:])
+        self.assertEqual(json.loads(result.stdout.strip()), [])
 
     async def test_auth_before_read_and_private_result(self):
         for token in (None,'invalid'):

@@ -56,3 +56,9 @@ The unfinished Activity three-dot control is removed while linked-place navigati
 `resume-2026-10-28-ux-journeys`: 26 actual-screen fixture observations completed without runtime errors, with explicit assertions for the corrected controls/copy and valid-location behavior. `resume-2026-10-28-ux-unit`: eight location-validation and native privacy/stop/leave SQL tests passed. The actual free-booking screen/client-to-fresh-PostgreSQL journey passes again. TypeScript passes. `resume-2026-10-28-final-tests`: **391 passed, 0 failed, 5 skipped (396 total)**, including current migration replay, role checks, SQL races, payment handlers and account deletion. The five optional legacy skips are not claimed as acceptance.
 
 The Add a Spot default-coordinate confirmation and Share wording suggestions remain lower-priority UX review items; no complete posted-photo quality or native location acceptance is claimed. No backend, provider or public deployment was changed.
+
+## Face-service combined test isolation
+
+The complete Python discovery run initially failed its API-parent cold-start assertion because earlier quality tests had intentionally imported OpenCV into the same test runner. The regression now imports the actual API in a fresh Python process and checks only whether OpenCV/MediaPipe were loaded there. It still fails if the API eagerly imports them, independently of test order, and no longer dumps the entire runner module inventory on failure. No service behavior was changed for this correction.
+
+`resume-2026-10-28-face-tests-verified`: all **22 Python tests pass**, including the actual ASGI authorization/admission/429/queue/concurrency/timeout/cleanup boundaries, worker termination, model-loading bounds, image-size/geometry tests and synthetic blank/tiled-image detector smoke tests. Earlier failed discovery evidence is retained. These do not prove representative human-face detection quality, Linux-container memory or hosted distributed cleanup.
