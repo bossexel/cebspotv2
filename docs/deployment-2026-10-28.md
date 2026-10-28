@@ -60,6 +60,8 @@ Release source: [`8d0e830c6f5b092f7e9604ee66b289746045f7cb`](https://github.com/
 
 For testers already on Android **1.0.4**, fully close and reopen the installed CebSpot preview app, then tap **Update** when prompted. This patch adds no native dependency, so a new binary is unnecessary for existing 1.0.4 installations.
 
-For a new tester or someone still on **1.0.3**, [install the existing signed 1.0.4 APK](https://expo.dev/artifacts/eas/4aKd8iEFWeuOc2YLGJDTmrpLmnoQajvRWgX96sP3bus.apk), reopen CebSpot, and accept the new in-app update. The APK's embedded bundle predates this patch; its preview channel delivers the verified latest update. Expo Go does not receive this release.
+For a new tester or someone still on **1.0.3**, [download CebSpot.apk](https://github.com/bossexel/cebspot-downloads/releases/download/android-1.0.4-12/CebSpot.apk), install it, reopen CebSpot, and accept the new in-app update. The APK's embedded bundle predates this patch; its preview channel delivers the verified latest update. Expo Go does not receive this release.
+
+The named installer is hosted in the separate public [CebSpot downloads repository](https://github.com/bossexel/cebspot-downloads/releases/tag/android-1.0.4-12). It contains the already-published signed installer, not app source. The download returns HTTP 200 with `Content-Disposition: attachment; filename=CebSpot.apk`. Its size is 106,003,096 bytes, and GitHub's SHA-256 digest matches the verified Expo APK: `30a3d4865737048425f562bfc83e33574bfd4598c6dbd49dbf65252391a60d1d`. The source repository remains private; the existing Expo installer URL remains available too.
 
 No new paid hosting plan, email provider or Play Store release was created. Real-phone acceptance and general-user email delivery remain limitations described above.
