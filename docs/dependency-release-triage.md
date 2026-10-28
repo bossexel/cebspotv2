@@ -1,5 +1,17 @@
 # Dependency release triage
 
+## Current refresh — October 29, 2026
+
+The latest retained `resume-2026-10-29-npm-audit-final` reports **30 affected packages: 3 high, 20 moderate, 7 low, zero critical**. These include dependent parents and are not 30 distinct root vulnerabilities. This supersedes the historical count below. The dry-run and actual update changed exactly four packages within existing ranges: fast-uri 3.1.8 → 3.1.9, undici 6.29.0 → 6.29.1, node-forge 1.4.0 → 1.4.2, and plist's nested xmldom 0.9.10 → 0.9.12. No SDK replacement or forced audit fix was used. Image-size/deepmerge and the old Expo plist dependency had no compatible patch selected by that update.
+
+Current root findings are xmldom 0.7.13, image-size 1.2.1, PostCSS 8.4.49, the dev-launcher AJV instance, decode-uri-component, deepmerge and uuid. Remaining high findings are in the first three. Source/lockfile inspection places those three under Expo plist/config or Metro build-time asset/CSS handling. That suggests a trusted-build-input boundary, rather than user photos being passed to those Node parsers at runtime; this is an inference from source/dependency paths, not proof from an APK. Keep untrusted files/CSS/XML out of build inputs and complete binary/tooling security review before a release GO. Keep the native-link guard and verify it on the installed APK. Do not dismiss moderate/low findings solely by severity.
+
+The new Python audit initially found 48 advisory entries in four installed packages. Updated local Pillow to 13.0.0, certifi to 2026.10.23, filelock to 4.2.4 and setuptools to 84.2.1. Requirements now pin the tested Pillow/certifi versions, and Docker installs the tested setuptools version. The [Pillow 13 release notes](https://pillow.readthedocs.io/en/stable/releasenotes/13.0.0.html) describe the security changes and removal of Python 3.10 support; the service uses Python 3.11. All 22 face tests, `pip check`, and the fresh installed-environment audit pass after this targeted major-version update. This is not a Linux-image or representative-photo acceptance; build/scan the image and test real consented photos on isolated staging.
+
+Exact before/after audits, patch preview/install and regressions are retained under `tests/remediation/evidence/commands/resume-2026-10-2*-*.json`. The historical assessment below explains earlier mitigations; its counts and list of remaining packages are not the current inventory.
+
+## Historical October 13 assessment
+
 The final retained npm registry report contains 65 affected packages, including parents affected through another dependency: 36 high and 29 moderate, with zero critical. These are not 65 independent root vulnerabilities. The installed Windows Python environment has zero known findings; the Linux container is unscanned. See [machine-readable advisories](../tests/remediation/evidence/dependency-triage.json) and the exact install/audit reports in the command record.
 
 Safe updates within existing ranges removed the critical shell-quote and tar findings and other advisories. Tar 7 requires the reviewed idempotent Expo extraction compatibility patch; both actual archive helpers pass round-trip tests after a clean lockfile install. No forced SDK replacement or downgrade was applied.

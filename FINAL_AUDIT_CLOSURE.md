@@ -1,5 +1,7 @@
 # CebSpot audit closure — local verification and external gates
 
+Latest local verification, **October 29**: 391 JavaScript/SQL/handler checks pass (5 optional legacy skips), 22 face checks pass, TypeScript/lint and final Android/admin exports pass, admin browser/web denial pass, and the current source/export secret scan has no matches. Python audit/consistency pass; npm retains 30 affected packages including 3 high. **NO-GO remains for unrestricted UAT/production** until isolated staging, Auth/Storage/provider/email, Linux-image and native-device gates pass. The exports are local verification artifacts. The original findings are not declared broadly closed by these builds. See [current resumed evidence](docs/remediation-resume-2026-10-28.md).
+
 October 29 Python security refresh: current audit reports no known findings after targeted updates to four packages; all 22 face regressions and dependency consistency pass. The initially nonzero audit is retained and historical clean results are not substituted for the new scan. Service dependency pins and Docker setuptools pin reflect the tested versions; Linux image/native/hosted acceptance remains open.
 
 October 28 face-test follow-up: all **22 tests pass** after measuring API cold start in a fresh process. The prior combined-discovery failure is explained and retained; no service behavior was weakened. Native images, Linux container/hosted memory and distributed cleanup are not accepted by these synthetic checks.

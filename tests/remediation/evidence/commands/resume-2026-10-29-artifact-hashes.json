@@ -1,0 +1,14 @@
+{
+  "label": "resume-2026-10-29-artifact-hashes",
+  "command": [
+    "node",
+    "scripts/remediation-artifact-manifest.cjs",
+    "resume-2026-10-28",
+    ".codex-tmp/remediation-android-resume-2026-10-28",
+    ".codex-tmp/remediation-admin-resume-2026-10-28"
+  ],
+  "startedAt": "2026-10-28T16:04:14.275Z",
+  "finishedAt": "2026-10-28T16:04:16.489Z",
+  "exitCode": 0,
+  "output": "Retained 7 artifact hashes for resume-2026-10-28.\n"
+}

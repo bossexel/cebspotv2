@@ -2,6 +2,7 @@
   "kind": "offline-verification-only",
   "platform": "android",
   "backendConfigured": false,
-  "limitation": "JavaScript/Hermes export, not an installed APK or completed device/provider acceptance.",
-  "outputDirectory": ".codex-tmp/remediation-android-final"
+  "limitation": "JavaScript/Hermes export only; no installed APK, native/provider or hosted acceptance. Public backend variables were cleared and dotenv disabled. Reuses valid Metro cache after compatible tooling patches.",
+  "outputDirectory": ".codex-tmp/remediation-android-final-2026-10-29",
+  "commandReport": "commands/resume-2026-10-29-final-android-export.json"
 }

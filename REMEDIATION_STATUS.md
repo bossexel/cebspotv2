@@ -1,5 +1,7 @@
 # CebSpot remediation status
 
+Latest local verification: **October 29, 2026**. After four compatible lockfile patches, 391 JavaScript/database/handler tests pass (5 optional legacy skips); TypeScript/lint, Android Hermes, separate admin export/browser, web denial and source/export secret scan pass. All 22 face tests and Python dependency/audit checks pass after targeted updates. Npm retains 30 affected packages (3 high), requiring review. No native device or isolated staging target is available. **NO-GO for unrestricted UAT/production; local compilation and fixture verification only.** See [resumed audit](docs/remediation-resume-2026-10-28.md) and [current dependency triage](docs/dependency-release-triage.md). No hosted writes/deployment occurred in this resumed work.
+
 October 29 dependency refresh: a fresh Python audit found new advisories in four installed packages. Targeted local updates and tested Pillow/certifi/Docker setuptools pins restore a clean installed-environment audit; dependency consistency and all 22 face tests pass. Linux image build/scan remains open. See [resumed security evidence](docs/remediation-resume-2026-10-28.md).
 
 October 28 face verification: complete Python discovery now passes **22 tests**. The API cold-start check runs in a fresh process so earlier image-quality tests cannot contaminate its module-state assertion; the earlier failed run is retained. This changes test isolation, not service authorization/admission behavior. Representative photo quality, hosted/Linux memory and distributed cleanup remain external gates.

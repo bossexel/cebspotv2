@@ -17,7 +17,9 @@ fs.writeFileSync(path.join(evidence,'changed-files.json'),JSON.stringify({baseli
 const tracked=new Set(git(['ls-files']).split('\n').filter(Boolean));
 const sources=[...tracked].filter(file=>/^(app\/|admin-app\/|src\/|scripts\/|config\/|supabase\/(migrations|functions)\/|face-blur-service\/)/.test(file)||/^(package(-lock)?\.json|app\.(json|config\.js)|eas\.json|index.*|metro\.config\.js|render\.yaml)$/.test(file)).filter(file=>fs.existsSync(path.join(root,file))&&fs.statSync(path.join(root,file)).isFile());
 fs.writeFileSync(path.join(evidence,'release-source-manifest.json'),JSON.stringify({head:git(['rev-parse','HEAD']),baseline,kind:'verified-working-tree-source-hashes',limitations:'Exports are local verification artifacts, not an APK/device/staging acceptance. User changes outside these paths remain in the working tree.',sources:sources.sort().map(file=>({file,sha256:hash(fs.readFileSync(path.join(root,file)))})),migrationOrder:migrations,commits:git(['log','--format=%h %s',baseline+'..HEAD']).split('\n')},null,2)+'\n');
-const npmReport=reports.find(r=>r.label==='phase-9-npm-audit-final');
+const npmReport=process.env.REMEDIATION_NPM_AUDIT_LABEL
+ ? reports.find(r=>r.label===process.env.REMEDIATION_NPM_AUDIT_LABEL)
+ : reports.filter(r=>r.label.endsWith('npm-audit-final')).at(-1);
 if(npmReport){const audit=JSON.parse(npmReport.output.slice(0,npmReport.output.lastIndexOf('\n}')+2));
 fs.writeFileSync(path.join(evidence,'dependency-triage.json'),JSON.stringify({kind:'npm-registry-advisory-triage',counts:audit.metadata.vulnerabilities,disposition:'Not closed. Remaining Expo/RN tooling/runtime reachability requires review; no automatic force fix or incompatible SDK downgrade. Run native/staging acceptance before release.',packages:Object.values(audit.vulnerabilities).map(v=>({name:v.name,severity:v.severity,direct:v.isDirect,nodes:v.nodes,via:v.via.map(item=>typeof item==='string'?{dependency:item}:{title:item.title,url:item.url,range:item.range}),proposedByRegistry:v.fixAvailable}))},null,2)+'\n');}
 console.log(`Retained ${reports.length} command reports, ${migrations.length} ordered migrations and ${sources.length} source hashes.`);

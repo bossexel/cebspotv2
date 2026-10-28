@@ -1,0 +1,18 @@
+{
+  "label": "resume-2026-10-29-compatible-dependency-updates",
+  "command": [
+    "npm",
+    "update",
+    "fast-uri",
+    "undici",
+    "node-forge",
+    "image-size",
+    "deepmerge",
+    "@xmldom/xmldom",
+    "--ignore-scripts"
+  ],
+  "startedAt": "2026-10-28T16:04:01.083Z",
+  "finishedAt": "2026-10-28T16:04:51.711Z",
+  "exitCode": 0,
+  "output": "\nchanged 4 packages, and audited 1015 packages in 49s\n\n103 packages are looking for funding\n  run `npm fund` for details\n\n30 vulnerabilities (7 low, 20 moderate, 3 high)\n\nTo address issues that do not require attention, run:\n  npm audit fix\n\nTo address all issues possible (including breaking changes), run:\n  npm audit fix --force\n\nSome issues need review, and may require choosing\na different dependency.\n\nRun `npm audit` for details.\n"
+}

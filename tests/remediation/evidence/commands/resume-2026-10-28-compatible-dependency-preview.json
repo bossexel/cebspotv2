@@ -1,0 +1,20 @@
+{
+  "label": "resume-2026-10-28-compatible-dependency-preview",
+  "command": [
+    "npm",
+    "update",
+    "fast-uri",
+    "undici",
+    "node-forge",
+    "image-size",
+    "deepmerge",
+    "@xmldom/xmldom",
+    "--ignore-scripts",
+    "--dry-run",
+    "--json"
+  ],
+  "startedAt": "2026-10-28T15:56:42.324Z",
+  "finishedAt": "2026-10-28T15:56:50.052Z",
+  "exitCode": 0,
+  "output": "add lightningcss-win32-arm64-msvc 1.27.0\nadd lightningcss-linux-x64-musl 1.27.0\nadd lightningcss-linux-x64-gnu 1.27.0\nadd lightningcss-linux-arm64-musl 1.27.0\nadd lightningcss-linux-arm64-gnu 1.27.0\nadd lightningcss-linux-arm-gnueabihf 1.27.0\nadd lightningcss-freebsd-x64 1.27.0\nadd lightningcss-darwin-x64 1.27.0\nadd lightningcss-darwin-arm64 1.27.0\nadd fsevents 2.3.3\nadd @expo/ngrok-bin-win32-ia32 2.3.41\nadd @expo/ngrok-bin-sunos-x64 2.3.41\nadd @expo/ngrok-bin-linux-x64 2.3.41\nadd @expo/ngrok-bin-linux-ia32 2.3.41\nadd @expo/ngrok-bin-linux-arm64 2.3.41\nadd @expo/ngrok-bin-linux-arm 2.3.41\nadd @expo/ngrok-bin-freebsd-x64 2.3.41\nadd @expo/ngrok-bin-freebsd-ia32 2.3.41\nadd @expo/ngrok-bin-darwin-x64 2.3.41\nadd @expo/ngrok-bin-darwin-arm64 2.3.41\nchange undici 6.29.0 => 6.29.1\nchange @xmldom/xmldom 0.9.10 => 0.9.12\nchange node-forge 1.4.0 => 1.4.2\nchange fast-uri 3.1.8 => 3.1.9\n{\n  \"added\": 20,\n  \"removed\": 0,\n  \"changed\": 4,\n  \"audited\": 0,\n  \"funding\": 112\n}\n"
+}

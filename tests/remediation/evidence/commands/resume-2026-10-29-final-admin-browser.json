@@ -1,0 +1,11 @@
+{
+  "label": "resume-2026-10-29-final-admin-browser",
+  "command": [
+    "node",
+    "tests/platform/admin-web.cjs"
+  ],
+  "startedAt": "2026-10-28T16:10:10.704Z",
+  "finishedAt": "2026-10-28T16:10:46.530Z",
+  "exitCode": 0,
+  "output": "PASS admin login: /\nPASS admin login: /admin\nPASS admin login: /login\nPASS removed customer/owner route: /owner-dashboard\nPASS removed customer/owner route: /owner-access\nPASS removed customer/owner route: /reservation/test\nPASS removed customer/owner route: /checkout/test\nPASS removed customer/owner route: /profile\nPASS removed customer/owner route: /spot/test\nPASS removed customer/owner route: /submit-spot\nPASS removed customer/owner route: /owner-portal/\nPASS static Android return bridge validates IDs and never treats URL outcome as payment authority\nPASS visible validation, wrong-account and rejected-credential feedback\nPASS admin-only recovery and return to admin login\nPASS no uncaught browser errors; all external traffic intercepted\n"
+}
