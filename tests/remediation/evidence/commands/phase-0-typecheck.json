@@ -1,0 +1,8 @@
+{
+  "label": "phase-0-typecheck",
+  "command": "EXPO_NO_DOTENV=1 npm run typecheck",
+  "startedAt": null,
+  "finishedAt": "2026-10-29T06:41:56.770Z",
+  "exitCode": 0,
+  "output": "> tsc --noEmit\nExit code 0. Start time was not captured."
+}

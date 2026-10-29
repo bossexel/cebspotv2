@@ -1,0 +1,59 @@
+{
+  "label": "phase-0-partial-gate-summary",
+  "recordedAt": "2026-10-29T06:49:37.490Z",
+  "startingHead": "ca8526c6c2a3e5af9831ae1daf8f38c37aa5acc1",
+  "branch": "remediation/audit-2026-10-29",
+  "node": "v22.18.0",
+  "npm": "11.19.1",
+  "initialStatus": "clean",
+  "timestampedMigrationCount": 24,
+  "edgeFunctions": [
+    "delete-account",
+    "payment-maintenance",
+    "paymongo-create-gcash-checkout",
+    "paymongo-create-qrph-checkout",
+    "paymongo-webhook",
+    "private-upload",
+    "private-upload-maintenance",
+    "provision-owner-account"
+  ],
+  "reportedServices": [
+    "src/services/reservationTableService.ts",
+    "src/services/venueTableService.ts",
+    "src/utils/tableInventory.ts"
+  ],
+  "completed": {
+    "typecheck": {
+      "exitCode": 0,
+      "evidence": "tests/remediation/evidence/commands/phase-0-typecheck.json"
+    },
+    "fullTests": {
+      "exitCode": 0,
+      "tests": 402,
+      "passed": 397,
+      "failed": 0,
+      "skipped": 5,
+      "evidence": "tests/remediation/evidence/commands/phase-0-full-tests.json"
+    },
+    "androidExport": {
+      "exitCode": 0,
+      "evidence": "tests/remediation/evidence/commands/phase-0-android-export.json"
+    },
+    "adminWebExport": {
+      "exitCode": 0,
+      "evidence": "tests/remediation/evidence/commands/phase-0-admin-export.json"
+    }
+  },
+  "failedGate": {
+    "name": "face service tests",
+    "reason": "The configured face-blur-service virtual environment has no pytest module.",
+    "evidence": "tests/remediation/evidence/commands/phase-0-face-service-tests.json"
+  },
+  "notRun": [
+    "performance harness (stopped at failed gate)",
+    "remaining Phase 0 table policy/client-path inventory",
+    "Phase 0 remediation plan"
+  ],
+  "hostedCalls": 0,
+  "applicationChanges": 0
+}

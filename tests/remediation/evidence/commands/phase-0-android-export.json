@@ -1,0 +1,8 @@
+{
+  "label": "phase-0-android-export",
+  "command": "EXPO_NO_DOTENV=1 node node_modules/expo/bin/cli export --platform android --output-dir .codex-tmp/phase0-android --max-workers 1 --clear",
+  "startedAt": null,
+  "finishedAt": "2026-10-29T06:47:54.547Z",
+  "exitCode": 0,
+  "output": "Android Bundled 136828ms index.js (3456 modules). 62 assets. One Android Hermes bundle; metadata.json exported to .codex-tmp/phase0-android. This is a local JS export, not an APK/device test."
+}

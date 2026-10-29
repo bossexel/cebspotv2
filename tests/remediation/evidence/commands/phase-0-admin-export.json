@@ -1,0 +1,8 @@
+{
+  "label": "phase-0-admin-export",
+  "command": "EXPO_NO_DOTENV=1 node scripts/admin-web.cjs export --platform web --output-dir .codex-tmp/phase0-admin-web",
+  "startedAt": null,
+  "finishedAt": "2026-10-29T06:49:08.228Z",
+  "exitCode": 0,
+  "output": "Web Bundled 54593ms index.web.js (2651 modules). 36 assets; one web bundle, index.html, favicon.ico, metadata.json. Expo emitted NO_COLOR/FORCE_COLOR warnings. Exported to .codex-tmp/phase0-admin-web."
+}

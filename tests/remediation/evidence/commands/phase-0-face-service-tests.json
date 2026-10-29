@@ -1,0 +1,8 @@
+{
+  "label": "phase-0-face-service-tests",
+  "command": "PYTHON_DOTENV_DISABLED=1 face-blur-service/venv/Scripts/python.exe -m pytest -q face-blur-service/tests",
+  "startedAt": "2026-10-29T06:49:37.490Z",
+  "finishedAt": "2026-10-29T06:49:37.490Z",
+  "exitCode": 1,
+  "output": "C:\\Users\\9real\\Downloads\\cebspotv3\\face-blur-service\\venv\\Scripts\\python.exe: No module named pytest"
+}

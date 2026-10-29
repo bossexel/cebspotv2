@@ -1,0 +1,8 @@
+{
+  "label": "phase-0-full-tests",
+  "command": "EXPO_NO_DOTENV=1 node --test --test-concurrency=2 tests/backend/*.test.cjs tests/remediation/*.test.cjs tests/platform/*.test.cjs tests/refactoring/*.test.cjs",
+  "startedAt": "2026-10-29T06:42:20.4126296Z",
+  "finishedAt": "2026-10-29T06:44:38.325Z",
+  "exitCode": 0,
+  "output": "# tests 402\n# pass 397\n# fail 0\n# cancelled 0\n# skipped 5\n# todo 0\nTest files: 63."
+}
