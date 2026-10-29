@@ -1,0 +1,21 @@
+﻿{
+    "evidence":  [
+                     "src/services/imageAnonymization.ts",
+                     "face-blur-service/app.py",
+                     "face-blur-service/services/job_runtime.py",
+                     "face-blur-service/tests/test_security.py",
+                     "docs/face-service-load-acceptance.md"
+                 ],
+    "assumptions":  "one worker, one replica, no autoscaling; memory-backed job/idempotency state",
+    "label":  "phase-8-face-job-idempotency",
+    "command":  "PYTHON_DOTENV_DISABLED=1 face-blur-service/venv/Scripts/python.exe face-blur-service/tests/test_security.py",
+    "newCases":  [
+                     "same idempotency key returns same accepted job without consuming second upload",
+                     "job creation without idempotency key rejected before request body read"
+                 ],
+    "coldStart":  "Client health warm-up and bounded retry already existed; no Android cold-start integration run in this pass",
+    "passed":  18,
+    "exitCode":  0,
+    "failed":  0,
+    "approach":  "Client generates one key per job-creation operation and reuses it across transport retries; service maps authenticated owner plus key to existing in-process job"
+}

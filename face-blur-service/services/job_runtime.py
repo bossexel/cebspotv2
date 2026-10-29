@@ -146,6 +146,7 @@ class Job:
     status: str = 'uploading'
     result: dict | None = None
     cancelled: bool = False
+    idempotency_key: str | None = None
 
 
 class JobRuntime:
@@ -153,6 +154,7 @@ class JobRuntime:
         self.settings = settings
         self.root = settings.temp_dir / 'jobs'
         self.jobs, self.rates = {}, {}
+        self.idempotency = {}
         self.queue_limit, self.max_jobs, self.per_user, self.rate = queue_limit, max_jobs, per_user, rate
         self.ttl, self.timeout = ttl, timeout
         self.queue = asyncio.Queue(maxsize=queue_limit)
@@ -190,6 +192,8 @@ class JobRuntime:
     def remove(self, job_id):
         job = self.jobs.pop(job_id, None)
         if job:
+            if job.idempotency_key:
+                self.idempotency.pop((job.owner, job.idempotency_key), None)
             self._cleanup(job.directory)
 
     def admit(self, owner):
@@ -212,6 +216,18 @@ class JobRuntime:
         self.jobs[job.id] = job
         times.append(now)
         return job
+
+    def admit_idempotent(self, owner, key):
+        identity = (owner, key)
+        existing_id = self.idempotency.get(identity)
+        existing = self.jobs.get(existing_id) if existing_id else None
+        if existing and not existing.cancelled:
+            return existing, True
+        self.idempotency.pop(identity, None)
+        job = self.admit(owner)
+        job.idempotency_key = key
+        self.idempotency[identity] = job.id
+        return job, False
 
     def enqueue(self, job, data, mime):
         if job.cancelled or job.id not in self.jobs:

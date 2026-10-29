@@ -1,6 +1,7 @@
 import asyncio
 import hmac
 import os
+import re
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -34,7 +35,12 @@ class UploadBoundary:
                 raise AdmissionError(401, 'Session expired. Sign in again.')
             scope.setdefault('state', {})['owner'] = owner
             if scope['method'] == 'POST' and scope['path'] == '/api/anonymize-jobs':
-                job = self.runtime.admit(owner)
+                idempotency_key = dict(scope['headers']).get(b'x-idempotency-key', b'').decode('ascii', errors='ignore')
+                if not re.fullmatch(r'[A-Za-z0-9._:-]{16,128}', idempotency_key):
+                    raise AdmissionError(400, 'A valid photo request idempotency key is required.')
+                job, replayed = self.runtime.admit_idempotent(owner, idempotency_key)
+                if replayed:
+                    return await JSONResponse({'job_id': job.id, 'status': job.status}, status_code=202)(scope, receive, send)
                 scope['state']['job'] = job
                 limit = self.runtime.settings.max_image_bytes + 65536
                 length = dict(scope['headers']).get(b'content-length', b'')
@@ -100,7 +106,7 @@ def create_app(settings=None, verifier=None, runtime=None, upload_timeout=30):
     app.state.runtime = runtime
     app.add_middleware(UploadBoundary, runtime=runtime, verifier=verify, upload_timeout=upload_timeout)
     app.add_middleware(CORSMiddleware, allow_origins=settings.allowed_origins, allow_methods=['GET', 'POST', 'DELETE'],
-                       allow_headers=['Content-Type', 'Authorization'])
+                       allow_headers=['Content-Type', 'Authorization', 'X-Idempotency-Key'])
 
     @app.get('/health')
     async def health():

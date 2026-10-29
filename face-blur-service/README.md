@@ -210,7 +210,11 @@ processing_time_ms
 
 Polling and download require the same authenticated customer. Another customer receives 404, and anonymous requests receive 401 before reading an upload. The legacy `/api/anonymize`, `/api/anonymize-upload` and `/api/anonymize-base64` endpoints return 410 after authentication. Completed and failed jobs expire after 15 minutes (swept every 10 seconds).
 
+Android first wakes the service through `GET /health`, with bounded retries over a 90-second cold-start window. A failed wake produces a recoverable user-facing message and does not upload the original image. Each job-creation POST carries an `X-Idempotency-Key`; retries of the same request reuse that key. The server scopes keys to the authenticated user and returns the already accepted job without reading or enqueueing a second upload. Keys are retained with the job in process memory and removed with it. After a process restart, abandoned job directories are removed and a retry may create a new job because no prior job remains accepted.
+
 Admission happens before multipart parsing: at most 2 pending jobs per user, 10 uploads per user per minute, a queue of 16, 1 processing child and 32 retained jobs. Rate tracking is capped at 1024 active users. Exhaustion returns 429 with `Retry-After: 60`; Auth verification has 8 bounded network slots and returns `Retry-After: 5` when full. Android stops automatic upload retries on 429.
+
+The in-memory job and idempotency ledger requires exactly one worker and one replica, with autoscaling disabled. The repository does not pin the Render instance memory tier in `render.yaml`; measure peak resident memory with both detector models loaded and one maximum-size synthetic image before selecting a plan. Do not add replicas or workers until admission, jobs and idempotency move to shared durable storage.
 
 The total request is limited to the configured image limit plus 64 KiB multipart overhead. Upload reading times out after 30 seconds. A separate child process loads the detectors and processes one image with a 60-second deadline; timeout terminates and joins that child before the next job. Sources are removed on completion, and failure, interruption, result delivery, TTL and shutdown remove private temporary files. The parent does not log image data, credentials or raw worker exceptions. `/health` is public.
 

@@ -183,6 +183,9 @@ function uploadErrorMessage(_body: string, status: number) { return mediaHttpMes
 
 async function createAnonymizationJob(preparedUri: string, contentType: string) {
   let lastError: unknown = new Error('The face anonymizer did not accept the upload.');
+  // One key is reused across transport retries so an accepted request whose
+  // response was lost returns the original job instead of creating another.
+  const idempotencyKey = `face-${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 
   for (let attempt = 1; attempt <= jobCreateAttempts; attempt += 1) {
     try {
@@ -191,7 +194,7 @@ async function createAnonymizationJob(preparedUri: string, contentType: string) 
         httpMethod: 'POST',
         mimeType: contentType,
         uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-        headers,
+        headers: { ...headers, 'X-Idempotency-Key': idempotencyKey },
       }));
 
       if (upload.status >= 200 && upload.status < 300) {

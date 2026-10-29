@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 import unittest
 from dataclasses import replace
 from pathlib import Path
@@ -18,11 +19,13 @@ from services.face_blur import FaceBlurSettings, PNG_SIGNATURE
 from services.job_runtime import AdmissionError, JobRuntime, run_child
 
 
-async def request(app, path='/api/anonymize-jobs', method='POST', token='customer-a', data=PNG_SIGNATURE+b'synthetic', mime='image/png', raw=None, stalled=False):
+async def request(app, path='/api/anonymize-jobs', method='POST', token='customer-a', data=PNG_SIGNATURE+b'synthetic', mime='image/png', raw=None, stalled=False, idempotency_key='auto'):
     boundary = 'testboundary'
     body = raw if raw is not None else (f'--{boundary}\r\nContent-Disposition: form-data; name="image"; filename="synthetic.png"\r\nContent-Type: {mime}\r\n\r\n'.encode()+data+f'\r\n--{boundary}--\r\n'.encode())
     headers=[(b'content-type', f'multipart/form-data; boundary={boundary}'.encode())]
     if token is not None: headers.append((b'authorization', ('Bearer '+token).encode()))
+    if idempotency_key == 'auto': idempotency_key = 'test-key-' + uuid.uuid4().hex
+    if idempotency_key is not None: headers.append((b'x-idempotency-key', idempotency_key.encode()))
     messages=[]; reads=0
     async def receive():
         nonlocal reads
@@ -92,6 +95,23 @@ class SecurityTests(unittest.IsolatedAsyncioTestCase):
         status,body,headers,_=await request(self.app,f'/api/anonymize-jobs/{job_id}/result',method='GET')
         self.assertEqual(status,200);self.assertEqual(headers[b'cache-control'],b'no-store');self.assertEqual(body,PNG_SIGNATURE)
         self.assertNotIn(job_id,self.runtime.jobs);self.assertEqual(list(self.runtime.root.glob('face-job-*')),[])
+
+    async def test_replayed_create_key_returns_existing_job_without_second_upload(self):
+        first_status,first_body,_,_=await request(self.app,idempotency_key='retry-key-00000001')
+        self.assertEqual(first_status,202)
+        first_job=json.loads(first_body)['job_id']
+        second_status,second_body,_,second_reads=await request(self.app,idempotency_key='retry-key-00000001')
+        self.assertEqual(second_status,202)
+        self.assertEqual(json.loads(second_body)['job_id'],first_job)
+        self.assertEqual(second_reads,0)
+        self.assertEqual(len(self.runtime.jobs),1)
+        self.assertEqual(self.runtime.queue.qsize(),1)
+
+    async def test_create_requires_idempotency_key(self):
+        status,_,_,reads=await request(self.app,idempotency_key=None)
+        self.assertEqual(status,400)
+        self.assertEqual(reads,0)
+        self.assertEqual(len(self.runtime.jobs),0)
 
     async def test_cancel_owner_never_cancels_other_users_and_removes_running_output(self):
         self.gate.clear()
