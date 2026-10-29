@@ -51,6 +51,13 @@ import type { Activity, LocalUpdate, LocalUpdateComment, SpotVoteType } from '..
 import { userErrorMessage } from '../src/utils/userError';
 import { getPublishedAdminUpdates, subscribeToPublishedAdminUpdates, type AdminUpdate } from '../src/services/adminUpdateService';
 import { mergeActivityNotifications } from '../src/utils/activityNotifications';
+import {
+  adjustSpotPostCounts,
+  getOptimisticSpotVote,
+  getSpotPostSubmissionId,
+  setSpotPostCount,
+  setSpotPostVote,
+} from '../src/utils/spotPostInteractions';
 
 type LocalUpdateSort = 'nearest' | 'newest' | 'popular';
 
@@ -171,7 +178,7 @@ const ActivityPostCard = React.memo(function ActivityPostCard({ item, appColors,
 }) {
   const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
   const [failedImage, setFailedImage] = useState<string | null>(null);
-  const canVote = item.source_type === 'spot_submission' && !!item.source_id;
+  const canVote = getSpotPostSubmissionId(item) !== null;
   return (<View style={[styles.updateCard, { backgroundColor: appColors.surfaceLow }]}>
               <View style={styles.updateHeader}>
                 {item.user_photo_url && failedAvatar !== item.user_photo_url ? (
@@ -301,7 +308,8 @@ export default function ActivityScreen() {
 
   const [failedAvatarIds, setFailedAvatarIds] = useState<string[]>([]);
   const [submissionVotes, setSubmissionVotes] = useState<Record<string, SpotVoteType>>({});
-  const [votingUpdateIds, setVotingUpdateIds] = useState<string[]>([]);
+  const [votingSubmissionIds, setVotingSubmissionIds] = useState<string[]>([]);
+  const votingSubmissionIdsRef = useRef(new Set<string>());
   const [commentThreadUpdateId, setCommentThreadUpdateId] = useState<string | null>(null);
   const [openedPost, setOpenedPost] = useState<LocalUpdate | null>(null);
   const [comments, setComments] = useState<LocalUpdateComment[]>([]);
@@ -598,66 +606,41 @@ export default function ActivityScreen() {
   }, [openPostId, openSubmissionId, openPost]);
 
   async function voteForUpdate(item: LocalUpdate) {
-    if (item.source_type !== 'spot_submission' || !item.source_id) {
-      return;
-    }
+    const submissionId = getSpotPostSubmissionId(item);
+    if (!submissionId) return;
 
     if (!isSignedIn) {
       Alert.alert('Sign in required', 'Please sign in to vote on new spots.');
       return;
     }
 
-    if (votingUpdateIds.includes(item.id)) return;
+    if (votingSubmissionIdsRef.current.has(submissionId)) return;
 
-    const submissionId = item.source_id;
     const previousVote = submissionVotes[submissionId] ?? null;
-    const optimisticVote: SpotVoteType | null = previousVote === 'up' ? null : 'up';
-    const previousVoteValue = previousVote === 'up' ? 1 : previousVote === 'down' ? -1 : 0;
-    const optimisticVoteValue = optimisticVote === 'up' ? 1 : 0;
+    const { vote: optimisticVote, delta } = getOptimisticSpotVote(previousVote);
+    votingSubmissionIdsRef.current.add(submissionId);
+    setVotingSubmissionIds((current) => [...current, submissionId]);
 
-    setSubmissionVotes((current) => {
-      const nextVotes = { ...current };
-      if (optimisticVote) nextVotes[submissionId] = optimisticVote;
-      else delete nextVotes[submissionId];
-      return nextVotes;
-    });
-    setLocalUpdates((current) =>
-      current.map((update) =>
-        update.id === item.id
-          ? { ...update, spot_count: item.spot_count + optimisticVoteValue - previousVoteValue }
-          : update
-      )
-    );
+    setSubmissionVotes((current) => setSpotPostVote(current, submissionId, optimisticVote));
+    setLocalUpdates((current) => adjustSpotPostCounts(current, submissionId, delta));
 
     try {
-      setVotingUpdateIds((current) => [...current, item.id]);
       const result = await localUpdateService.toggleSpotSubmissionVote(submissionId);
-      setSubmissionVotes((current) => {
-        const nextVotes = { ...current };
-        if (result.vote_type === 'up' || result.vote_type === 'down') {
-          nextVotes[submissionId] = result.vote_type;
-        } else {
-          delete nextVotes[submissionId];
-        }
-        return nextVotes;
-      });
+      const confirmedVote = result.vote_type === 'up' || result.vote_type === 'down' ? result.vote_type : null;
+      setSubmissionVotes((current) => setSpotPostVote(current, submissionId, confirmedVote));
       setLocalUpdates((current) =>
-        current.map((update) => (update.id === item.id ? { ...update, spot_count: result.vote_count } : update))
+        setSpotPostCount(current, submissionId, result.vote_count)
       );
     } catch (error: any) {
-      setSubmissionVotes((current) => {
-        const nextVotes = { ...current };
-        if (previousVote) nextVotes[submissionId] = previousVote;
-        else delete nextVotes[submissionId];
-        return nextVotes;
-      });
+      setSubmissionVotes((current) => setSpotPostVote(current, submissionId, previousVote));
       setLocalUpdates((current) =>
-        current.map((update) => (update.id === item.id ? { ...update, spot_count: item.spot_count } : update))
+        adjustSpotPostCounts(current, submissionId, -delta)
       );
       console.error('Unable to vote on spot submission:', error);
       Alert.alert('Vote failed', userErrorMessage(error, 'We could not save your change. Please try again.'));
     } finally {
-      setVotingUpdateIds((current) => current.filter((id) => id !== item.id));
+      votingSubmissionIdsRef.current.delete(submissionId);
+      setVotingSubmissionIds((current) => current.filter((id) => id !== submissionId));
     }
   }
 
@@ -774,7 +757,7 @@ export default function ActivityScreen() {
       const submissionId = item.target_id;
       if (!submissionId) return;
       const post =
-        localUpdates.find((update) => update.source_type === 'spot_submission' && update.source_id === submissionId) ??
+        localUpdates.find((update) => getSpotPostSubmissionId(update) === submissionId) ??
         await localUpdateService.getLocalUpdateForSpotSubmission(submissionId);
       if (!post) {
         Alert.alert('Post unavailable', 'This spot post is not available yet.');
@@ -818,9 +801,10 @@ export default function ActivityScreen() {
   const onVote = useCallback((item: LocalUpdate) => { void voteHandlerRef.current(item); }, []);
   const renderPost = useCallback(({ item }: { item: LocalUpdate }) => (
     <ActivityPostCard item={item} appColors={appColors}
-      currentVote={item.source_id ? submissionVotes[item.source_id] ?? null : null}
-      voting={votingUpdateIds.includes(item.id)} onOpen={openPost} onOpenSpot={openPostSpot} onVote={onVote} />
-  ), [appColors, submissionVotes, votingUpdateIds, openPost, openPostSpot, onVote]);
+      currentVote={getSpotPostSubmissionId(item) ? submissionVotes[getSpotPostSubmissionId(item)!] ?? null : null}
+      voting={Boolean(getSpotPostSubmissionId(item) && votingSubmissionIds.includes(getSpotPostSubmissionId(item)!))}
+      onOpen={openPost} onOpenSpot={openPostSpot} onVote={onVote} />
+  ), [appColors, submissionVotes, votingSubmissionIds, openPost, openPostSpot, onVote]);
 
   if (showNotifications) {
     return (
