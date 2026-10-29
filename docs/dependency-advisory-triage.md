@@ -1,0 +1,18 @@
+# Production dependency advisory triage — 2026-10-29
+
+The initial `npm audit --omit=dev` result was 29 findings (3 high, 19 moderate, 7 low). The first request failed certificate verification; rerunning with Node's system CA store succeeded. `npm ls --omit=dev ... --all` traced the specified packages. No `npm audit fix` command was run, and the Expo SDK major was not changed.
+
+Two compatible overrides were applied in `package.json`: `@xmldom/xmldom` to `0.9.12` and PostCSS to `8.5.23`. Both stay in their current major line. The later audit reports 26 findings (1 high, 17 moderate, 8 low). Evidence: `tests/remediation/evidence/commands/phase-6-npm-audit.json`, `phase-6-npm-audit-after-overrides.json`, and `phase-6-npm-audit-after-compatible-updates.json`.
+
+| Package | Parent chain / reachability | Action and residual risk |
+|---|---|---|
+| `@xmldom/xmldom` | `expo-updates → @expo/config-plugins → @expo/plist`; also `react-native-notify-kit → plist` | Override to 0.9.12; the high advisory is removed. Verify native notification behavior in final Android build. |
+| `postcss` | `expo → @expo/metro-config → postcss` | Override to 8.5.23; same-major update. Used by build/export transforms. |
+| `image-size` | `react-native → @react-native/community-cli-plugin → metro → image-size` | One high advisory remains at 1.2.1. The available fix crosses to 2.x; retained because Metro compatibility was not established. Build-time reachable, not part of a user request path. |
+| Expo CLI/config packages (`@expo/bunyan`, `@expo/cli`, `@expo/config`, `@expo/config-plugins`, `@expo/metro-config`, `@expo/prebuild-config`, `@expo/rudder-sdk-node`, `expo-dev-launcher`, `expo-manifests`) | Expo SDK 52 CLI, config, prebuild and Metro dependency graph | Moderate findings remain. Fix suggestions move to Expo SDK 51/58 or otherwise cross the project's pinned SDK-compatible dependency family. No forced major upgrade. Build/development-time reachable. |
+| Expo app modules (`expo`, `expo-asset`, `expo-constants`, `expo-dev-client`, `expo-linking`, `expo-router`, `expo-splash-screen`, `expo-updates`) | Direct app dependencies and SDK 52's native module versions | Moderate/low findings remain; these are runtime or native-build reachable. Upgrade only as a coordinated Expo SDK release with native acceptance. |
+| Navigation and query helpers (`@react-navigation/core`, `decode-uri-component`, `query-string`) | App navigation/query-string dependency graph | Moderate findings remain; fix paths are coupled to newer navigation packages. Runtime reachable for route parsing. |
+| `ajv`, `uuid`, `xcode`, `deepmerge`, `expo-constants` and `expo-manifests` | Tooling/config transitive branches; some Expo constants/modules also ship in runtime bundles | Moderate/low advisories remain where the suggested fix is a coordinated SDK major or introduces an unverified peer/API change. `npm ls` evidence is retained in `phase-6-npm-ls-targets.txt`; full dependency tree was not treated as proof of runtime exploitability. |
+| `react-native-notify-kit` | Direct native notification dependency → `plist`/`xcode` | Moderate advisory remains; no non-breaking fixed release was established. Keep notifications disabled until Android build/device checks pass if the path is in scope. |
+
+The npm advisory service reports known ranges, not whether a vulnerable code path is reachable in this app or present in a bundled artifact. A dependency-tree match is not a security exploitability proof. Re-run the audit after each Expo SDK upgrade and retain the current one-high residual as a launch risk requiring a documented owner decision.

@@ -1,0 +1,16 @@
+﻿cebspot@1.0.0 C:\Users\9real\Downloads\cebspotv3
+├─┬ expo-updates@0.27.5
+│ └─┬ @expo/config-plugins@9.0.17
+│   └─┬ @expo/plist@0.2.2
+│     └── @xmldom/xmldom@0.7.13
+├─┬ expo@52.0.49
+│ └─┬ @expo/metro-config@0.19.12
+│   └── postcss@8.4.49
+├─┬ react-native-notify-kit@10.5.0
+│ └─┬ plist@3.1.1
+│   └── @xmldom/xmldom@0.9.12
+└─┬ react-native@0.76.9
+  └─┬ @react-native/community-cli-plugin@0.76.9
+    └─┬ metro@0.81.5
+      └── image-size@1.2.1
+
