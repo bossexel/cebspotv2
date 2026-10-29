@@ -20,7 +20,7 @@
     },
     {
       "name": "20261006000100_audit_authorization_hardening.sql",
-      "sha256": "7b980712bdf2518458aa83e2714bd280638a5e164f3589f2511406536b841cf0"
+      "sha256": "2ba5aaed25d03866b57df1ab0cee8c1cbfa6285e94521cea0858258eaaea1562"
     },
     {
       "name": "20261011000100_table_booking_policy_and_walk_ins.sql",
@@ -93,6 +93,10 @@
     {
       "name": "20261028000100_beta_identity_prerequisites.sql",
       "sha256": "c9a64d90522ab031c6a3e13d2aaa525c34751e8666805f4636628145faabc37b"
+    },
+    {
+      "name": "20261030000100_activity_post_votes.sql",
+      "sha256": "52ed917e7ffc722c8f34564412e5ee716fbbda9f85501f3469abddc55e620309"
     }
   ]
 }

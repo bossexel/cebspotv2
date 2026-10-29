@@ -51,6 +51,7 @@ import type { Activity, LocalUpdate, LocalUpdateComment, SpotVoteType } from '..
 import { userErrorMessage } from '../src/utils/userError';
 import { getPublishedAdminUpdates, subscribeToPublishedAdminUpdates, type AdminUpdate } from '../src/services/adminUpdateService';
 import { mergeActivityNotifications } from '../src/utils/activityNotifications';
+import { getSpotPostSubmissionId } from '../src/utils/spotPostInteractions';
 
 type LocalUpdateSort = 'nearest' | 'newest' | 'popular';
 
@@ -171,7 +172,7 @@ const ActivityPostCard = React.memo(function ActivityPostCard({ item, appColors,
 }) {
   const [failedAvatar, setFailedAvatar] = useState<string | null>(null);
   const [failedImage, setFailedImage] = useState<string | null>(null);
-  const canVote = item.source_type === 'spot_submission' && !!item.source_id;
+  const canVote = getSpotPostSubmissionId(item) !== null;
   return (<View style={[styles.updateCard, { backgroundColor: appColors.surfaceLow }]}>
               <View style={styles.updateHeader}>
                 {item.user_photo_url && failedAvatar !== item.user_photo_url ? (
@@ -598,9 +599,8 @@ export default function ActivityScreen() {
   }, [openPostId, openSubmissionId, openPost]);
 
   async function voteForUpdate(item: LocalUpdate) {
-    if (item.source_type !== 'spot_submission' || !item.source_id) {
-      return;
-    }
+    const submissionId = getSpotPostSubmissionId(item);
+    if (!submissionId) return;
 
     if (!isSignedIn) {
       Alert.alert('Sign in required', 'Please sign in to vote on new spots.');
@@ -609,7 +609,6 @@ export default function ActivityScreen() {
 
     if (votingUpdateIds.includes(item.id)) return;
 
-    const submissionId = item.source_id;
     const previousVote = submissionVotes[submissionId] ?? null;
     const optimisticVote: SpotVoteType | null = previousVote === 'up' ? null : 'up';
     const previousVoteValue = previousVote === 'up' ? 1 : previousVote === 'down' ? -1 : 0;
@@ -774,7 +773,7 @@ export default function ActivityScreen() {
       const submissionId = item.target_id;
       if (!submissionId) return;
       const post =
-        localUpdates.find((update) => update.source_type === 'spot_submission' && update.source_id === submissionId) ??
+        localUpdates.find((update) => getSpotPostSubmissionId(update) === submissionId) ??
         await localUpdateService.getLocalUpdateForSpotSubmission(submissionId);
       if (!post) {
         Alert.alert('Post unavailable', 'This spot post is not available yet.');

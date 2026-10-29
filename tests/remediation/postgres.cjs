@@ -9,8 +9,10 @@ const { execFileSync, spawn } = require('node:child_process');
 
 exports.startPostgres = async function startPostgres(root) {
   const packages = process.env.WALK_IN_PG_PACKAGES || path.join(root, '.codex-tmp/walk-in-validation/node_modules');
-  const binaries = await import(pathToFileURL(path.join(packages, '@embedded-postgres/windows-x64/dist/index.js')).href);
+  const platform = process.platform === 'win32' ? 'windows' : process.platform;
+  const binaries = await import(pathToFileURL(path.join(packages, `@embedded-postgres/${platform}-${process.arch}/dist/index.js`)).href);
   const { Client } = require(path.join(packages, 'pg'));
+  fs.mkdirSync(path.join(root, '.codex-tmp/walk-in-validation'), { recursive: true });
   const data = fs.mkdtempSync(path.join(root, '.codex-tmp/walk-in-validation/pg-data-'));
   const port = await new Promise(resolve => {
     const server = net.createServer();
