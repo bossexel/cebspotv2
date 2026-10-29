@@ -155,6 +155,21 @@ test('top spot categories opens a scrollable full-ranking overview', () => {
   assert.match(analytics, /limit === null \? ranked : ranked\.slice\(0, limit\)/);
 });
 
+test('historical post relationships provide a searchable and accessible review queue', () => {
+  const screen = read('app/admin.tsx');
+
+  assert.match(screen, /title="Historical post relationships"/);
+  assert.match(screen, /Search historical relationships/);
+  assert.match(screen, /Review history without rewriting it/);
+  assert.match(screen, /Authorship review/);
+  assert.match(screen, /Media review/);
+  assert.match(screen, /Listing link/);
+  assert.match(screen, /No automatic attribution/);
+  assert.match(screen, /void loadPage\(0, true\)/);
+  assert.match(screen, /allowDistinct=\{submissionStatus === 'pending'\}/);
+  assert.match(screen, /Linking preserves the independent post and does not approve it/);
+});
+
 test('admin members are paged from the full profiles table instead of the 12-row dashboard preview', () => {
   const service = read('src/services/adminDashboardService.ts');
   const screen = read('app/admin.tsx');

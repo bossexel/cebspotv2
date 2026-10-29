@@ -46,6 +46,7 @@ import {
   ChevronUp,
   Edit3,
   FileText,
+  GitBranch,
   LayoutDashboard,
   LogOut,
   LucideIcon,
@@ -2281,44 +2282,300 @@ function PendingSubmissionsTable({
   );
 }
 
+type HistoricalRelationshipRow = {
+  id: string;
+  submission_id: string | null;
+  local_update_id: string | null;
+  reason: string;
+  snapshot: Record<string, any>;
+  created_at: string;
+};
+
+type RelationshipFilter = 'all' | 'authorship' | 'media' | 'listing' | 'post';
+
+function getHistoricalRelationshipKind(reason: string): RelationshipFilter {
+  if (reason === 'historical_author_mismatch') return 'authorship';
+  if (reason === 'historical_grouped_media') return 'media';
+  if (reason === 'approved_listing_link_unconfirmed') return 'listing';
+  return 'post';
+}
+
+function getHistoricalRelationshipMeta(reason: string): { label: string; description: string; color: string; background: string; icon: LucideIcon } {
+  if (reason === 'historical_author_mismatch') return {
+    label: 'Authorship review',
+    description: 'The submission author and community-post author do not match. Verify the source without moving reactions or comments.',
+    color: '#8a5600',
+    background: '#fff1ce',
+    icon: User,
+  };
+  if (reason === 'historical_grouped_media') return {
+    label: 'Media review',
+    description: 'Historical media may have been combined across submissions. Confirm ownership before making any correction.',
+    color: '#7c3aed',
+    background: '#f1eafe',
+    icon: FileText,
+  };
+  if (reason === 'approved_listing_link_unconfirmed') return {
+    label: 'Listing link',
+    description: 'This approved post still needs a confirmed relationship to an existing public map listing.',
+    color: adminPalette.primary,
+    background: adminPalette.primary + '18',
+    icon: MapPin,
+  };
+  return {
+    label: 'Missing post',
+    description: 'No independent community post was found for this submission. Review the restored source record and its identifiers.',
+    color: adminPalette.error,
+    background: adminPalette.errorContainer + '24',
+    icon: TriangleAlert,
+  };
+}
+
+function HistoricalEvidenceItem({ label, value }: { label: string; value: string }) {
+  return <View style={styles.relationshipEvidenceItem}>
+    <Text style={styles.relationshipEvidenceLabel}>{label}</Text>
+    <Text style={styles.relationshipEvidenceValue} numberOfLines={2}>{value}</Text>
+  </View>;
+}
+
 function HistoricalSpotPostAudit({ client }: { client: SupabaseClient }) {
-  const [rows, setRows] = useState<Array<{ id: string; submission_id: string | null; reason: string; snapshot: any }>>([]);
+  const PAGE_SIZE = 20;
+  const { width } = useWindowDimensions();
+  const compact = width < 760;
+  const [rows, setRows] = useState<HistoricalRelationshipRow[]>([]);
   const [offset, setOffset] = useState(0);
   const [more, setMore] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<RelationshipFilter>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  async function load() {
+
+  const loadPage = useCallback(async (start: number, replace: boolean) => {
     setBusy(true);
-    const { data, error } = await client.from('spot_post_relationship_audit')
-      .select('id,submission_id,reason,snapshot').is('resolved_at', null)
-      .order('created_at').order('id').range(offset, offset + 19);
-    if (error) setNotice(error.message);
-    else {
-      setRows(current => [...current, ...(data ?? [])]);
-      setOffset(current => current + (data?.length ?? 0));
-      setMore(data?.length === 20);
-      setNotice(data?.length ? 'Historical interactions remain on their original posts. Review these relationships before making corrections.' : 'No further unresolved relationships.');
+    setError('');
+    const result = await client.from('spot_post_relationship_audit')
+      .select('id,submission_id,local_update_id,reason,snapshot,created_at')
+      .is('resolved_at', null)
+      .order('created_at', { ascending: false })
+      .order('id')
+      .range(start, start + PAGE_SIZE - 1);
+    if (result.error) {
+      setError(result.error.message);
+    } else {
+      const nextRows = (result.data ?? []) as HistoricalRelationshipRow[];
+      setRows(current => replace ? nextRows : [...current, ...nextRows.filter(next => !current.some(row => row.id === next.id))]);
+      setOffset(start + nextRows.length);
+      setMore(nextRows.length === PAGE_SIZE);
     }
     setBusy(false);
-  }
-  return <DataPanel title="Historical post relationships">
-    <Text style={styles.tableMini}>Flagged authorship, combined media and unconfirmed listing links. No attribution is inferred.</Text>
-    {rows.map(row => {
-      const name = row.snapshot?.submission?.name ?? row.snapshot?.name ?? 'Historical post';
-      return <View key={row.id}>
-        <Pressable onPress={() => setExpandedId(current => current === row.id ? null : row.id)}>
-          <Text style={styles.tablePrimary}>{name}: {row.reason.replace(/_/g, ' ')}</Text>
-        </Pressable>
-        {expandedId === row.id && row.submission_id && <SubmissionPlaceLink submission={{ id: row.submission_id, name }} client={client} />}
-      </View>;
-    })}
-    {more && <Pressable disabled={busy} onPress={() => void load()}><Text style={styles.tablePrimary}>{busy ? 'Loading…' : 'Load flagged relationships'}</Text></Pressable>}
-    {!!notice && <Text accessibilityRole="alert" style={styles.tableMuted}>{notice}</Text>}
+  }, [client]);
+
+  useEffect(() => {
+    setRows([]);
+    setOffset(0);
+    setExpandedId(null);
+    void loadPage(0, true);
+  }, [loadPage]);
+
+  const filters: Array<{ id: RelationshipFilter; label: string }> = [
+    { id: 'all', label: 'All' },
+    { id: 'authorship', label: 'Authorship' },
+    { id: 'media', label: 'Media' },
+    { id: 'listing', label: 'Listing links' },
+    { id: 'post', label: 'Missing posts' },
+  ];
+  const filteredRows = rows.filter((row) => {
+    const submission = row.snapshot?.submission ?? row.snapshot ?? {};
+    const post = row.snapshot?.post ?? {};
+    const name = submission.name ?? post.title ?? 'Historical post';
+    const matchesFilter = filter === 'all' || getHistoricalRelationshipKind(row.reason) === filter;
+    const needle = query.trim().toLowerCase();
+    const matchesSearch = !needle || [name, submission.address, row.reason, row.submission_id, row.local_update_id]
+      .some(value => String(value ?? '').toLowerCase().includes(needle));
+    return matchesFilter && matchesSearch;
+  });
+  const filterCount = (id: RelationshipFilter) => id === 'all'
+    ? rows.length
+    : rows.filter(row => getHistoricalRelationshipKind(row.reason) === id).length;
+
+  return <DataPanel
+    title="Historical post relationships"
+    right={<View style={styles.relationshipOpenBadge}>
+      <TriangleAlert size={14} color={adminPalette.primary} />
+      <Text style={styles.relationshipOpenBadgeText}>{rows.length}{more ? '+' : ''} open</Text>
+    </View>}
+  >
+    <View style={styles.relationshipIntro}>
+      <View style={styles.relationshipIntroIcon}><GitBranch size={22} color={adminPalette.primary} /></View>
+      <View style={styles.relationshipIntroCopy}>
+        <Text style={styles.relationshipIntroTitle}>Review history without rewriting it</Text>
+        <Text style={styles.relationshipIntroText}>
+          These records flag uncertain authorship, combined media, missing posts, or unconfirmed map links. Original posts, reactions, and comments stay in place while you verify the relationship.
+        </Text>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Refresh historical relationships"
+        disabled={busy}
+        onPress={() => void loadPage(0, true)}
+        style={({ pressed }) => [styles.relationshipRefreshButton, pressed && styles.submissionSpotButtonPressed, busy && styles.tableIconButtonDisabled]}
+      >
+        <RefreshCw size={15} color={adminPalette.primary} />
+        <Text style={styles.relationshipRefreshText}>Refresh</Text>
+      </Pressable>
+    </View>
+
+    <View style={styles.relationshipToolbar}>
+      <View style={[styles.relationshipSearch, compact && styles.relationshipSearchCompact]}>
+        <Search size={16} color={adminPalette.outline} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search post, address, or ID"
+          placeholderTextColor={adminPalette.outline}
+          accessibilityLabel="Search historical relationships"
+          style={styles.relationshipSearchInput}
+        />
+        {!!query && <Pressable accessibilityRole="button" accessibilityLabel="Clear historical relationship search" onPress={() => setQuery('')}>
+          <X size={15} color={adminPalette.outline} />
+        </Pressable>}
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.relationshipFilters}>
+        {filters.map(item => {
+          const selected = filter === item.id;
+          return <Pressable
+            key={item.id}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            onPress={() => setFilter(item.id)}
+            style={[styles.relationshipFilter, selected && styles.relationshipFilterActive]}
+          >
+            <Text style={[styles.relationshipFilterText, selected && styles.relationshipFilterTextActive]}>{item.label}</Text>
+            <View style={[styles.relationshipFilterCount, selected && styles.relationshipFilterCountActive]}>
+              <Text style={[styles.relationshipFilterCountText, selected && styles.relationshipFilterCountTextActive]}>{filterCount(item.id)}</Text>
+            </View>
+          </Pressable>;
+        })}
+      </ScrollView>
+    </View>
+
+    <View style={styles.relationshipList}>
+      {busy && !rows.length ? <View style={styles.relationshipLoading}>
+        <ActivityIndicator color={adminPalette.primary} />
+        <Text style={styles.relationshipLoadingText}>Loading relationship history…</Text>
+      </View> : filteredRows.map(row => {
+        const submission = row.snapshot?.submission ?? row.snapshot ?? {};
+        const post = row.snapshot?.post ?? {};
+        const name = submission.name ?? post.title ?? 'Historical post';
+        const expanded = expandedId === row.id;
+        const kind = getHistoricalRelationshipKind(row.reason);
+        const meta = getHistoricalRelationshipMeta(row.reason);
+        const mediaCount = Array.isArray(post.media_urls) ? post.media_urls.length : Array.isArray(submission.images) ? submission.images.length : 0;
+        const submissionStatus = String(submission.status ?? '').toLowerCase();
+        return <View key={row.id} style={[styles.relationshipCard, expanded && styles.relationshipCardExpanded]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${expanded ? 'Close' : 'Review'} ${name} historical relationship`}
+            accessibilityState={{ expanded }}
+            onPress={() => setExpandedId(current => current === row.id ? null : row.id)}
+            style={({ pressed }) => [styles.relationshipCardButton, compact && styles.relationshipCardButtonCompact, pressed && styles.submissionSpotButtonPressed]}
+          >
+            <View style={[styles.relationshipReasonIcon, { backgroundColor: meta.background }]}>
+              <meta.icon size={18} color={meta.color} />
+            </View>
+            <View style={styles.relationshipCardCopy}>
+              <View style={styles.relationshipTitleRow}>
+                <Text style={styles.relationshipCardTitle} numberOfLines={compact ? 2 : 1}>{name}</Text>
+                <View style={[styles.relationshipReasonBadge, { backgroundColor: meta.background }]}>
+                  <Text style={[styles.relationshipReasonBadgeText, { color: meta.color }]}>{meta.label}</Text>
+                </View>
+              </View>
+              <Text style={styles.relationshipCardDescription} numberOfLines={expanded ? undefined : 2}>{meta.description}</Text>
+              <View style={styles.relationshipMetaRow}>
+                <Text style={styles.relationshipMetaText}>Flagged {formatLastUpdated(row.created_at)}</Text>
+                {!!submissionStatus && <Text style={styles.relationshipMetaText}>Post {submissionStatus}</Text>}
+                {!!mediaCount && <Text style={styles.relationshipMetaText}>{mediaCount} media file{mediaCount === 1 ? '' : 's'}</Text>}
+                <Text style={styles.relationshipMetaText}>{row.submission_id ? 'Submission linked' : 'No submission link'}</Text>
+              </View>
+            </View>
+            <View style={styles.relationshipReviewAction}>
+              <Text style={styles.relationshipReviewText}>{expanded ? 'Close' : 'Review'}</Text>
+              {expanded ? <ChevronUp size={17} color={adminPalette.primary} /> : <ChevronDown size={17} color={adminPalette.primary} />}
+            </View>
+          </Pressable>
+          {expanded && <View style={styles.relationshipEvidence}>
+            <View style={styles.relationshipEvidenceHeader}>
+              <View>
+                <Text style={styles.relationshipEvidenceEyebrow}>Recorded evidence</Text>
+                <Text style={styles.relationshipEvidenceTitle}>Compare before linking</Text>
+              </View>
+              <View style={styles.relationshipEvidenceSafety}>
+                <ShieldCheck size={14} color={adminPalette.success} />
+                <Text style={styles.relationshipEvidenceSafetyText}>No automatic attribution</Text>
+              </View>
+            </View>
+            <View style={styles.relationshipEvidenceGrid}>
+              <HistoricalEvidenceItem label="Submission" value={row.submission_id ?? 'Not available'} />
+              <HistoricalEvidenceItem label="Community post" value={row.local_update_id ?? 'Not available'} />
+              <HistoricalEvidenceItem label="Address" value={submission.address ?? post.location_name ?? 'Not recorded'} />
+              <HistoricalEvidenceItem label="Review type" value={meta.label} />
+            </View>
+            {(kind === 'authorship' || kind === 'media') && <View style={styles.relationshipCaution}>
+              <TriangleAlert size={15} color="#8a5600" />
+              <Text style={styles.relationshipCautionText}>A map link does not resolve authorship or media ownership. Keep historical interactions unchanged unless you have independent evidence.</Text>
+            </View>}
+            {row.submission_id ? <SubmissionPlaceLink
+              submission={{ id: row.submission_id, name }}
+              client={client}
+              embedded
+              allowDistinct={submissionStatus === 'pending'}
+            /> : <Text style={styles.relationshipUnavailable}>This record has no source submission to link. Use the evidence IDs above for investigation.</Text>}
+          </View>}
+        </View>;
+      })}
+      {!busy && !error && !filteredRows.length && <EmptyState
+        title={rows.length ? 'No matching relationships' : 'Relationship history is clear'}
+        copy={rows.length ? 'Try another search or review type.' : 'No unresolved historical post relationships need review.'}
+        compact
+      />}
+      {!!error && <View style={styles.relationshipError}>
+        <TriangleAlert size={17} color={adminPalette.error} />
+        <View style={styles.relationshipErrorCopy}>
+          <Text accessibilityRole="alert" style={styles.relationshipErrorTitle}>Could not load relationship history</Text>
+          <Text style={styles.relationshipErrorText}>{error}</Text>
+        </View>
+        <Pressable accessibilityRole="button" onPress={() => void loadPage(0, true)}><Text style={styles.tablePrimary}>Retry</Text></Pressable>
+      </View>}
+    </View>
+
+    {!!rows.length && <View style={styles.relationshipFooter}>
+      <Text style={styles.relationshipFooterText}>Showing {filteredRows.length} of {rows.length}{more ? '+' : ''} loaded records</Text>
+      {more && <Pressable
+        accessibilityRole="button"
+        disabled={busy}
+        onPress={() => void loadPage(offset, false)}
+        style={[styles.relationshipLoadMore, busy && styles.tableIconButtonDisabled]}
+      >
+        {busy && <ActivityIndicator size="small" color={adminPalette.primary} />}
+        <Text style={styles.relationshipLoadMoreText}>{busy ? 'Loading…' : 'Load more'}</Text>
+        {!busy && <ChevronDown size={15} color={adminPalette.primary} />}
+      </Pressable>}
+    </View>}
   </DataPanel>;
 }
 
-function SubmissionPlaceLink({ submission, client }: { submission: Pick<AdminSpotSubmissionRow, 'id' | 'name'>; client: SupabaseClient }) {
+function SubmissionPlaceLink({
+  submission,
+  client,
+  embedded = false,
+  allowDistinct = true,
+}: {
+  submission: Pick<AdminSpotSubmissionRow, 'id' | 'name'>;
+  client: SupabaseClient;
+  embedded?: boolean;
+  allowDistinct?: boolean;
+}) {
   const [query, setQuery] = useState(submission.name);
   const [spots, setSpots] = useState<Array<{ id: string; name: string; address: string }>>([]);
   const [linkedId, setLinkedId] = useState<string | null>(null);
@@ -2355,20 +2612,47 @@ function SubmissionPlaceLink({ submission, client }: { submission: Pick<AdminSpo
     } catch (error: any) { setNotice(error.message); }
     finally { setBusy(false); }
   }
-  return <View style={styles.expandedSubmission}>
-    <Text style={styles.tableStrong}>Link to existing spot</Text>
-    <Text style={styles.tableMini}>Check the name and address. Linking preserves the independent post and does not approve it.</Text>
-    <TextInput value={query} onChangeText={setQuery} placeholder="Search existing spot names" accessibilityLabel="Find existing spot" style={styles.notesInput} />
-    {spots.map((spot) => <Pressable key={spot.id} disabled={busy} onPress={() => void link(spot.id)} style={styles.submissionSpotButton}>
-      <Text style={styles.tablePrimary}>{linkedId === spot.id ? 'Linked: ' : 'Link to existing spot: '}{spot.name} — {spot.address}</Text>
-    </Pressable>)}
-    {!linkedId && <Pressable disabled={busy} onPress={async () => {
+  return <View style={[styles.submissionLinkPanel, embedded && styles.submissionLinkPanelEmbedded]}>
+    <View style={styles.submissionLinkHeader}>
+      <View style={styles.submissionLinkIcon}><MapPin size={16} color={adminPalette.primary} /></View>
+      <View style={styles.submissionLinkHeaderCopy}>
+        <Text style={styles.tableStrong}>Link to existing spot</Text>
+        <Text style={styles.tableMini}>Check the name and address. Linking preserves the independent post and does not approve it.</Text>
+      </View>
+    </View>
+    <View style={styles.submissionLinkSearch}>
+      <Search size={15} color={adminPalette.outline} />
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search existing spot names"
+        placeholderTextColor={adminPalette.outline}
+        accessibilityLabel="Find existing spot"
+        style={styles.submissionLinkInput}
+      />
+    </View>
+    {!!query.trim() && query.trim().length < 2 && <Text style={styles.submissionLinkHint}>Enter at least 2 characters to search.</Text>}
+    <View style={styles.submissionLinkResults}>
+      {spots.map((spot) => <Pressable
+        key={spot.id}
+        disabled={busy}
+        onPress={() => void link(spot.id)}
+        style={({ pressed }) => [styles.submissionSpotButton, pressed && styles.submissionSpotButtonPressed]}
+      >
+        <View style={styles.submissionSpotCopy}>
+          <Text style={styles.submissionLinkSpotName}>{linkedId === spot.id ? 'Linked · ' : ''}{spot.name}</Text>
+          <Text style={styles.submissionLinkSpotAddress} numberOfLines={2}>{spot.address}</Text>
+        </View>
+        {linkedId === spot.id ? <CheckCircle2 size={18} color={adminPalette.success} /> : <ChevronRight size={18} color={adminPalette.primary} />}
+      </Pressable>)}
+    </View>
+    {!linkedId && allowDistinct && <Pressable disabled={busy} style={({ pressed }) => [styles.submissionDistinctButton, pressed && styles.submissionSpotButtonPressed]} onPress={async () => {
       setBusy(true);
       try { await confirmDistinctSpotSubmission(submission.id, client); setNotice('Confirmed as a different place. It can now be reviewed for a new map listing.'); }
       catch (error: any) { setNotice(error.message); }
       finally { setBusy(false); }
-    }}><Text style={styles.tablePrimary}>This is a different place</Text></Pressable>}
-    {!!notice && <Text accessibilityRole="alert" style={styles.tableMuted}>{notice}</Text>}
+    }}><Text style={styles.submissionDistinctText}>This is a different place</Text></Pressable>}
+    {!!notice && <Text accessibilityRole="alert" style={styles.submissionLinkNotice}>{notice}</Text>}
   </View>;
 }
 
