@@ -1,0 +1,27 @@
+﻿{
+    "note":  "The replay adapter defect was fixed in test tooling; this is not a product-code or hosted-backend fix.",
+    "evidence":  "tests/performance/evidence/local-2026-10-29T07-07-10-505Z/summary.json",
+    "backendRegression":  {
+                              "skipped":  5,
+                              "failed":  0,
+                              "passed":  134
+                          },
+    "isolatedTestPassed":  1,
+    "label":  "phase-0-performance-harness-corrected",
+    "command":  "node tests/performance/isolated/local-evidence.cjs",
+    "suiteSelfTests":  {
+                           "passed":  10,
+                           "failed":  0
+                       },
+    "backendLoadStatus":  "NOT TESTED",
+    "exitCode":  0,
+    "isolatedTest":  "node --test tests/backend/payment-harness.test.cjs",
+    "handlerReplayConcurrency":  [
+                                     1,
+                                     5,
+                                     10,
+                                     25,
+                                     50
+                                 ],
+    "hostedRequests":  0
+}

@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: default invocation never inherits application/production env
+ok 1 - default invocation never inherits application/production env
+  ---
+  duration_ms: 3.8204
+  type: 'test'
+  ...
+# Subtest: hosted target requires staging and exact origin acknowledgement
+ok 2 - hosted target requires staging and exact origin acknowledgement
+  ---
+  duration_ms: 3.7402
+  type: 'test'
+  ...
+# Subtest: secrets embedded in target URL are rejected
+ok 3 - secrets embedded in target URL are rejected
+  ---
+  duration_ms: 1.7953
+  type: 'test'
+  ...
+# Subtest: resource limits and workload levels are validated
+ok 4 - resource limits and workload levels are validated
+  ---
+  duration_ms: 6.3334
+  type: 'test'
+  ...
+# Subtest: expected booking conflicts require the real active-slot constraint
+ok 5 - expected booking conflicts require the real active-slot constraint
+  ---
+  duration_ms: 0.2734
+  type: 'test'
+  ...
+# Subtest: content failures count as unexpected failures and expected conflicts stay separate
+ok 6 - content failures count as unexpected failures and expected conflicts stay separate
+  ---
+  duration_ms: 0.7558
+  type: 'test'
+  ...
+# Subtest: empty samples and missing race/recovery evidence cannot be reported as capacity PASS
+ok 7 - empty samples and missing race/recovery evidence cannot be reported as capacity PASS
+  ---
+  duration_ms: 1.118
+  type: 'test'
+  ...
+# Subtest: HTTP latency includes the delayed response body and request timeout is bounded
+ok 8 - HTTP latency includes the delayed response body and request timeout is bounded
+  ---
+  duration_ms: 259.951
+  type: 'test'
+  ...
+# Subtest: actual discovery code supports address, secondary category, rating and distance filters
+ok 9 - actual discovery code supports address, secondary category, rating and distance filters
+  ---
+  duration_ms: 557.4707
+  type: 'test'
+  ...
+# Subtest: actual recommendation ranking excludes source, private and unrelated candidates
+ok 10 - actual recommendation ranking excludes source, private and unrelated candidates
+  ---
+  duration_ms: 38.0381
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1040.8671
