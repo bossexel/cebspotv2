@@ -1,5 +1,7 @@
 # LA-10 staging verification and rollback
 
+Payment-related upload acceptance must use PayMongo test mode only. Before running the webhook verifier, confirm `PAYMONGO_SECRET_KEY` passes `scripts/paymongo-test-key-guard.cjs`; its unit tests reject `sk_live_` and invalid key shapes. The verifier reads only explicit process variables and does not load local `.env` files. Cover provider success/local persistence failure, same-key retry, cancellation races, duplicate delivery and late webhook financial resolution using synthetic staging accounts and files.
+
 Apply timestamped migrations in lexical order through `20261013000500_request_bound_private_uploads.sql` to isolated staging only, after reviewing existing migration alignment as described in `supabase/MIGRATIONS.md`. No existing-database reset is authorized. Deploy `private-upload` with JWT verification, and `private-upload-maintenance` with its own server credential (`verify_jwt=false` is intentional for that scheduler credential).
 
 Set a private `PRIVATE_UPLOAD_WORKER_TOKEN` of at least 32 characters. Schedule an hourly server POST to `private-upload-maintenance`, with that Bearer credential. It removes at most 50 unlinked objects older than 24 hours through the Storage API; repeat successful runs until no backlog remains. A 503 requires retry. Never delete only `storage.objects` metadata, which would leave blobs behind.

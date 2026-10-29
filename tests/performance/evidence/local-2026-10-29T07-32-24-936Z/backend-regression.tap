@@ -1,0 +1,928 @@
+TAP version 13
+# Subtest: activity posts expose one outline Spot control with its count and no pill, spinner, or downvote
+ok 1 - activity posts expose one outline Spot control with its count and no pill, spinner, or downvote
+  ---
+  duration_ms: 6.4224
+  type: 'test'
+  ...
+# Subtest: supabase-schema.sql lets an author Spot their own submission
+ok 2 - supabase-schema.sql lets an author Spot their own submission
+  ---
+  duration_ms: 4.1153
+  type: 'test'
+  ...
+# Subtest: supabase/migrations/20260901000000_schema_foundation.sql lets an author Spot their own submission
+ok 3 - supabase/migrations/20260901000000_schema_foundation.sql lets an author Spot their own submission
+  ---
+  duration_ms: 2.4779
+  type: 'test'
+  ...
+# Subtest: minute and hour arrows carry through noon and midnight
+ok 4 - minute and hour arrows carry through noon and midnight
+  ---
+  duration_ms: 6.7596
+  type: 'test'
+  ...
+# Subtest: AM/PM toggles preserve minutes and display noon/midnight correctly
+ok 5 - AM/PM toggles preserve minutes and display noon/midnight correctly
+  ---
+  duration_ms: 1.4105
+  type: 'test'
+  ...
+# Subtest: manual arrival times keep existing inventory keys without rounding the chosen minute
+ok 6 - manual arrival times keep existing inventory keys without rounding the chosen minute
+  ---
+  duration_ms: 34.7096
+  type: 'test'
+  ...
+# Subtest: manual-time availability uses the existing backend without range functions
+ok 7 - manual-time availability uses the existing backend without range functions
+  ---
+  duration_ms: 221.5121
+  type: 'test'
+  ...
+# Subtest: booking checks use the physical table and pass reschedule exclusions
+ok 8 - booking checks use the physical table and pass reschedule exclusions
+  ---
+  duration_ms: 267.1957
+  type: 'test'
+  ...
+# Subtest: unavailable database functions still block booking
+ok 9 - unavailable database functions still block booking
+  ---
+  duration_ms: 141.3353
+  type: 'test'
+  ...
+# Subtest: legacy slot requests keep using the existing API
+ok 10 - legacy slot requests keep using the existing API
+  ---
+  duration_ms: 193.7279
+  type: 'test'
+  ...
+# Subtest: owner-configured free pricing overrides the legacy test-club fee
+ok 11 - owner-configured free pricing overrides the legacy test-club fee
+  ---
+  duration_ms: 122.8182
+  type: 'test'
+  ...
+# Subtest: admin identity is checked server-side by authenticated user, role, and email
+ok 12 - admin identity is checked server-side by authenticated user, role, and email
+  ---
+  duration_ms: 7.468
+  type: 'test'
+  ...
+# Subtest: admin identity cutover revokes the old role and promotes the new account
+ok 13 - admin identity cutover revokes the old role and promotes the new account
+  ---
+  duration_ms: 2.5075
+  type: 'test'
+  ...
+# Subtest: admin login offers password visibility and recovery controls
+ok 14 - admin login offers password visibility and recovery controls
+  ---
+  duration_ms: 3.1584
+  type: 'test'
+  ...
+# Subtest: every mutating admin RPC performs the server-side admin check
+ok 15 - every mutating admin RPC performs the server-side admin check
+  ---
+  duration_ms: 2.4756
+  type: 'test'
+  ...
+# Subtest: admin dashboard routes operational actions through secured RPCs
+ok 16 - admin dashboard routes operational actions through secured RPCs
+  ---
+  duration_ms: 7.5522
+  type: 'test'
+  ...
+# Subtest: spot deletion is admin-only and preserves booking history
+ok 17 - spot deletion is admin-only and preserves booking history
+  ---
+  duration_ms: 3.859
+  type: 'test'
+  ...
+# Subtest: owner request deletion is admin-only and does not revoke provisioned access
+ok 18 - owner request deletion is admin-only and does not revoke provisioned access
+  ---
+  duration_ms: 4.2712
+  type: 'test'
+  ...
+# Subtest: pending spot submission deletion is admin-only and removes linked post data without deleting the user
+ok 19 - pending spot submission deletion is admin-only and removes linked post data without deleting the user
+  ---
+  duration_ms: 10.2505
+  type: 'test'
+  ...
+# Subtest: barangay leaderboard opens an interactive admin spot map
+ok 20 - barangay leaderboard opens an interactive admin spot map
+  ---
+  duration_ms: 6.5137
+  type: 'test'
+  ...
+# Subtest: top spot categories opens a scrollable full-ranking overview
+ok 21 - top spot categories opens a scrollable full-ranking overview
+  ---
+  duration_ms: 9.5263
+  type: 'test'
+  ...
+# Subtest: admin members are paged from the full profiles table instead of the 12-row dashboard preview
+ok 22 - admin members are paged from the full profiles table instead of the 12-row dashboard preview
+  ---
+  duration_ms: 16.2063
+  type: 'test'
+  ...
+# Subtest: Admin Updates supports protected CRUD and a published-only user feed
+ok 23 - Admin Updates supports protected CRUD and a published-only user feed
+  ---
+  duration_ms: 8.7006
+  type: 'test'
+  ...
+# Subtest: admin screen exposes live moderation and owner-review handlers
+ok 24 - admin screen exposes live moderation and owner-review handlers
+  ---
+  duration_ms: 2.9732
+  type: 'test'
+  ...
+# Subtest: supabase-admin-dashboard.sql lets admins reject applications without an account id
+ok 25 - supabase-admin-dashboard.sql lets admins reject applications without an account id
+  ---
+  duration_ms: 1.6657
+  type: 'test'
+  ...
+# Subtest: supabase-fix-owner-request-rejection.sql lets admins reject applications without an account id
+ok 26 - supabase-fix-owner-request-rejection.sql lets admins reject applications without an account id
+  ---
+  duration_ms: 2.5247
+  type: 'test'
+  ...
+# Subtest: live discovery does not replace empty or failed backend results with sample listings
+ok 27 - live discovery does not replace empty or failed backend results with sample listings
+  ---
+  duration_ms: 4.0342
+  type: 'test'
+  ...
+# Subtest: a failed review write is reported as a failure rather than inserted as session-only content
+ok 28 - a failed review write is reported as a failure rather than inserted as session-only content
+  ---
+  duration_ms: 2.6883
+  type: 'test'
+  ...
+# Subtest: booking insertion rejects null slots and requires the selected table to exist in venue inventory
+ok 29 - booking insertion rejects null slots and requires the selected table to exist in venue inventory
+  ---
+  duration_ms: 1.7091
+  type: 'test'
+  ...
+# Subtest: club floor plan contains each public table exactly once
+ok 30 - club floor plan contains each public table exactly once
+  ---
+  duration_ms: 5.0538
+  type: 'test'
+  ...
+# Subtest: floor plan capacity and owner-only rules match the supplied layout
+ok 31 - floor plan capacity and owner-only rules match the supplied layout
+  ---
+  duration_ms: 0.8209
+  type: 'test'
+  ...
+# Subtest: each booking slot receives an independent complete inventory
+ok 32 - each booking slot receives an independent complete inventory
+  ---
+  duration_ms: 0.8225
+  type: 'test'
+  ...
+# Subtest: normalization keeps the mapped IDs and applies saved availability
+ok 33 - normalization keeps the mapped IDs and applies saved availability
+  ---
+  duration_ms: 1.0671
+  type: 'test'
+  ...
+# Subtest: supabase-schema.sql exposes live table occupancy without stale payment holds
+ok 34 - supabase-schema.sql exposes live table occupancy without stale payment holds
+  ---
+  duration_ms: 8.868
+  type: 'test'
+  ...
+# Subtest: supabase-club-floor-plan.sql exposes live table occupancy without stale payment holds
+ok 35 - supabase-club-floor-plan.sql exposes live table occupancy without stale payment holds
+  ---
+  duration_ms: 3.6092
+  type: 'test'
+  ...
+# Subtest: booking requires an explicit club table and passes it through checkout
+ok 36 - booking requires an explicit club table and passes it through checkout
+  ---
+  duration_ms: 4.433
+  type: 'test'
+  ...
+# Subtest: owner dashboard publishes stored inventory only after protected owner confirmation
+ok 37 - owner dashboard publishes stored inventory only after protected owner confirmation
+  ---
+  duration_ms: 2.8614
+  type: 'test'
+  ...
+# Subtest: deployment helper requires staging ref and rejects refs present in deployment history
+ok 38 - deployment helper requires staging ref and rejects refs present in deployment history
+  ---
+  duration_ms: 3.1835
+  type: 'test'
+  ...
+# Subtest: deployment helper offers a no-deploy dry run and requires a separate staging acknowledgement
+ok 39 - deployment helper offers a no-deploy dry run and requires a separate staging acknowledgement
+  ---
+  duration_ms: 3.8972
+  type: 'test'
+  ...
+# Subtest: shell dry-run validates a synthetic staging ref and refuses a documented beta ref
+ok 40 - shell dry-run validates a synthetic staging ref and refuses a documented beta ref
+  ---
+  duration_ms: 2039.5489
+  type: 'test'
+  ...
+# Subtest: dedicated owner provisioning rejects existing CebSpot identities
+ok 41 - dedicated owner provisioning rejects existing CebSpot identities
+  ---
+  duration_ms: 12.3378
+  type: 'test'
+  ...
+# Subtest: owner request submission rejects registered and already-pending business emails
+ok 42 - owner request submission rejects registered and already-pending business emails
+  ---
+  duration_ms: 3.3378
+  type: 'test'
+  ...
+# Subtest: dedicated owner invitation is finalized server-side and rolled back on failure
+ok 43 - dedicated owner invitation is finalized server-side and rolled back on failure
+  ---
+  duration_ms: 4.1306
+  type: 'test'
+  ...
+# Subtest: database finalizer creates an owner-only profile and spot assignment
+ok 44 - database finalizer creates an owner-only profile and spot assignment
+  ---
+  duration_ms: 2.4186
+  type: 'test'
+  ...
+# Subtest: admin approval uses account provisioning while rejection stays in the review RPC
+ok 45 - admin approval uses account provisioning while rejection stays in the review RPC
+  ---
+  duration_ms: 1.7717
+  type: 'test'
+  ...
+# Subtest: mobile owner dashboard loads the spot assigned to the signed-in business account
+ok 46 - mobile owner dashboard loads the spot assigned to the signed-in business account
+  ---
+  duration_ms: 4.7997
+  type: 'test'
+  ...
+# Subtest: signed-in roles are confined to their dedicated application surface
+ok 47 - signed-in roles are confined to their dedicated application surface
+  ---
+  duration_ms: 3.2935
+  type: 'test'
+  ...
+# Subtest: owner venue data does not inherit the Test Cebspot Club table template
+ok 48 - owner venue data does not inherit the Test Cebspot Club table template
+  ---
+  duration_ms: 3.8008
+  type: 'test'
+  ...
+# Subtest: owner logout and review replies are connected to the assigned venue
+ok 49 - owner logout and review replies are connected to the assigned venue
+  ---
+  duration_ms: 4.7453
+  type: 'test'
+  ...
+# Subtest: master schema removes prototype-only owner assignment hooks
+ok 50 - master schema removes prototype-only owner assignment hooks
+  ---
+  duration_ms: 3.7719
+  type: 'test'
+  ...
+# Subtest: fallback data keeps the Test Cebspot Club brand and category
+ok 51 - fallback data keeps the Test Cebspot Club brand and category
+  ---
+  duration_ms: 2.046
+  type: 'test'
+  ...
+# Subtest: physical tables appear once with conservative capacity and availability
+ok 52 - physical tables appear once with conservative capacity and availability
+  ---
+  duration_ms: 8.1723
+  type: 'test'
+  ...
+# Subtest: owner edits update every stored copy without changing the original draft
+ok 53 - owner edits update every stored copy without changing the original draft
+  ---
+  duration_ms: 1.3384
+  type: 'test'
+  ...
+# Subtest: adding a table preserves inventory and assigns a unique stable ID
+ok 54 - adding a table preserves inventory and assigns a unique stable ID
+  ---
+  duration_ms: 1.8093
+  type: 'test'
+  ...
+# Subtest: saving a lock/release toggle preserves capacity/service drafts and accepts the saved policy
+ok 55 - saving a lock/release toggle preserves capacity/service drafts and accepts the saved policy
+  ---
+  duration_ms: 1.3469
+  type: 'test'
+  ...
+# Subtest: live inventory refresh accepts untouched server changes without resurrecting removed tables
+ok 56 - live inventory refresh accepts untouched server changes without resurrecting removed tables
+  ---
+  duration_ms: 0.8705
+  type: 'test'
+  ...
+# Subtest: price and table inventory publish together without introducing a duration
+ok 57 - price and table inventory publish together without introducing a duration
+  ---
+  duration_ms: 257.6611
+  type: 'test'
+  ...
+# Subtest: missing backend columns never report a partial save as successful
+ok 58 - missing backend columns never report a partial save as successful
+  ---
+  duration_ms: 129.3908
+  type: 'test'
+  ...
+# Subtest: invalid owner settings fail before any database update
+ok 59 - invalid owner settings fail before any database update
+  ---
+  duration_ms: 74.1749
+  type: 'test'
+  ...
+# Subtest: synthetic payment adapter supports authoritative webhook session retrieval and replay
+ok 60 - synthetic payment adapter supports authoritative webhook session retrieval and replay
+  ---
+  duration_ms: 1178.4903
+  type: 'test'
+  ...
+# Subtest: payment maintenance serves CORS preflight without accessing payment state
+ok 61 - payment maintenance serves CORS preflight without accessing payment state
+  ---
+  duration_ms: 10303.3683
+  type: 'test'
+  ...
+# Subtest: gcash: authenticated owner of reservation only; no provider calls for missing/other identity
+ok 62 - gcash: authenticated owner of reservation only; no provider calls for missing/other identity
+  ---
+  duration_ms: 334.6578
+  type: 'test'
+  ...
+# Subtest: gcash: durable pending checkout uses saved PHP amount/contact and an HTTPS return bridge
+ok 63 - gcash: durable pending checkout uses saved PHP amount/contact and an HTTPS return bridge
+  ---
+  duration_ms: 613.7937
+  type: 'test'
+  ...
+# Subtest: gcash: provider timeout retains an attempt; retry uses same durable key and exact body
+ok 64 - gcash: provider timeout retains an attempt; retry uses same durable key and exact body
+  ---
+  duration_ms: 700.9203
+  type: 'test'
+  ...
+# Subtest: gcash: provider success followed by local persistence failure is reconciled without another session
+ok 65 - gcash: provider success followed by local persistence failure is reconciled without another session
+  ---
+  duration_ms: 797.1963
+  type: 'test'
+  ...
+# Subtest: gcash: database failure before attempt persistence cannot create a provider session
+ok 66 - gcash: database failure before attempt persistence cannot create a provider session
+  ---
+  duration_ms: 82.5754
+  type: 'test'
+  ...
+# Subtest: qrph: authenticated owner of reservation only; no provider calls for missing/other identity
+ok 67 - qrph: authenticated owner of reservation only; no provider calls for missing/other identity
+  ---
+  duration_ms: 223.4925
+  type: 'test'
+  ...
+# Subtest: qrph: durable pending checkout uses saved PHP amount/contact and an HTTPS return bridge
+ok 68 - qrph: durable pending checkout uses saved PHP amount/contact and an HTTPS return bridge
+  ---
+  duration_ms: 628.4599
+  type: 'test'
+  ...
+# Subtest: qrph: provider timeout retains an attempt; retry uses same durable key and exact body
+ok 69 - qrph: provider timeout retains an attempt; retry uses same durable key and exact body
+  ---
+  duration_ms: 785.3206
+  type: 'test'
+  ...
+# Subtest: qrph: provider success followed by local persistence failure is reconciled without another session
+ok 70 - qrph: provider success followed by local persistence failure is reconciled without another session
+  ---
+  duration_ms: 907.1261
+  type: 'test'
+  ...
+# Subtest: qrph: database failure before attempt persistence cannot create a provider session
+ok 71 - qrph: database failure before attempt persistence cannot create a provider session
+  ---
+  duration_ms: 88.8909
+  type: 'test'
+  ...
+# Subtest: test release refuses live credentials and live provider responses
+ok 72 - test release refuses live credentials and live provider responses
+  ---
+  duration_ms: 548.1853
+  type: 'test'
+  ...
+# Subtest: concurrent HTTP retries share one attempt and one provider creation
+ok 73 - concurrent HTTP retries share one attempt and one provider creation
+  ---
+  duration_ms: 395.6351
+  type: 'test'
+  ...
+# Subtest: webhook requires fresh test signature, explicit test mode and unique identity
+ok 74 - webhook requires fresh test signature, explicit test mode and unique identity
+  ---
+  duration_ms: 847.7188
+  type: 'test'
+  ...
+# Subtest: wrong amount and currency never mark payment or reservation paid
+ok 75 - wrong amount and currency never mark payment or reservation paid
+  ---
+  duration_ms: 1208.8751
+  type: 'test'
+  ...
+# Subtest: provider retrieval or database failure returns retryable delivery failure, then same event recovers
+ok 76 - provider retrieval or database failure returns retryable delivery failure, then same event recovers
+  ---
+  duration_ms: 724.6877
+  type: 'test'
+  ...
+# Subtest: signed webhook recovers provider success before local session persistence
+ok 77 - signed webhook recovers provider success before local session persistence
+  ---
+  duration_ms: 428.709
+  type: 'test'
+  ...
+# Subtest: paid-after-cancellation is recorded for refund review without reclaiming the table
+ok 78 - paid-after-cancellation is recorded for refund review without reclaiming the table
+  ---
+  duration_ms: 446.586
+  type: 'test'
+  ...
+# Subtest: scheduled maintenance recovers unknown provider outcome, reconciles payment and retires cancelled sessions
+ok 79 - scheduled maintenance recovers unknown provider outcome, reconciles payment and retires cancelled sessions
+  ---
+  duration_ms: 1940.9463
+  type: 'test'
+  ...
+# Subtest: ordinary user cannot invoke maintenance; unsafe return configuration fails before provider creation
+ok 80 - ordinary user cannot invoke maintenance; unsafe return configuration fails before provider creation
+  ---
+  duration_ms: 86.2998
+  type: 'test'
+  ...
+# Subtest: complete database outage after provider creation is recovered by the scheduled worker
+ok 81 - complete database outage after provider creation is recovered by the scheduled worker
+  ---
+  duration_ms: 776.32
+  type: 'test'
+  ...
+# Subtest: unknown attempts older than provider key retention require manual reconciliation and never create again
+ok 82 - unknown attempts older than provider key retention require manual reconciliation and never create again
+  ---
+  duration_ms: 674.8195
+  type: 'test'
+  ...
+# Subtest: provider verification guard accepts a test key shape
+ok 83 - provider verification guard accepts a test key shape
+  ---
+  duration_ms: 3.2581
+  type: 'test'
+  ...
+# Subtest: provider verification guard refuses live, publishable, malformed and missing keys
+ok 84 - provider verification guard refuses live, publishable, malformed and missing keys
+  ---
+  duration_ms: 2.6293
+  type: 'test'
+  ...
+# Subtest: inventory validator rejects empty, zero-capacity, reserved and walk-in-only tables
+ok 85 - inventory validator rejects empty, zero-capacity, reserved and walk-in-only tables
+  ---
+  duration_ms: 3.3256
+  type: 'test'
+  ...
+# Subtest: report flags public venues with unverified/zero inventory, missing fee, or outside release scope
+ok 86 - report flags public venues with unverified/zero inventory, missing fee, or outside release scope
+  ---
+  duration_ms: 137.8917
+  type: 'test'
+  ...
+# Subtest: report refuses without opt-in and fails closed on API errors
+ok 87 - report refuses without opt-in and fails closed on API errors
+  ---
+  duration_ms: 2.8442
+  type: 'test'
+  ...
+# Subtest: manual flag cleanup is outside migrations and defaults to a count-only dry run
+ok 88 - manual flag cleanup is outside migrations and defaults to a count-only dry run
+  ---
+  duration_ms: 2.5402
+  type: 'test'
+  ...
+# Subtest: owner dashboard exposes confirmed-arrival and no-show decisions with full reservation details
+ok 89 - owner dashboard exposes confirmed-arrival and no-show decisions with full reservation details
+  ---
+  duration_ms: 5.0434
+  type: 'test'
+  ...
+# Subtest: attendance updates route through the owner-only database function
+ok 90 - attendance updates route through the owner-only database function
+  ---
+  duration_ms: 3.373
+  type: 'test'
+  ...
+# Subtest: supabase-schema.sql secures attendance decisions and notifies the guest
+ok 91 - supabase-schema.sql secures attendance decisions and notifies the guest
+  ---
+  duration_ms: 3.0902
+  type: 'test'
+  ...
+# Subtest: supabase-reservation-attendance.sql secures attendance decisions and notifies the guest
+ok 92 - supabase-reservation-attendance.sql secures attendance decisions and notifies the guest
+  ---
+  duration_ms: 22.7039
+  type: 'test'
+  ...
+# Subtest: checked-in tables remain occupied while no-shows release their table
+ok 93 - checked-in tables remain occupied while no-shows release their table
+  ---
+  duration_ms: 2.6073
+  type: 'test'
+  ...
+# Subtest: arrival and no-show activities become user notifications linked to reservation details
+ok 94 - arrival and no-show activities become user notifications linked to reservation details
+  ---
+  duration_ms: 9.9161
+  type: 'test'
+  ...
+# Subtest: self-service reservation changes are available only for free reservations
+ok 95 - self-service reservation changes are available only for free reservations
+  ---
+  duration_ms: 6.0057
+  type: 'test'
+  ...
+# Subtest: reservation service uses policy-enforcing customer RPCs
+ok 96 - reservation service uses policy-enforcing customer RPCs
+  ---
+  duration_ms: 38.4869
+  type: 'test'
+  ...
+# Subtest: supabase-schema.sql enforces ownership and blocks paid reservation changes
+ok 97 - supabase-schema.sql enforces ownership and blocks paid reservation changes
+  ---
+  duration_ms: 6.5888
+  type: 'test'
+  ...
+# Subtest: supabase-reservation-change-policy.sql enforces ownership and blocks paid reservation changes
+ok 98 - supabase-reservation-change-policy.sql enforces ownership and blocks paid reservation changes
+  ---
+  duration_ms: 2.0044
+  type: 'test'
+  ...
+# Subtest: unfinished PayMongo checkout can still release its temporary table hold
+ok 99 - unfinished PayMongo checkout can still release its temporary table hold
+  ---
+  duration_ms: 2.2733
+  type: 'test'
+  ...
+# Subtest: payment methods stay locked until contact details and deposit terms are complete
+ok 100 - payment methods stay locked until contact details and deposit terms are complete
+  ---
+  duration_ms: 5.8288
+  type: 'test'
+  ...
+# Subtest: checkout takes identity from the database profile and records the phone snapshot
+ok 101 - checkout takes identity from the database profile and records the phone snapshot
+  ---
+  duration_ms: 4.4574
+  type: 'test'
+  ...
+# Subtest: checkout records the short deposit acceptance and retains the five-minute table hold
+ok 102 - checkout records the short deposit acceptance and retains the five-minute table hold
+  ---
+  duration_ms: 4.1702
+  type: 'test'
+  ...
+# Subtest: supabase-schema.sql stores and enforces paid reservation verification details
+ok 103 - supabase-schema.sql stores and enforces paid reservation verification details
+  ---
+  duration_ms: 2.4589
+  type: 'test'
+  ...
+# Subtest: supabase-reservation-contact-details.sql stores and enforces paid reservation verification details
+ok 104 - supabase-reservation-contact-details.sql stores and enforces paid reservation verification details
+  ---
+  duration_ms: 1.8592
+  type: 'test'
+  ...
+# Subtest: owner and confirmation views expose the saved verification details
+ok 105 - owner and confirmation views expose the saved verification details
+  ---
+  duration_ms: 2.7902
+  type: 'test'
+  ...
+# Subtest: manual reservation time is saved without calculating a departure time
+ok 106 - manual reservation time is saved without calculating a departure time
+  ---
+  duration_ms: 3.1026
+  type: 'test'
+  ...
+# Subtest: legacy venue flags and reserved IDs cannot bypass release verification
+ok 107 - legacy venue flags and reserved IDs cannot bypass release verification
+  ---
+  duration_ms: 4.0419
+  type: 'test'
+  ...
+# Subtest: current table availability remains authoritative, including an empty result
+ok 108 - current table availability remains authoritative, including an empty result
+  ---
+  duration_ms: 2.8427
+  type: 'test'
+  ...
+# Subtest: verification-enabled venues never fall back to unverified legacy availability
+ok 109 - verification-enabled venues never fall back to unverified legacy availability
+  ---
+  duration_ms: 1.2204
+  type: 'test'
+  ...
+# Subtest: network, permission, and unrelated missing-function errors do not enable legacy mode
+ok 110 - network, permission, and unrelated missing-function errors do not enable legacy mode
+  ---
+  duration_ms: 1.4009
+  type: 'test'
+  ...
+# Subtest: legacy reserved-ID responses are never consulted for unverified venues
+ok 111 - legacy reserved-ID responses are never consulted for unverified venues
+  ---
+  duration_ms: 2.0341
+  type: 'test'
+  ...
+# Subtest: legacy availability never invents inventory or enables a disabled venue
+ok 112 - legacy availability never invents inventory or enables a disabled venue
+  ---
+  duration_ms: 1.3857
+  type: 'test'
+  ...
+# Subtest: checkout re-reads current inventory and stops after an owner makes it walk-in-only
+ok 113 - checkout re-reads current inventory and stops after an owner makes it walk-in-only
+  ---
+  duration_ms: 3.6384
+  type: 'test'
+  ...
+# Subtest: checkout never checks or books tables after a missing venue, changed identity or failed inventory read
+ok 114 - checkout never checks or books tables after a missing venue, changed identity or failed inventory read
+  ---
+  duration_ms: 1.6297
+  type: 'test'
+  ...
+# Subtest: supabase-schema.sql returns only a privacy-safe ownership hint
+ok 115 - supabase-schema.sql returns only a privacy-safe ownership hint
+  ---
+  duration_ms: 5.911
+  type: 'test'
+  ...
+# Subtest: supabase-spot-claim-status.sql returns only a privacy-safe ownership hint
+ok 116 - supabase-spot-claim-status.sql returns only a privacy-safe ownership hint
+  ---
+  duration_ms: 2.2291
+  type: 'test'
+  ...
+# Subtest: spot details send the exact listing into the owner-access flow
+ok 117 - spot details send the exact listing into the owner-access flow
+  ---
+  duration_ms: 7.7065
+  type: 'test'
+  ...
+# Subtest: owner-access checks management before showing the claim form
+ok 118 - owner-access checks management before showing the claim form
+  ---
+  duration_ms: 3.5003
+  type: 'test'
+  ...
+# Subtest: read-only RLS probe refuses to run without explicit acknowledgement
+ok 119 - read-only RLS probe refuses to run without explicit acknowledgement
+  ---
+  duration_ms: 3.8369
+  type: 'test'
+  ...
+# Subtest: probe requests only event types, limits to five, and sends no bearer token anonymously
+ok 120 - probe requests only event types, limits to five, and sends no bearer token anonymously
+  ---
+  duration_ms: 97.04
+  type: 'test'
+  ...
+# Subtest: probe reports an exposure from returned event-type rows without retaining row contents
+ok 121 - probe reports an exposure from returned event-type rows without retaining row contents
+  ---
+  duration_ms: 2.6415
+  type: 'test'
+  ...
+# Subtest: probe fails closed on HTTP errors and invalid response shapes
+ok 122 - probe fails closed on HTTP errors and invalid response shapes
+  ---
+  duration_ms: 2.5657
+  type: 'test'
+  ...
+# Subtest: existing tables default to online and walk-ins, with a separate free state
+ok 123 - existing tables default to online and walk-ins, with a separate free state
+  ---
+  duration_ms: 5015.7529
+  type: 'test'
+  ...
+# Subtest: policy persists across all inventory copies without altering any pricing fields
+ok 124 - policy persists across all inventory copies without altering any pricing fields
+  ---
+  duration_ms: 130.2525
+  type: 'test'
+  ...
+# Subtest: walk-in-only policy rejects a direct guest insert, including a forged terminal status
+ok 125 - walk-in-only policy rejects a direct guest insert, including a forged terminal status
+  ---
+  duration_ms: 102.1942
+  type: 'test'
+  ...
+# Subtest: new and legacy availability both exclude walk-in-only tables
+ok 126 - new and legacy availability both exclude walk-in-only tables
+  ---
+  duration_ms: 157.63
+  type: 'test'
+  ...
+# Subtest: a policy change after availability rejects the later hold without creating a payment
+ok 127 - a policy change after availability rejects the later hold without creating a payment
+  ---
+  duration_ms: 92.4903
+  type: 'test'
+  ...
+# Subtest: an authorized owner seats a fitting walk-in-only table immediately without a reservation or payment
+ok 128 - an authorized owner seats a fitting walk-in-only table immediately without a reservation or payment
+  ---
+  duration_ms: 93.7638
+  type: 'test'
+  ...
+# Subtest: standard tables still accept walk-ins, and seating blocks online requests for every slot
+ok 129 - standard tables still accept walk-ins, and seating blocks online requests for every slot
+  ---
+  duration_ms: 76.6254
+  type: 'test'
+  ...
+# Subtest: held and due tables are excluded from walk-in seating; their policies cannot change
+ok 130 - held and due tables are excluded from walk-in seating; their policies cannot change
+  ---
+  duration_ms: 207.5237
+  type: 'test'
+  ...
+# Subtest: future confirmed bookings lock policy without cancellation or payment changes
+ok 131 - future confirmed bookings lock policy without cancellation or payment changes
+  ---
+  duration_ms: 200.6802
+  type: 'test'
+  ...
+# Subtest: occupied and cleaning tables stay unavailable until explicit completion and ready
+ok 132 - occupied and cleaning tables stay unavailable until explicit completion and ready
+  ---
+  duration_ms: 213.5573
+  type: 'test'
+  ...
+# Subtest: undersized and operationally unavailable tables cannot seat walk-ins
+ok 133 - undersized and operationally unavailable tables cannot seat walk-ins
+  ---
+  duration_ms: 109.9479
+  type: 'test'
+  ...
+# Subtest: guest and unrelated owner cannot change policy, seat, complete, or mark ready
+ok 134 - guest and unrelated owner cannot change policy, seat, complete, or mark ready
+  ---
+  duration_ms: 118.799
+  type: 'test'
+  ...
+# Subtest: stale inventory saves preserve a policy field omitted by older clients
+ok 135 - stale inventory saves preserve a policy field omitted by older clients
+  ---
+  duration_ms: 80.3488
+  type: 'test'
+  ...
+# Subtest: direct inventory PATCH cannot change policy or remove a table with an active booking
+ok 136 - direct inventory PATCH cannot change policy or remove a table with an active booking
+  ---
+  duration_ms: 79.8159
+  type: 'test'
+  ...
+# Subtest: a granted secondary owner can set policy and seat walk-ins; guests cannot read visit details
+ok 137 - a granted secondary owner can set policy and seat walk-ins; guests cannot read visit details
+  ---
+  duration_ms: 81.5355
+  type: 'test'
+  ...
+# Subtest: competing RPC callers get one successful seating and one rejection
+ok 138 - competing RPC callers get one successful seating and one rejection
+  ---
+  duration_ms: 67.8042
+  type: 'test'
+  ...
+# Subtest: separate owner sessions wait on the venue lock and cannot both seat one table
+ok 139 - separate owner sessions wait on the venue lock and cannot both seat one table # SKIP
+  ---
+  duration_ms: 0.7242
+  type: 'test'
+  ...
+# Subtest: a checked-in online reservation also completes through cleaning and ready
+ok 140 - a checked-in online reservation also completes through cleaning and ready
+  ---
+  duration_ms: 84.4399
+  type: 'test'
+  ...
+# Subtest: expired PayMongo holds release the table and expire their payment; the new fee stays authoritative
+ok 141 - expired PayMongo holds release the table and expire their payment; the new fee stays authoritative
+  ---
+  duration_ms: 88.1511
+  type: 'test'
+  ...
+# Subtest: a pending paid reservation with no attached provider stays held after five minutes
+ok 142 - a pending paid reservation with no attached provider stays held after five minutes
+  ---
+  duration_ms: 107.9044
+  type: 'test'
+  ...
+# Subtest: multi-session race: walk-in wins against an online hold
+ok 143 - multi-session race: walk-in wins against an online hold # SKIP
+  ---
+  duration_ms: 0.3613
+  type: 'test'
+  ...
+# Subtest: multi-session race: online reservation wins against walk-in seating
+ok 144 - multi-session race: online reservation wins against walk-in seating # SKIP
+  ---
+  duration_ms: 0.1501
+  type: 'test'
+  ...
+# Subtest: multi-session race: policy change wins against a stale online hold
+ok 145 - multi-session race: policy change wins against a stale online hold # SKIP
+  ---
+  duration_ms: 0.1005
+  type: 'test'
+  ...
+# Subtest: multi-session race: online reservation locks policy on a second device
+ok 146 - multi-session race: online reservation locks policy on a second device # SKIP
+  ---
+  duration_ms: 0.095
+  type: 'test'
+  ...
+# Subtest: physical inventory retains the strictest policy across slots and table edits
+ok 147 - physical inventory retains the strictest policy across slots and table edits
+  ---
+  duration_ms: 6.0504
+  type: 'test'
+  ...
+# Subtest: free tables of either policy fit walk-ins; every unavailable state and undersized party fails
+ok 148 - free tables of either policy fit walk-ins; every unavailable state and undersized party fails
+  ---
+  duration_ms: 2.8638
+  type: 'test'
+  ...
+# Subtest: availability never promotes walk-in-only or occupied tables, even on inconsistent server data
+ok 149 - availability never promotes walk-in-only or occupied tables, even on inconsistent server data
+  ---
+  duration_ms: 2.0536
+  type: 'test'
+  ...
+# Subtest: availability errors and malformed rows fail closed instead of returning demo tables
+ok 150 - availability errors and malformed rows fail closed instead of returning demo tables
+  ---
+  duration_ms: 3.0194
+  type: 'test'
+  ...
+# Subtest: seating sends the table and party size and requires confirmed checked-in data
+ok 151 - seating sends the table and party size and requires confirmed checked-in data
+  ---
+  duration_ms: 4.5599
+  type: 'test'
+  ...
+# Subtest: completion and readiness cannot report success without confirmed backend state
+ok 152 - completion and readiness cannot report success without confirmed backend state
+  ---
+  duration_ms: 1.6666
+  type: 'test'
+  ...
+# Subtest: live updates subscribe to table state and table policy for the selected venue and clean up
+ok 153 - live updates subscribe to table state and table policy for the selected venue and clean up
+  ---
+  duration_ms: 1.129
+  type: 'test'
+  ...
+1..153
+# tests 153
+# suites 0
+# pass 148
+# fail 0
+# cancelled 0
+# skipped 5
+# todo 0
+# duration_ms 25844.1376

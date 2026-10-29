@@ -1,0 +1,82 @@
+﻿TAP version 13
+# Subtest: deployment helper requires staging ref and rejects refs present in deployment history
+ok 1 - deployment helper requires staging ref and rejects refs present in deployment history
+  ---
+  duration_ms: 4.1923
+  type: 'test'
+  ...
+# Subtest: deployment helper offers a no-deploy dry run and requires a separate staging acknowledgement
+ok 2 - deployment helper offers a no-deploy dry run and requires a separate staging acknowledgement
+  ---
+  duration_ms: 2.9185
+  type: 'test'
+  ...
+# Subtest: shell dry-run validates a synthetic staging ref and refuses a documented beta ref
+ok 3 - shell dry-run validates a synthetic staging ref and refuses a documented beta ref
+  ---
+  duration_ms: 923.4445
+  type: 'test'
+  ...
+# Subtest: provider verification guard accepts a test key shape
+ok 4 - provider verification guard accepts a test key shape
+  ---
+  duration_ms: 3.2727
+  type: 'test'
+  ...
+# Subtest: provider verification guard refuses live, publishable, malformed and missing keys
+ok 5 - provider verification guard refuses live, publishable, malformed and missing keys
+  ---
+  duration_ms: 1.7438
+  type: 'test'
+  ...
+# Subtest: inventory validator rejects empty, zero-capacity, reserved and walk-in-only tables
+ok 6 - inventory validator rejects empty, zero-capacity, reserved and walk-in-only tables
+  ---
+  duration_ms: 3.0961
+  type: 'test'
+  ...
+# Subtest: report flags public venues with unverified/zero inventory, missing fee, or outside release scope
+ok 7 - report flags public venues with unverified/zero inventory, missing fee, or outside release scope
+  ---
+  duration_ms: 156.5997
+  type: 'test'
+  ...
+# Subtest: report refuses without opt-in and fails closed on API errors
+ok 8 - report refuses without opt-in and fails closed on API errors
+  ---
+  duration_ms: 8.6217
+  type: 'test'
+  ...
+# Subtest: read-only RLS probe refuses to run without explicit acknowledgement
+ok 9 - read-only RLS probe refuses to run without explicit acknowledgement
+  ---
+  duration_ms: 4.7767
+  type: 'test'
+  ...
+# Subtest: probe requests only event types, limits to five, and sends no bearer token anonymously
+ok 10 - probe requests only event types, limits to five, and sends no bearer token anonymously
+  ---
+  duration_ms: 135.0383
+  type: 'test'
+  ...
+# Subtest: probe reports an exposure from returned event-type rows without retaining row contents
+ok 11 - probe reports an exposure from returned event-type rows without retaining row contents
+  ---
+  duration_ms: 2.2926
+  type: 'test'
+  ...
+# Subtest: probe fails closed on HTTP errors and invalid response shapes
+ok 12 - probe fails closed on HTTP errors and invalid response shapes
+  ---
+  duration_ms: 2.4912
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1211.6362

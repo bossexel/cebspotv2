@@ -1,0 +1,67 @@
+﻿{
+    "checks":  {
+                   "javascriptSuite":  {
+                                           "evidence":  "tests/remediation/evidence/commands/final-full-tests.txt",
+                                           "failed":  0,
+                                           "skipped":  5,
+                                           "total":  419,
+                                           "passed":  414
+                                       },
+                   "typecheck":  {
+                                     "evidence":  "tests/remediation/evidence/commands/final-typecheck.txt",
+                                     "passed":  true
+                                 },
+                   "localPerformance":  {
+                                            "passed":  148,
+                                            "mockedHandlersMaxConcurrency":  50,
+                                            "failed":  0,
+                                            "evidence":  "tests/performance/evidence/local-2026-10-29T07-32-24-936Z/summary.json",
+                                            "httpRequests":  0,
+                                            "skipped":  5,
+                                            "backendLoad":  "NOT TESTED"
+                                        },
+                   "faceService":  {
+                                       "evidence":  "tests/remediation/evidence/commands/final-face-service-tests.txt",
+                                       "failed":  0,
+                                       "passed":  18
+                                   },
+                   "adminWebExport":  {
+                                          "dotenvDisabled":  true,
+                                          "bundles":  1,
+                                          "evidence":  "tests/remediation/evidence/commands/final-admin-export-release-check.txt",
+                                          "assets":  36,
+                                          "passed":  true
+                                      },
+                   "npmAudit":  {
+                                    "low":  8,
+                                    "evidence":  "tests/remediation/evidence/commands/phase-6-npm-audit-final.json",
+                                    "moderate":  17,
+                                    "total":  26,
+                                    "high":  1
+                                },
+                   "androidExport":  {
+                                         "dotenvDisabled":  true,
+                                         "bundles":  1,
+                                         "evidence":  "tests/remediation/evidence/commands/final-android-export-release-check.txt",
+                                         "assets":  62,
+                                         "passed":  true
+                                     }
+               },
+    "recordedAt":  "2026-10-29",
+    "secretValuesPrinted":  0,
+    "liveProviderCalls":  0,
+    "launchDecision":  "NO-GO",
+    "label":  "final-local-verification",
+    "openGates":  [
+                      "schema alignment script and exact schema comparison",
+                      "client capability gates",
+                      "historical session blob review under conflict with credential-read prohibition",
+                      "hosted deployment and staging acceptance",
+                      "SMTP delivery acceptance",
+                      "one remaining high image-size advisory"
+                  ],
+    "hostedCalls":  0,
+    "branch":  "remediation/audit-2026-10-29",
+    "initialExpoDotenvReadIncident":  "An initial export invocation read .env.local and printed configured variable names only; processes were stopped and final exports ran with EXPO_NO_DOTENV=1.",
+    "deploymentCommandsRun":  0
+}

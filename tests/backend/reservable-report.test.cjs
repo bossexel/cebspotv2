@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { APPROVED_RESERVATION_VENUE, hasBookableInventory, reportUnverifiedReservable } = require('../../scripts/report-unverified-reservable.cjs');
 
 const env = { ALLOW_READONLY_PROBE: '1', SUPABASE_URL: 'https://project.invalid', SUPABASE_ANON_KEY: 'mock-anon' };
@@ -29,4 +31,15 @@ test('report flags public venues with unverified/zero inventory, missing fee, or
 test('report refuses without opt-in and fails closed on API errors', async () => {
   await assert.rejects(() => reportUnverifiedReservable({ env: { ...env, ALLOW_READONLY_PROBE: '' }, fetchImpl: async () => { throw new Error('must not call'); } }), /ALLOW_READONLY_PROBE/);
   await assert.rejects(() => reportUnverifiedReservable({ env, fetchImpl: async () => Response.json([], { status: 503 }) }), /HTTP 503/);
+});
+
+test('manual flag cleanup is outside migrations and defaults to a count-only dry run', () => {
+  const manualPath = path.resolve(__dirname, '../../supabase/manual/clear-unverified-reservable.sql');
+  const migrationPath = path.resolve(__dirname, '../../supabase/migrations');
+  const sql = fs.readFileSync(manualPath, 'utf8');
+  assert.equal(manualPath.startsWith(migrationPath + path.sep), false);
+  assert.match(sql, /\\set apply_manual_change false/);
+  assert.match(sql, /select count\(\*\) as affected_public_reservable_venues/);
+  assert.match(sql, /\\if :apply_manual_change\s+update public\.spots/);
+  assert.match(sql, /\\else\s+\\echo 'Dry run only\. No venue flags were changed\.'/);
 });

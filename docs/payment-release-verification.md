@@ -49,6 +49,14 @@ provider delivery or an Android device.
 
 ## Required test-mode journeys
 
+The executable webhook verifier is test-mode-only and reads credentials from process environment variables only (it does not load `.env` files). It must refuse before any network request unless `PAYMONGO_SECRET_KEY` has an `sk_test_` key shape. `node --test tests/backend/paymongo-test-key-guard.test.cjs` verifies that live and malformed keys are rejected. Never use the live-readiness script for these scenarios.
+
+- Provider success followed by local persistence failure: expect retryable delivery failure, then replay the same provider event; verify exactly one payment transition and original paid timestamp.
+- Retry after ambiguous checkout creation: reuse the durable attempt, persisted request and same idempotency key; never create a second session.
+- Cancellation racing provider success: preserve the paid/financial-resolution state and require human resolution where funds may have settled.
+- Duplicate webhook: return duplicate without changing payment rows, activity count or `paid_at`.
+- Late paid webhook after cancellation/expiry: do not silently reopen inventory or downgrade the financial ledger; set `financial_resolution` for review.
+
 - GCash and QR Ph: one attempt/session for rapid double taps, navigation retries,
   network interruption, and provider success followed by local write failure.
 - Retries send the same persisted body and idempotency key. An active session is
