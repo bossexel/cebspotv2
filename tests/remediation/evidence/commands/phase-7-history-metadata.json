@@ -1,0 +1,8 @@
+﻿{
+    "label":  "phase-7-private-history-metadata",
+    "privateReport":  ".private/history-session-artifact-review.md",
+    "gitIgnored":  true,
+    "blobContentsRead":  0,
+    "secretPatternScan":  "NOT RUN: hard rule prohibits reading credentials/session artifacts",
+    "candidatePathCount":  5
+}

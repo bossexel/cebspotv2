@@ -26,3 +26,4 @@ tests/performance/.private/
 tests/performance/local-stack/
 tests/performance/device-artifacts/
 # Sanitized evidence under tests/performance/evidence/ is intentionally reviewable.
+.private/
