@@ -1,0 +1,8 @@
+{
+  "label": "phase-0-performance-harness",
+  "command": "node tests/performance/isolated/local-evidence.cjs",
+  "startedAt": null,
+  "finishedAt": "2026-10-29T06:53:41.411Z",
+  "exitCode": 1,
+  "output": "{\n  \"evidence\": \"tests/performance/evidence/local-2026-10-29T06-52-38-451Z\",\n  \"runs\": [\n    {\n      \"name\": \"backend-regression\",\n      \"tests\": 138,\n      \"passed\": 133,\n      \"failed\": 0,\n      \"skipped\": 5\n    },\n    {\n      \"name\": \"suite-self-tests\",\n      \"tests\": 10,\n      \"passed\": 10,\n      \"failed\": 0,\n      \"skipped\": 0\n    }\n  ],\n  \"algorithmBenchmarks\": {\n    \"operations\": 6,\n    \"validationFailures\": 0,\n    \"status\": \"PASS\"\n  },\n  \"mockedPaymentReplay\": {\n    \"signedHandlerInvocations\": 1911,\n    \"unexpectedFailures\": 1911,\n    \"stateViolations\": 91,\n    \"rowViolations\": 0,\n    \"firstPaidTimestampRewrites\": 0,\n    \"exitStatus\": \"FAIL\"\n  },\n  \"rootCause\": \"Not established; do not rerun or infer a source-level diagnosis from this harness alone.\"\n}"
+}

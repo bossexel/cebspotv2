@@ -1,6 +1,6 @@
 {
   "label": "phase-0-partial-gate-summary",
-  "recordedAt": "2026-10-29T06:49:37.490Z",
+  "recordedAt": "2026-10-29T06:53:41.411Z",
   "startingHead": "ca8526c6c2a3e5af9831ae1daf8f38c37aa5acc1",
   "branch": "remediation/audit-2026-10-29",
   "node": "v22.18.0",
@@ -50,10 +50,40 @@
     "evidence": "tests/remediation/evidence/commands/phase-0-face-service-tests.json"
   },
   "notRun": [
-    "performance harness (stopped at failed gate)",
     "remaining Phase 0 table policy/client-path inventory",
     "Phase 0 remediation plan"
   ],
   "hostedCalls": 0,
-  "applicationChanges": 0
+  "applicationChanges": 0,
+  "resolvedGate": {
+    "name": "face service tests",
+    "resolvedBy": "User-authorized installation of pytest 9.2.0 in the existing local virtual environment; PYTHON_DOTENV_DISABLED=1",
+    "result": {
+      "passed": 22,
+      "failed": 0,
+      "warning": 1
+    }
+  },
+  "next": "Run the local-only performance harness. If it fails, halt under the Phase 0 gate rule.",
+  "performance": {
+    "exitCode": 1,
+    "evidence": "tests/remediation/evidence/commands/phase-0-performance-harness.json",
+    "rawSanitizedHarnessArtifacts": [
+      "tests\\performance\\evidence\\local-2026-10-29T06-52-38-451Z\\algorithm-samples.jsonl",
+      "tests\\performance\\evidence\\local-2026-10-29T06-52-38-451Z\\backend-regression.tap",
+      "tests\\performance\\evidence\\local-2026-10-29T06-52-38-451Z\\mock-replay-samples.jsonl",
+      "tests\\performance\\evidence\\local-2026-10-29T06-52-38-451Z\\source-manifest.json",
+      "tests\\performance\\evidence\\local-2026-10-29T06-52-38-451Z\\suite-self-tests.tap",
+      "tests\\performance\\evidence\\local-2026-10-29T06-52-38-451Z\\summary.json"
+    ],
+    "failures": {
+      "unexpectedHandlerResponses": 1911,
+      "finalStateViolations": 91,
+      "duplicateRowViolations": 0,
+      "paidTimestampRewrites": 0
+    },
+    "rootCauseEstablished": false
+  },
+  "phase0Complete": false,
+  "currentFailedGate": "Local mocked payment replay/performance harness reported 100% unexpected handler responses and final-state failures for all 91 synthetic fixtures; no duplicate rows or timestamp rewrites."
 }
