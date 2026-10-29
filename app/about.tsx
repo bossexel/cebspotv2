@@ -3,6 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { requireOptionalNativeModule } from 'expo';
+import * as Updates from 'expo-updates';
 import { ArrowLeft, BookOpen, ChevronDown, ChevronRight, ChevronUp, Info, MapPin, Plus, ShieldCheck } from 'lucide-react-native';
 import { ScreenContainer } from '../src/components/ScreenContainer';
 import { aboutContent, isValidAboutLink, type AboutLink } from '../src/constants/about';
@@ -164,6 +165,15 @@ export default function AboutScreen() {
           <Text accessibilityRole="header" style={[styles.sectionTitle, headingColor]}>App information</Text>
           {renderLinks(aboutContent.policyLinks)}
           <Text style={[styles.body, bodyColor]}>CebSpot · Version {version}</Text>
+          <Text testID="about-update-channel" style={[styles.body, bodyColor]}>
+            Update channel: {Updates.channel || 'unavailable'}
+          </Text>
+          <Text testID="about-update-runtime" style={[styles.body, bodyColor]}>
+            Update runtime: {Updates.runtimeVersion || 'unavailable'}
+          </Text>
+          <Text testID="about-update-id" style={[styles.body, bodyColor]}>
+            Update ID: {Updates.updateId || 'embedded or unavailable'}
+          </Text>
           {aboutContent.releaseNotes.length > 0 && <>
             <Text style={[styles.itemTitle, headingColor]}>Release notes</Text>
             {aboutContent.releaseNotes.map((note) => <Text key={note} style={[styles.body, bodyColor]}>{note}</Text>)}

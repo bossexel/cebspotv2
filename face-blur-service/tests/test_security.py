@@ -19,8 +19,7 @@ from services.face_blur import FaceBlurSettings, PNG_SIGNATURE
 from services.job_runtime import AdmissionError, JobRuntime, run_child
 
 
-async def request(app, path='/api/anonymize-jobs', method='POST', token='customer-a', data=PNG_SIGNATURE+b'synthetic', mime='image/png', raw=None, stalled=False, idempotency_key='auto'):
-    boundary = 'testboundary'
+async def request(app, path='/api/anonymize-jobs', method='POST', token='customer-a', data=PNG_SIGNATURE+b'synthetic', mime='image/png', raw=None, stalled=False, idempotency_key='auto', boundary='testboundary'):
     body = raw if raw is not None else (f'--{boundary}\r\nContent-Disposition: form-data; name="image"; filename="synthetic.png"\r\nContent-Type: {mime}\r\n\r\n'.encode()+data+f'\r\n--{boundary}--\r\n'.encode())
     headers=[(b'content-type', f'multipart/form-data; boundary={boundary}'.encode())]
     if token is not None: headers.append((b'authorization', ('Bearer '+token).encode()))
@@ -107,11 +106,33 @@ class SecurityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.runtime.jobs),1)
         self.assertEqual(self.runtime.queue.qsize(),1)
 
-    async def test_create_requires_idempotency_key(self):
+    async def test_invalid_present_idempotency_key_is_rejected_before_body_read(self):
         status,_,_,reads=await request(self.app,idempotency_key=None)
+        # No header is the documented legacy-client path; a present malformed
+        # value must remain a hard validation failure.
+        self.assertEqual(status,202)
+        status,_,_,reads=await request(self.app,idempotency_key='bad key')
         self.assertEqual(status,400)
         self.assertEqual(reads,0)
-        self.assertEqual(len(self.runtime.jobs),0)
+        self.assertEqual(len(self.runtime.jobs),1)
+
+    async def test_legacy_missing_key_uses_image_digest_and_reuses_existing_job(self):
+        first_status,first_body,_,_=await request(self.app,idempotency_key=None,boundary='boundary-one')
+        self.assertEqual(first_status,202)
+        first_job=json.loads(first_body)['job_id']
+        second_status,second_body,_,second_reads=await request(self.app,idempotency_key=None,boundary='boundary-two')
+        self.assertEqual(second_status,202)
+        self.assertEqual(json.loads(second_body)['job_id'],first_job)
+        self.assertGreater(second_reads,0) # Legacy dedupe needs the validated file bytes.
+        self.assertEqual(len(self.runtime.jobs),1)
+        self.assertEqual(self.runtime.queue.qsize(),1)
+
+    async def test_legacy_digest_deduplication_is_scoped_to_authenticated_user(self):
+        first_status,first_body,_,_=await request(self.app,token='customer-a',idempotency_key=None)
+        second_status,second_body,_,_=await request(self.app,token='customer-b',idempotency_key=None)
+        self.assertEqual((first_status,second_status),(202,202))
+        self.assertNotEqual(json.loads(first_body)['job_id'],json.loads(second_body)['job_id'])
+        self.assertEqual(len(self.runtime.jobs),2)
 
     async def test_cancel_owner_never_cancels_other_users_and_removes_running_output(self):
         self.gate.clear()
@@ -191,6 +212,8 @@ class SecurityTests(unittest.IsolatedAsyncioTestCase):
             status,_,_,_=await request(self.app,token=f'customer-{index}',**kwargs)
             self.assertEqual(status,expected);self.assertFalse(self.runtime.jobs)
         self.assertEqual((await request(self.app,token='stalled',stalled=True))[0],408)
+        self.assertFalse(self.runtime.jobs);self.assertEqual(list(self.runtime.root.glob('face-job-*')),[])
+        self.assertEqual((await request(self.app,token='legacy-stalled',stalled=True,idempotency_key=None))[0],408)
         self.assertFalse(self.runtime.jobs);self.assertEqual(list(self.runtime.root.glob('face-job-*')),[])
 
     async def test_minimal_face_runtime_skips_unused_mediapipe_modules(self):
