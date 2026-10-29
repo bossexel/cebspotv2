@@ -1,0 +1,19 @@
+﻿{
+    "refusal":  "A ref extracted in-memory from deployment history was refused without echoing it",
+    "dryRun":  "Git Bash executed with synthetic ref; output confirms no deploy invoked",
+    "requiredSecretNamesDocumented":  true,
+    "executedDeployment":  false,
+    "tests":  {
+                  "command":  "node --test tests/backend/deploy-edge-functions.test.cjs",
+                  "failed":  0,
+                  "passed":  3
+              },
+    "scheduleAndAlertGuidance":  true,
+    "label":  "phase-3-edge-function-tooling",
+    "evidence":  [
+                     "scripts/deploy-edge-functions.sh",
+                     "tests/backend/deploy-edge-functions.test.cjs",
+                     "docs/edge-function-operations.md",
+                     "docs/staging-upgrade-runbook.md"
+                 ]
+}
