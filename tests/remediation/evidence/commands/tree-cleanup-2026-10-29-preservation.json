@@ -1,0 +1,8 @@
+{
+  "label": "tree-cleanup-2026-10-29-preservation",
+  "command": "git status --porcelain; git log; git branch --list; SHA-256 comparison of original pending files against working files or stash untracked-file blobs",
+  "startedAt": "2026-10-29T06:38:12.271Z",
+  "finishedAt": "2026-10-29T06:38:12.271Z",
+  "exitCode": 0,
+  "output": "{\n  \"originalHead\": \"08579dd025bab5b833aa699efab399b41e627eca\",\n  \"preservationHead\": \"13f4ef75c79de77aad2905de8ef99335171f9156\",\n  \"branch\": \"audit-remediation-2026-10-12\",\n  \"workingTreeCleanBeforeThisEvidenceFile\": true,\n  \"originalFilesPreservedInWorkingTree\": 67,\n  \"originalFilesPreservedInStash\": 5,\n  \"stashCommit\": \"69ca700d0519a988b521e244222fcaf66b88290a\",\n  \"stashLabel\": \"tree-cleanup-2026-10-29 unresolved patch and restricted audit scripts\",\n  \"commits\": [\n    \"13f4ef7 docs: preserve existing final defense rehearsal\",\n    \"3686649 test(audit): preserve existing focused privacy verification packet\",\n    \"d990bfa docs(audit): preserve October 28-29 launch reports and evidence\"\n  ],\n  \"freshFunctionalTestsRun\": false,\n  \"credentialFilesRead\": false,\n  \"hostedCallsMade\": false,\n  \"existingTestOrMigrationContentsModified\": false,\n  \"remediationBranchExists\": false\n}"
+}
