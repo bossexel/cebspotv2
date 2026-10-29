@@ -1,0 +1,8 @@
+{
+  "label": "phase-0-face-service-tests-rerun",
+  "command": "PYTHON_DOTENV_DISABLED=1 face-blur-service/venv/Scripts/python.exe -m pytest -q face-blur-service/tests",
+  "startedAt": null,
+  "finishedAt": "2026-10-29T06:52:33.755Z",
+  "exitCode": 0,
+  "output": "22 passed, 0 failed, 1 warning (pytest plugin deprecation)."
+}
