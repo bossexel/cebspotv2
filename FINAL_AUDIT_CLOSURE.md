@@ -1,5 +1,7 @@
 # CebSpot audit closure — local verification and external gates
 
+Fresh audit rerun: [October 28–29 source and hosted checks](LAUNCH_AUDIT_2026-10-29.md) retain 391 passing checks / five skips, passing exports and confirmed live activity exposure plus unavailable booking/upload/deletion/payment-maintenance contracts. General-launch recommendation remains **NO-GO**. The refreshed `--omit=dev` advisory count is 29; the broader dependency handoff uses a different scan scope.
+
 Current consolidated handoff: [October 29 review](docs/android-release-candidate-2026-10-29.md), application/dependency source `023f5a0`. It maps every LA finding to local evidence and remaining external acceptance, links changed files/migrations/commands, and supplies staging, rollback and Android manual steps. Local changes are committed; native/deployed gates keep the recommendation **NO-GO**.
 
 Latest local verification, **October 29**: 391 JavaScript/SQL/handler checks pass (5 optional legacy skips), 22 face checks pass, TypeScript/lint and final Android/admin exports pass, admin browser/web denial pass, and the current source/export secret scan has no matches. Python audit/consistency pass; npm retains 30 affected packages including 3 high. **NO-GO remains for unrestricted UAT/production** until isolated staging, Auth/Storage/provider/email, Linux-image and native-device gates pass. The exports are local verification artifacts. The original findings are not declared broadly closed by these builds. See [current resumed evidence](docs/remediation-resume-2026-10-28.md).
@@ -150,4 +152,12 @@ Final dependency root-path review identified Expo Router's legacy decoder on And
 Verified runtime source commit: `ae9b024` (193 retained source hashes; 15 ordered migrations). Final `final-closure-secret-scan` passes: 551 current files and 106 exported files scanned, zero matches, zero oversized omissions, zero generated browser/scratch files tracked in HEAD. Five historical sensitive filenames remain inventoried; this does not clear historical credential/session exposure. No rotation or history rewrite was performed.
 
 All safe local groups are committed with regressions. The evidence/handoff commit follows the source commit without changing runtime sources. Remaining original user modifications and unrelated untracked work are intentionally preserved. Release recommendation remains **NO-GO**: missing isolated staging/matching PostgreSQL/Auth/Storage, provider test delivery, real inventory confirmation, APK/device/container acceptance and residual security review are listed with exact next steps in the handoff. No production deployment, existing database reset, real payment, account erasure, credential rotation or history rewrite occurred.
+
+## October 29 focused LA-01 upgrade packet
+
+Reviewed newer read-only audit evidence confirms hosted private reservation-event visibility for anonymous and unrelated users. LA-01 remains failing live. The [focused packet](docs/activity-privacy-focused-upgrade.md) reuses the unchanged timestamped privacy migration and supplies a catalog-only preflight; no hosted policy or data was changed.
+
+The representative older-schema rehearsal retains booking/payment columns, all activity/reservation rows and the complete paid-ledger snapshot while enforcing six-role privacy under a permissive overlap. Its combined group passes 22 checks. The complete suite now passes **397 tests, zero failures, five optional legacy skips (402 total)**. Initial fixture mistakes are retained separately. Application/native source is unchanged; previous compilation/device limits still apply.
+
+Actual catalog review, isolated Supabase/test-provider configuration, separately authorized hosted remediation and direct-API/native acceptance remain external boundaries. No management/database capability or isolated staging identity was found in the task's environment configuration; no device is attached in the latest retained check. A public staging project reference has been requested without asking for secrets. This packet is reviewable local preparation, not production authorization or a release GO.
 

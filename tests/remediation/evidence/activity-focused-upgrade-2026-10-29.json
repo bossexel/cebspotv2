@@ -1,0 +1,92 @@
+{
+  "capturedAt": "2026-10-28T16:31:49.276Z",
+  "kind": "local-focused-upgrade-packet-and-reviewed-existing-audit",
+  "deploymentPerformed": false,
+  "newNetworkProbePerformed": false,
+  "applicationSourceCommit": "023f5a0",
+  "candidateFiles": [
+    {
+      "file": "supabase/migrations/20261013000100_activity_privacy.sql",
+      "sha256": "53d9513b16551b6b03772b2f7c1fa93a9b2dece93a2532874f1b0bb7f4e96cf5"
+    },
+    {
+      "file": "supabase/verification/activity-privacy-preflight.sql",
+      "sha256": "17bcbf9af5971099d2d5d667d1347afac7195d8ddfa9245d3f8fc2ea3dc30d2b"
+    },
+    {
+      "file": "tests/remediation/activity-legacy-upgrade.test.cjs",
+      "sha256": "a1db9dc3090fdf47149e5eba08dc9f946244b94a774b415a07d7067559041443"
+    }
+  ],
+  "reviewedAudit": {
+    "file": "tests/launch-audit/evidence/2026-10-29-rerun/live-readonly.json",
+    "sha256": "cdfb4ade0eb6ac67b360df3967b8540c095ef8ad1bdd5b1a9ee56a1a81816e9a",
+    "probeSha256": "874105d23b92d64c2f1927873a3672a6ac0513cbae0be9ad04aee0846d188683",
+    "observedAt": "2026-10-28T16:03:29.583Z",
+    "configuredProviderMode": "live",
+    "selectedObservations": [
+      {
+        "label": "anonymous:walk_in_visits",
+        "status": 404,
+        "errorCode": "PGRST205"
+      },
+      {
+        "label": "anonymous:private-reservation-events",
+        "status": 200,
+        "rowsCappedAtFive": 5
+      },
+      {
+        "label": "table-availability-rpc",
+        "status": 404,
+        "errorCode": "PGRST202"
+      },
+      {
+        "label": "reservation-inventory-verification-column",
+        "status": 400,
+        "errorCode": "42703"
+      },
+      {
+        "label": "reservation-server-deadline-column",
+        "status": 400,
+        "errorCode": "42703"
+      },
+      {
+        "label": "payment-durable-attempt-column",
+        "status": 400,
+        "errorCode": "42703"
+      },
+      {
+        "label": "reservation-financial-resolution-column",
+        "status": 400,
+        "errorCode": "42703"
+      },
+      {
+        "label": "unauthenticated-function:private-upload",
+        "status": 404,
+        "errorCode": "NOT_FOUND"
+      },
+      {
+        "label": "unauthenticated-function:delete-account",
+        "status": 404,
+        "errorCode": "NOT_FOUND"
+      },
+      {
+        "label": "unauthenticated-function:payment-maintenance",
+        "status": 404,
+        "errorCode": "NOT_FOUND"
+      },
+      {
+        "label": "unauthenticated-function:private-upload-maintenance",
+        "status": 404,
+        "errorCode": "NOT_FOUND"
+      },
+      {
+        "label": "unrelated-user:private-reservation-events",
+        "status": 200,
+        "rowsCappedAtFive": 5
+      }
+    ]
+  },
+  "regressionReport": "commands/resume-2026-10-29-privacy-ledger-preservation.json",
+  "limitations": "Representative new native PostgreSQL fixture, not a cloned hosted catalog or real JWT/PostgREST acceptance. Remote metadata review, rehearsal and separately authorized hosted application remain required."
+}

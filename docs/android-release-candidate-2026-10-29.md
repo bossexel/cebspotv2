@@ -1,5 +1,7 @@
 # Android release candidate review — October 29, 2026
 
+Focused follow-up: reviewed newer audit evidence confirms hosted private activity exposure and missing backend contracts, rather than merely absent proof. A [focused privacy upgrade packet](activity-privacy-focused-upgrade.md) now rehearses unchanged migration 001 on an older schema, preserves the complete synthetic paid ledger and supplies read-only catalog checks. The complete suite including six new checks passes **397/402 with zero failures and five optional skips**. No production policy was changed. The rest of this handoff retains the prior source/export evidence; the application source is unchanged by the new test/preflight files.
+
 **Recommendation: NO-GO for unrestricted UAT or production.** The local application at source commit `023f5a0` passes the checks below. The retained Android artifact is backend-disabled Hermes bytecode, not an installable or staging-approved APK. An earlier runtime 1.0.4 public beta/installer exists, as documented in [the October 28 deployment record](deployment-2026-10-28.md); it does not contain proof that these fixes or the original complete security/payment schema are deployed.
 
 No real-data backend writes, production deployment, real payments, existing-database reset, credential rotation or history rewrite were performed in this resumed remediation. Original user changes and separately generated audit work were preserved. The approved Saturday, October 17 deadline has passed; this report does not backdate acceptance.
