@@ -1,0 +1,396 @@
+﻿{
+  "policies": [
+    {
+      "policyname": "account_active_guard",
+      "roles": "{public}",
+      "cmd": "ALL",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "policyname": "activities_admin_select",
+      "roles": "{public}",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE"
+    },
+    {
+      "policyname": "activities_insert_own",
+      "roles": "{authenticated}",
+      "cmd": "INSERT",
+      "permissive": "PERMISSIVE"
+    },
+    {
+      "policyname": "activities_private_visibility_guard",
+      "roles": "{anon,authenticated}",
+      "cmd": "SELECT",
+      "permissive": "RESTRICTIVE"
+    },
+    {
+      "policyname": "activities_read",
+      "roles": "{anon,authenticated}",
+      "cmd": "SELECT",
+      "permissive": "PERMISSIVE"
+    }
+  ],
+  "tableGrants": [
+    {
+      "grantee": "anon",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "anon",
+      "privilege_type": "SELECT",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "authenticated",
+      "privilege_type": "SELECT",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "DELETE",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "INSERT",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "REFERENCES",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "SELECT",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "TRIGGER",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "TRUNCATE",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "postgres",
+      "privilege_type": "UPDATE",
+      "is_grantable": "YES"
+    },
+    {
+      "grantee": "service_role",
+      "privilege_type": "DELETE",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "privilege_type": "INSERT",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "privilege_type": "SELECT",
+      "is_grantable": "NO"
+    },
+    {
+      "grantee": "service_role",
+      "privilege_type": "UPDATE",
+      "is_grantable": "NO"
+    }
+  ],
+  "activityFunctionGrants": [
+    {
+      "routine_name": "add_local_update_comment",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "add_local_update_comment",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "add_review_reply",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "add_review_reply",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "apply_paymongo_snapshot",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "apply_paymongo_snapshot",
+      "grantee": "service_role",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "approve_paid_reservation",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "approve_paid_reservation",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "approve_spot_submission",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "approve_spot_submission",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "can_read_activity",
+      "grantee": "anon",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "can_read_activity",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "can_read_activity",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "can_read_activity",
+      "grantee": "service_role",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "delete_admin_owner_request",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "delete_admin_owner_request",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "delete_admin_owner_request",
+      "grantee": "service_role",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "delete_admin_spot_submission",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "delete_admin_spot_submission",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "delete_admin_spot_submission",
+      "grantee": "service_role",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "finalize_dedicated_owner_account",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "finalize_dedicated_owner_account",
+      "grantee": "service_role",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "get_admin_dashboard",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "get_admin_dashboard",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "mark_review_helpful",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "mark_review_helpful",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "owner_record_reservation_attendance_internal",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "review_owner_access_request",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "review_owner_access_request",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "validate_activity_insert",
+      "grantee": "PUBLIC",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "validate_activity_insert",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    },
+    {
+      "routine_name": "vote_on_spot_submission",
+      "grantee": "authenticated",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "NO"
+    },
+    {
+      "routine_name": "vote_on_spot_submission",
+      "grantee": "postgres",
+      "privilege_type": "EXECUTE",
+      "is_grantable": "YES"
+    }
+  ],
+  "views": [],
+  "functions": [
+    {
+      "function_name": "public.add_local_update_comment",
+      "arguments": "target_local_update_id uuid, comment_body text, parent_comment_id uuid",
+      "security_definer": true
+    },
+    {
+      "function_name": "public.add_review_reply",
+      "arguments": "target_review_id uuid, target_spot_id uuid, reply_body text, parent_reply_id uuid",
+      "security_definer": true
+    },
+    {
+      "function_name": "public.apply_paymongo_snapshot",
+      "arguments": "incoming_event_id text, target_attempt_id uuid, session_snapshot jsonb",
+      "security_definer": true
+    },
+    {
+      "function_name": "public.approve_paid_reservation",
+      "arguments": "reservation_id uuid",
+      "security_definer": true
+    },
+    {
+      "function_name": "public.approve_spot_submission",
+      "arguments": "target_submission_id uuid",
+      "security_definer": true
+    },
+    {
+      "function_name": "public.can_read_activity",
+      "arguments": "recipient uuid, event_type text, event_target text, event_spot uuid",
+      "security_definer": true
+    },
+    {
+      "function_name": "public.delete_admin_owner_request",
+      "arguments": "target_request_id uuid",
+      "security_definer": true
+    },
+    {
+      "function_name": "public.delete_admin_spot_submission",
+      "arguments": "target_submission_id uuid",
+      "security_definer": true
+    },
+    {
+      "function_name": "public.finalize_dedicated_owner_account",
+      "arguments": "target_request_id uuid, dedicated_owner_id uuid, reviewing_admin_id uuid, notes text",
+      "security_definer": true
+    },
+    {
+      "function_name": "public.get_admin_dashboard",
+      "arguments": "",
+      "security_definer": true
+    },
+    {
+      "function_name": "public.mark_review_helpful",
+      "arguments": "target_review_id uuid",
+      "security_definer": true
+    },
+    {
+      "function_name": "public.owner_record_reservation_attendance_internal",
+      "arguments": "reservation_id uuid, attendance_status text",
+      "security_definer": true
+    },
+    {
+      "function_name": "public.review_owner_access_request",
+      "arguments": "target_request_id uuid, decision text, notes text",
+      "security_definer": true
+    },
+    {
+      "function_name": "public.validate_activity_insert",
+      "arguments": "",
+      "security_definer": false
+    },
+    {
+      "function_name": "public.vote_on_spot_submission",
+      "arguments": "target_submission_id uuid, next_vote_type text",
+      "security_definer": true
+    }
+  ],
+  "publication": [
+    {
+      "pubname": "supabase_realtime",
+      "schemaname": "public",
+      "tablename": "activities"
+    }
+  ]
+}
