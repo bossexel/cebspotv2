@@ -7,7 +7,13 @@ const vm = require('node:vm');
 const ts = require('typescript');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
-const { getSpotPostSubmissionId } = load('src/utils/spotPostInteractions.ts');
+const {
+  adjustSpotPostCounts,
+  getOptimisticSpotVote,
+  getSpotPostSubmissionId,
+  setSpotPostCount,
+  setSpotPostVote,
+} = load('src/utils/spotPostInteractions.ts');
 const submissionId = '30000000-0000-4000-8000-000000000001';
 
 test('new and historical approved posts route likes to their original submission', async () => {
@@ -33,6 +39,17 @@ test('new and historical approved posts route likes to their original submission
   }
 });
 
+test('author like notifications route to the exact Activity post submission', () => {
+  const { getUserNotificationRoute } = load('src/services/userNotificationService.ts', {
+    'react-native': { Platform: { OS: 'web' } },
+    '../constants/colors': { colors: {} },
+  });
+  const route = getUserNotificationRoute({ type:'spot_liked',target_id:submissionId });
+  assert.equal(route.routeType,'activity_post');
+  assert.equal(route.submissionId,submissionId);
+  assert.equal(getUserNotificationRoute({ type:'spot_liked',target_id:null }),null);
+});
+
 test('announcements, recommendations and missing or malformed sources have no like target', () => {
   for (const post of [
     {source_type:'recommendation',source_id:submissionId},
@@ -41,6 +58,30 @@ test('announcements, recommendations and missing or malformed sources have no li
     {source_type:'spot_submission',source_id:''},
     {source_type:'community',source_id:{id:submissionId}},
   ]) assert.equal(getSpotPostSubmissionId(post),null);
+});
+
+test('optimistic like rolls back on backend failure and keeps duplicate feed cards in sync', () => {
+  const duplicate = {id:'post-copy',source_type:'community',source_id:submissionId,spot_count:4};
+  const post = {id:'post',source_type:'spot_submission',source_id:submissionId,spot_count:4};
+  const unrelated = {id:'announcement',source_type:'community',source_id:null,spot_count:0};
+  const posts = [post,duplicate,unrelated];
+  const priorVote = null;
+  const submissionVotes = {};
+  const optimistic = getOptimisticSpotVote(priorVote);
+  assert.equal(optimistic.vote,'up');
+  assert.equal(optimistic.delta,1);
+  const selectedAfterClick = setSpotPostVote(submissionVotes,submissionId,optimistic.vote);
+  assert.equal(selectedAfterClick[submissionId],'up');
+  const displayedAfterClick = adjustSpotPostCounts(posts,submissionId,optimistic.delta);
+  assert.deepEqual(displayedAfterClick.map(row=>row.spot_count),[5,5,0]);
+
+  // Production applies the inverse delta in its rejected-RPC path and restores
+  // the prior selected vote; this models the same state transition.
+  const restoredCounts = adjustSpotPostCounts(displayedAfterClick,submissionId,-optimistic.delta);
+  const restoredVotes = setSpotPostVote(selectedAfterClick,submissionId,priorVote);
+  assert.deepEqual(restoredCounts.map(row=>row.spot_count),[4,4,0]);
+  assert.equal(restoredVotes[submissionId],undefined);
+  assert.deepEqual(setSpotPostCount(displayedAfterClick,submissionId,9).map(row=>row.spot_count),[9,9,0]);
 });
 
 test('actual Activity card enables historical likes, exposes selected state and disables in-flight clicks', () => {

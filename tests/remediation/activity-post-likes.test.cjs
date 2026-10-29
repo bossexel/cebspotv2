@@ -47,6 +47,7 @@ test('upgrade retains the original like, author, caption, media, post type and c
   for (const key of ['id','user_id','body','created_at','media_urls']) assert.deepEqual(p[key],historicalPost[key]);
   assert.equal(p.source_type,'community');
   assert.equal((await db.query('select count(*)::int n from spot_submission_votes where submission_id=$1',[historical])).rows[0].n,1);
+  assert.equal(p.spot_count,1);
   assert.equal((await db.query('select count(*)::int n from local_update_comments where local_update_id=$1',[p.id])).rows[0].n,1);
 });
 
@@ -66,6 +67,8 @@ test('historical post supports unlike, like and current counters through both in
   assert.ok(notifications.every(n=>n.user_id===author && n.target_id===historical));
   await db.as(bob);
   assert.equal((await db.query("select id from activities where type='spot_liked' and target_id=$1",[historical])).rows.length,0);
+  assert.equal((await db.query('select count(*)::int n from spot_submission_votes where submission_id=$1 and user_id=$2',[historical,carol])).rows[0].n,0,
+    'a voter cannot read another user’s persisted selection');
 });
 
 test('new posts and authors own likes work without touching an unrelated historical post', async () => {
@@ -87,6 +90,7 @@ test('anonymous, deleted-account, rejected and nonexistent post votes are reject
   await assert.rejects(db.query(`insert into spot_submission_votes(submission_id,user_id,vote_type)
     values($1,$2,'up')`,[modern,bob]),/permission denied/);
   await assert.rejects(db.query('delete from spot_submission_votes where submission_id=$1',[historical]),/permission denied/);
+  await assert.rejects(db.query("update spot_submission_votes set vote_type='down' where submission_id=$1",[historical]),/permission denied/);
   for (const source of [rejected,id(999)]) {
     await assert.rejects(db.query('select * from vote_on_spot_submission($1,$2)',[source,'up']),/unavailable/);
   }
@@ -124,6 +128,10 @@ test('concurrent likes count both users and repeated toggles by one user seriali
       other.query('select * from toggle_spot_submission_vote($1)',[submission]),
     ]);
     assert.equal((await db.query('select spot_count from local_updates where id=$1',[p.id])).rows[0].spot_count,2);
-    assert.equal((await db.query('select count(*)::int n from spot_submission_votes where submission_id=$1',[submission])).rows[0].n,2);
+    assert.equal((await db.query('select count(*)::int n from spot_submission_votes where submission_id=$1',[submission])).rows[0].n,1,
+      'the authenticated voter sees only their own selected state');
+    await db.exec('reset role');
+    assert.equal((await db.query('select count(*)::int n from spot_submission_votes where submission_id=$1',[submission])).rows[0].n,2,
+      'the stored vote rows still contain both users selections');
   } finally { await other.end(); }
 });

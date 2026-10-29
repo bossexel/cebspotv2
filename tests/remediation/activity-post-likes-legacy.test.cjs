@@ -23,6 +23,10 @@ before(async () => {
   await db.exec('reset role');
   await db.query("update spot_submissions set status='approved' where id=$1",[submission]);
   post=(await db.query("update local_updates set source_type='community' where source_id=$1 returning *",[submission])).rows[0];
+  await db.as(ids.b);
+  assert.equal((await db.query('select * from vote_on_spot_submission($1,$2)',[submission,'up'])).rows[0].vote_count,1);
+  assert.equal((await db.query('select spot_count from local_updates where id=$1',[post.id])).rows[0].spot_count,0);
+  await db.exec('reset role');
   await db.exec(migration);
 });
 after(async () => { await db?.close(); });
@@ -32,9 +36,14 @@ test('focused upgrade supports historical likes on the older beta without replac
   assert.equal(guard,guardBefore);
   assert.equal((await db.query("select to_regclass('account_deletion_requests') name")).rows[0].name,null);
   assert.deepEqual((await db.query('select * from reservations order by id')).rows,commerceBefore);
+  assert.equal((await db.query('select spot_count from local_updates where id=$1',[post.id])).rows[0].spot_count,1,
+    'upgrade repairs the historical displayed counter from preserved votes');
   await db.as(ids.b);
-  assert.equal((await db.query('select * from toggle_spot_submission_vote($1)',[submission])).rows[0].vote_count,1);
-  assert.equal((await db.query('select spot_count from local_updates where id=$1',[post.id])).rows[0].spot_count,1);
+  assert.equal((await db.query('select * from toggle_spot_submission_vote($1)',[submission])).rows[0].vote_count,0);
+  assert.equal((await db.query('select spot_count from local_updates where id=$1',[post.id])).rows[0].spot_count,0);
+  const relike=(await db.query('select * from toggle_spot_submission_vote($1)',[submission])).rows[0];
+  assert.equal(relike.vote_count,1);
+  assert.equal(relike.voted,true);
   assert.equal((await db.query('select * from toggle_spot_submission_vote($1)',[submission])).rows[0].voted,false);
 });
 

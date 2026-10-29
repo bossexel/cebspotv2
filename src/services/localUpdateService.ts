@@ -1,5 +1,6 @@
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import type { LocalUpdate, LocalUpdateComment, NewLocalUpdate, SpotVoteResult, SpotVoteType } from '../types';
+import { getSpotPostSubmissionId } from '../utils/spotPostInteractions';
 
 const fallbackLocalUpdates: LocalUpdate[] = [
   {
@@ -270,7 +271,7 @@ export const localUpdateService = {
 
   async voteOnSpotSubmission(submissionId: string, voteType: SpotVoteType): Promise<SpotVoteResult> {
     if (!hasSupabaseConfig) {
-      const update = localUpdates.find((item) => item.source_type === 'spot_submission' && item.source_id === submissionId);
+      const update = localUpdates.find((item) => getSpotPostSubmissionId(item) === submissionId);
       if (!update) return { vote_count: 0, vote_type: null, voted: false };
       const previousVote = localVotes.get(submissionId) ?? null;
       const nextVote = previousVote === voteType ? null : voteType;

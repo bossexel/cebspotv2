@@ -15,22 +15,26 @@ targets. Announcements without a submission source remain ineligible. The
 server is the final authority for a UUID that does not resolve to a real post.
 
 The focused migration retains both installed-client RPC signatures, existing
-vote rows and account guards. It serializes toggles per submission, updates the
-matching post counters and notifies the author for new likes. Direct client
-table mutations are revoked so they cannot bypass these operations; reads and
-service-role access are retained. No captions, media, threads, source types or
-historical vote ownership are rewritten, and no booking/payment schema changes
-are required.
+vote rows and account guards. It serializes toggles per submission, reconciles
+stale displayed counters from the preserved vote rows for eligible posts,
+updates matching counters on each toggle and notifies the author for new likes.
+Direct client table mutations are revoked so they cannot bypass these
+operations; reads and service-role access are retained. No captions, media,
+threads, source types, timestamps or historical vote ownership are rewritten,
+and no booking/payment schema changes are required.
 
 ## Validation and local commands
 
 Database coverage includes the complete migration chain and a representative
 older beta schema with only its documented independent-post/identity updates.
 Tests cover preservation, like/unlike, own likes, vote direction changes,
-recipient-only notifications, anonymous/unconfirmed/deleting-account denial,
+recipient-only notifications and routing to the exact submission, private
+per-user vote selections, anonymous/unconfirmed/deleting-account denial,
 rejected/missing/orphaned posts, direct-write denial and concurrent toggles.
-The actual Activity card is rendered through native primitive adapters to check
-enabled/selected/in-flight state. These checks are not Android device acceptance.
+The Activity handler's synchronous per-submission lock and optimistic rollback
+are covered; the actual Activity card is rendered through native primitive
+adapters to check enabled/selected/in-flight state. These checks are not Android
+device acceptance.
 
 On Linux, install test-only dependencies outside the application's package files:
 
@@ -52,16 +56,16 @@ Full-suite command:
 WALK_IN_PG_PACKAGES=/workspace/.cebspot-test-tools/node_modules npm test -- --test-concurrency=2
 ```
 
-The existing deployment-script test has hardcoded Windows Git Bash paths and
-fails on Linux. Report that failure separately; do not count it as passed or
-disable its assertion. It does not execute a deployment.
+The earlier Linux run had one failure in the existing deployment-script test's
+hardcoded Windows Git Bash path assertion. On this Windows run that test passed;
+no assertions were disabled or skipped to obtain a pass.
 
-Implementation validation: full suite **430 passed, 1 failed, 5 skipped (436
-total)**. The sole failure is that unchanged Git Bash path assertion. TypeScript,
-Android export, admin web export and `git diff --check` passed. The regenerated
-migration manifest includes the new migration and refreshes the previously stale
-hash for the unchanged authorization-hardening migration. No live database,
-authenticated API or Android-device validation was performed.
+Current implementation validation: full suite **433 passed, 0 failed, 5
+skipped (438 total)**. TypeScript, Android export, admin web export and
+`git diff --check` passed. The regenerated migration manifest includes the
+focused migration and refreshes the previously stale hash for the unchanged
+authorization-hardening migration. No live database, authenticated API or
+Android-device validation was performed.
 
 ## Release order — not executed by implementation
 

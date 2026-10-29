@@ -105,6 +105,10 @@ function getRouteForActivity(activity: Activity): UserNotificationRoute | null {
   return null;
 }
 
+export function getUserNotificationRoute(activity: Activity): UserNotificationRoute | null {
+  return getRouteForActivity(activity);
+}
+
 function getNotificationData(activity: Activity): Record<string, string> | undefined {
   const route = getRouteForActivity(activity);
   if (!route) return undefined;

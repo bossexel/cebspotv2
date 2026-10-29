@@ -16,7 +16,9 @@ test('activity posts expose one outline Spot control with its count and no pill,
   assert.match(screen, /formatSpotScore\(item\.spot_count\)/);
   assert.match(screen, /accessibilityState=\{\{ selected: currentVote === 'up'/);
   assert.match(screen, /hitSlop=\{10\}/);
-  assert.match(screen, /const optimisticVote: SpotVoteType \| null/);
+  assert.match(screen, /getOptimisticSpotVote\(previousVote\)/);
+  assert.match(screen, /votingSubmissionIdsRef\.current\.has\(submissionId\)/);
+  assert.match(screen, /votingSubmissionIdsRef\.current\.add\(submissionId\)/);
   assert.match(screen, /<MapPin[\s\S]*color=\{currentVote === 'up' \? colors\.primary/);
   assert.doesNotMatch(screen, /spotVoteButtonActive|styles\.spotVoteButton,[\s\S]{0,160}(borderColor|backgroundColor)/);
   assert.doesNotMatch(screen, /voting \? \([\s\S]{0,100}<ActivityIndicator/);

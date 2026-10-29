@@ -93,8 +93,29 @@ revoke all on function public.toggle_spot_submission_vote(uuid) from public,anon
 grant execute on function public.toggle_spot_submission_vote(uuid) to authenticated;
 
 -- Client writes must use these RPCs so eligibility, counters and notifications
--- cannot be bypassed with a direct table insert. Existing vote reads remain.
+-- cannot be bypassed with a direct table insert. Own-vote reads remain.
 revoke insert,update,delete on public.spot_submission_votes from public,anon,authenticated;
+-- The old read policy exposed each voter's selected state to every account.
+-- The feed uses aggregate counters; only the current user's own selection is
+-- needed to render the selected button state.
+drop policy if exists "spot_submission_votes_read" on public.spot_submission_votes;
+drop policy if exists spot_submission_votes_read_own on public.spot_submission_votes;
+create policy spot_submission_votes_read_own on public.spot_submission_votes
+  for select to authenticated using (user_id=auth.uid());
+
+-- Older approvals may have persisted votes while leaving the relabelled
+-- community post's cached counter stale. Rebuild only counters backed by a
+-- matching, non-rejected submission; do not touch post content or timestamps.
+update public.local_updates u set spot_count=(
+  select coalesce(sum(case v.vote_type when 'up' then 1 else -1 end),0)::integer
+  from public.spot_submission_votes v
+  where v.submission_id=s.id
+)
+from public.spot_submissions s
+where u.source_id=s.id::text
+  and u.source_type in ('spot_submission','community')
+  and u.user_id=s.submitter_id
+  and s.status in ('pending','approved');
 
 notify pgrst,'reload schema';
 commit;
