@@ -6,14 +6,17 @@ function fixture(options={}) {
   let handler;const removals=[];let lookups=0;
   const token='synthetic-private-worker-credential';
   load('supabase/functions/private-upload-maintenance/index.ts',{
-    '../_shared/cors.ts':{jsonResponse(body,status=200){return new Response(JSON.stringify(body),{status})}},
+    '../_shared/cors.ts':{corsHeaders:{'Access-Control-Allow-Origin':'*'},jsonResponse(body,status=200){return new Response(JSON.stringify(body),{status})}},
     '../_shared/paymongo.ts':{getRequiredEnv(){return token},makeServiceClient(){return {
       async rpc(name,args){lookups++;assert.equal(name,'list_expired_private_uploads');assert.equal(args.batch_size,50);return {data:[{bucket_id:'payment-proofs',object_name:'synthetic-proof.png'},{bucket_id:'owner-verification-documents',object_name:'synthetic-document.pdf'}],error:options.lookupError?{}:null}},
       storage:{from(bucket){return {async remove(names){removals.push({bucket,names});return {error:options.removeError?{}:null}}}}}}}},
     '../_shared/paymentSignature.ts':{async sha256(value){return createHash('sha256').update(value).digest('hex')}},
   },{Request,Response,Deno:{serve(fn){handler=fn}}});
-  return {removals,get lookups(){return lookups},call(auth=`Bearer ${token}`){return handler(new Request('https://fixture.invalid',{method:'POST',headers:{authorization:auth}}))}};
+  return {removals,get lookups(){return lookups},call(auth=`Bearer ${token}`,method='POST'){return handler(new Request('https://fixture.invalid',{method,headers:{authorization:auth}}))}};
 }
+test('orphan maintenance handles CORS preflight without database or storage access',async()=>{
+  const f=fixture();const response=await f.call('', 'OPTIONS');assert.equal(response.status,200);assert.equal(response.headers.get('access-control-allow-origin'),'*');assert.equal(f.lookups,0);assert.equal(f.removals.length,0);
+});
 test('orphan maintenance requires its server credential before database or storage access',async()=>{
   const f=fixture();assert.equal((await f.call('Bearer customer-session')).status,401);assert.equal(f.lookups,0);assert.equal(f.removals.length,0);
 });

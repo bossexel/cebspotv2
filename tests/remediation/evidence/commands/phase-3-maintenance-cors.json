@@ -1,0 +1,16 @@
+﻿{
+    "passed":  29,
+    "label":  "phase-3-maintenance-cors-preflight",
+    "config":  {
+                   "privateUploadMaintenanceVerifyJwt":  false,
+                   "paymentMaintenanceVerifyJwt":  false,
+                   "workerTokenAuthPresent":  true
+               },
+    "failed":  0,
+    "newCases":  [
+                     "payment-maintenance OPTIONS returns CORS without payment state access",
+                     "private-upload-maintenance OPTIONS returns CORS without database/storage access"
+                 ],
+    "command":  "node --test tests/remediation/payment-handlers.test.cjs tests/remediation/upload-maintenance.test.cjs tests/backend/reservable-report.test.cjs",
+    "deployed":  false
+}

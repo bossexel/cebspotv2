@@ -2,6 +2,10 @@ const {test,before,after}=require('node:test');const assert=require('node:assert
 const {startDatabase}=require('./database.cjs');const {ids,seed,booking}=require('./fixtures.cjs');const {fixture}=require('./payment-handler-harness.cjs');
 let db,sequence=0;
 before(async()=>{db=await startDatabase();await seed(db);});after(async()=>db?.close());
+test('payment maintenance serves CORS preflight without accessing payment state',async()=>{
+  const {f}=await fresh();const response=await f.invoke('payment-maintenance',{}, {token:'',method:'OPTIONS'});
+  assert.equal(response.status,200);assert.ok(response.headers.get('access-control-allow-origin'));
+});
 async function fresh(options={}){
   await db.as(ids.a);const r=await booking(db,{reservation_date:new Date(Date.now()+(++sequence+1)*86400000).toISOString().slice(0,10)});
   await db.exec('reset role');return {r,f:fixture(db,{userId:ids.a,...options})};
