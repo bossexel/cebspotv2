@@ -52,6 +52,9 @@ async function configure(context, theme) {
       await page.goto('https://app.test/profile');
       await page.getByRole('button', { name: 'About CebSpot', exact: true }).click();
       await expect(page.getByRole('heading', { name: 'About CebSpot', exact: true })).toBeVisible();
+      await expect(page.getByTestId('about-update-channel')).toBeVisible();
+      await expect(page.getByTestId('about-update-runtime')).toBeVisible();
+      await expect(page.getByTestId('about-update-id')).toBeVisible();
       await page.screenshot({ path: `.codex-tmp/about-${theme}-intro.png` });
       const hero = page.getByTestId('about-introduction-card');
       await expect(hero.getByRole('button', { name: 'Technical Documentation', exact: true })).toHaveCount(1);

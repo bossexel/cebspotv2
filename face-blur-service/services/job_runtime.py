@@ -225,6 +225,17 @@ class JobRuntime:
             return existing, True
         self.idempotency.pop(identity, None)
         job = self.admit(owner)
+        return self.bind_idempotency(job, key)
+
+    def bind_idempotency(self, job, key):
+        """Bind a pre-admitted legacy upload to a verified content fingerprint."""
+        identity = (job.owner, key)
+        existing_id = self.idempotency.get(identity)
+        existing = self.jobs.get(existing_id) if existing_id else None
+        if existing and not existing.cancelled and existing.id != job.id:
+            self.remove(job.id)
+            return existing, True
+        self.idempotency.pop(identity, None)
         job.idempotency_key = key
         self.idempotency[identity] = job.id
         return job, False

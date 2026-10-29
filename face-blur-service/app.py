@@ -1,5 +1,7 @@
 import asyncio
+import hashlib
 import hmac
+import logging
 import os
 import re
 import uuid
@@ -15,6 +17,7 @@ from services.face_blur import FaceBlurSettings, JPEG_SIGNATURES, PNG_SIGNATURE,
 from services.job_runtime import AdmissionError, JobRuntime, SupabaseVerifier
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 
 class UploadBoundary:
@@ -35,12 +38,24 @@ class UploadBoundary:
                 raise AdmissionError(401, 'Session expired. Sign in again.')
             scope.setdefault('state', {})['owner'] = owner
             if scope['method'] == 'POST' and scope['path'] == '/api/anonymize-jobs':
-                idempotency_key = dict(scope['headers']).get(b'x-idempotency-key', b'').decode('ascii', errors='ignore')
-                if not re.fullmatch(r'[A-Za-z0-9._:-]{16,128}', idempotency_key):
-                    raise AdmissionError(400, 'A valid photo request idempotency key is required.')
-                job, replayed = self.runtime.admit_idempotent(owner, idempotency_key)
-                if replayed:
-                    return await JSONResponse({'job_id': job.id, 'status': job.status}, status_code=202)(scope, receive, send)
+                request_headers = dict(scope['headers'])
+                raw_key = request_headers.get(b'x-idempotency-key')
+                if raw_key is None:
+                    # Supported older Android runtimes did not send this header.
+                    # Reserve capacity before reading bytes; the route later binds
+                    # the validated image digest to this provisional job.
+                    job = self.runtime.admit(owner)
+                    scope['state']['legacy_idempotency'] = True
+                else:
+                    try:
+                        idempotency_key = raw_key.decode('ascii')
+                    except UnicodeDecodeError:
+                        raise AdmissionError(400, 'A valid photo request idempotency key is required.') from None
+                    if not re.fullmatch(r'[A-Za-z0-9._:-]{16,128}', idempotency_key):
+                        raise AdmissionError(400, 'A valid photo request idempotency key is required.')
+                    job, replayed = self.runtime.admit_idempotent(owner, idempotency_key)
+                    if replayed:
+                        return await JSONResponse({'job_id': job.id, 'status': job.status}, status_code=202)(scope, receive, send)
                 scope['state']['job'] = job
                 limit = self.runtime.settings.max_image_bytes + 65536
                 length = dict(scope['headers']).get(b'content-length', b'')
@@ -137,6 +152,13 @@ def create_app(settings=None, verifier=None, runtime=None, upload_timeout=30):
                 raise HTTPException(413, 'Photo is empty or too large.')
             if not (data.startswith(PNG_SIGNATURE) if mime == 'image/png' else any(data.startswith(s) for s in JPEG_SIGNATURES)):
                 raise HTTPException(415, 'Photo content does not match its declared type.')
+            if getattr(request.state, 'legacy_idempotency', False):
+                fingerprint = hashlib.sha256(mime.encode('ascii') + b'\0' + data).hexdigest()
+                job, replayed = runtime.bind_idempotency(job, 'legacy-sha256:' + fingerprint)
+                if replayed:
+                    return JSONResponse({'job_id': job.id, 'status': job.status}, status_code=202)
+                request.state.job = job
+                logger.info('accepted authenticated legacy photo request using content idempotency')
             runtime.enqueue(job, data, mime)
             return {'job_id': job.id, 'status': job.status}
         finally:

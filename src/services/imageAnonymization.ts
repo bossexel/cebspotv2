@@ -181,11 +181,17 @@ function mediaHttpMessage(status: number) {
 async function responseErrorMessage(response: Response) { return mediaHttpMessage(response.status); }
 function uploadErrorMessage(_body: string, status: number) { return mediaHttpMessage(status); }
 
+function createPhotoRequestIdempotencyKey() {
+  const first = Math.random().toString(36).slice(2).padEnd(8, '0');
+  const second = Math.random().toString(36).slice(2).padEnd(8, '0');
+  return `face-${Date.now()}-${first}-${second}`;
+}
+
 async function createAnonymizationJob(preparedUri: string, contentType: string) {
   let lastError: unknown = new Error('The face anonymizer did not accept the upload.');
   // One key is reused across transport retries so an accepted request whose
   // response was lost returns the original job instead of creating another.
-  const idempotencyKey = `face-${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+  const idempotencyKey = createPhotoRequestIdempotencyKey();
 
   for (let attempt = 1; attempt <= jobCreateAttempts; attempt += 1) {
     try {
