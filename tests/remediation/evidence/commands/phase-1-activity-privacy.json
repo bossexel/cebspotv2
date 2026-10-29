@@ -1,0 +1,22 @@
+﻿{
+    "probe":  {
+                  "executedAgainstHost":  false,
+                  "unitTestedWithMockFetch":  true,
+                  "file":  "scripts/verify-hosted-rls.js"
+              },
+    "exitCode":  0,
+    "migration":  "supabase/migrations/20261013000100_activity_privacy.sql",
+    "hostedState":  "NOT VERIFIED; no hosted access attempted",
+    "evidenceFiles":  [
+                          "tests/backend/verify-hosted-rls.test.cjs",
+                          "docs/activity-privacy-focused-upgrade.md"
+                      ],
+    "tests":  {
+                  "command":  "node --test tests/backend/verify-hosted-rls.test.cjs tests/remediation/activity-privacy.test.cjs tests/remediation/activity-legacy-upgrade.test.cjs",
+                  "skipped":  0,
+                  "failed":  0,
+                  "passed":  21
+              },
+    "label":  "phase-1-reservation-event-privacy",
+    "legacyTablePresent":  true
+}
