@@ -45,7 +45,13 @@
                                          "evidence":  "tests/remediation/evidence/commands/final-android-export-release-check.txt",
                                          "assets":  62,
                                          "passed":  true
-                                     }
+                                     },
+                   "faceServiceFull":  {
+                                           "evidence":  "tests/remediation/evidence/commands/final-face-service-pytest.txt",
+                                           "passed":  24,
+                                           "failed":  0,
+                                           "warnings":  1
+                                       }
                },
     "recordedAt":  "2026-10-29",
     "secretValuesPrinted":  0,

@@ -1,4 +1,4 @@
-# Launch remediation status — 2026-10-29
+﻿# Launch remediation status â€” 2026-10-29
 
 This status describes repository evidence only. No hosted/shared-beta/production database, storage, function, payment account or deployment was accessed by this remediation pass. Local verification cannot certify deployed state or user acceptance.
 
@@ -21,4 +21,5 @@ This status describes repository evidence only. No hosted/shared-beta/production
 
 **NO-GO.** R-02 has no reviewed deployable schema-alignment script, capability gates are missing, historical session blobs were not inspected, hosted changes and SMTP delivery remain unverified, and the one high dependency advisory remains. An initial export invocation did read `.env.local` before it was stopped; it printed variable names only and no secret values. Final Android and admin exports were rerun with `EXPO_NO_DOTENV=1`, which the installed Expo CLI source confirms prevents dotenv file reads.
 
-Final local checks after the repository changes: typecheck passed; JavaScript suite 419 total / 414 passed / 0 failed / 5 skipped; face service 18 passed / 0 failed; Android export completed with 62 assets and one Hermes bundle; administrator web export completed with 36 assets and one web bundle. Local source/mocked payment performance evidence passed 148 checks with 5 skipped and zero replay integrity violations at up to 50 concurrent synthetic handlers. It made no HTTP requests and is not backend load evidence. See the `final-*` command records under `tests/remediation/evidence/commands/`.
+Final local checks after the repository changes: typecheck passed; JavaScript suite 419 total / 414 passed / 0 failed / 5 skipped; full face-service pytest discovery 24 passed / 0 failed (one dependency deprecation warning), including the 18 security tests; Android export completed with 62 assets and one Hermes bundle; administrator web export completed with 36 assets and one web bundle. Local source/mocked payment performance evidence passed 148 checks with 5 skipped and zero replay integrity violations at up to 50 concurrent synthetic handlers. It made no HTTP requests and is not backend load evidence. See the `final-*` command records under `tests/remediation/evidence/commands/`.
+
