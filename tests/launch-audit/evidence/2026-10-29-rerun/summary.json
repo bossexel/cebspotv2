@@ -1,0 +1,417 @@
+{
+  "decision": "NO-GO",
+  "date": "2026-10-29 Asia/Manila",
+  "report": "LAUNCH_AUDIT_2026-10-29.md",
+  "fullSuite": {
+    "passed": 391,
+    "failed": 0,
+    "skipped": 5,
+    "total": 396,
+    "exitCode": 0
+  },
+  "mapPassed": 13,
+  "facePassed": 22,
+  "walkthroughObservations": 26,
+  "advisoriesOmitDev": {
+    "info": 0,
+    "low": 7,
+    "moderate": 19,
+    "high": 3,
+    "critical": 0,
+    "total": 29
+  },
+  "bookingRace": {
+    "kind": "50-distinct-users-complete-migrations-loopback-sql-race",
+    "runAt": "2026-10-28T16:06:43.772Z",
+    "migrationCount": 23,
+    "migrations": [
+      {
+        "name": "20260901000000_schema_foundation.sql",
+        "sha256": "b8e0e5283f0bd941d13dfbf920def1989169113d620c7777ab52ef09ffcf9ee4"
+      },
+      {
+        "name": "20260901000100_feature_foundation.sql",
+        "sha256": "c0fa9bf664a08f3c0d861d7546ac50a96c957ea5f1e547fc5133d7f148579004"
+      },
+      {
+        "name": "20260912000100_reservation_attendance.sql",
+        "sha256": "12f70227011ff23352d6061beeb7cbfa9c1c814d9a5c95148916c2a99fa1b992"
+      },
+      {
+        "name": "20260915000100_admin_identity_cutover.sql",
+        "sha256": "a55af0fd885a44e27684b169314ac2f5a8673c44a2bb3f06fb6d2eb1abe8cf85"
+      },
+      {
+        "name": "20261006000100_audit_authorization_hardening.sql",
+        "sha256": "7b980712bdf2518458aa83e2714bd280638a5e164f3589f2511406536b841cf0"
+      },
+      {
+        "name": "20261011000100_table_booking_policy_and_walk_ins.sql",
+        "sha256": "988edf657e405c8c83d4672edcb5136984d88ad4166a0f62acd677459e2084b7"
+      },
+      {
+        "name": "20261013000100_activity_privacy.sql",
+        "sha256": "53d9513b16551b6b03772b2f7c1fa93a9b2dece93a2532874f1b0bb7f4e96cf5"
+      },
+      {
+        "name": "20261013000200_android_reservation_scope.sql",
+        "sha256": "85996c02fa4aab5b80564c816cfb6b6cf1850643e238711f22b637c2564338d6"
+      },
+      {
+        "name": "20261013000300_manual_proof_and_bounded_holds.sql",
+        "sha256": "1318b9dea61f9598100e2e7a0a569b7917c226dcaa080a6f1bcb92594c9224e9"
+      },
+      {
+        "name": "20261013000400_durable_checkout_and_payment_events.sql",
+        "sha256": "e036813d1387a4f051898551332fc5f411b942823bbf4f01313cd1b01be1b0f6"
+      },
+      {
+        "name": "20261013000500_request_bound_private_uploads.sql",
+        "sha256": "9dd661e41712f77d408b5fc04e3781d135fa0a13477427b80d0b8af6710845c8"
+      },
+      {
+        "name": "20261013000600_server_reservation_details.sql",
+        "sha256": "77f9f46dc49f961a1f0aece0658aca2da5154ea87759d71c9451afb126713549"
+      },
+      {
+        "name": "20261013000700_circle_location_controls.sql",
+        "sha256": "1e036ebcbb0b962116e02fa3ba9683399edc7bc64b6878d010b89b3c821c88fd"
+      },
+      {
+        "name": "20261013000800_account_erasure.sql",
+        "sha256": "4171be5264f8385d74034a48d90b1e7b192a1521cac07e059a8b57b9080dfc98"
+      },
+      {
+        "name": "20261013000900_block_deleting_owner_assignments.sql",
+        "sha256": "c74ddd052955285973859f6bf75e87df05eecc969772607879a7b8311cafecdc"
+      },
+      {
+        "name": "20261020000100_admin_spot_delete.sql",
+        "sha256": "6ac899cd4d6ca6cb2355b0e10f32c6772dffc3fb90383c4bb5f307549d74d35d"
+      },
+      {
+        "name": "20261021000100_admin_owner_request_delete.sql",
+        "sha256": "326bd649cfbfffd36d234f594d8c18601f6a83fbc6171f232f7468445e2553b7"
+      },
+      {
+        "name": "20261022000100_admin_spot_submission_delete.sql",
+        "sha256": "a8992f515d010565a4c61dad983307a4d4e4fbaff88fd37c86769098e55170df"
+      },
+      {
+        "name": "20261022000200_admin_updates.sql",
+        "sha256": "e0eca57fb8d0f8e88d826d2fb2c10641daf8d864e515ee5e3e62d90c1b0a6d6a"
+      },
+      {
+        "name": "20261025000100_activity_feed_pagination.sql",
+        "sha256": "93965407e468027b8794ab50027066a4d9ef50c52148357c45ed74246909ad1d"
+      },
+      {
+        "name": "20261025000200_public_media_size_limits.sql",
+        "sha256": "495f1abfcaf1d0f838aa6eb7740aa746d9d6044dfbdc0614e173ae103f622a2b"
+      },
+      {
+        "name": "20261027000100_independent_spot_posts.sql",
+        "sha256": "6d43b20c43dfe74f87ed36216c53ade5d524121e7ae1397baf77469de51e8087"
+      },
+      {
+        "name": "20261028000100_beta_identity_prerequisites.sql",
+        "sha256": "c9a64d90522ab031c6a3e13d2aaa525c34751e8666805f4636628145faabc37b"
+      }
+    ],
+    "accepted": 1,
+    "rejected": 49,
+    "storedRows": 1,
+    "durationMs": 6796,
+    "p95WriteLatencyMs": 6336,
+    "rejectionCodes": [
+      "55000"
+    ],
+    "rejectionMessages": [
+      "This table was just booked. Refresh availability and choose another table."
+    ],
+    "limitations": "Connections initialized sequentially before the measured race. Not API/HTTP/Auth/provider load, sustained throughput, matching hosted PostgreSQL version, or production capacity."
+  },
+  "commands": [
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-28-full-tests.json",
+      "label": "rerun-audit-2026-10-28-full-tests",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T15:57:53.055Z",
+      "finishedAt": "2026-10-28T16:00:42.420Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-28-hosted-readonly.json",
+      "label": "rerun-audit-2026-10-28-hosted-readonly",
+      "exitCode": 2,
+      "startedAt": "2026-10-28T16:00:34.129Z",
+      "finishedAt": "2026-10-28T16:01:06.710Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-28-npm-advisories.json",
+      "label": "rerun-audit-2026-10-28-npm-advisories",
+      "exitCode": 1,
+      "startedAt": "2026-10-28T15:57:53.233Z",
+      "finishedAt": "2026-10-28T15:58:21.442Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-28-typecheck.json",
+      "label": "rerun-audit-2026-10-28-typecheck",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T15:57:53.228Z",
+      "finishedAt": "2026-10-28T15:59:24.374Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-50-user-race.json",
+      "label": "rerun-audit-2026-10-29-50-user-race",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:05:19.432Z",
+      "finishedAt": "2026-10-28T16:06:55.007Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-account-details.json",
+      "label": "rerun-audit-2026-10-29-account-details",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:06:49.982Z",
+      "finishedAt": "2026-10-28T16:09:13.102Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-admin-browser.json",
+      "label": "rerun-audit-2026-10-29-admin-browser",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:04:01.222Z",
+      "finishedAt": "2026-10-28T16:05:00.346Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-admin-export-final.json",
+      "label": "rerun-audit-2026-10-29-admin-export-final",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:14:34.394Z",
+      "finishedAt": "2026-10-28T16:15:17.219Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-admin-export.json",
+      "label": "rerun-audit-2026-10-29-admin-export",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:01:24.006Z",
+      "finishedAt": "2026-10-28T16:02:29.490Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-admin-map.json",
+      "label": "rerun-audit-2026-10-29-admin-map",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:05:00.664Z",
+      "finishedAt": "2026-10-28T16:05:30.502Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-android-export-final.json",
+      "label": "rerun-audit-2026-10-29-android-export-final",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:14:23.344Z",
+      "finishedAt": "2026-10-28T16:15:34.603Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-android-export.json",
+      "label": "rerun-audit-2026-10-29-android-export",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:02:38.366Z",
+      "finishedAt": "2026-10-28T16:03:07.133Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-artifact-delivery-diagnostic.json",
+      "label": "rerun-audit-2026-10-29-artifact-delivery-diagnostic",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:14:11.504Z",
+      "finishedAt": "2026-10-28T16:14:15.848Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-circle-settings.json",
+      "label": "rerun-audit-2026-10-29-circle-settings",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:05:50.109Z",
+      "finishedAt": "2026-10-28T16:06:47.400Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-current-dependency-compatibility.json",
+      "label": "rerun-audit-2026-10-29-current-dependency-compatibility",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:12:10.947Z",
+      "finishedAt": "2026-10-28T16:12:11.803Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-email-change.json",
+      "label": "rerun-audit-2026-10-29-email-change",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:09:13.814Z",
+      "finishedAt": "2026-10-28T16:10:02.617Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-explore-bookmarks.json",
+      "label": "rerun-audit-2026-10-29-explore-bookmarks",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:04:57.891Z",
+      "finishedAt": "2026-10-28T16:05:48.860Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-face-tests.json",
+      "label": "rerun-audit-2026-10-29-face-tests",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:01:24.204Z",
+      "finishedAt": "2026-10-28T16:02:27.976Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-final-frozen-tests.json",
+      "label": "rerun-audit-2026-10-29-final-frozen-tests",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:13:31.013Z",
+      "finishedAt": "2026-10-28T16:17:18.484Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-final-secret-and-source-scan.json",
+      "label": "rerun-audit-2026-10-29-final-secret-and-source-scan",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:20:26.981Z",
+      "finishedAt": "2026-10-28T16:20:29.119Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-free-booking.json",
+      "label": "rerun-audit-2026-10-29-free-booking",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:04:01.722Z",
+      "finishedAt": "2026-10-28T16:05:02.737Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-hosted-readonly.json",
+      "label": "rerun-audit-2026-10-29-hosted-readonly",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:03:18.405Z",
+      "finishedAt": "2026-10-28T16:03:29.666Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-location-picker.json",
+      "label": "rerun-audit-2026-10-29-location-picker",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:11:18.441Z",
+      "finishedAt": "2026-10-28T16:11:43.235Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-map.json",
+      "label": "rerun-audit-2026-10-29-map",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:01:23.380Z",
+      "finishedAt": "2026-10-28T16:02:29.204Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-npm-advisories-final.json",
+      "label": "rerun-audit-2026-10-29-npm-advisories-final",
+      "exitCode": 1,
+      "startedAt": "2026-10-28T16:07:39.886Z",
+      "finishedAt": "2026-10-28T16:08:58.194Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-performance-harness.json",
+      "label": "rerun-audit-2026-10-29-performance-harness",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:06:25.481Z",
+      "finishedAt": "2026-10-28T16:06:31.415Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-post-location.json",
+      "label": "rerun-audit-2026-10-29-post-location",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:11:58.539Z",
+      "finishedAt": "2026-10-28T16:12:10.756Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-public-artifacts-extensions.json",
+      "label": "rerun-audit-2026-10-29-public-artifacts-extensions",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:14:56.977Z",
+      "finishedAt": "2026-10-28T16:15:02.254Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-public-artifacts-native-headers.json",
+      "label": "rerun-audit-2026-10-29-public-artifacts-native-headers",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:13:31.006Z",
+      "finishedAt": "2026-10-28T16:13:34.274Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-public-artifacts-protocol-v1.json",
+      "label": "rerun-audit-2026-10-29-public-artifacts-protocol-v1",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:11:18.441Z",
+      "finishedAt": "2026-10-28T16:11:21.356Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-public-artifacts.json",
+      "label": "rerun-audit-2026-10-29-public-artifacts",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:10:01.322Z",
+      "finishedAt": "2026-10-28T16:10:06.921Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-python-advisories.json",
+      "label": "rerun-audit-2026-10-29-python-advisories",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:04:01.313Z",
+      "finishedAt": "2026-10-28T16:04:34.278Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-qrph-ui-current-contract.json",
+      "label": "rerun-audit-2026-10-29-qrph-ui-current-contract",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:11:18.441Z",
+      "finishedAt": "2026-10-28T16:11:44.066Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-qrph-ui.json",
+      "label": "rerun-audit-2026-10-29-qrph-ui",
+      "exitCode": 1,
+      "startedAt": "2026-10-28T16:05:03.252Z",
+      "finishedAt": "2026-10-28T16:06:28.037Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-saved-recovery.json",
+      "label": "rerun-audit-2026-10-29-saved-recovery",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:04:01.685Z",
+      "finishedAt": "2026-10-28T16:04:57.514Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-secret-scan.json",
+      "label": "rerun-audit-2026-10-29-secret-scan",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:06:00.866Z",
+      "finishedAt": "2026-10-28T16:06:23.381Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-typecheck-final.json",
+      "label": "rerun-audit-2026-10-29-typecheck-final",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:13:31.006Z",
+      "finishedAt": "2026-10-28T16:14:23.105Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-walkthrough.json",
+      "label": "rerun-audit-2026-10-29-walkthrough",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:01:24.519Z",
+      "finishedAt": "2026-10-28T16:02:26.642Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-your-posts-isolated.json",
+      "label": "rerun-audit-2026-10-29-your-posts-isolated",
+      "exitCode": 0,
+      "startedAt": "2026-10-28T16:12:21.860Z",
+      "finishedAt": "2026-10-28T16:12:30.584Z"
+    },
+    {
+      "file": "tests/remediation/evidence/commands/rerun-audit-2026-10-29-your-posts.json",
+      "label": "rerun-audit-2026-10-29-your-posts",
+      "exitCode": 1,
+      "startedAt": "2026-10-28T16:10:03.255Z",
+      "finishedAt": "2026-10-28T16:10:37.442Z"
+    }
+  ],
+  "limitations": "Execution success is not audit acceptance; failed/provisional diagnostics retained and classified in report. Counts overlap."
+}

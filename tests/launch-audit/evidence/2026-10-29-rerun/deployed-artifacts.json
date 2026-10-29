@@ -1,0 +1,32 @@
+{
+  "runAt": "2026-10-28T16:10:06.671Z",
+  "kind": "public-hosted-artifact-read-only",
+  "results": [
+    {
+      "label": "hosted-admin-entry",
+      "status": 200,
+      "ms": 1780,
+      "bytes": 1222,
+      "sha256": "25a3beb00fa657eaff13c5719eae9c00d76f0a8fc0b51e0cca629f5c3df8969e",
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "label": "hosted-admin-javascript",
+      "status": 200,
+      "ms": 1799,
+      "bytes": 4125584,
+      "sha256": "8211f80bdab0cd45e61b9ba8cb92fc1e2770f0f92c355669de17cf64c26194fe",
+      "contentType": "application/javascript"
+    },
+    {
+      "label": "installed-runtime-preview-update",
+      "status": 406,
+      "ms": 1251,
+      "bytes": 58,
+      "sha256": "1587c653bde06fa1ab159938d6598e2084af2c0d47c62e03da47c757e031bf82",
+      "contentType": "text/plain; charset=utf-8",
+      "manifestParsed": false
+    }
+  ],
+  "limitations": "HTTP/artifact reachability and hashes only. Does not establish native execution, actual admin authorization, installed-device update adoption or complete business workflows."
+}

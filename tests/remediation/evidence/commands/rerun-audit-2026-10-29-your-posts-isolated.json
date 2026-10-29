@@ -1,0 +1,11 @@
+{
+  "label": "rerun-audit-2026-10-29-your-posts-isolated",
+  "command": [
+    "node",
+    "tests/user-walkthrough/your-posts.cjs"
+  ],
+  "startedAt": "2026-10-28T16:12:21.860Z",
+  "finishedAt": "2026-10-28T16:12:30.584Z",
+  "exitCode": 0,
+  "output": "PASS: tappable cards without Open post buttons, batched post links, cached return/scroll position, 48-post virtualized list, one preview per card, pagination, moderation/error/empty states, Settings deletion navigation, light/dark layout.\n"
+}

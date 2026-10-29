@@ -1,0 +1,11 @@
+{
+  "label": "rerun-audit-2026-10-29-your-posts",
+  "command": [
+    "node",
+    "tests/user-walkthrough/your-posts.cjs"
+  ],
+  "startedAt": "2026-10-28T16:10:03.255Z",
+  "finishedAt": "2026-10-28T16:10:37.442Z",
+  "exitCode": 1,
+  "output": "AssertionError [ERR_ASSERTION]: each mounted card renders one media preview\n\n12 !== 18\n\n    at main (C:\\Users\\9real\\Downloads\\cebspotv3\\tests\\user-walkthrough\\your-posts.cjs:111:12) {\n  generatedMessage: false,\n  code: 'ERR_ASSERTION',\n  actual: 12,\n  expected: 18,\n  operator: 'strictEqual'\n}\n"
+}

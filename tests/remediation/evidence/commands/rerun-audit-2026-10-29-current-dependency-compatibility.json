@@ -1,0 +1,12 @@
+{
+  "label": "rerun-audit-2026-10-29-current-dependency-compatibility",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/dependency-compatibility.test.cjs"
+  ],
+  "startedAt": "2026-10-28T16:12:10.947Z",
+  "finishedAt": "2026-10-28T16:12:11.803Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: patched tar remains compatible with the actual Expo CLI archive extraction path\nok 1 - patched tar remains compatible with the actual Expo CLI archive extraction path\n  ---\n  duration_ms: 404.4094\n  type: 'test'\n  ...\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 636.2789\n"
+}

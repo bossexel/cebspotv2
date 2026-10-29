@@ -1,0 +1,218 @@
+{
+  "kind": "hosted-read-only-audit-no-business-writes",
+  "date": "2026-10-28 Asia/Manila",
+  "configuredProviderMode": "live",
+  "results": [
+    {
+      "label": "auth-settings",
+      "status": 200,
+      "ms": 1695,
+      "configuration": {
+        "signupDisabled": false,
+        "emailAutoconfirm": false,
+        "emailEnabled": true,
+        "googleEnabled": true
+      }
+    },
+    {
+      "label": "anonymous:profiles",
+      "status": 200,
+      "ms": 325,
+      "rowsCappedAtFive": 0
+    },
+    {
+      "label": "anonymous:reservations",
+      "status": 200,
+      "ms": 519,
+      "rowsCappedAtFive": 0
+    },
+    {
+      "label": "anonymous:reservation_payments",
+      "status": 200,
+      "ms": 251,
+      "rowsCappedAtFive": 0
+    },
+    {
+      "label": "anonymous:owner_access_requests",
+      "status": 200,
+      "ms": 252,
+      "rowsCappedAtFive": 0
+    },
+    {
+      "label": "anonymous:owner_spot_access",
+      "status": 200,
+      "ms": 181,
+      "rowsCappedAtFive": 0
+    },
+    {
+      "label": "anonymous:circles",
+      "status": 200,
+      "ms": 181,
+      "rowsCappedAtFive": 0
+    },
+    {
+      "label": "anonymous:walk_in_visits",
+      "status": 404,
+      "ms": 203,
+      "errorCode": "PGRST205"
+    },
+    {
+      "label": "anonymous:payment_checkout_attempts",
+      "status": 404,
+      "ms": 162,
+      "errorCode": "PGRST205"
+    },
+    {
+      "label": "anonymous:private_upload_claims",
+      "status": 404,
+      "ms": 215,
+      "errorCode": "PGRST205"
+    },
+    {
+      "label": "anonymous:private-reservation-events",
+      "status": 200,
+      "ms": 182,
+      "rowsCappedAtFive": 5
+    },
+    {
+      "label": "public-inventory",
+      "status": 200,
+      "ms": 187,
+      "publicCount": 12,
+      "reservable": 2,
+      "reservableWithoutInventory": 1
+    },
+    {
+      "label": "table-availability-rpc",
+      "status": 404,
+      "ms": 214,
+      "errorCode": "PGRST202"
+    },
+    {
+      "label": "reservation-inventory-verification-column",
+      "status": 400,
+      "ms": 177,
+      "errorCode": "42703"
+    },
+    {
+      "label": "reservation-server-deadline-column",
+      "status": 400,
+      "ms": 198,
+      "errorCode": "42703"
+    },
+    {
+      "label": "unauthenticated-function:paymongo-create-qrph-checkout",
+      "status": 401,
+      "ms": 192,
+      "errorCode": "UNAUTHORIZED_NO_AUTH_HEADER",
+      "denied": true
+    },
+    {
+      "label": "unauthenticated-function:paymongo-create-gcash-checkout",
+      "status": 401,
+      "ms": 222,
+      "errorCode": "UNAUTHORIZED_NO_AUTH_HEADER",
+      "denied": true
+    },
+    {
+      "label": "unauthenticated-function:provision-owner-account",
+      "status": 401,
+      "ms": 223,
+      "errorCode": "UNAUTHORIZED_NO_AUTH_HEADER",
+      "denied": true
+    },
+    {
+      "label": "unauthenticated-function:private-upload",
+      "status": 404,
+      "ms": 154,
+      "errorCode": "NOT_FOUND",
+      "denied": false
+    },
+    {
+      "label": "unauthenticated-function:delete-account",
+      "status": 404,
+      "ms": 139,
+      "errorCode": "NOT_FOUND",
+      "denied": false
+    },
+    {
+      "label": "unauthenticated-function:payment-maintenance",
+      "status": 404,
+      "ms": 137,
+      "errorCode": "NOT_FOUND",
+      "denied": false
+    },
+    {
+      "label": "unauthenticated-function:private-upload-maintenance",
+      "status": 404,
+      "ms": 128,
+      "errorCode": "NOT_FOUND",
+      "denied": false
+    },
+    {
+      "label": "unsigned-webhook",
+      "status": 400,
+      "ms": 242,
+      "errorCode": "http-error"
+    },
+    {
+      "label": "configured-test-login",
+      "status": 200,
+      "ms": 495,
+      "confirmedEmail": true,
+      "profileRole": "user"
+    },
+    {
+      "label": "test-profile-role",
+      "status": 200,
+      "ms": 475,
+      "rowsCappedAtFive": 1
+    },
+    {
+      "label": "unrelated-user:profiles",
+      "status": 200,
+      "ms": 180,
+      "rowsCappedAtFive": 0
+    },
+    {
+      "label": "unrelated-user:reservations",
+      "status": 200,
+      "ms": 205,
+      "rowsCappedAtFive": 0
+    },
+    {
+      "label": "unrelated-user:reservation_payments",
+      "status": 200,
+      "ms": 180,
+      "rowsCappedAtFive": 0
+    },
+    {
+      "label": "unrelated-user:private-reservation-events",
+      "status": 200,
+      "ms": 304,
+      "rowsCappedAtFive": 5
+    },
+    {
+      "label": "unrelated-user:walk-in-details",
+      "status": 404,
+      "ms": 264,
+      "errorCode": "PGRST205"
+    },
+    {
+      "label": "test-session-logout",
+      "status": 204,
+      "ms": 233
+    },
+    {
+      "label": "face-health",
+      "networkError": "TimeoutError",
+      "ms": 20015
+    },
+    {
+      "label": "face-unauthenticated-admission",
+      "status": 401,
+      "ms": 3412,
+      "errorCode": "http-error"
+    }
+  ]
+}

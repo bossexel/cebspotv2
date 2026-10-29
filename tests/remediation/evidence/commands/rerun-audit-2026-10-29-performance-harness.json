@@ -1,0 +1,12 @@
+{
+  "label": "rerun-audit-2026-10-29-performance-harness",
+  "command": [
+    "node",
+    "--test",
+    "tests/performance/isolated/suite.test.cjs"
+  ],
+  "startedAt": "2026-10-28T16:06:25.481Z",
+  "finishedAt": "2026-10-28T16:06:31.415Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: default invocation never inherits application/production env\nok 1 - default invocation never inherits application/production env\n  ---\n  duration_ms: 8.0679\n  type: 'test'\n  ...\n# Subtest: hosted target requires staging and exact origin acknowledgement\nok 2 - hosted target requires staging and exact origin acknowledgement\n  ---\n  duration_ms: 7.8631\n  type: 'test'\n  ...\n# Subtest: secrets embedded in target URL are rejected\nok 3 - secrets embedded in target URL are rejected\n  ---\n  duration_ms: 6.1627\n  type: 'test'\n  ...\n# Subtest: resource limits and workload levels are validated\nok 4 - resource limits and workload levels are validated\n  ---\n  duration_ms: 52.7278\n  type: 'test'\n  ...\n# Subtest: expected booking conflicts require the real active-slot constraint\nok 5 - expected booking conflicts require the real active-slot constraint\n  ---\n  duration_ms: 0.9403\n  type: 'test'\n  ...\n# Subtest: content failures count as unexpected failures and expected conflicts stay separate\nok 6 - content failures count as unexpected failures and expected conflicts stay separate\n  ---\n  duration_ms: 2.388\n  type: 'test'\n  ...\n# Subtest: empty samples and missing race/recovery evidence cannot be reported as capacity PASS\nok 7 - empty samples and missing race/recovery evidence cannot be reported as capacity PASS\n  ---\n  duration_ms: 1.3483\n  type: 'test'\n  ...\n# Subtest: HTTP latency includes the delayed response body and request timeout is bounded\nok 8 - HTTP latency includes the delayed response body and request timeout is bounded\n  ---\n  duration_ms: 727.6146\n  type: 'test'\n  ...\n# Subtest: actual discovery code supports address, secondary category, rating and distance filters\nok 9 - actual discovery code supports address, secondary category, rating and distance filters\n  ---\n  duration_ms: 2768.9783\n  type: 'test'\n  ...\n# Subtest: actual recommendation ranking excludes source, private and unrelated candidates\nok 10 - actual recommendation ranking excludes source, private and unrelated candidates\n  ---\n  duration_ms: 230.7416\n  type: 'test'\n  ...\n1..10\n# tests 10\n# suites 0\n# pass 10\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 5179.0518\n"
+}

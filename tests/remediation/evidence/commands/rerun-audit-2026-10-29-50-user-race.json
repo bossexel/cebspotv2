@@ -1,0 +1,11 @@
+{
+  "label": "rerun-audit-2026-10-29-50-user-race",
+  "command": [
+    "node",
+    "tests/launch-audit/rerun-concurrency.cjs"
+  ],
+  "startedAt": "2026-10-28T16:05:19.432Z",
+  "finishedAt": "2026-10-28T16:06:55.007Z",
+  "exitCode": 0,
+  "output": "{\n  \"kind\": \"50-distinct-users-complete-migrations-loopback-sql-race\",\n  \"runAt\": \"2026-10-28T16:06:43.772Z\",\n  \"migrationCount\": 23,\n  \"accepted\": 1,\n  \"rejected\": 49,\n  \"storedRows\": 1,\n  \"durationMs\": 6796,\n  \"p95WriteLatencyMs\": 6336,\n  \"rejectionCodes\": [\n    \"55000\"\n  ],\n  \"rejectionMessages\": [\n    \"This table was just booked. Refresh availability and choose another table.\"\n  ],\n  \"limitations\": \"Connections initialized sequentially before the measured race. Not API/HTTP/Auth/provider load, sustained throughput, matching hosted PostgreSQL version, or production capacity.\"\n}\n"
+}

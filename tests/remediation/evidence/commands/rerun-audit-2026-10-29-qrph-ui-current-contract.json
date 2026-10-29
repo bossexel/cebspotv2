@@ -1,0 +1,11 @@
+{
+  "label": "rerun-audit-2026-10-29-qrph-ui-current-contract",
+  "command": [
+    "node",
+    "tests/launch-audit/rerun-qrph-ui.cjs"
+  ],
+  "startedAt": "2026-10-28T16:11:18.441Z",
+  "finishedAt": "2026-10-28T16:11:44.066Z",
+  "exitCode": 0,
+  "output": "PASS: actual QR Ph checkout rejects unverified/legacy configuration and accepts verified modern inventory, fresh inventory and policy checks, booked-table and race rejection, network errors, friendly provider failures, retry without duplicate reservations, and payment routing. All provider calls are fixtures.\n"
+}

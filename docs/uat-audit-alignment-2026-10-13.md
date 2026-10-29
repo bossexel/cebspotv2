@@ -1,5 +1,7 @@
 # CebSpot UAT and audit alignment
 
+Current engineering evidence: the [October 28–29 audit rerun](../LAUNCH_AUDIT_2026-10-29.md) refreshes all 20 UAT mappings, local verification and confirmed hosted failures. Participant acceptance remains separate.
+
 Updated: October 13, 2026 (Asia/Manila). Compared the October 6 [UAT plan review](uat-plan-review.md), the older [engineering audit](../AUDIT.md), the October 11–12 [launch audit](../LAUNCH_AUDIT_2026-10-12.md), retained test evidence, and the current working-tree source.
 
 **Subsequent platform decision: customers/owners are Android-only; admin stays on Render.** Their web routes were removed locally; retained admin alerts were repaired for LA-08; LA-09 browser uploads are outside customer/owner scope. See [platform changes and deployment boundary](android-only.md). The remaining eight launch findings are unchanged. Historical customer/owner browser observations describe the earlier audit, not supported browser UAT targets.

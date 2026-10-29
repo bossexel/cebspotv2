@@ -1,0 +1,11 @@
+{
+  "label": "rerun-audit-2026-10-29-public-artifacts",
+  "command": [
+    "node",
+    "tests/launch-audit/rerun-deployment.cjs"
+  ],
+  "startedAt": "2026-10-28T16:10:01.322Z",
+  "finishedAt": "2026-10-28T16:10:06.921Z",
+  "exitCode": 0,
+  "output": "{\n  \"runAt\": \"2026-10-28T16:10:06.671Z\",\n  \"kind\": \"public-hosted-artifact-read-only\",\n  \"results\": [\n    {\n      \"label\": \"hosted-admin-entry\",\n      \"status\": 200,\n      \"ms\": 1780,\n      \"bytes\": 1222,\n      \"sha256\": \"25a3beb00fa657eaff13c5719eae9c00d76f0a8fc0b51e0cca629f5c3df8969e\",\n      \"contentType\": \"text/html; charset=utf-8\"\n    },\n    {\n      \"label\": \"hosted-admin-javascript\",\n      \"status\": 200,\n      \"ms\": 1799,\n      \"bytes\": 4125584,\n      \"sha256\": \"8211f80bdab0cd45e61b9ba8cb92fc1e2770f0f92c355669de17cf64c26194fe\",\n      \"contentType\": \"application/javascript\"\n    },\n    {\n      \"label\": \"installed-runtime-preview-update\",\n      \"status\": 406,\n      \"ms\": 1251,\n      \"bytes\": 58,\n      \"sha256\": \"1587c653bde06fa1ab159938d6598e2084af2c0d47c62e03da47c757e031bf82\",\n      \"contentType\": \"text/plain; charset=utf-8\",\n      \"manifestParsed\": false\n    }\n  ],\n  \"limitations\": \"HTTP/artifact reachability and hashes only. Does not establish native execution, actual admin authorization, installed-device update adoption or complete business workflows.\"\n}\n"
+}

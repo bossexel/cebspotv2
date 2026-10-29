@@ -1,0 +1,11 @@
+{
+  "label": "rerun-audit-2026-10-29-circle-settings",
+  "command": [
+    "node",
+    "tests/user-walkthrough/circle-settings.cjs"
+  ],
+  "startedAt": "2026-10-28T16:05:50.109Z",
+  "finishedAt": "2026-10-28T16:06:47.400Z",
+  "exitCode": 0,
+  "output": "PASS settings visibility, sharing switch, retained consent, unavailable status, recovery, lost response and leave confirmation\nScreenshots: .codex-tmp/circle-settings-review\n"
+}

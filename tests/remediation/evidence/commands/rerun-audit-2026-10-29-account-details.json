@@ -1,0 +1,11 @@
+{
+  "label": "rerun-audit-2026-10-29-account-details",
+  "command": [
+    "node",
+    "tests/user-walkthrough/account-details.cjs"
+  ],
+  "startedAt": "2026-10-28T16:06:49.982Z",
+  "finishedAt": "2026-10-28T16:09:13.102Z",
+  "exitCode": 0,
+  "output": "PASS: Profile Account Details navigation, names/picture saves and persistence, permission/error recovery, confirmed email display, verified password flow with validation, light/dark and small-screen layouts.\n"
+}

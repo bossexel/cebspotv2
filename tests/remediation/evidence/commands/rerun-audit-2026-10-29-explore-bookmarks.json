@@ -1,0 +1,11 @@
+{
+  "label": "rerun-audit-2026-10-29-explore-bookmarks",
+  "command": [
+    "node",
+    "tests/user-walkthrough/explore-bookmarks.cjs"
+  ],
+  "startedAt": "2026-10-28T16:04:57.891Z",
+  "finishedAt": "2026-10-28T16:05:48.860Z",
+  "exitCode": 0,
+  "output": "PASS: Explore ignores stale account reads, isolates bookmark writes, preserves old account storage and never overwrites a failed load.\n"
+}

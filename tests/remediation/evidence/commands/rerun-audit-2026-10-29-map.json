@@ -1,0 +1,12 @@
+{
+  "label": "rerun-audit-2026-10-29-map",
+  "command": [
+    "npm",
+    "run",
+    "test:map"
+  ],
+  "startedAt": "2026-10-28T16:01:23.380Z",
+  "finishedAt": "2026-10-28T16:02:29.204Z",
+  "exitCode": 0,
+  "output": "\n> cebspot@1.0.0 test:map\n> npm run map:check && playwright test --config playwright.map.config.cjs\n\n\n> cebspot@1.0.0 map:check\n> node scripts/build-map.cjs --check\n\n\nRunning 13 tests using 1 worker\n\n(node:35836) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.\n(Use `node --trace-warnings ...` to show where the warning was created)\n  ok  1 tests\\map\\runtime.spec.cjs:62:1 › camera updates while the screen is hidden resume without invalid coordinates (5.3s)\n  ok  2 tests\\map\\runtime.spec.cjs:83:1 › viewport tiles stay mounted across marker updates; no extra network requests (2.9s)\n  ok  3 tests\\map\\runtime.spec.cjs:100:1 › drag loads exposed tiles before release and preserves momentum (5.8s)\n  ok  4 tests\\map\\runtime.spec.cjs:129:1 › selection travels through intermediate positions, reuses pins and does not wait for tiles (1.6s)\n  ok  5 tests\\map\\runtime.spec.cjs:145:1 › rapid selections cancel earlier flights and a touch interrupts the camera (5.8s)\n  ok  6 tests\\map\\runtime.spec.cjs:164:1 › gesture echoes and unrelated marker updates preserve the user viewport (5.2s)\n  ok  7 tests\\map\\runtime.spec.cjs:180:1 › pin clicks and coordinate picking emit the expected callbacks (1.9s)\n  ok  8 tests\\map\\runtime.spec.cjs:189:1 › provider failure tries fallback once and reports complete failure without looping (3.7s)\n  ok  9 tests\\map\\runtime.spec.cjs:203:1 › working fallback displays tiles and no failure overlay (2.2s)\n  ok 10 tests\\map\\runtime.spec.cjs:211:1 › reduced motion, routes, resizing, and untrusted marker text (2.5s)\n  ok 11 tests\\map\\runtime.spec.cjs:227:1 › two-finger pinch zoom is continuous and keeps the pin aligned (2.6s)\n  ok 12 tests\\map\\runtime.spec.cjs:251:1 › precision coordinate entry jumps immediately without a camera flight or viewport echo (2.0s)\n  ok 13 tests\\map\\runtime.spec.cjs:267:1 › lifting one pinch finger keeps the parent scroll locked until the last pointer ends (2.1s)\n\n  13 passed (50.4s)\n"
+}

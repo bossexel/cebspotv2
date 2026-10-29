@@ -1,5 +1,7 @@
 # CebSpot launch audit — 11–12 October 2026
 
+Current status: [October 28–29 audit rerun](LAUNCH_AUDIT_2026-10-29.md) rechecks current source, local fixes and the hosted beta. It supersedes this report's current-status conclusions while preserving the original evidence.
+
 UAT follow-up: [October 13 alignment](docs/uat-audit-alignment-2026-10-13.md). Subsequent platform decision: **customers/owners are Android-only; admin stays on Render.** Their web routes were removed locally; retained admin alerts were repaired for LA-08; LA-09 browser uploads are outside customer/owner scope. See [platform changes and deployment boundary](docs/android-only.md). Original observations below are preserved; deployed retests and other blockers remain.
 
 **Decision: DO NOT LAUNCH.** This audit found one confirmed live privacy blocker and nine additional high-priority defects or release risks. Passing builds and tests do not override these findings. This is a bounded audit, not a guarantee that every defect has been found.

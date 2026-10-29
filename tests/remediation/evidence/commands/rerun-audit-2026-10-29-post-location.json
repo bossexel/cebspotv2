@@ -1,0 +1,11 @@
+{
+  "label": "rerun-audit-2026-10-29-post-location",
+  "command": [
+    "node",
+    "tests/user-walkthrough/post-location.cjs"
+  ],
+  "startedAt": "2026-10-28T16:11:58.539Z",
+  "finishedAt": "2026-10-28T16:12:10.756Z",
+  "exitCode": 0,
+  "output": "PASS: actual posting screen, optional coordinates under Address, immediate picker without GPS, touch drag/coordinate sync, retained pin after hide/reopen, signed input, invalid submission prevention, coordinate-only draft protection/restoration, exact queued coordinates.\n"
+}

@@ -1,0 +1,11 @@
+{
+  "label": "rerun-audit-2026-10-29-email-change",
+  "command": [
+    "node",
+    "tests/user-walkthrough/email-change.cjs"
+  ],
+  "startedAt": "2026-10-28T16:09:13.814Z",
+  "finishedAt": "2026-10-28T16:10:02.617Z",
+  "exitCode": 0,
+  "output": "PASS: actual AuthProvider and email UI, validation, resend cooldown, pending/partial/final confirmation, foreground/network recovery, session/profile refresh, no imported link credentials, lost-response recovery, duplicate/rate-limit errors, account switch, signed-out return and light/dark/small layouts.\n"
+}

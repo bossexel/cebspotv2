@@ -1,0 +1,11 @@
+{
+  "label": "rerun-audit-2026-10-29-location-picker",
+  "command": [
+    "node",
+    "tests/user-walkthrough/location-edit.cjs"
+  ],
+  "startedAt": "2026-10-28T16:11:18.441Z",
+  "finishedAt": "2026-10-28T16:11:43.235Z",
+  "exitCode": 0,
+  "output": "PASS: actual map drag/pinch, stable center pin, retained zoom, no accidental dismissals, instant coordinate jumps, validation, exact submitted coordinates, small-screen scrolling, light/dark layouts.\n"
+}

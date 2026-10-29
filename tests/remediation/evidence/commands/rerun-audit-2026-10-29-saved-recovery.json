@@ -1,0 +1,11 @@
+{
+  "label": "rerun-audit-2026-10-29-saved-recovery",
+  "command": [
+    "node",
+    "tests/user-walkthrough/saved-recovery.cjs"
+  ],
+  "startedAt": "2026-10-28T16:04:01.685Z",
+  "finishedAt": "2026-10-28T16:04:57.514Z",
+  "exitCode": 0,
+  "output": "PASS: saved error/empty distinction, retry, cached refresh, account switch and stale-response isolation.\n"
+}
