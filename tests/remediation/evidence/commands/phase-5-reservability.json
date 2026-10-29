@@ -1,0 +1,17 @@
+﻿{
+    "label":  "phase-5-reservability",
+    "evidence":  [
+                     "src/utils/tableInventory.ts",
+                     "tests/remediation/inventory.test.cjs",
+                     "tests/remediation/inventory-client.test.cjs",
+                     "tests/remediation/release-scope-regression.test.cjs"
+                 ],
+    "tests":  {
+                  "command":  "node --test tests/backend/reservable-report.test.cjs tests/remediation/inventory.test.cjs tests/remediation/inventory-client.test.cjs tests/remediation/release-scope-regression.test.cjs",
+                  "failed":  0,
+                  "passed":  16
+              },
+    "report":  "Mock tested only; no backend queried",
+    "manualScript":  "supabase/manual/clear-unverified-reservable.sql; default psql variable is false; not executed",
+    "currentClientGate":  "Existing source enforces one approved scope id, public state, verified timestamp, and active online table inventory"
+}
