@@ -4,24 +4,26 @@ const {chromium,expect}=require('@playwright/test');
 const {buildFixtureBundle,tile}=require('./location-edit.cjs');
 const root=path.resolve(__dirname,'../..');
 const artifacts=path.join(root,'.codex-tmp/post-location-review');
+const nativeWeb=require.resolve('react-native-web');
 const entry=`import React from 'react';import {createRoot} from 'react-dom/client';import SubmitSpot from './app/submit-spot';
-window.__picker={dark:false,locationCalls:0,submissions:[],matches:[],routes:[],profile:{id:'fixture-user',display_name:'Explorer'}};
+window.__picker={dark:false,locationCalls:0,geocodedAddresses:[],submissions:[],routes:[],profile:{id:'fixture-user',display_name:'Explorer'}};
 createRoot(document.getElementById('root')).render(<SubmitSpot/>);`;
 function adapter(name){
+  if(name==='react-native')return `import * as RN from ${JSON.stringify(nativeWeb)};export * from ${JSON.stringify(nativeWeb)};export const Platform={...RN.Platform,OS:'android'};`;
   if(name==='expo-router')return `import React from 'react';const router={back:()=>window.__picker.routes.push('back'),replace:r=>window.__picker.routes.push(r)};export const useRouter=()=>router;export const useLocalSearchParams=()=>({});export const useFocusEffect=fn=>React.useEffect(fn,[fn]);`;
   if(name==='expo-image-picker')return `export const launchImageLibraryAsync=async()=>({canceled:false,assets:[{uri:'https://media.test/photo.png',type:'image',mimeType:'image/png'}]});`;
+  if(name==='expo-location')return `export const getForegroundPermissionsAsync=async()=>({status:'granted'});export const requestForegroundPermissionsAsync=async()=>({status:'granted'});export const geocodeAsync=async address=>{window.__picker.geocodedAddresses.push(address);return [{latitude:10.5800001,longitude:123.8800002}]};`;
   if(name.endsWith('/hooks/useAuth'))return `export const useAuth=()=>({profile:window.__picker.profile});`;
   if(name.endsWith('/hooks/useLocation'))return `export const useLocation=()=>({getCurrentLocation:()=>{window.__picker.locationCalls++;return new Promise(()=>{})},loading:true});`;
   if(name.endsWith('/components/ScreenContainer'))return `import React from 'react';import {ScrollView} from 'react-native';export const ScreenContainer=({appColors,children,scrollEnabled=true})=><ScrollView testID="screen-scroll-view" scrollEnabled={scrollEnabled} style={{flex:1,backgroundColor:appColors.surface}} contentContainerStyle={{padding:16}}>{children}</ScrollView>;`;
   if(name.endsWith('/services/spotSubmissionDraftService'))return `export const spotSubmissionDraftService={get:async()=>JSON.parse(localStorage.getItem('fixture-draft')||'null'),save:async(user,draft)=>{localStorage.setItem('fixture-draft',JSON.stringify(draft));return draft},clear:async()=>localStorage.removeItem('fixture-draft')};`;
   if(name.endsWith('/services/spotSubmissionQueueService'))return `export const spotSubmissionQueueService={enqueue:async(payload)=>window.__picker.submissions.push(payload)};`;
-  if(name.endsWith('/services/spotMatchingService'))return `export const findMatchingSpots=async(name,latitude,longitude)=>{window.__picker.matches.push({name,latitude,longitude});return []};`;
   if(name.endsWith('/services/spotService'))return `export const spotService={getSpotById:async()=>null};`;
   throw Error('Unexpected adapter '+name);
 }
 async function main(){
   fs.mkdirSync(artifacts,{recursive:true});
-  const bundle=await buildFixtureBundle(entry,{filter:/^(expo-router|expo-image-picker)$|\/(hooks\/(useAuth|useLocation)|components\/ScreenContainer|services\/(spotSubmissionDraftService|spotSubmissionQueueService|spotMatchingService|spotService))$/,adapter});
+  const bundle=await buildFixtureBundle(entry,{filter:/^(expo-router|expo-image-picker|expo-location|react-native)$|\/(hooks\/(useAuth|useLocation)|components\/ScreenContainer|services\/(spotSubmissionDraftService|spotSubmissionQueueService|spotService))$/,adapter});
   const html='<html><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#root{height:100%;margin:0}#root{display:flex}</style><div id="root"></div><script src="/bundle.js"></script></html>';
   const browser=await chromium.launch({channel:process.env.MAP_TEST_CHANNEL||'chrome',headless:true});
   try{
@@ -67,25 +69,43 @@ async function main(){
     await page.getByRole('button',{name:'Choose spot location on map',exact:true}).click();await mapFrame.scrollIntoViewIfNeeded();
     await expect.poll(async()=>Boolean(frame()&&await frame().evaluate(()=>Boolean(window.__map)))).toBe(true);map=frame();
     await expect.poll(()=>map.evaluate(chosen=>window.__map.project(window.__map.getCenter()).distanceTo(window.__map.project([chosen.latitude,chosen.longitude])),chosen)).toBeLessThan(1);
+    const acceptedCebuPoint={latitude:Number(await lat.inputValue()),longitude:Number(await lng.inputValue())};
     await lat.fill('-33.8688');await lng.fill('151.2093');
-    await expect.poll(()=>map.evaluate(()=>Math.abs(window.__map.getCenter().lat+33.8688)+Math.abs(window.__map.getCenter().lng-151.2093))).toBeLessThan(1e-7);
+    await expect(page.getByRole('alert')).toContainText('CebSpot currently supports locations in Cebu only.');
+    await expect.poll(()=>map.evaluate(point=>Math.abs(window.__map.getCenter().lat-point.latitude)+Math.abs(window.__map.getCenter().lng-point.longitude),acceptedCebuPoint)).toBeLessThan(1e-7);
     await lat.fill('91');await expect(page.getByRole('button',{name:'Submit Spot',exact:true})).toBeDisabled();
     await expect(page.getByRole('alert')).toContainText('Latitude must');
     await lat.fill('10.3212345');await lng.fill('123.9012345');
+    await expect.poll(()=>map.evaluate(()=>Math.abs(window.__map.getCenter().lat-10.3212345))).toBeLessThan(1e-7);
     await page.getByRole('button',{name:'Hide spot location map',exact:true}).click();
     await page.getByPlaceholder('e.g. Neon Brew Terminal').fill('Fixture posting cafe');
+    await expect(page.getByText('Is this the spot you’re posting about?',{exact:true})).toHaveCount(0);
+    await expect(page.getByText('This is a different place',{exact:false})).toHaveCount(0);
     await address.fill('Fixture Cebu address');
+    await expect.poll(()=>page.evaluate(()=>window.__picker.geocodedAddresses.length)).toBe(1);
+    await expect(lat).toHaveValue('10.5800001');await expect(lng).toHaveValue('123.8800002');
+    await expect(page.getByText('Pin moved to an approximate address location. The admin can fine-tune it.')).toHaveCount(0);
+    await address.fill('Updated Fixture Cebu address');
+    await expect(address).toHaveValue('Updated Fixture Cebu address');
+    await expect.poll(()=>page.evaluate(()=>window.__picker.geocodedAddresses.length)).toBe(2);
+    await lat.fill('10.5801');await lng.fill('123.8803');
+    await expect(lat).toHaveValue('10.5801');await expect(lng).toHaveValue('123.8803');
     await page.getByRole('button',{name:'Add spot photos',exact:true}).click();
     await page.getByText('Specialty Coffee',{exact:true}).click();
+    await page.getByRole('button',{name:'Add a custom category',exact:true}).click();
+    await page.getByLabel('Custom category name').fill('Dog Friendly');
+    await page.getByRole('button',{name:'Add category',exact:true}).click();
+    await expect(page.getByText('Dog Friendly',{exact:true})).toBeVisible();
     await page.getByText('No',{exact:true}).click();
     const submit=page.getByRole('button',{name:'Submit Spot',exact:true});await expect(submit).toBeEnabled();await submit.click();
     await expect.poll(()=>page.evaluate(()=>window.__picker.submissions.length)).toBe(1);
     const payload=await page.evaluate(()=>window.__picker.submissions[0]);
-    assert.equal(payload.latitude,10.3212345);assert.equal(payload.longitude,123.9012345);
-    assert.equal(payload.spot_id,null);assert.equal(payload.submitter_id,'fixture-user');
+    assert.equal(payload.latitude,10.5801);assert.equal(payload.longitude,123.8803);
+    assert.equal(payload.category,'Specialty Coffee');assert.ok(payload.categories.includes('Dog Friendly'));
+    assert.equal(payload.spot_id,null);assert.equal(payload.different_place,false);assert.equal(payload.submitter_id,'fixture-user');
     assert.equal(await page.evaluate(()=>window.__picker.locationCalls),0);
     assert.deepEqual(errors,[]);
-    console.log('PASS: actual posting screen, optional coordinates under Address, immediate picker without GPS, touch drag/coordinate sync, retained pin after hide/reopen, signed input, invalid submission prevention, coordinate-only draft protection/restoration, exact queued coordinates.');
+    console.log('PASS: actual posting screen no longer asks users to match a place; posts are queued without a spot link for admin verification, with optional coordinates, map interaction, validation and draft restoration.');
   }finally{await browser.close()}
 }
 main().catch(error=>{console.error(error);process.exitCode=1});

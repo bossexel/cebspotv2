@@ -155,7 +155,6 @@ function getPreviewMedia(item?: LocalUpdate | null) {
 }
 
 function formatSpotScore(score: number) {
-  if (score > 0) return `+${score}`;
   return String(score);
 }
 
@@ -216,6 +215,9 @@ const ActivityPostCard = React.memo(function ActivityPostCard({ item, appColors,
                   <MapPin size={12} color={appColors.onSurfaceVariant} fill={appColors.onSurfaceVariant} />
                   <Text numberOfLines={1} style={[styles.locationText, { color: appColors.onSurfaceVariant }]}>{item.location_name}</Text>
                 </View>
+                {!!(item.categories?.length || item.category) && <Text numberOfLines={1} style={[styles.postCategory, { color: appColors.onSurfaceVariant }]}>
+                  {(item.categories?.length ? item.categories : [item.category]).filter(Boolean).join(' · ')}
+                </Text>}
               </Pressable>
 
               {!isVideoUrl(item.image_url ?? '') && item.image_url && failedImage !== item.image_url ? (
@@ -250,15 +252,23 @@ const ActivityPostCard = React.memo(function ActivityPostCard({ item, appColors,
                   ]}
                   onPress={() => onVote(item)}
                 >
-                  <MapPin
-                    size={21}
-                    color={currentVote === 'up' ? colors.primary : canVote ? appColors.onSurface : appColors.onSurfaceVariant}
-                    strokeWidth={2.5}
-                  />
+                  {currentVote === 'up' ? (
+                    <Image
+                      source={require('../assets/cebspot-logo.png')}
+                      style={styles.voteBrandLogo}
+                      resizeMode="contain"
+                      accessibilityLabel="CebSpot liked"
+                    />
+                  ) : (
+                    <MapPin
+                      size={21}
+                      color={canVote ? appColors.onSurfaceVariant : appColors.outlineVariant}
+                      strokeWidth={2.5}
+                    />
+                  )}
                   <Text style={[styles.voteScoreText, { color: canVote ? appColors.onSurface : appColors.onSurfaceVariant }]}>
                     {formatSpotScore(item.spot_count)}
                   </Text>
-                  <Text style={[styles.voteLabelText, { color: currentVote === 'up' ? colors.primary : appColors.onSurfaceVariant }]}>Spot</Text>
                 </Pressable>
                 <View style={styles.actionSpacer} />
                 <Pressable
@@ -1238,12 +1248,9 @@ export default function ActivityScreen() {
                   ) : null}
 
                   <View style={[styles.postStatsRow, { borderTopColor: appColors.outlineVariant }]}>
-                    <View style={styles.postSpotStat}>
-                      <MapPin size={14} color={colors.primary} strokeWidth={2.5} />
-                      <Text style={[styles.postStatText, { color: appColors.onSurfaceVariant }]}>
-                        {formatSpotScore(selectedCommentUpdate.spot_count)} Spot
-                      </Text>
-                    </View>
+                    <Text style={[styles.postStatText, { color: appColors.onSurfaceVariant }]}>
+                      {formatSpotScore(selectedCommentUpdate.spot_count)}
+                    </Text>
                     <Text style={[styles.postStatText, { color: appColors.onSurfaceVariant }]}>
                       {comments.length || selectedCommentUpdate.comments_count} Comments
                     </Text>
@@ -1652,6 +1659,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: '800',
   },
+  postCategory: {
+    marginTop: spacing.xs,
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+  },
   updateImage: {
     width: '100%',
     height: 250,
@@ -1669,6 +1681,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+  },
+  voteBrandLogo: {
+    width: 22,
+    height: 22,
   },
   sortButton: {
     minHeight: 38,
@@ -1689,16 +1705,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: fontSize.sm,
     fontWeight: '900',
-  },
-  voteLabelText: {
-    fontSize: fontSize.xs,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  postSpotStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
   },
   disabledAction: {
     opacity: 0.55,

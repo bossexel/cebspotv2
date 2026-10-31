@@ -7,6 +7,7 @@ import { colors } from '../constants/colors';
 import { fontSize, radius, spacing } from '../constants/design';
 import { useTheme } from '../hooks/useTheme';
 import { parseMapCoordinates } from '../utils/mapCoordinates';
+import { isCebuCoordinate } from '../utils/addressGeocoding';
 
 export const SpotLocationPicker = memo(function SpotLocationPicker({ latitude, longitude, category, onChange, onInteractionChange,
   purpose = 'suggestion', mapVisible = true, onCloseMap }: {
@@ -26,11 +27,17 @@ export const SpotLocationPicker = memo(function SpotLocationPicker({ latitude, l
   [latitude, longitude, category, appColors.onSurfaceVariant, posting]);
 
   const updateFromMap = useCallback((point: MapCoordinate) => {
+    if (posting && !isCebuCoordinate(point)) {
+      setError('CebSpot currently supports locations in Cebu only.');
+      onChange(null);
+      setCamera(current => ({ ...current, transitionKey: current.transitionKey + 1 }));
+      return;
+    }
     drafts.current = { latitude: point.latitude.toFixed(7), longitude: point.longitude.toFixed(7) };
     setLatitudeText(drafts.current.latitude); setLongitudeText(drafts.current.longitude); setError(null);
     setCamera(current => ({ ...current, center: point }));
     onChange(point);
-  }, [onChange]);
+  }, [onChange, posting]);
   const updateZoom = useCallback((zoom: number) => setCamera(current => ({ ...current, zoom })), []);
   const jumpToPoint = useCallback((point: MapCoordinate) => {
     updateFromMap(point);
@@ -41,9 +48,11 @@ export const SpotLocationPicker = memo(function SpotLocationPicker({ latitude, l
     drafts.current = { ...drafts.current, [field]: text };
     if (field === 'latitude') setLatitudeText(text); else setLongitudeText(text);
     const parsed = parseMapCoordinates(drafts.current.latitude, drafts.current.longitude);
-    setError(parsed.error);
     const point = parsed.coordinate;
-    onChange(point);
+    const outsideCebu = Boolean(point && posting && !isCebuCoordinate(point));
+    setError(outsideCebu ? 'CebSpot currently supports locations in Cebu only.' : parsed.error);
+    onChange(outsideCebu ? null : point);
+    if (outsideCebu) return;
     if (point) setCamera(current => ({ ...current, center: point, transitionKey: current.transitionKey + 1 }));
   }
 

@@ -174,6 +174,8 @@ export interface LocalUpdate {
   latitude?: number | null;
   longitude?: number | null;
   image_url?: string | null;
+  category?: string | null;
+  categories?: string[] | null;
   media_urls?: string[] | null;
   spot_count: number;
   comments_count: number;

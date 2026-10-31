@@ -1,9 +1,10 @@
 import { userErrorMessage } from '../src/utils/userError';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
   BackHandler,
+  DeviceEventEmitter,
   Image,
   Platform,
   Pressable,
@@ -16,10 +17,10 @@ import {
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import {
   ArrowLeft,
   Camera,
-  Check,
   MapPin,
   Play,
   ShieldCheck,
@@ -38,8 +39,9 @@ import { useAuth } from '../src/hooks/useAuth';
 import { useTheme } from '../src/hooks/useTheme';
 import { spotSubmissionDraftService } from '../src/services/spotSubmissionDraftService';
 import { spotSubmissionQueueService } from '../src/services/spotSubmissionQueueService';
-import { findMatchingSpots, type SpotMatch } from '../src/services/spotMatchingService';
 import { spotService } from '../src/services/spotService';
+import { yourPostsService, type EditableSpotSubmission } from '../src/services/yourPostsService';
+import { isCebuCoordinate, resolveAddressPin } from '../src/utils/addressGeocoding';
 import type { SpotSubmissionDraft, SpotSubmissionMediaAsset } from '../src/types';
 
 const maxMediaItems = 5;
@@ -58,17 +60,20 @@ function formatDuration(durationMs?: number | null) {
 
 export default function SubmitSpotScreen() {
   const router = useRouter();
-  const { spotId } = useLocalSearchParams<{ spotId?: string }>();
+  const { spotId, submissionId } = useLocalSearchParams<{ spotId?: string; submissionId?: string }>();
   const { appColors } = useTheme();
   const { profile } = useAuth();
   const [name, setName] = useState('');
-  const [matches, setMatches] = useState<SpotMatch[]>([]);
-  const [linkedSpot, setLinkedSpot] = useState<SpotSubmissionDraft['linkedSpot']>(null);
-  const [differentPlace, setDifferentPlace] = useState(false);
-  const [matching, setMatching] = useState(false);
-  const [matchError, setMatchError] = useState(false);
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
+  const [customCategoryOpen, setCustomCategoryOpen] = useState(false);
+  const [customCategoryDraft, setCustomCategoryDraft] = useState('');
+  const [editSubmission, setEditSubmission] = useState<EditableSpotSubmission | null>(null);
+  const [editLoadError, setEditLoadError] = useState<string | null>(null);
+  const [addressLookupEnabled, setAddressLookupEnabled] = useState(false);
+  const [addressLookupRetry, setAddressLookupRetry] = useState(0);
+  const [addressLookupStatus, setAddressLookupStatus] = useState<'idle' | 'searching' | 'not-found' | 'outside-cebu' | 'permission-required' | 'permission-denied' | 'unavailable'>('idle');
+  const addressLookupRequest = useRef(0);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [acceptsReservations, setAcceptsReservations] = useState<boolean | null>(null);
   const [media, setMedia] = useState<SpotSubmissionMediaAsset[]>([]);
@@ -80,7 +85,7 @@ export default function SubmitSpotScreen() {
   const [mapInteracting, setMapInteracting] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [shareStatus, setShareStatus] = useState<'sharing' | 'success' | null>(null);
+  const [shareStatus, setShareStatus] = useState<'sharing' | 'queued' | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [exitConfirmationOpen, setExitConfirmationOpen] = useState(false);
@@ -100,7 +105,7 @@ export default function SubmitSpotScreen() {
   );
 
   useEffect(() => {
-    if (!profile?.id || spotId) return;
+    if (!profile?.id || spotId || submissionId) return;
     let active = true;
 
     spotSubmissionDraftService
@@ -108,8 +113,6 @@ export default function SubmitSpotScreen() {
       .then((draft) => {
         if (!active || !draft) return;
         setDraftId(draft.id);
-        setLinkedSpot(draft.linkedSpot ?? null);
-        setDifferentPlace(draft.differentPlace ?? false);
         setName(draft.name);
         setDescription(draft.description);
         setAddress(draft.address);
@@ -118,7 +121,7 @@ export default function SubmitSpotScreen() {
         setLatitude(draft.latitude);
         setLongitude(draft.longitude);
         setLocationOrigin({ latitude: draft.latitude, longitude: draft.longitude });
-        setCoordinatesValid(true);
+        setCoordinatesValid(isCebuCoordinate({ latitude: draft.latitude, longitude: draft.longitude }));
         setMedia(draft.media);
       })
       .catch((error) => console.warn('Unable to restore spot draft:', error));
@@ -126,49 +129,137 @@ export default function SubmitSpotScreen() {
     return () => {
       active = false;
     };
-  }, [profile?.id, spotId]);
+  }, [profile?.id, spotId, submissionId]);
+
+  useEffect(() => {
+    if (!profile?.id || !submissionId) return;
+    let active = true;
+    setEditLoadError(null);
+    void yourPostsService.getOwnSubmission(profile.id, submissionId).then((submission) => {
+      if (!active) return;
+      setEditSubmission(submission);
+      setName(submission.name);
+      setDescription(submission.description ?? '');
+      setAddress(submission.address);
+      const selected = Array.from(new Set([submission.category, ...(submission.categories ?? [])].filter(Boolean)));
+      setSelectedCategories(selected);
+      setAcceptsReservations(Boolean(submission.is_reservable));
+      setLatitude(submission.latitude);
+      setLongitude(submission.longitude);
+      setLocationOrigin({ latitude: submission.latitude, longitude: submission.longitude });
+      setCoordinatesValid(isCebuCoordinate({ latitude: submission.latitude, longitude: submission.longitude }));
+    }).catch(() => {
+      if (active) setEditLoadError('Your spot could not be loaded for editing. Check your connection and try again from Your Posts.');
+    });
+    return () => { active = false; };
+  }, [profile?.id, submissionId]);
 
   useEffect(() => {
     if (!spotId) return;
     let active = true;
     spotService.getSpotById(spotId).then((spot) => {
       if (!active || !spot || !spot.is_public) return;
-      setLinkedSpot({ id: spot.id, name: spot.name, address: spot.address, latitude: spot.latitude, longitude: spot.longitude });
-      setDifferentPlace(false);
       setName(spot.name);
       setAddress(spot.address);
       setLatitude(spot.latitude);
       setLongitude(spot.longitude);
       setLocationOrigin({ latitude: spot.latitude, longitude: spot.longitude });
-      setCoordinatesValid(true);
-    }).catch(() => { if (active) setMatchError(true); });
+      setCoordinatesValid(isCebuCoordinate({ latitude: spot.latitude, longitude: spot.longitude }));
+    }).catch(() => undefined);
     return () => { active = false; };
   }, [spotId]);
 
   useEffect(() => {
-    let active = true;
-    setMatching(name.trim().length >= 2);
-    setMatches([]);
-    setMatchError(false);
-    if (name.trim().length < 2 || !coordinatesValid || mapInteracting) { setMatching(false); return; }
-    const timer = setTimeout(() => {
-      findMatchingSpots(name, latitude, longitude)
-        .then((items) => { if (active) setMatches(items); })
-        .catch(() => { if (active) setMatchError(true); })
-        .finally(() => { if (active) setMatching(false); });
-    }, 350);
-    return () => { active = false; clearTimeout(timer); };
-  }, [name, latitude, longitude, coordinatesValid, mapInteracting]);
+    const query = address.trim();
+    if (!addressLookupEnabled || Platform.OS !== 'android' || query.length < 5) {
+      setAddressLookupStatus('idle');
+      return;
+    }
 
-  function resetPlaceChoice() {
-    setLinkedSpot(null);
-    setDifferentPlace(false);
-  }
+    let active = true;
+    const requestId = ++addressLookupRequest.current;
+    setAddressLookupStatus('searching');
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const result = await resolveAddressPin(query);
+          if (!active || requestId !== addressLookupRequest.current) return;
+          if (result.status === 'permission-required') {
+            setAddressLookupStatus('permission-required');
+            return;
+          }
+          if (result.status === 'not-found') {
+            setAddressLookupStatus('not-found');
+            return;
+          }
+          if (result.status === 'outside-cebu') {
+            setAddressLookupStatus('outside-cebu');
+            return;
+          }
+
+          setLatitude(result.coordinate.latitude);
+          setLongitude(result.coordinate.longitude);
+          setLocationOrigin(result.coordinate);
+          setLocationEdited(true);
+          setCoordinatesValid(true);
+          // The coordinates update quietly; keep the address field unobstructed
+          // so the user can continue editing the form without dismissing a notice.
+          setAddressLookupStatus('idle');
+        } catch {
+          if (active && requestId === addressLookupRequest.current) setAddressLookupStatus('unavailable');
+        }
+      })();
+    }, 850);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [address, addressLookupEnabled, addressLookupRetry]);
 
   function toggleCategory(item: string) {
-    setSelectedCategories((current) =>
-      current.includes(item) ? current.filter((category) => category !== item) : [...current, item]
-    );
+    if (selectedCategories.includes(item)) {
+      setSelectedCategories((current) => current.filter((category) => category !== item));
+      return;
+    }
+    if (selectedCategories.length >= 8) {
+      Alert.alert('Category limit reached', 'You can choose up to eight categories. Remove one before adding another.');
+      return;
+    }
+    setSelectedCategories((current) => [...current, item]);
+  }
+
+  function addCustomCategory() {
+    const label = customCategoryDraft.trim().replace(/\s+/g, ' ');
+    if (label.length < 2 || label.length > 50) {
+      Alert.alert('Category name needed', 'Enter a category from 2 to 50 characters.');
+      return;
+    }
+    if (selectedCategories.some((category) => category.toLowerCase() === label.toLowerCase())) {
+      Alert.alert('Category already added', 'Choose it from the selected categories instead.');
+      return;
+    }
+    if (selectedCategories.length >= 8) {
+      Alert.alert('Category limit reached', 'You can add up to eight categories.');
+      return;
+    }
+    setSelectedCategories((current) => [...current, label]);
+    setCustomCategoryDraft('');
+    setCustomCategoryOpen(false);
+  }
+
+  async function requestAddressLookupPermission() {
+    setAddressLookupStatus('searching');
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== 'granted') {
+        setAddressLookupStatus('permission-denied');
+        return;
+      }
+      setAddressLookupRetry((current) => current + 1);
+    } catch {
+      setAddressLookupStatus('unavailable');
+    }
   }
 
   async function selectMedia(mediaType: 'images' | 'videos') {
@@ -230,10 +321,11 @@ export default function SubmitSpotScreen() {
   }
 
   const updateSpotCoordinate = useCallback((coordinate: MapCoordinate | null) => {
+    addressLookupRequest.current += 1;
+    setAddressLookupStatus('idle');
     setLocationEdited(true);
-    setCoordinatesValid(coordinate !== null);
+    setCoordinatesValid(coordinate !== null && isCebuCoordinate(coordinate));
     if (!coordinate) return;
-    setLinkedSpot(null); setDifferentPlace(false);
     setLatitude(coordinate.latitude); setLongitude(coordinate.longitude);
   }, []);
 
@@ -262,8 +354,6 @@ export default function SubmitSpotScreen() {
   function buildDraft(id: string): SpotSubmissionDraft {
     return {
       id,
-      linkedSpot,
-      differentPlace,
       name,
       description,
       address,
@@ -309,23 +399,19 @@ export default function SubmitSpotScreen() {
       Alert.alert('Authentication required', 'Please sign in again to submit a spot.');
       return;
     }
-    if (!linkedSpot && (!coordinatesValid || mapInteracting)) {
-      Alert.alert('Choose a location', 'Enter valid latitude and longitude, or place the pin on the map.');
+    if (!coordinatesValid || mapInteracting) {
+      Alert.alert('Choose a Cebu location', 'CebSpot currently supports locations in Cebu only. Enter coordinates or place the pin within Cebu.');
       return;
     }
-    if (!linkedSpot && (!name.trim() || !address.trim() || !primaryCategory)) {
+    if (!name.trim() || !address.trim() || !primaryCategory) {
       Alert.alert('Missing details', 'Spot name, address, and category are required.');
       return;
     }
-    if (!linkedSpot && acceptsReservations === null) {
+    if (acceptsReservations === null) {
       Alert.alert('Missing reservation info', 'Please choose whether this spot accepts reservations.');
       return;
     }
-    if (matching || (matches.length > 0 && !linkedSpot && !differentPlace)) {
-      Alert.alert('Confirm the place', 'Is this the spot you’re posting about? Select a match or choose “This is a different place”.');
-      return;
-    }
-    if (!media.some((asset) => asset.type === 'image')) {
+    if (!submissionId && !media.some((asset) => asset.type === 'image')) {
       Alert.alert('Cover photo required', 'Add at least one photo before submitting this spot.');
       return;
     }
@@ -334,17 +420,38 @@ export default function SubmitSpotScreen() {
       setSubmitting(true);
       setShareStatus('sharing');
 
+      if (submissionId) {
+        if (!editSubmission) throw new Error(editLoadError ?? 'Spot details are still loading. Please try again.');
+        await yourPostsService.updateOwnSubmission(profile.id, {
+          ...editSubmission,
+          name: name.trim(),
+          description: description.trim() || null,
+          category: primaryCategory,
+          categories: selectedCategories,
+          address: address.trim(),
+          latitude,
+          longitude,
+          is_reservable: acceptsReservations,
+        });
+        DeviceEventEmitter.emit('your-posts-submission-updated');
+        setShareStatus(null);
+        setSubmitting(false);
+        Alert.alert('Changes saved', 'Your spot is back in admin review. Photos remain as originally submitted.');
+        router.back();
+        return;
+      }
+
       await spotSubmissionQueueService.enqueue(
         {
-          name: linkedSpot?.name ?? name.trim(),
-          spot_id: linkedSpot?.id ?? null,
-          different_place: differentPlace,
+          name: name.trim(),
+          spot_id: null,
+          different_place: false,
           description: description.trim() || null,
-          address: linkedSpot?.address ?? address.trim(),
+          address: address.trim(),
           category: primaryCategory ?? 'Community',
           categories: selectedCategories,
-          latitude: linkedSpot?.latitude ?? latitude,
-          longitude: linkedSpot?.longitude ?? longitude,
+          latitude,
+          longitude,
           images: media.map((asset) => asset.uri),
           media,
           draftId: draftId ?? undefined,
@@ -356,7 +463,7 @@ export default function SubmitSpotScreen() {
         },
         profile.display_name || 'Explorer'
       );
-      setShareStatus('success');
+      setShareStatus('queued');
       setTimeout(() => {
         setShareStatus(null);
         router.replace('/');
@@ -389,14 +496,15 @@ export default function SubmitSpotScreen() {
       </View>
 
       <View style={styles.intro}>
-        <Text style={[styles.title, { color: appColors.onSurface }]}>Found a Spot?</Text>
+        <Text style={[styles.title, { color: appColors.onSurface }]}>{submissionId ? 'Edit Your Spot' : 'Found a Spot?'}</Text>
+        {!!editLoadError && <Text accessibilityRole="alert" style={[styles.editError, { color: appColors.danger }]}>{editLoadError}</Text>}
         <Text style={[styles.subtitle, { color: appColors.onSurfaceVariant }]}>
           Help the community expand the network.
         </Text>
       </View>
 
       <View style={[styles.form, { backgroundColor: appColors.surfaceLow }]}>
-        <View style={styles.field}>
+        {submissionId ? <Text style={[styles.editHint, { color: appColors.onSurfaceVariant }]}>Photos stay as originally submitted while you edit the spot details.</Text> : <View style={styles.field}>
           <View style={styles.mediaHeader}>
             <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Media</Text>
             <Text style={[styles.mediaCount, { color: appColors.onSurfaceVariant }]}>
@@ -492,13 +600,13 @@ export default function SubmitSpotScreen() {
               <Text style={[styles.mediaActionText, { color: appColors.onSurface }]}>Video 15s</Text>
             </Pressable>
           </View>
-        </View>
+        </View>}
 
         <View style={styles.field}>
           <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Spot Name</Text>
           <TextInput
             value={name}
-            onChangeText={(value) => { resetPlaceChoice(); setName(value); }}
+            onChangeText={setName}
             placeholder="e.g. Neon Brew Terminal"
             placeholderTextColor={appColors.onSurfaceVariant}
             selectionColor={appColors.primary}
@@ -511,25 +619,6 @@ export default function SubmitSpotScreen() {
               },
             ]}
           />
-        </View>
-
-        <View style={styles.field}>
-          {matching && <Text style={{ color: appColors.onSurfaceVariant }}>Looking for matching spots…</Text>}
-          {matchError && <Text style={{ color: appColors.onSurfaceVariant }}>Spot suggestions are unavailable. Your submission will still need admin place verification.</Text>}
-          {matches.length > 0 && <Text style={[styles.label, { color: appColors.onSurface }]}>Is this the spot you’re posting about?</Text>}
-          {matches.map((spot) => (
-            <Pressable key={spot.id} accessibilityRole="button" accessibilityState={{ selected: linkedSpot?.id === spot.id }}
-              onPress={() => { setLocationOrigin({ latitude, longitude }); setLinkedSpot(spot); setDifferentPlace(false); }}
-              style={[styles.input, { borderColor: linkedSpot?.id === spot.id ? colors.primary : appColors.inputBorder }]}>
-              <Text style={{ color: appColors.onSurface }}>{spot.name}{linkedSpot?.id === spot.id ? ' ✓' : ''}</Text>
-              <Text style={{ color: appColors.onSurfaceVariant }}>{spot.address} · {Math.round(spot.distance_m)} m away</Text>
-            </Pressable>
-          ))}
-          {(matches.length > 0 || linkedSpot) && <Pressable accessibilityRole="button" accessibilityState={{ selected: differentPlace }}
-            onPress={() => { setLinkedSpot(null); setDifferentPlace(true); }} style={styles.locationNote}>
-            <Text style={{ color: colors.primary }}>This is a different place{differentPlace ? ' ✓' : ''}</Text>
-          </Pressable>}
-          {linkedSpot && <Text style={{ color: appColors.onSurfaceVariant }}>Your post will link to {linkedSpot.name}. Your caption, media and comments belong to this post.</Text>}
         </View>
 
         <View style={styles.field}>
@@ -553,7 +642,6 @@ export default function SubmitSpotScreen() {
           />
         </View>
 
-        {!linkedSpot && <>
         <View style={styles.field}>
           <Text style={[styles.label, { color: appColors.onSurfaceVariant }]}>Categories</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
@@ -566,7 +654,18 @@ export default function SubmitSpotScreen() {
                 appColors={appColors}
               />
             ))}
+            {selectedCategories.filter((item) => !categories.includes(item)).map((item) => (
+              <CategoryChip key={`custom-${item}`} label={item} selected onPress={() => toggleCategory(item)} appColors={appColors} />
+            ))}
+            <Pressable accessibilityRole="button" accessibilityLabel="Add a custom category" onPress={() => setCustomCategoryOpen(true)} style={[styles.addCategoryButton, { borderColor: appColors.outlineVariant }]}>
+              <Text style={[styles.addCategoryText, { color: colors.primary }]}>+ Add</Text>
+            </Pressable>
           </ScrollView>
+          {submissionId && <Text style={[styles.editHint, { color: appColors.onSurfaceVariant }]}>
+            {editSubmission?.status === 'approved'
+              ? 'Saving sends this post back for admin review. Its live map listing stays unchanged until an admin updates it.'
+              : 'Saving sends this spot back for admin review.'}
+          </Text>}
         </View>
 
         <View style={styles.field}>
@@ -579,7 +678,11 @@ export default function SubmitSpotScreen() {
           >
             <TextInput
               value={address}
-              onChangeText={(value) => { resetPlaceChoice(); setAddress(value); }}
+              onChangeText={(value) => {
+                addressLookupRequest.current += 1;
+                setAddressLookupEnabled(true);
+                setAddress(value);
+              }}
               placeholder="Street, Barangay, City"
               placeholderTextColor={appColors.onSurfaceVariant}
               selectionColor={appColors.primary}
@@ -590,6 +693,26 @@ export default function SubmitSpotScreen() {
               <MapPin size={20} color={colors.primary} />
             </Pressable>
           </View>
+          {(addressLookupStatus === 'not-found' || addressLookupStatus === 'outside-cebu' || addressLookupStatus === 'unavailable' || addressLookupStatus === 'permission-required' || addressLookupStatus === 'permission-denied') && (
+            <View style={styles.addressFeedback}>
+              {(addressLookupStatus === 'permission-required' || addressLookupStatus === 'permission-denied') ? (
+                <>
+                  <Text style={[styles.addressFeedbackText, { color: appColors.onSurfaceVariant }]}>Android needs location permission to look up this address. Your current location is not used.</Text>
+                  <Pressable accessibilityRole="button" onPress={() => void requestAddressLookupPermission()} style={[styles.addressLookupButton, { borderColor: appColors.outlineVariant }]}>
+                    <Text style={{ color: colors.primary, fontWeight: '800' }}>Allow address lookup</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <Text accessibilityRole="alert" style={[styles.addressFeedbackText, { color: appColors.onSurfaceVariant }]}>
+                  {addressLookupStatus === 'outside-cebu'
+                    ? 'CebSpot currently supports locations in Cebu only. The pin was not moved; enter a Cebu address or choose a location within Cebu.'
+                    : addressLookupStatus === 'not-found'
+                    ? 'Could not find that address. The pin is unchanged; you can edit the address or place the pin on the map.'
+                    : 'Address lookup is unavailable right now. The pin is unchanged; you can edit the address or place it on the map.'}
+                </Text>
+              )}
+            </View>
+          )}
         </View>
 
         <SpotLocationPicker key={`${locationOrigin.latitude}:${locationOrigin.longitude}`} purpose="posting"
@@ -631,32 +754,42 @@ export default function SubmitSpotScreen() {
           </View>
         </View>
 
-        </>}
         <View style={styles.policy}>
           <ShieldCheck size={16} color={colors.primary} />
           <Text style={[styles.policyText, { color: appColors.onSurfaceVariant }]}>
-            New places need admin approval for the map. Each community post follows its own moderation rules. Ratings and reviews belong in the spot’s review section.
+            Your post will appear in Activity after submission. An admin verifies the place and links it to the right listing. New places need admin approval before appearing on the map.
           </Text>
         </View>
       </View>
 
       <AppButton
-        label={submitting ? 'Spot uploading...' : linkedSpot ? 'Post about this spot' : 'Submit Spot'}
-        disabled={savingDraft || matching || (!linkedSpot && (!coordinatesValid || mapInteracting))}
+        label={submitting ? (submissionId ? 'Saving changes...' : 'Spot uploading...') : submissionId ? 'Save Changes' : 'Submit Spot'}
+        disabled={savingDraft || !coordinatesValid || mapInteracting || Boolean(submissionId && (!editSubmission || editLoadError))}
         loading={submitting}
         onPress={submit}
       />
 
+      <Modal visible={customCategoryOpen} transparent animationType="fade" onRequestClose={() => setCustomCategoryOpen(false)}>
+        <View style={styles.categoryModalBackdrop}>
+          <View style={[styles.categoryModal, { backgroundColor: appColors.surfaceRaised }]}>
+            <Text style={[styles.categoryModalTitle, { color: appColors.onSurface }]}>Add a category</Text>
+            <TextInput accessibilityLabel="Custom category name" value={customCategoryDraft} onChangeText={setCustomCategoryDraft}
+              placeholder="e.g. Board game cafe" maxLength={50} autoCapitalize="words" returnKeyType="done" onSubmitEditing={addCustomCategory}
+              style={[styles.categoryInput, { color: appColors.onSurface, backgroundColor: appColors.inputSurface, borderColor: appColors.inputBorder }]} />
+            <View style={styles.categoryModalActions}>
+              <Pressable accessibilityRole="button" onPress={() => { setCustomCategoryOpen(false); setCustomCategoryDraft(''); }} style={styles.categoryModalButton}><Text style={{ color: appColors.onSurfaceVariant }}>Cancel</Text></Pressable>
+              <Pressable accessibilityRole="button" onPress={addCustomCategory} style={styles.categoryModalButton}><Text style={{ color: colors.primary, fontWeight: '800' }}>Add category</Text></Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={Boolean(shareStatus)} transparent animationType="fade" onRequestClose={() => undefined}>
         <View style={styles.statusOverlayBackdrop}>
           <View style={[styles.statusOverlayCard, { backgroundColor: appColors.surfaceRaised }]}>
-            {shareStatus === 'sharing' ? (
-              <ActivityIndicator size="large" color={colors.primary} />
-            ) : (
-              <Check size={42} color={colors.primary} />
-            )}
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={[styles.statusOverlayText, { color: appColors.onSurface }]}>
-              {shareStatus === 'sharing' ? 'Sharing the Spot' : 'Spot submitted'}
+              {shareStatus === 'sharing' ? 'Sharing the Spot' : "Upload started. We'll notify you when it is submitted."}
             </Text>
           </View>
         </View>
@@ -915,6 +1048,24 @@ const styles = StyleSheet.create({
   chips: {
     gap: spacing.sm,
   },
+  addCategoryButton: {
+    minHeight: 42,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+  },
+  addCategoryText: { fontSize: fontSize.sm, fontWeight: '900' },
+  editHint: { fontSize: fontSize.xs, lineHeight: 18 },
+  editError: { marginTop: spacing.sm, textAlign: 'center' },
+  categoryModalBackdrop: { flex: 1, justifyContent: 'center', padding: spacing.lg, backgroundColor: 'rgba(0,0,0,0.42)' },
+  categoryModal: { padding: spacing.lg, borderRadius: radius.xl, gap: spacing.md },
+  categoryModalTitle: { fontSize: fontSize.lg, fontWeight: '900' },
+  categoryInput: { minHeight: 50, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: spacing.md },
+  categoryModalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.md },
+  categoryModalButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm },
   addressRow: {
     minHeight: 54,
     borderRadius: radius.lg,
@@ -937,10 +1088,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary + '12',
     marginRight: spacing.xs,
   },
-  locationNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  addressFeedback: {
+    marginTop: spacing.xs,
     gap: spacing.xs,
+  },
+  addressFeedbackText: {
+    fontSize: fontSize.xs,
+    lineHeight: 18,
+  },
+  addressLookupPermission: {
+    gap: spacing.xs,
+  },
+  addressLookupButton: {
+    alignSelf: 'flex-start',
+    minHeight: 40,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
   },
   reservationChoiceRow: {
     flexDirection: 'row',

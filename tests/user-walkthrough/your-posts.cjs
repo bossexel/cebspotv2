@@ -25,7 +25,7 @@ function adapter(name) {
   if (name === 'react-native-svg') return `import React from 'react';const shape=tag=>React.forwardRef(({children,...props},ref)=>React.createElement(tag,{...props,ref},children));
     export const Svg=shape('svg'),Path=shape('path'),Circle=shape('circle'),Line=shape('line'),Polyline=shape('polyline'),Polygon=shape('polygon'),Rect=shape('rect'),G=shape('g'),Ellipse=shape('ellipse'),Defs=shape('defs'),ClipPath=shape('clipPath');export default Svg;`;
   if (name === 'expo-image-picker') return `export const requestMediaLibraryPermissionsAsync=async()=>({granted:false});export const launchImageLibraryAsync=async()=>({canceled:true,assets:[]});`;
-  if (name === 'expo-router') return `import React from 'react';const router={push:r=>{window.__posts.scrollBeforeNavigation=document.querySelector('[data-testid="your-posts-list"]')?.scrollTop;window.__posts.go(r)},replace:r=>window.__posts.go(r),canGoBack:()=>false};
+  if (name === 'expo-router') return `import React from 'react';const router={push:r=>{window.__posts.scrollBeforeNavigation=document.querySelector('[data-testid="your-posts-list"]')?.scrollTop;const path=typeof r==='string'?r:r.pathname+(r.params?.submissionId?'?submissionId='+r.params.submissionId:'');window.__posts.go(path)},replace:r=>window.__posts.go(r),canGoBack:()=>false};
     export const FocusContext=React.createContext(true);export const useRouter=()=>router;export const useFocusEffect=callback=>{const focused=React.useContext(FocusContext);React.useEffect(()=>focused?callback():undefined,[callback,focused])};`;
   if (name.endsWith('/hooks/useAuth')) return `export const useAuth=()=>({user:{id:'alice'},profile:{id:'alice',display_name:'Alice',email:'alice@example.test'},refreshProfile:async()=>{},logOut:async()=>{}});`;
   if (name.endsWith('/hooks/useTheme')) return `import React from 'react';import {colors,darkColors} from ${JSON.stringify(path.join(root,'src/constants/colors.ts'))};
@@ -36,7 +36,7 @@ function adapter(name) {
     const offset=cursor?Number(cursor.id):0;
     const rows=f.mode==='large'?Array.from({length:12},(_,i)=>({id:String(offset+i+1),status:'approved',description:'Visit '+(offset+i+1),images:Array.from({length:8},(_,n)=>'https://media.test/'+(offset+i+1)+'-'+n+'.jpg')})):
       cursor?[{id:'rejected',status:'rejected',description:'Original rejected caption',rejection_reason:'Needs location details'}]:[{id:'newer',status:'pending',description:'My return visit'},{id:'older',status:'approved',description:'My first visit'}];
-    return {items:rows.map(p=>({...p,submitter_id:user,name:'Same cafe',address:'Cebu',created_at:'2026-10-27T01:00:00Z',images:p.images||[],postId:p.id==='rejected'?null:'post-'+p.id})),nextCursor:f.mode==='large'?(offset<36?{id:String(offset+12),createdAt:'2026-10-27T01:00:00Z'}:null):cursor?null:{id:'20',createdAt:'2026-10-27T01:00:00Z'}}},
+    return {items:rows.map(p=>({...p,submitter_id:user,name:'Same cafe',address:'Cebu',category:'Specialty Coffee',categories:['Specialty Coffee','Dog Friendly'],created_at:'2026-10-27T01:00:00Z',images:p.images||[],postId:p.id==='rejected'?null:'post-'+p.id})),nextCursor:f.mode==='large'?(offset<36?{id:String(offset+12),createdAt:'2026-10-27T01:00:00Z'}:null):cursor?null:{id:'20',createdAt:'2026-10-27T01:00:00Z'}}},
     getPostId:async(user,id)=>{window.__posts.lookups.push(id);return id==='rejected'?null:'post-'+id}};`;
   const serviceName = name.split('/').pop();
   const methods = {reservationService:'getUserReservations:async()=>[]',savedSpotService:'getSavedSpotIds:async()=>[]',gamificationService:'getSummary:async()=>null',profilePhotoService:'',profileService:''};
@@ -66,6 +66,17 @@ async function main() {
     await expect(page.getByText('My first visit',{exact:true})).toBeVisible();
     await expect(page.getByText('Awaiting spot review',{exact:true})).toBeVisible();
     await expect(page.getByText('Spot approved',{exact:true})).toBeVisible();
+    await expect(page.getByText('Specialty Coffee · Dog Friendly',{exact:true}).first()).toBeVisible();
+    await expect(page.getByRole('button',{name:'Post options for Same cafe',exact:true})).toHaveCount(2);
+    await expect(page.getByText('You can edit this post; it will return to review. The live map listing stays unchanged until an admin updates it. Contact an admin to remove that listing.',{exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'Post options for Same cafe',exact:true}).first().click();
+    assert.deepEqual(await page.evaluate(()=>window.__posts.alerts.at(-1)[2].map(action=>action.text)),['Edit details','Delete','Cancel']);
+    await page.evaluate(()=>window.__posts.alerts.at(-1)[2].find(action=>action.text==='Delete').onPress());
+    assert.equal(await page.evaluate(()=>window.__posts.alerts.at(-1)[0]),'Delete spot submission?','delete requires explicit confirmation');
+    await page.getByRole('button',{name:'Post options for Same cafe',exact:true}).first().click();
+    await page.evaluate(()=>window.__posts.alerts.at(-1)[2].find(action=>action.text==='Edit details').onPress());
+    await expect(page.getByText('/submit-spot?submissionId=newer',{exact:true})).toBeVisible();
+    await page.evaluate(()=>window.__posts.go('/your-posts'));
     await expect(page.getByText('Open post',{exact:true})).toHaveCount(0);
     await page.screenshot({path:path.join(artifacts,'your-posts-light.png')});
     await page.getByRole('button',{name:'Open your post about Same cafe',exact:true}).first().click();

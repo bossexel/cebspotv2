@@ -50,7 +50,11 @@ export type FeedChange = { eventType: string; id: string; item?: LocalUpdate };
 export type SpotPostCursor = { createdAt: string; id: string };
 export type SpotPostPage = { items: LocalUpdate[]; nextCursor: SpotPostCursor | null };
 
-const spotPostFields = 'id,user_id,user_name,user_photo_url,title,body,location_name,latitude,longitude,image_url,spot_id,source_type,source_id,spot_count,comments_count,created_at';
+const spotPostFields = 'id,user_id,user_name,user_photo_url,title,body,location_name,latitude,longitude,image_url,category,categories,spot_id,source_type,source_id,spot_count,comments_count,created_at';
+
+function isMissingCategoryColumn(error: { message?: string } | null) {
+  return /category|schema cache|column/i.test(error?.message ?? '');
+}
 
 function isMissingMediaUrlsColumn(error: { message?: string } | null) {
   return /media_urls|schema cache|column/i.test(error?.message ?? '');
@@ -113,7 +117,15 @@ export const localUpdateService = {
       const createdAt = cursor.createdAt;
       query = query.or(`created_at.lt.${createdAt},and(created_at.eq.${createdAt},id.lt.${cursor.id})`);
     }
-    const { data, error } = await query.limit(pageSize + 1);
+    let { data, error }: { data: any; error: any } = await query.limit(pageSize + 1);
+    if (error && isMissingCategoryColumn(error)) {
+      let legacyQuery = supabase.from('local_updates').select(spotPostFields.replace(',category,categories,', ','))
+        .eq('spot_id', spotId).in('source_type', ['spot_submission', 'community'])
+        .order('created_at', { ascending: false }).order('id', { ascending: false });
+      if (cursor) legacyQuery = legacyQuery.or(`created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`);
+      const legacy = await legacyQuery.limit(pageSize + 1);
+      data = legacy.data; error = legacy.error;
+    }
     if (error) throw error;
     const items = (data ?? []).slice(0, pageSize).map(normalizeLocalUpdate);
     const last = items[items.length - 1];
@@ -136,13 +148,18 @@ export const localUpdateService = {
     const pageSize = 12;
     // The database supplies the initial snapshot; a phone's clock may be wrong.
     const snapshotAt = options.cursor?.snapshotAt ?? null;
-    const { data, error } = await supabase.rpc('get_local_updates_page', {
+    const args = {
       page_size: pageSize, sort_mode: options.sort ?? 'newest',
       cursor_created_at: options.cursor?.createdAt ?? null, cursor_id: options.cursor?.id ?? null,
       cursor_rank: options.cursor?.rank ?? null,
       user_latitude: options.location?.latitude ?? null, user_longitude: options.location?.longitude ?? null,
       snapshot_at: snapshotAt,
-    });
+    };
+    let { data, error } = await supabase.rpc('get_local_updates_page_with_category', args);
+    if (error && /get_local_updates_page_with_category|schema cache|pgrst202/i.test(error.message ?? '')) {
+      const legacy = await supabase.rpc('get_local_updates_page', args);
+      data = legacy.data; error = legacy.error;
+    }
     if (error) throw error;
     const rows = data ?? [];
     const items = rows.slice(0, pageSize).map(normalizeLocalUpdate);

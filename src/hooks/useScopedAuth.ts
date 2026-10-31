@@ -197,6 +197,9 @@ export function useScopedAuth(scope: AuthScope) {
 
   const signIn = useCallback(
     async (email: string, password: string) => {
+      if (!hasSupabaseConfig) {
+        throw new Error('Sign-in service is not configured for this build. Use a configured CebSpot build.');
+      }
       const { data, error } = await client.auth.signInWithPassword({ email: normalizeEmail(email), password });
       if (error) throw new Error(getAuthErrorMessage(error));
       if (data.user && !isEmailConfirmed(data.user)) {

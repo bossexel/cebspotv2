@@ -100,8 +100,13 @@ test('actual Activity card enables historical likes, exposes selected state and 
     {compilerOptions:{jsx:ts.JsxEmit.React,module:ts.ModuleKind.CommonJS}},
   ).outputText, {
     exports,React,useState:React.useState,getSpotPostSubmissionId,
-    View:primitive('div'),Text:primitive('span'),Image:()=>null,
-    User:()=>null,MapPin:()=>null,MessageCircle:()=>null,
+    View:primitive('div'),Text:primitive('span'),
+    Image:props=>React.createElement('img',{src:props.source,alt:props.accessibilityLabel}),
+    User:()=>null,MapPin:()=>React.createElement('span',{'data-icon':'map-pin'}),MessageCircle:()=>null,
+    require:assetPath=>{
+      if(assetPath.endsWith('/assets/cebspot-logo.png')) return 'cebspot-logo-fixture';
+      throw new Error(`Unexpected Activity asset: ${assetPath}`);
+    },
     Pressable:props=>React.createElement('button',{
       'aria-label':props.accessibilityLabel,'aria-pressed':props.accessibilityState?.selected,
       disabled:props.disabled,onClick:props.onPress,
@@ -114,7 +119,10 @@ test('actual Activity card enables historical likes, exposes selected state and 
     item:post,appColors:{},currentVote:null,voting:false,onVote(){},onOpen(){},onOpenSpot(){},...extra,
   }));
   assert.match(render(item),/aria-label="Spot Historical cafe" aria-pressed="false">/);
+  assert.match(render(item),/data-icon="map-pin"/);
+  assert.match(render(item),/3<\/span>/);
   assert.match(render(item,{currentVote:'up'}),/aria-label="Remove Spot from Historical cafe" aria-pressed="true">/);
+  assert.match(render(item,{currentVote:'up'}),/<img src="cebspot-logo-fixture" alt="CebSpot liked"\/>/);
   assert.match(render(item,{voting:true}),/aria-label="Spot Historical cafe" aria-pressed="false" disabled=""/);
   assert.match(render({...item,source_id:null}),/aria-label="Spot Historical cafe" aria-pressed="false" disabled=""/);
 });

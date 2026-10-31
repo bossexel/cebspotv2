@@ -97,6 +97,10 @@
     {
       "name": "20261030000100_activity_post_votes.sql",
       "sha256": "ba42aba2ef20869d33f4bdb6d8fb53f9e0de1d0f7aa7aaece307b0cdbb582127"
+    },
+    {
+      "name": "20261031000100_owner_managed_spot_posts.sql",
+      "sha256": "1eef9fd9726d359ce24c8327404976d0667f6e3483460100e2bd915de1b0aba3"
     }
   ]
 }

@@ -2,10 +2,13 @@ import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import type { SpotSubmission } from '../types';
 
 export type YourSpotPost = Pick<SpotSubmission,
-  'id' | 'submitter_id' | 'name' | 'description' | 'address' | 'images' | 'status' | 'rejection_reason' | 'created_at'> & {
+  'id' | 'submitter_id' | 'name' | 'description' | 'category' | 'categories' | 'address' | 'images' | 'status' | 'rejection_reason' | 'created_at'> & {
     postId?: string | null;
   };
 export type YourPostsCursor = { createdAt: string; id: string };
+export type EditableSpotSubmission = Pick<SpotSubmission,
+  'id' | 'submitter_id' | 'name' | 'description' | 'category' | 'categories' | 'address' |
+  'latitude' | 'longitude' | 'is_reservable' | 'status' | 'images'>;
 
 function checkCursor(cursor: YourPostsCursor) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cursor.id)
@@ -13,7 +16,75 @@ function checkCursor(cursor: YourPostsCursor) {
     || !Number.isFinite(Date.parse(cursor.createdAt))) throw new Error('Invalid posts page.');
 }
 
+function ownedSpotImagePath(url: unknown, userId: string): string | null {
+  if (typeof url !== 'string') return null;
+  const marker = '/storage/v1/object/public/spot-images/';
+  const markerIndex = url.indexOf(marker);
+  if (markerIndex < 0) return null;
+  try {
+    const path = decodeURIComponent(url.slice(markerIndex + marker.length).split(/[?#]/, 1)[0]);
+    if (!path.startsWith(`${userId}/`) || path.split('/').some(part => part === '..' || !part)) return null;
+    return path;
+  } catch {
+    return null;
+  }
+}
+
 export const yourPostsService = {
+  async getOwnSubmission(userId: string, submissionId: string): Promise<EditableSpotSubmission> {
+    if (!userId || !submissionId) throw new Error('Sign in to edit your spot.');
+    if (!hasSupabaseConfig) throw new Error('Your posts service is not configured.');
+    const { data, error } = await supabase.from('spot_submissions')
+      .select('id,submitter_id,name,description,category,categories,address,latitude,longitude,is_reservable,status,images')
+      .eq('id', submissionId).eq('submitter_id', userId).maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error('Your spot submission could not be found.');
+    return data as EditableSpotSubmission;
+  },
+
+  async updateOwnSubmission(userId: string, submission: EditableSpotSubmission) {
+    if (!userId || submission.submitter_id !== userId) throw new Error('You can only edit your own spot.');
+    if (!hasSupabaseConfig) throw new Error('Your posts service is not configured.');
+    const { data, error } = await supabase.rpc('update_own_spot_submission', {
+      target_submission_id: submission.id,
+      new_name: submission.name,
+      new_description: submission.description,
+      new_category: submission.category,
+      new_categories: submission.categories ?? [],
+      new_address: submission.address,
+      new_latitude: submission.latitude,
+      new_longitude: submission.longitude,
+      new_is_reservable: submission.is_reservable,
+    });
+    if (error) throw error;
+    return data as { id: string; status: 'pending' };
+  },
+
+  async deleteOwnSubmission(userId: string, submissionId: string) {
+    if (!userId || !submissionId) throw new Error('Sign in to delete your spot.');
+    if (!hasSupabaseConfig) throw new Error('Your posts service is not configured.');
+    const { data: ownSubmission, error: readError } = await supabase.from('spot_submissions')
+      .select('images').eq('id', submissionId).eq('submitter_id', userId).maybeSingle();
+    if (readError) throw readError;
+    if (!ownSubmission) throw new Error('Your spot submission was not found.');
+    const imagePaths = (ownSubmission.images ?? [])
+      .map((url: unknown) => ownedSpotImagePath(url, userId))
+      .filter((path: string | null): path is string => Boolean(path));
+    const { data, error } = await supabase.rpc('delete_own_spot_submission', {
+      target_submission_id: submissionId,
+    });
+    if (error) throw error;
+    if (imagePaths.length) {
+      try {
+        const cleanup = await supabase.storage.from('spot-images').remove(imagePaths);
+        if (cleanup.error) console.warn('Spot submission was deleted; photo cleanup will be retried by storage maintenance.');
+      } catch {
+        console.warn('Spot submission was deleted; photo cleanup will be retried by storage maintenance.');
+      }
+    }
+    return data as { id: string; deleted: true };
+  },
+
   async getPage(userId: string, cursor?: YourPostsCursor | null): Promise<{ items: YourSpotPost[]; nextCursor: YourPostsCursor | null }> {
     if (!userId) throw new Error('Sign in to see your posts.');
     if (!hasSupabaseConfig) throw new Error('Your posts are unavailable while the service is not configured.');
@@ -22,7 +93,7 @@ export const yourPostsService = {
     // Read the author's original submissions, including pending/rejected ones.
     // Never group by place or borrow the canonical listing's author/media.
     let query = supabase.from('spot_submissions')
-      .select('id,submitter_id,name,description,address,images,status,rejection_reason,created_at')
+      .select('id,submitter_id,name,description,category,categories,address,images,status,rejection_reason,created_at')
       .eq('submitter_id', userId)
       .order('created_at', { ascending: false }).order('id', { ascending: false });
     // Seek from the last row instead of scanning an ever-growing offset.

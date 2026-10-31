@@ -9,7 +9,7 @@ function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), 'utf8');
 }
 
-test('activity posts expose one outline Spot control with its count and no pill, spinner, or downvote', () => {
+test('activity posts use a pin before liking, CebSpot logo after liking, and neutral number-only counts', () => {
   const screen = read('app/activity.tsx');
 
   assert.match(screen, /toggleSpotSubmissionVote\(submissionId\)/);
@@ -19,7 +19,11 @@ test('activity posts expose one outline Spot control with its count and no pill,
   assert.match(screen, /getOptimisticSpotVote\(previousVote\)/);
   assert.match(screen, /votingSubmissionIdsRef\.current\.has\(submissionId\)/);
   assert.match(screen, /votingSubmissionIdsRef\.current\.add\(submissionId\)/);
-  assert.match(screen, /<MapPin[\s\S]*color=\{currentVote === 'up' \? colors\.primary/);
+  assert.match(screen, /currentVote === 'up' \? \([\s\S]*?<Image[\s\S]*?\.\.\/assets\/cebspot-logo\.png/);
+  assert.match(screen, /<MapPin[\s\S]*color=\{canVote \? appColors\.onSurfaceVariant/);
+  assert.match(screen, /styles\.voteScoreText, \{ color: canVote \? appColors\.onSurface/);
+  assert.doesNotMatch(screen, /formatSpotScore\(item\.spot_count\)[\s\S]{0,100}colors\.primary/);
+  assert.doesNotMatch(screen, /formatSpotScore\(item\.spot_count\)[^\n]*Spot/);
   assert.doesNotMatch(screen, /spotVoteButtonActive|styles\.spotVoteButton,[\s\S]{0,160}(borderColor|backgroundColor)/);
   assert.doesNotMatch(screen, /voting \? \([\s\S]{0,100}<ActivityIndicator/);
   assert.doesNotMatch(screen, /ArrowUp|ArrowDown|Downvote|voteForUpdate\(item, 'down'\)/);
