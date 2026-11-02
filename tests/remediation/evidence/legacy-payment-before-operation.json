@@ -1,0 +1,20 @@
+﻿{
+    "reconciliation_postcheck":  {
+                                     "historical_live_bookings_hash":  "0ebda95203d3bee2b45cb4cc03d45bef",
+                                     "historical_live_payment_count":  12,
+                                     "historical_live_payments_hash":  "fd935d11c0a448f338a87a0d05c4b0f4",
+                                     "legacy_rpc_service_only":  true,
+                                     "payment_count":  48,
+                                     "payment_status_counts":  {
+                                                                   "expired":  31,
+                                                                   "paid":  7,
+                                                                   "pending":  10
+                                                               },
+                                     "pending_test_count":  10,
+                                     "reservation_count":  72,
+                                     "reviewed_legacy_test_expired":  0,
+                                     "reviewed_legacy_test_paid":  0,
+                                     "shared_account_guard_hash":  "6547b36261be951b48cafef7c716d073",
+                                     "shared_identity_guard_hash":  "68669646fa9c5a57e7ca4fd09dca5c23"
+                                 }
+}

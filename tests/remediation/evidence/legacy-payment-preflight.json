@@ -1,0 +1,10 @@
+﻿{
+    "legacy_preflight":  {
+                             "pending_count":  10,
+                             "pending_recorded_live":  0,
+                             "pending_recorded_test":  10,
+                             "pending_with_durable_request":  0,
+                             "pending_with_saved_checkout":  10,
+                             "pending_without_durable_request":  10
+                         }
+}

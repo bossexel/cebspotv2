@@ -1,0 +1,15 @@
+﻿{
+    "completed_utc":  "2026-11-02T16:49:01.5523069Z",
+    "test_only":  true,
+    "batches":  2,
+    "action":  "reconcile-terminal",
+    "success":  true,
+    "no_refunds_or_new_checkouts":  true,
+    "counts":  {
+                   "expiredRecorded":  0,
+                   "skipped":  0,
+                   "openUnchanged":  4,
+                   "paidRecorded":  6,
+                   "failed":  0
+               }
+}

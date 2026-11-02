@@ -1,0 +1,48 @@
+{
+  "checked_utc": "2026-11-02T16:54:13.008Z",
+  "commands": [
+    {
+      "command": "scripts/backup-reservation-database.ps1 -ProjectRef fathkdyxgeeokxeobxqp",
+      "result": "Encrypted backup and in-memory roundtrip verified."
+    },
+    {
+      "command": ".codex-tmp/apply-legacy-reconcile.ps1",
+      "result": "Focused migration applied; 34 tables and 889 existing rows unchanged; service-only grant verified."
+    },
+    {
+      "command": "supabase functions deploy payment-reconciliation-report / payment-reconcile-legacy-test --use-api",
+      "result": "Report version 2 and operator version 1 ACTIVE; existing financial function versions unchanged."
+    },
+    {
+      "command": "supabase migration repair 20261102124004 --status applied",
+      "result": "Only this new entry recorded; all three focused entries verified."
+    },
+    {
+      "command": "scripts/reconcile-legacy-test-payments.ps1 -Apply",
+      "result": "6 paid recorded, 4 open unchanged, 0 failed."
+    },
+    {
+      "command": "scripts/reconcile-legacy-test-payments.ps1 -Apply -RetireUnused",
+      "result": "4 provider expiries verified and recorded, 0 failed."
+    },
+    {
+      "command": "supabase db query --file supabase/verification/legacy-payment-reconciliation-postcheck.sql",
+      "result": "0 pending test payments; live-labelled data and guards unchanged."
+    }
+  ],
+  "existing_function_versions_unchanged": true,
+  "advisor_counts_unchanged": true,
+  "verification": {
+    "checked_utc": "2026-11-02T16:51:55.236Z",
+    "test_pending_before": 10,
+    "test_pending_after": 0,
+    "verified_paid_recorded": 6,
+    "verified_expired_recorded": 4,
+    "payment_and_booking_counts_preserved": true,
+    "historical_live_payments_and_bookings_unchanged": true,
+    "historical_live_record_count": 12,
+    "shared_identity_and_account_guards_unchanged": true,
+    "service_only_rpc_verified": true
+  },
+  "limitations": "Commands use existing CLI authentication and in-memory operator authorization. No raw response bodies, credentials, user IDs or provider identifiers retained."
+}

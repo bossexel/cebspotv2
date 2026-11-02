@@ -60,6 +60,12 @@ verify_jwt = false
 [functions.payment-readiness]
 verify_jwt = false
 
+[functions.payment-reconciliation-report]
+verify_jwt = false
+
+[functions.payment-reconcile-legacy-test]
+verify_jwt = false
+
 [functions.private-upload-maintenance]
 verify_jwt = false
 

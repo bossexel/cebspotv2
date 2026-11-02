@@ -1,0 +1,35 @@
+{
+  "checked_utc": "2026-11-02T16:53:35.087Z",
+  "functions": [
+    {
+      "name": "paymongo-webhook",
+      "status": "ACTIVE",
+      "version": 20,
+      "verify_jwt": false
+    },
+    {
+      "name": "paymongo-create-qrph-checkout",
+      "status": "ACTIVE",
+      "version": 15,
+      "verify_jwt": true
+    },
+    {
+      "name": "private-upload",
+      "status": "ACTIVE",
+      "version": 1,
+      "verify_jwt": true
+    },
+    {
+      "name": "payment-reconciliation-report",
+      "status": "ACTIVE",
+      "version": 2,
+      "verify_jwt": false
+    },
+    {
+      "name": "payment-reconcile-legacy-test",
+      "status": "ACTIVE",
+      "version": 1,
+      "verify_jwt": false
+    }
+  ]
+}

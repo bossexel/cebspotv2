@@ -1,0 +1,17 @@
+﻿{
+    "checked_utc":  "2026-11-02T16:51:34.0373696Z",
+    "financial_payload_sent":  false,
+    "credentials_sent":  false,
+    "checks":  [
+                   {
+                       "expected":  405,
+                       "method":  "GET",
+                       "status":  405
+                   },
+                   {
+                       "expected":  401,
+                       "method":  "POST",
+                       "status":  401
+                   }
+               ]
+}

@@ -15,12 +15,19 @@ const cases = {
   uploads: ['--test','tests/remediation/reservation-upload-upgrade.test.cjs','tests/remediation/private-upload.test.cjs','tests/remediation/payment-handlers.test.cjs','tests/remediation/upload-maintenance.test.cjs'],
   readiness: ['--test','tests/remediation/payment-readiness.test.cjs'],
   recovery: ['--test','tests/remediation/payment-recovery-queue.test.cjs','tests/remediation/payment-handlers.test.cjs','tests/remediation/reservation-upload-upgrade.test.cjs'],
+  'legacy-inspection': ['--test','tests/remediation/legacy-payment-inspection.test.cjs'],
+  'legacy-sql': ['--test','tests/remediation/legacy-test-payment-reconciliation.test.cjs'],
+  'legacy-operator': ['--test','tests/remediation/legacy-payment-operator.test.cjs','tests/remediation/legacy-payment-inspection.test.cjs'],
+  'payment-isolated': ['--test','tests/remediation/payment-handlers.test.cjs'],
   android: ['node_modules/expo/bin/cli','export','--platform','android','--output-dir','.codex-tmp/reservation-android-export'],
   admin: ['scripts/admin-web.cjs','export','--platform','web','--output-dir','.codex-tmp/reservation-admin-export'],
   full: ['--test','--test-concurrency=2',...['backend','remediation','platform','refactoring'].flatMap(dir=>fs.readdirSync(path.join(root,'tests',dir)).filter(f=>f.endsWith('.test.cjs')).map(f=>`tests/${dir}/${f}`))],
 };
+// Identical suite and assertions with one test file at a time on low-memory
+// Windows hosts. Keep the original parallel failure evidence for comparison.
+cases['full-serial']=cases.full.map(arg=>arg==='--test-concurrency=2'?'--test-concurrency=1':arg);
 if (!cases[label]) throw new Error('Choose '+Object.keys(cases).join(', '));
-if (['focused','upgraded','uploads','recovery','verification','upload-verification','full'].includes(label) && !process.env.RESERVATION_SCHEMA_CAPTURE) throw new Error('Set RESERVATION_SCHEMA_CAPTURE to the local metadata capture for this validation');
+if (['focused','upgraded','uploads','recovery','legacy-sql','verification','upload-verification','full','full-serial'].includes(label) && !process.env.RESERVATION_SCHEMA_CAPTURE) throw new Error('Set RESERVATION_SCHEMA_CAPTURE to the local metadata capture for this validation');
 const startedAt = new Date().toISOString(); let output='';
 const child = spawn(process.execPath,cases[label],{cwd:root,windowsHide:true,env:{...process.env,EXPO_NO_DOTENV:'1'},stdio:['ignore','pipe','pipe']});
 for(const stream of [child.stdout,child.stderr]) stream.on('data',data=>{output+=data.toString();});

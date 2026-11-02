@@ -1,5 +1,12 @@
 # Reservation follow-up — November 2, 2026
 
+November 3 update: the ten pending legacy test sessions were reconciled: six paid
+records were verified and four unused test sessions were expired and verified.
+The 12 live-labelled historical records and their bookings are unchanged. See
+[legacy-test-payment-reconciliation.md](legacy-test-payment-reconciliation.md)
+for the 527/0/5 full-suite result and hosted evidence. Original checkpoint results
+below describe the state before that reconciliation.
+
 The owner selected **test payments only**. This follow-up preserves the existing
 payment provider settings and legacy financial records. It does not certify a
 completed customer checkout or publish an Android update.
@@ -133,7 +140,8 @@ this reservation follow-up is not a full security/performance remediation.
 2. Completed: proof-upload deployment after its dependency postchecks passed.
    Endpoint checks are not an authenticated upload acceptance test. Do not invoke
    cleanup against real documents as a health check.
-3. Reconcile the pending legacy provider sessions in test mode. Review the
+3. Completed: reconciliation of the ten pending legacy provider sessions in test
+   mode. Six paid test bookings remain flagged for review. Review the
    historical live-mode sessions separately with the payment operator; retain a
    verified late-event handling path until those obligations are resolved. Do
    not blindly expire, erase, mark paid, or recreate them.

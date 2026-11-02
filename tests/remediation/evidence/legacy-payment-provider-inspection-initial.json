@@ -1,0 +1,27 @@
+﻿{
+    "provider_mode":  "test",
+    "checked_utc":  "2026-11-02T12:35:20.0728008Z",
+    "scope_hash":  "679b2d9e6c064fa6c125117637ef2fcb109b0b4d9d776157a089cb5f065362f3",
+    "financial_writes_requested":  false,
+    "batches":  2,
+    "read_only":  true,
+    "limitations":  "Provider lookup only. No payments, reservations or provider sessions were changed; live/unknown records skipped.",
+    "scope":  {
+                  "pendingRows":  10,
+                  "testCheckoutCandidates":  10,
+                  "liveModeSkipped":  0,
+                  "unknownModeSkipped":  0,
+                  "unsupportedSessionSkipped":  0,
+                  "durableRequestsSkipped":  0
+              },
+    "checks":  {
+                   "unexpectedStatus":  0,
+                   "unpaidOpen":  4,
+                   "modeMismatch":  0,
+                   "cannotVerify":  0,
+                   "referenceMismatch":  0,
+                   "paidMatching":  6,
+                   "amountOrCurrencyMismatch":  0,
+                   "expired":  0
+               }
+}

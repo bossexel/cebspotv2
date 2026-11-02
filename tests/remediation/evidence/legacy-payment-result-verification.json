@@ -1,0 +1,12 @@
+{
+  "checked_utc": "2026-11-02T16:51:55.236Z",
+  "test_pending_before": 10,
+  "test_pending_after": 0,
+  "verified_paid_recorded": 6,
+  "verified_expired_recorded": 4,
+  "payment_and_booking_counts_preserved": true,
+  "historical_live_payments_and_bookings_unchanged": true,
+  "historical_live_record_count": 12,
+  "shared_identity_and_account_guards_unchanged": true,
+  "service_only_rpc_verified": true
+}

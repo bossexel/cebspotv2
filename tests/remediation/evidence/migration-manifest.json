@@ -109,6 +109,10 @@
     {
       "name": "20261102070521_reservation_private_upload_dependencies.sql",
       "sha256": "6087fc82ecf51667f137db268f0ebc4e965497a2ed06df36510ac99932a2af7b"
+    },
+    {
+      "name": "20261102124004_legacy_test_payment_reconciliation.sql",
+      "sha256": "e7af0307a48ad37221080e3aec1a6be60f0807c7fbabb58b19e6a53cb26744c6"
     }
   ]
 }

@@ -1,0 +1,15 @@
+﻿{
+    "completed_utc":  "2026-11-02T16:49:56.2421406Z",
+    "test_only":  true,
+    "batches":  1,
+    "action":  "retire-unused",
+    "success":  true,
+    "no_refunds_or_new_checkouts":  true,
+    "counts":  {
+                   "expiredRecorded":  4,
+                   "skipped":  0,
+                   "openUnchanged":  0,
+                   "paidRecorded":  0,
+                   "failed":  0
+               }
+}

@@ -1,0 +1,12 @@
+{
+  "label": "reservation-2026-11-02-typecheck",
+  "command": [
+    "node",
+    "node_modules/typescript/bin/tsc",
+    "--noEmit"
+  ],
+  "startedAt": "2026-11-02T12:53:47.961Z",
+  "finishedAt": "2026-11-02T12:56:33.228Z",
+  "exitCode": 0,
+  "output": ""
+}
