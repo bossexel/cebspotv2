@@ -1,0 +1,28 @@
+﻿{
+    "postcheck":  {
+                      "active_account_rpc":  false,
+                      "anonymous_availability_execute":  true,
+                      "availability_rpc":  true,
+                      "configured_availability_rows":  62,
+                      "financial_resolution_column":  true,
+                      "hold_expiry_column":  true,
+                      "migration_ledger_columns":  null,
+                      "new_tables_have_rls":  true,
+                      "online_available_rows":  0,
+                      "owner_inventory_confirmation_rpc":  true,
+                      "payment_idempotency_column":  true,
+                      "payment_row_count":  48,
+                      "payment_session_retirements":  true,
+                      "payment_webhook_events":  true,
+                      "private_event_guard":  true,
+                      "private_upload_rpc":  false,
+                      "reservation_count":  72,
+                      "table_state_direct_insert_blocked":  true,
+                      "venue_effectively_reservable":  false,
+                      "venue_inventory_verified":  false,
+                      "venue_table_states":  true,
+                      "verified_inventory_column":  true,
+                      "walk_in_direct_insert_blocked":  true,
+                      "walk_in_visits":  true
+                  }
+}

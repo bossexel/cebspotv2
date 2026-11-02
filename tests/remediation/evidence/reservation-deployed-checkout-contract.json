@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-11-02T06:58:40.164Z",
+  "function": "paymongo-create-qrph-checkout",
+  "deployedVersion": 14,
+  "sourceSha256": "d47665867151e995dab2672d1e6a74761d60a03ae2b56eba9d4fa07a1c9b13a6",
+  "durableClaimRpcPresent": false,
+  "providerIdempotencyHeaderPresent": true,
+  "findings": [
+    "Deployed checkout writes payment rows directly after creating a provider session; it does not claim a durable attempt first.",
+    "Deployed checkout uses configured venue fee when positive; its legacy PHP 150 fallback is not the current PHP 1 configured amount.",
+    "Payment mode and webhook behavior were not tested; no provider endpoint was invoked.",
+    "payment-maintenance and private-upload are absent from deployed function metadata."
+  ],
+  "conclusion": "Database upgrade alone does not validate paid checkout or proof upload."
+}

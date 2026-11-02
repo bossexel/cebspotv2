@@ -101,6 +101,10 @@
     {
       "name": "20261031000100_owner_managed_spot_posts.sql",
       "sha256": "1eef9fd9726d359ce24c8327404976d0667f6e3483460100e2bd915de1b0aba3"
+    },
+    {
+      "name": "20261101192553_align_reservation_backend.sql",
+      "sha256": "aba6136f2bddb7da3c49d2047e6dc1d57c68f80ed15a45fc326a2d2715a3ad00"
     }
   ]
 }

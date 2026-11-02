@@ -1,0 +1,22 @@
+{
+  "checkedAt": "2026-11-02T07:04:49.857Z",
+  "counts": {
+    "ERROR: security_definer_view": 1,
+    "WARN: function_search_path_mutable": 5,
+    "WARN: pg_graphql_anon_table_exposed": 23,
+    "WARN: pg_graphql_authenticated_table_exposed": 30,
+    "WARN: anon_security_definer_function_executable": 52,
+    "WARN: authenticated_security_definer_function_executable": 68,
+    "WARN: auth_leaked_password_protection": 1
+  },
+  "errors": [
+    {
+      "name": "security_definer_view",
+      "metadata": {
+        "name": "pending_spot_submission_popularity",
+        "schema": "public",
+        "type": "view"
+      }
+    }
+  ]
+}

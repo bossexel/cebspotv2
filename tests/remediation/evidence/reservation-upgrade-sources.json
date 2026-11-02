@@ -1,0 +1,33 @@
+{
+  "output": "supabase/migrations/20261101192553_align_reservation_backend.sql",
+  "sources": [
+    {
+      "name": "20261006000100_audit_authorization_hardening.sql",
+      "sha256": "7b980712bdf2518458aa83e2714bd280638a5e164f3589f2511406536b841cf0"
+    },
+    {
+      "name": "20261011000100_table_booking_policy_and_walk_ins.sql",
+      "sha256": "988edf657e405c8c83d4672edcb5136984d88ad4166a0f62acd677459e2084b7"
+    },
+    {
+      "name": "20261013000100_activity_privacy.sql",
+      "sha256": "53d9513b16551b6b03772b2f7c1fa93a9b2dece93a2532874f1b0bb7f4e96cf5"
+    },
+    {
+      "name": "20261013000200_android_reservation_scope.sql",
+      "sha256": "85996c02fa4aab5b80564c816cfb6b6cf1850643e238711f22b637c2564338d6"
+    },
+    {
+      "name": "20261013000300_manual_proof_and_bounded_holds.sql",
+      "sha256": "1318b9dea61f9598100e2e7a0a569b7917c226dcaa080a6f1bcb92594c9224e9"
+    },
+    {
+      "name": "20261013000400_durable_checkout_and_payment_events.sql",
+      "sha256": "e036813d1387a4f051898551332fc5f411b942823bbf4f01313cd1b01be1b0f6"
+    },
+    {
+      "name": "20261013000600_server_reservation_details.sql",
+      "sha256": "77f9f46dc49f961a1f0aece0658aca2da5154ea87759d71c9451afb126713549"
+    }
+  ]
+}

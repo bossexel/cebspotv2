@@ -1,0 +1,11 @@
+{
+  "label": "reservation-2026-11-02-verification",
+  "command": [
+    "node",
+    "tests/remediation/verify-reservation-probes.cjs"
+  ],
+  "startedAt": "2026-11-02T06:55:42.944Z",
+  "finishedAt": "2026-11-02T06:56:04.891Z",
+  "exitCode": 0,
+  "output": "reservation-upgrade-preflight.sql: read-only execution and assertions passed\nreservation-upgrade-postcheck.sql: read-only execution and assertions passed\nreservation-anonymous-read-check.sql: read-only execution and assertions passed\n"
+}

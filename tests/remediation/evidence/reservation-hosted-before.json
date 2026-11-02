@@ -1,0 +1,30 @@
+﻿{
+    "preflight":  {
+                      "capabilities":  {
+                                           "account_guard":  true,
+                                           "availability_rpc":  false,
+                                           "duplicate_provider_payment_groups":  0,
+                                           "hold_expiry_column":  false,
+                                           "payment_idempotency_column":  false,
+                                           "payment_row_count":  48,
+                                           "reservation_count":  72,
+                                           "venue_table_states":  false,
+                                           "verified_inventory_column":  false,
+                                           "walk_in_visits":  false
+                                       },
+                      "venue":  [
+                                    {
+                                        "distinct_configured_tables":  62,
+                                        "gcash_amount":  1,
+                                        "inventory_is_object":  true,
+                                        "is_public":  true,
+                                        "is_reservable":  true,
+                                        "matches_android_reservation_scope":  true,
+                                        "owner_assigned":  true,
+                                        "payment_required":  true,
+                                        "reservation_fee":  1,
+                                        "reservation_type":  "paid"
+                                    }
+                                ]
+                  }
+}

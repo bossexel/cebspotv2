@@ -1,0 +1,10 @@
+﻿{
+    "project_ref":  "fathkdyxgeeokxeobxqp",
+    "finishedAt":  "2026-11-02T06:58:19.0937864Z",
+    "migration":  "20261101192553_align_reservation_backend.sql",
+    "startedAt":  "2026-11-02T06:57:53.4569438Z",
+    "exitCode":  0,
+    "apiError":  false,
+    "requiresPostcheck":  true,
+    "sha256":  "aba6136f2bddb7da3c49d2047e6dc1d57c68f80ed15a45fc326a2d2715a3ad00"
+}

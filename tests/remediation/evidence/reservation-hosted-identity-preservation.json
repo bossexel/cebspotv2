@@ -1,0 +1,7 @@
+{
+  "checkedAt": "2026-11-02T07:04:49.807Z",
+  "checks": {
+    "require_active_account": true,
+    "guard_profile_identity": true
+  }
+}
