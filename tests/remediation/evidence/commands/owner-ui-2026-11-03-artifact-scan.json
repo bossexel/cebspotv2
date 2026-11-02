@@ -1,0 +1,539 @@
+{
+  "createdAt": "2026-11-02T17:52:47.307Z",
+  "scannedFiles": 152,
+  "matchCount": 0,
+  "matched": [],
+  "artifacts": [
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/02bc1fa7c0313217bde2d65ccbff40c9",
+      "bytes": 167,
+      "sha256": "ffa7ee45b76405ba73921495008f7d68c9de6395f4b6941db063465f6e382320"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/069d99eb1fa6712c0b9034a58c6b57dd",
+      "bytes": 483,
+      "sha256": "5300f50be3659d17d8cee868ec4e6c0d3f4e89944fd5899d3c20f6a767a045f5"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/0747a1317bbe9c6fc340b889ef8ab3ae",
+      "bytes": 332,
+      "sha256": "2325c53a73e54c438cbbc60dffdd8b513d471ba42e2f56713ef404b95e0ca1fc"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/0a328cd9c1afd0afe8e3b1ec5165b1b4",
+      "bytes": 653,
+      "sha256": "9adb8c5efca932e2b732b293da813bd2e31952263056bce9e2517fec0f0b6a76"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/1190ab078c57159f4245a328118fcd9a",
+      "bytes": 201,
+      "sha256": "cbdf9213e55f65c48d076acd8423b7c9aee4f1b81101ff6c95a38c4cd8a86461"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/137ab18bace28dd0bd83eb3b8ed2bc54",
+      "bytes": 342892,
+      "sha256": "f1738576525e86db1d5cf63a6c1b56e0a7e2a2898b499ac93db95f2e7a9f9cd5"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/155406bfbfb023eb104728edfe62c0e9",
+      "bytes": 346444,
+      "sha256": "4da3a591da4809ef65d0ffc0085c50a859723c5574aa5608c1b7175d2dce33e1"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/17f8f23a2852bfa14ce5bf590c2a0e2c",
+      "bytes": 346892,
+      "sha256": "2a10723dcb34bd195277a92db8589c8c0b0404e76704687bf2037a6c04f10848"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/19eeb73b9593a38f8e9f418337fc7d10",
+      "bytes": 138,
+      "sha256": "a69a2edb5b6c60b8433d5b6d23c69f520ccd8a602f3f60e7996e489718bc175c"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/1b97f7df9b976cfe530c18c09598e6f6",
+      "bytes": 346824,
+      "sha256": "e9003a5eb6c4c57afdf46fcad086f578f7579e66d7e864ff6b39b2107b7e26d7"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/1e928a19babcb4c39dc17e946e7413a3",
+      "bytes": 348532,
+      "sha256": "45ce93da96fbcff5547cf081bc979cd525c3567bd732f830febde8f29f2bffd2"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/203d753a80557746c23ce95191fbf013",
+      "bytes": 330948,
+      "sha256": "ef9cf99f0175bef530b88934bd904fcf56f773cec6fd4dfb8ccaf7ce2bbd395e"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/20e71bdf79e3a97bf55fd9e164041578",
+      "bytes": 4752,
+      "sha256": "efc79da3c4c97dfb1571bff6202958ab0529c5aa31e8392600578b3e359d1447"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/286d67d3f74808a60a78d3ebf1a5fb57",
+      "bytes": 928,
+      "sha256": "5d075e0c287c4f4441b5b5c8fc7ea5cd27c11bb617ecea09755955bcb1889083"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/2ea0576ae2d6795e7786b364f39e54fe",
+      "bytes": 336808,
+      "sha256": "87f9b8141e96e06917042c6de5267d7498fb60824704b566d881e29b56de8077"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/3398006c80026f0508aaaf4808950d56",
+      "bytes": 347824,
+      "sha256": "bcc655acbd25f44eed4894f3c65f836503476db411c540d8dd5b616ef60c1825"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/35ba0eaec5a4f5ed12ca16fabeae451d",
+      "bytes": 207,
+      "sha256": "84cf5eb3b20250f69e0e4733beb4da5f417f0682892a5ad1b5e62570753c21b1"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/36cad9f97595b7759264b945d64502b4",
+      "bytes": 345956,
+      "sha256": "c8c09e4bd08de7b901b4561f16ce9bb1ab3ffa420cfaef9f2a40286e14300e75"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/399fdc81fcb3bf74e7f5a79207a8f33e",
+      "bytes": 138038,
+      "sha256": "7e47741cce66e3e6aebf6cb0d48570c0021bdfdb1f1386d97959a73187aa6240"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/3cd68ccdb8938e3711da2e8831b85493",
+      "bytes": 645,
+      "sha256": "c86bb485eee687e06c500fc4234f51a6784b4530c2ae11d0c76481110bce3105"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/3d0662838915a7a16d01c262735d3d29",
+      "bytes": 347072,
+      "sha256": "8253c6dda5eb9f183cf51a6251aeeae76b0980305f9a01d6cd7e9296181efe9b"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/412dd9275b6b48ad28f5e3d81bb1f626",
+      "bytes": 465,
+      "sha256": "acf691957a3bcce7d195856dce98a5cf14dce10bea28aa5c10b3550c078e23b5"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/426a2f39048d24a78a94737908603fe3",
+      "bytes": 337092,
+      "sha256": "6fff5b96f46799dd903d5cbf99f0901d3077e5b99843e5a92b6a3a324b6dd99f"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/4403c6117ec30c859bc95d70ce4a71d3",
+      "bytes": 258,
+      "sha256": "ba722fb24bff0a4c52e656cdf205deac5c5df85e5bae2bf6d30713bd50c6d5f7"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/4a2d6e65e13b83c26996da3990d4fcd0",
+      "bytes": 342016,
+      "sha256": "001a59b0f2c541080033b83ca6dfacce03095d99caa3594835f51b7c6d9ce758"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/4eacf0be3abf18d7e743598b0991554e",
+      "bytes": 337208,
+      "sha256": "02c8b14a1dc4f0b5920364ea7ccd966476e7450f22fc54e05e370fdfe6609141"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/51b6ad87261f18b6433ec52871ddfabc",
+      "bytes": 342408,
+      "sha256": "a414b48aa577ef2c62ebb135341ddeef33ee26a4f5dc9f787f93c1aab08ebb50"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/5cbf5cdcf7ec24681e0ea4adeadc2822",
+      "bytes": 330888,
+      "sha256": "963d772c9c44b3c401b257d693ad26006fc7bd54215957d51356b40e36353f84"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/6016034293c084aa0c056e83938bf1cc",
+      "bytes": 344900,
+      "sha256": "1b9fab96ffc7bca31a9d4cd4d660cce80b94695908ec7613afdece2b8cf803c2"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/61ca7e64b7d605716c57706cef640b9a",
+      "bytes": 220,
+      "sha256": "d03a5cd7a66ef10c5147916f9d5878b2d0a0a5ad46f405a31cd9967efaa55afd"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/6e237de4f1f413afa2fcc45c77ac343a",
+      "bytes": 344072,
+      "sha256": "fbe825cbfc749317f57a1433d3905aa9d3f388732fd29b8e8a36f34845e3bc3e"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/7338a6427d2f39ae9ff819695bf8cd21",
+      "bytes": 76106,
+      "sha256": "e8eb2005a02dabc93a4348eec7e9b69f4e59f0c2df4e6d47afc3ca6c16f10d30"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/778ffc9fe8773a878e9c30a6304784de",
+      "bytes": 100,
+      "sha256": "8b61a4c7ef70dc92753f0494976482f66fd4150ec23dfc772ab65e10373afa55"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/78c625386b4d0690b421eb0fc78f7b9c",
+      "bytes": 266,
+      "sha256": "d05c9d30d79f45a78e5585a2e7ec67c6a06a883dd9137e1d5059e8c87b33ce76"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/7ca909a56537d965feef41abe58b87e0",
+      "bytes": 348700,
+      "sha256": "952cccc4badf3d0ea5aed7e1b2434238692c196b91f94510ef8a2271a2547f13"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/7e5c023c68d940a51ea9f9fcaeb711a7",
+      "bytes": 339028,
+      "sha256": "f858d3964389a4e45eb340d9d35c0f4515ec7ee35d079e3800a5c22d9c697d50"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/8a50619755ab4ca7bc9433d892f43d49",
+      "bytes": 344052,
+      "sha256": "5cf0a23133ccce35f9e115b8dbbf90434201827bc2465d12f9d91bbf02cf9466"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/8a84aafae4cb52c75074e12636fed0ca",
+      "bytes": 336148,
+      "sha256": "575c2de1bc12d3ee93ad01a4fe1acabe2254cdbf6f57f854753ce1788ca1e332"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/985b2147a6b955ceea74741f3d70885f",
+      "bytes": 330488,
+      "sha256": "1ac0e00692548e314210d10619de656225457fd45c79b56d242cdf739cf7278f"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/9d496514aedf5c9bb3f689de8b094cd8",
+      "bytes": 330872,
+      "sha256": "cd161cba3a3cdcf68ad721920fcd164c87e7b7cc9e6bad510278c3fa378d91d2"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/a349d1ac188e1a67689432f44de99849",
+      "bytes": 347292,
+      "sha256": "70decc884a5641a35126dc6b7926235f888e7633691259e007ab45d01f09632c"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/a5f35888d2da465de352e0dcfaf33324",
+      "bytes": 343632,
+      "sha256": "f30e9d2574c3bec5144347ff965f9841c8f06857f0b7383000f8c9489a161841"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/ab19f4cbc543357183a20571f68380a3",
+      "bytes": 364,
+      "sha256": "27f4d229d440925bf7212d5dfffa45d596b2c7b3bb2905c96b839b2081a1dbeb"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/aff2c65b39a296d4f7e96d0f58169170",
+      "bytes": 334,
+      "sha256": "ab5613d2ce70fa67c5926e831353664945199fc195fa6fe76c5fe3cec452e31a"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/ba6062606d5a7342cbce5a5d4b391bc4",
+      "bytes": 337132,
+      "sha256": "7e87c0f96b39fbb919b30aef8991323d0b257649f391e6456bcf03c231448f49"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/bcec6eda9700a81ba92c483a2f2c02c1",
+      "bytes": 344840,
+      "sha256": "1361749967ed6df22a31a2f320153a931b4154d7e3755d05fb98ed76bd35cb8c"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/c1bd726715a688ead84c2dbf4c82f88d",
+      "bytes": 333988,
+      "sha256": "9c4db3814875410e7d64fdc8e69676c3b84968bb15bf3ace8b3944c59fbc56b6"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/c300fff4e4ae0ca994c58ac9f6639b19",
+      "bytes": 335788,
+      "sha256": "7fa93d7daa5c2f881a6727229c211782de6b76008fbd6346b3d7664e8fc83f43"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/c3273c9e5321f20d1e42c2efae2578c4",
+      "bytes": 728,
+      "sha256": "6c8f11bfd1c7e22769dc135c16ecd0e053bb55554da88b9611d9cf71d12136f1"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/c79c3606a1cf168006ad3979763c7e0c",
+      "bytes": 134,
+      "sha256": "906666dd689346ada232ce3689adef907b4257fa1b593f03638d2b9497f64884"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/d1ea1496f9057eb392d5bbf3732a61b7",
+      "bytes": 469,
+      "sha256": "c15ec72a74d13957211808313d5c35deb7f7606c6d22dbddceb0000d4e0547ad"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/d2994e3dea3856e1834395ad6cce32af",
+      "bytes": 343320,
+      "sha256": "b5d77067f596f8869f856ce593975c870af67421c8ed3854e88a861a47f3f422"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/d414a87f1942b9c4ae40ef793f171dae",
+      "bytes": 343296,
+      "sha256": "b48e6741b9889ede4ffe3d8acfda3e6917c62127537b19fe7206cba04e6ebb63"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/d5f78c24de59ce5e4bad405e10e71941",
+      "bytes": 348732,
+      "sha256": "9b8d51a64c80772802bfe1581893f841f748e699f2701d1ff88805c14a148448"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/d84e297c3b3e49a614248143d53e40ca",
+      "bytes": 141,
+      "sha256": "b1bc1810ca23e2c38cd76971c43591d726161061240d8b792b05757196ddb528"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/d8b800c443b8972542883e0b9de2bdc6",
+      "bytes": 188,
+      "sha256": "708a79cf561b8a2a4850ce0254584d3a5231046be08fb7fadf4b6edfdb31178b"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/d8e7601e3df962f83c62371ac14964d8",
+      "bytes": 502,
+      "sha256": "c4e54e6a0a7de636aa153378fbc62ea4a41695bfedf807f90df7b18ffd733f67"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/da2373e271b755f87874ba215a117b4a",
+      "bytes": 329864,
+      "sha256": "a8c0271643b3d2237e11e13ee590024d49b35b776014958e60fe6157c3f523fa"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/dd32ff005624322e7286df4c83ab9200",
+      "bytes": 991259,
+      "sha256": "b4d67c264e2147c28f948513e62702dca824b18294be47776834cbe43f21d429"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/ddbb1cd55ad509e82377bd10beed6506",
+      "bytes": 342616,
+      "sha256": "cde345d089309c65b881b96333a136c2bc882525d611cab39b0b49830efb173e"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/e11421af6f75c947f1d2837f4e534611",
+      "bytes": 348396,
+      "sha256": "0630ee6bc069c14d288cdec9e35227e140dd9272dd43db3e54a0e78ea3db3052"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/assets/e1f33daee21eb5998b13d3e05264d9a3",
+      "bytes": 343180,
+      "sha256": "e5783a67fb77268810cd6a8474d802a0b0011409fd11dd50e218d94f19edadee"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/metadata.json",
+      "bytes": 4245,
+      "sha256": "4f502cb7413e771a4ecc6ad1174c66a1eaf6ccf78278c1acab1831d24ef5e87f"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/payment-return.html",
+      "bytes": 886,
+      "sha256": "f13f2bf5264461619420289929dcd658b7c8b42f0a7d67462b473cc59f182ccd"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-android-export/_expo/static/js/android/index-4d4d15183cd0131bc09a5c8e267ecb20.hbc",
+      "bytes": 8724827,
+      "sha256": "66e88047979eddbe88a3de9947a7634c527577ba069a96fbafebc7ad3eceac4d"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/assets/cebspot-logo.dd32ff005624322e7286df4c83ab9200.png",
+      "bytes": 991259,
+      "sha256": "b4d67c264e2147c28f948513e62702dca824b18294be47776834cbe43f21d429"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/100Thin/Inter_100Thin.ddbb1cd55ad509e82377bd10beed6506.ttf",
+      "bytes": 342616,
+      "sha256": "cde345d089309c65b881b96333a136c2bc882525d611cab39b0b49830efb173e"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/100Thin_Italic/Inter_100Thin_Italic.1b97f7df9b976cfe530c18c09598e6f6.ttf",
+      "bytes": 346824,
+      "sha256": "e9003a5eb6c4c57afdf46fcad086f578f7579e66d7e864ff6b39b2107b7e26d7"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/200ExtraLight/Inter_200ExtraLight.e1f33daee21eb5998b13d3e05264d9a3.ttf",
+      "bytes": 343180,
+      "sha256": "e5783a67fb77268810cd6a8474d802a0b0011409fd11dd50e218d94f19edadee"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/200ExtraLight_Italic/Inter_200ExtraLight_Italic.3d0662838915a7a16d01c262735d3d29.ttf",
+      "bytes": 347072,
+      "sha256": "8253c6dda5eb9f183cf51a6251aeeae76b0980305f9a01d6cd7e9296181efe9b"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/300Light/Inter_300Light.d2994e3dea3856e1834395ad6cce32af.ttf",
+      "bytes": 343320,
+      "sha256": "b5d77067f596f8869f856ce593975c870af67421c8ed3854e88a861a47f3f422"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/300Light_Italic/Inter_300Light_Italic.17f8f23a2852bfa14ce5bf590c2a0e2c.ttf",
+      "bytes": 346892,
+      "sha256": "2a10723dcb34bd195277a92db8589c8c0b0404e76704687bf2037a6c04f10848"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.51b6ad87261f18b6433ec52871ddfabc.ttf",
+      "bytes": 342408,
+      "sha256": "a414b48aa577ef2c62ebb135341ddeef33ee26a4f5dc9f787f93c1aab08ebb50"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/400Regular_Italic/Inter_400Regular_Italic.36cad9f97595b7759264b945d64502b4.ttf",
+      "bytes": 345956,
+      "sha256": "c8c09e4bd08de7b901b4561f16ce9bb1ab3ffa420cfaef9f2a40286e14300e75"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/500Medium/Inter_500Medium.137ab18bace28dd0bd83eb3b8ed2bc54.ttf",
+      "bytes": 342892,
+      "sha256": "f1738576525e86db1d5cf63a6c1b56e0a7e2a2898b499ac93db95f2e7a9f9cd5"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/500Medium_Italic/Inter_500Medium_Italic.155406bfbfb023eb104728edfe62c0e9.ttf",
+      "bytes": 346444,
+      "sha256": "4da3a591da4809ef65d0ffc0085c50a859723c5574aa5608c1b7175d2dce33e1"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.a5f35888d2da465de352e0dcfaf33324.ttf",
+      "bytes": 343632,
+      "sha256": "f30e9d2574c3bec5144347ff965f9841c8f06857f0b7383000f8c9489a161841"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/600SemiBold_Italic/Inter_600SemiBold_Italic.a349d1ac188e1a67689432f44de99849.ttf",
+      "bytes": 347292,
+      "sha256": "70decc884a5641a35126dc6b7926235f888e7633691259e007ab45d01f09632c"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.6e237de4f1f413afa2fcc45c77ac343a.ttf",
+      "bytes": 344072,
+      "sha256": "fbe825cbfc749317f57a1433d3905aa9d3f388732fd29b8e8a36f34845e3bc3e"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/700Bold_Italic/Inter_700Bold_Italic.3398006c80026f0508aaaf4808950d56.ttf",
+      "bytes": 347824,
+      "sha256": "bcc655acbd25f44eed4894f3c65f836503476db411c540d8dd5b616ef60c1825"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/800ExtraBold/Inter_800ExtraBold.6016034293c084aa0c056e83938bf1cc.ttf",
+      "bytes": 344900,
+      "sha256": "1b9fab96ffc7bca31a9d4cd4d660cce80b94695908ec7613afdece2b8cf803c2"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/800ExtraBold_Italic/Inter_800ExtraBold_Italic.7ca909a56537d965feef41abe58b87e0.ttf",
+      "bytes": 348700,
+      "sha256": "952cccc4badf3d0ea5aed7e1b2434238692c196b91f94510ef8a2271a2547f13"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/900Black/Inter_900Black.bcec6eda9700a81ba92c483a2f2c02c1.ttf",
+      "bytes": 344840,
+      "sha256": "1361749967ed6df22a31a2f320153a931b4154d7e3755d05fb98ed76bd35cb8c"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@expo-google-fonts/inter/900Black_Italic/Inter_900Black_Italic.d5f78c24de59ce5e4bad405e10e71941.ttf",
+      "bytes": 348732,
+      "sha256": "9b8d51a64c80772802bfe1581893f841f748e699f2701d1ff88805c14a148448"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@react-navigation/elements/lib/module/assets/back-icon-mask.0a328cd9c1afd0afe8e3b1ec5165b1b4.png",
+      "bytes": 653,
+      "sha256": "9adb8c5efca932e2b732b293da813bd2e31952263056bce9e2517fec0f0b6a76"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@react-navigation/elements/lib/module/assets/back-icon.35ba0eaec5a4f5ed12ca16fabeae451d.png",
+      "bytes": 207,
+      "sha256": "84cf5eb3b20250f69e0e4733beb4da5f417f0682892a5ad1b5e62570753c21b1"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@react-navigation/elements/lib/module/assets/clear-icon.c94f6478e7ae0cdd9f15de1fcb9e5e55.png",
+      "bytes": 220,
+      "sha256": "d03a5cd7a66ef10c5147916f9d5878b2d0a0a5ad46f405a31cd9967efaa55afd"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@react-navigation/elements/lib/module/assets/clear-icon.c94f6478e7ae0cdd9f15de1fcb9e5e55@2x.png",
+      "bytes": 334,
+      "sha256": "ab5613d2ce70fa67c5926e831353664945199fc195fa6fe76c5fe3cec452e31a"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@react-navigation/elements/lib/module/assets/clear-icon.c94f6478e7ae0cdd9f15de1fcb9e5e55@3x.png",
+      "bytes": 502,
+      "sha256": "c4e54e6a0a7de636aa153378fbc62ea4a41695bfedf807f90df7b18ffd733f67"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@react-navigation/elements/lib/module/assets/clear-icon.c94f6478e7ae0cdd9f15de1fcb9e5e55@4x.png",
+      "bytes": 645,
+      "sha256": "c86bb485eee687e06c500fc4234f51a6784b4530c2ae11d0c76481110bce3105"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@react-navigation/elements/lib/module/assets/close-icon.808e1b1b9b53114ec2838071a7e6daa7.png",
+      "bytes": 141,
+      "sha256": "b1bc1810ca23e2c38cd76971c43591d726161061240d8b792b05757196ddb528"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@react-navigation/elements/lib/module/assets/close-icon.808e1b1b9b53114ec2838071a7e6daa7@2x.png",
+      "bytes": 201,
+      "sha256": "cbdf9213e55f65c48d076acd8423b7c9aee4f1b81101ff6c95a38c4cd8a86461"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@react-navigation/elements/lib/module/assets/close-icon.808e1b1b9b53114ec2838071a7e6daa7@3x.png",
+      "bytes": 266,
+      "sha256": "d05c9d30d79f45a78e5585a2e7ec67c6a06a883dd9137e1d5059e8c87b33ce76"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@react-navigation/elements/lib/module/assets/close-icon.808e1b1b9b53114ec2838071a7e6daa7@4x.png",
+      "bytes": 332,
+      "sha256": "2325c53a73e54c438cbbc60dffdd8b513d471ba42e2f56713ef404b95e0ca1fc"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/@react-navigation/elements/lib/module/assets/search-icon.286d67d3f74808a60a78d3ebf1a5fb57.png",
+      "bytes": 928,
+      "sha256": "5d075e0c287c4f4441b5b5c8fc7ea5cd27c11bb617ecea09755955bcb1889083"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/expo-router/assets/error.d1ea1496f9057eb392d5bbf3732a61b7.png",
+      "bytes": 469,
+      "sha256": "c15ec72a74d13957211808313d5c35deb7f7606c6d22dbddceb0000d4e0547ad"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/expo-router/assets/file.19eeb73b9593a38f8e9f418337fc7d10.png",
+      "bytes": 138,
+      "sha256": "a69a2edb5b6c60b8433d5b6d23c69f520ccd8a602f3f60e7996e489718bc175c"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/expo-router/assets/forward.d8b800c443b8972542883e0b9de2bdc6.png",
+      "bytes": 188,
+      "sha256": "708a79cf561b8a2a4850ce0254584d3a5231046be08fb7fadf4b6edfdb31178b"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/expo-router/assets/pkg.ab19f4cbc543357183a20571f68380a3.png",
+      "bytes": 364,
+      "sha256": "27f4d229d440925bf7212d5dfffa45d596b2c7b3bb2905c96b839b2081a1dbeb"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/expo-router/assets/sitemap.412dd9275b6b48ad28f5e3d81bb1f626.png",
+      "bytes": 465,
+      "sha256": "acf691957a3bcce7d195856dce98a5cf14dce10bea28aa5c10b3550c078e23b5"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/assets/node_modules/expo-router/assets/unmatched.20e71bdf79e3a97bf55fd9e164041578.png",
+      "bytes": 4752,
+      "sha256": "efc79da3c4c97dfb1571bff6202958ab0529c5aa31e8392600578b3e359d1447"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/favicon.ico",
+      "bytes": 14510,
+      "sha256": "0a5a36564d0434951726d31de6099f0060a74fe5009864d303d3ab3f686993af"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/index.html",
+      "bytes": 3350,
+      "sha256": "5b5e441f67a558a379290c05798cd17543dd694b5f7dba8c30abbc223cc623b8"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/metadata.json",
+      "bytes": 49,
+      "sha256": "aa5f19cc84d41c0f8c70ececb2bc82e863227ea1e121632aca879eb616056991"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/payment-return.html",
+      "bytes": 886,
+      "sha256": "f13f2bf5264461619420289929dcd658b7c8b42f0a7d67462b473cc59f182ccd"
+    },
+    {
+      "path": ".codex-tmp/owner-ui-admin-export/_expo/static/js/web/index-8780a09af34785483fdfed37f29ba11b.js",
+      "bytes": 4135262,
+      "sha256": "92fc45f26708855f357a821e801135cb9cfd591d14f045b49fa56abd52df1b95"
+    }
+  ],
+  "limitations": "Pattern scan of this patch, synthetic evidence and local exports only. No credential/env reads, known-secret comparison or historical scan. Export hashes are not installed-device or hosted acceptance evidence."
+}

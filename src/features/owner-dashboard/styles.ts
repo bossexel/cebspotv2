@@ -980,6 +980,14 @@ export const styles = StyleSheet.create({
   tablesPricingScreen: {
     gap: spacing.md,
   },
+  tablePageContent: { padding: 16, paddingBottom: 24, gap: 16 },
+  tablePageHeader: { gap: 16, paddingBottom: 4 },
+  tablePriceCard: { padding: 18, gap: 12, backgroundColor: colors.white, borderWidth: 1, borderColor: portalColors.line, borderRadius: 20 },
+  tableHelperCopy: { color: '#5D6879', fontSize: 12, lineHeight: 18, flexShrink: 1 },
+  tableFiltersWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tableRefreshButton: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: portalColors.orangeSoft },
+  tablePublishFooter: { padding: 16, paddingTop: 12, gap: 10, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: portalColors.line },
+  tableCardRoomy: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', padding: 18, backgroundColor: colors.white, gap: 16 },
   tablesPanelExpanded: {
     flex: 1,
     minHeight: 0,
@@ -1020,6 +1028,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.md,
+    flexWrap: 'wrap',
   },
   tableBrowserTitleGroup: {
     gap: 2,
@@ -1060,7 +1069,7 @@ export const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   clearTableSearch: {
-    minHeight: 40,
+    minHeight: 48,
     justifyContent: 'center',
     paddingHorizontal: spacing.xs,
   },
@@ -1077,7 +1086,7 @@ export const styles = StyleSheet.create({
     paddingRight: spacing.sm,
   },
   tableFilterChip: {
-    minHeight: 40,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
@@ -1166,7 +1175,7 @@ export const styles = StyleSheet.create({
     backgroundColor: portalColors.surfaceLow,
   },
   tableModeBadgeText: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '900',
     textAlign: 'center',
   },
@@ -1185,10 +1194,11 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
+    flexWrap: 'wrap',
   },
   tableCardSectionLabel: {
     color: portalColors.muted,
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.7,
   },
@@ -1227,6 +1237,7 @@ export const styles = StyleSheet.create({
   publishTableSettingsButton: {
     flex: 1,
     minWidth: 220,
+    paddingVertical: 14,
   },
   pricePanel: {
     minHeight: 132,

@@ -1,4 +1,6 @@
 import { portalColors, metricTones, styles } from '../src/features/owner-dashboard/styles';
+import { OwnerAnalytics } from '../src/features/owner-dashboard/OwnerAnalytics';
+import { getOwnerTableColumns } from '../src/features/owner-dashboard/analytics';
 import {
   buildOwnerGallery,
   getReviewsRating,
@@ -1067,22 +1069,20 @@ function OverviewView(props: DashboardContentProps) {
 
   return (
     <View style={styles.viewStack}>
-      <View style={styles.metricDeck}>
-        <PortalMetric icon={WalletCards} iconTone="green" label="Total Revenue" value={formatPeso(props.paidTotal)} delta="+12.5%" compact={compact} />
-        <PortalMetric icon={CalendarDays} iconTone="blue" label="Reservations" value={String(props.reservations.length)} delta="+4.2%" compact={compact} />
-        <PortalMetric icon={Star} iconTone="orange" label="Verified Rating" value={props.reviews.length ? props.rating.toFixed(1) : 'No ratings'} compact={compact} />
-        <PortalMetric icon={Users} iconTone="amber" label="Active Tables" value={`${props.activeTables}/${props.totalTables}`} live compact={compact} />
-      </View>
+      <OwnerAnalytics reservations={props.reservations} spotId={props.spot?.id ?? ''}
+        liveTables={props.liveTables} liveLoading={props.liveTablesLoading} liveError={props.liveTablesError}
+        refreshing={props.refreshing} onRefresh={props.onRefresh}
+        onRefreshTables={() => void props.refreshLiveTables()} />
 
       <View style={styles.overviewGrid}>
         <View style={styles.incomingPanel}>
           <View style={[styles.panelHeader, compact && styles.panelHeaderCompact]}>
             <View>
               <View style={styles.inlineTitleRow}>
-                <Text style={[styles.panelTitle, compact && styles.panelTitleCompact]}>Incoming Reservations</Text>
+                <Text style={[styles.panelTitle, compact && styles.panelTitleCompact]}>Recent Reservations</Text>
                 <Text style={styles.newBadge}>New</Text>
               </View>
-              <Text style={styles.panelEyebrow}>Next 24 Hours</Text>
+              <Text style={styles.panelEyebrow}>Latest booking records</Text>
             </View>
             <MoreHorizontal size={22} color={portalColors.brown} />
           </View>
@@ -1132,7 +1132,7 @@ function OverviewView(props: DashboardContentProps) {
           <View style={[styles.tipPanel, compact && styles.tipPanelCompact]}>
             <Text style={styles.tipEyebrow}>Quick Tip</Text>
             <Text style={[styles.tipTitle, compact && styles.tipTitleCompact]}>Boost reservations by adding weekend happy hour specials.</Text>
-            <Text style={styles.tipBody}>Analytics show guests are more likely to book tables when specials are visible.</Text>
+            <Text style={styles.tipBody}>Keep your venue photos and details current so guests know what to expect.</Text>
             <Pressable accessibilityRole="button" style={styles.tipButton} onPress={() => props.setActiveTab('Spot Profile')}>
               <Text style={styles.tipButtonText}>Edit Profile</Text>
             </Pressable>
@@ -1356,16 +1356,16 @@ function ReviewsView(props: DashboardContentProps) {
 }
 
 function TablesPricingView(props: DashboardContentProps) {
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
+  const [layoutWidth, setLayoutWidth] = useState(0);
   const compact = width < 900;
-  const numColumns = width >= 1350 ? 4 : width >= 900 ? 3 : 2;
+  const frameWidth = layoutWidth || Math.min(width, 1040);
+  const numColumns = getOwnerTableColumns(frameWidth, fontScale);
+  const cardWidth = (frameWidth - 32 - (numColumns - 1) * 16) / numColumns;
   const [tableSearch, setTableSearch] = useState('');
   const [tableFilter, setTableFilter] = useState<'all' | 'online' | 'walk-ins' | 'out-of-service'>('all');
-  const clubSlotLabels: Record<TableSlotId, { label: string; time: string }> = {
-    sunset: { label: 'Early Night', time: '20:00 - 22:30' },
-    prime: { label: 'Prime', time: '23:00 - 01:30' },
-    late: { label: 'Late Night', time: '02:00 - 04:00' },
-  };
+  const hasChanges = Number(props.draftFee) !== props.reservationFee
+    || JSON.stringify(props.physicalTables) !== JSON.stringify(getPhysicalTables(getSpotTableInventory(props.spot)));
   const filterOptions: Array<{ id: typeof tableFilter; label: string; count: number }> = [
     { id: 'all', label: 'All tables', count: props.physicalTables.length },
     { id: 'online', label: 'Online + walk-ins', count: props.physicalTables.filter((table) => !table.isReserved && (table.bookingPolicy || 'online_and_walk_ins') === 'online_and_walk_ins').length },
@@ -1388,10 +1388,10 @@ function TablesPricingView(props: DashboardContentProps) {
   }, [props.physicalTables, tableFilter, tableSearch]);
 
   const renderTableCard = ({ item: table }: { item: (typeof props.physicalTables)[number] }) => (
-    <View style={[styles.tableCard, compact && styles.tableCardCompact]}>
+    <View testID={`owner-table-card-${table.tableId}`} style={[styles.tableCard, styles.tableCardRoomy, { width: cardWidth }]}>
       <View style={styles.tableCardHeading}>
         <View style={styles.tableCopy}>
-          <Text style={[styles.tableTitle, compact && styles.tableTitleCompact]}>{clubTableDisplayName(table.tableId)}</Text>
+          <Text style={styles.tableTitle}>{clubTableDisplayName(table.tableId)}</Text>
           <Text style={styles.tableMeta}>{table.capacity} guests maximum</Text>
         </View>
         <View style={[styles.tableModeBadge, table.isReserved ? styles.tableModeBadgeMuted : table.bookingPolicy === 'walk_in_only' ? styles.tableModeBadgeWalkIn : styles.tableModeBadgeOnline]}>
@@ -1435,16 +1435,33 @@ function TablesPricingView(props: DashboardContentProps) {
   );
 
   return (
-    <View testID="owner-tables-list" style={[styles.dashboardBody, styles.dashboardContent, styles.tablesPricingScreen]}>
+    <View testID="owner-tables-list" style={styles.dashboardBody} onLayout={event => setLayoutWidth(event.nativeEvent.layout.width)}>
+      <FlatList
+        key={`table-grid-${numColumns}`}
+        testID="owner-physical-table-grid"
+        data={visibleTables}
+        extraData={props}
+        numColumns={numColumns}
+        columnWrapperStyle={numColumns > 1 ? styles.tableGridRow : undefined}
+        keyExtractor={table => table.tableId}
+        renderItem={renderTableCard}
+        style={styles.tableGridList}
+        contentContainerStyle={styles.tablePageContent}
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={5}
+        removeClippedSubviews={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator
+        ListHeaderComponent={<View style={styles.tablePageHeader}>
       <SectionIntro
         title="Tables & Pricing"
         eyebrow={props.isClubFloorPlan ? 'Club floor plan' : 'Reservation setup'}
         detail={props.isClubFloorPlan ? 'The mapped tables publish to guest booking screens.' : 'Only tables configured for this spot appear here.'}
         compact={compact}
       />
-      <View style={[styles.tablesPanel, compact && styles.tablesPanelCompact, styles.tablesPanelExpanded]}>
-        <View style={[styles.pricingCards, !compact && styles.pricingCardsWide]}>
-          <View style={[styles.pricePanel, compact && styles.pricePanelCompact, styles.pricePanelTight]}>
+          <View testID="owner-reservation-price-panel" style={styles.tablePriceCard}>
             <Text style={styles.fieldLabel}>Reservation Price</Text>
             <View style={styles.priceInputRow}>
               <Text style={styles.currencyPrefix}>PHP</Text>
@@ -1453,33 +1470,24 @@ function TablesPricingView(props: DashboardContentProps) {
                 accessibilityLabel="Reservation price in pesos"
                 editable={!props.savingSettings}
                 onChangeText={props.setDraftFee}
-                keyboardType="numeric"
-                placeholder="150"
+                keyboardType="decimal-pad"
+                placeholder="0.00"
                 placeholderTextColor={portalColors.muted}
                 selectionColor={portalColors.primary}
                 style={[styles.priceInput, compact && styles.priceInputCompact]}
               />
             </View>
-            <Text style={styles.tableMeta}>One fee for each online reservation across all tables and times.</Text>
+            <Text style={styles.tableHelperCopy}>One fee per online reservation. Guests choose their arrival time when booking.</Text>
           </View>
-          <View style={[styles.pricePanel, compact && styles.pricePanelCompact, styles.pricePanelTight]}>
-            <Text style={styles.fieldLabel}>Experience Slot</Text>
-            <View style={styles.experienceSlotSummary}>
-              <Clock3 size={18} color={portalColors.primary} />
-              <Text style={styles.experienceSlotSummaryText}>Guests choose their preferred arrival time. The exact time appears on each reservation.</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.tableBrowser}>
           <View style={styles.tableBrowserHeading}>
             <View style={styles.tableBrowserTitleGroup}>
               <Text style={styles.tableBrowserTitle}>Your tables</Text>
               <Text style={styles.tableBrowserMeta}>{props.physicalTables.length} total · {props.physicalTables.filter((table) => !table.isReserved).length} in service</Text>
             </View>
-            {props.liveTablesLoading ? (
-              <View style={styles.tableLiveStatus}><ActivityIndicator size="small" color={portalColors.primary} /><Text style={styles.tableBrowserMeta}>Checking live status</Text></View>
-            ) : null}
+            <Pressable accessibilityRole="button" accessibilityLabel="Refresh live tables" onPress={() => void props.refreshLiveTables()} disabled={props.liveTablesLoading} style={styles.tableRefreshButton}>
+              {props.liveTablesLoading ? <ActivityIndicator size="small" color={portalColors.primary} /> : <RefreshCw size={16} color={portalColors.primaryDark} />}
+              <Text style={styles.clearTableSearchText}>{props.liveTablesLoading ? 'Checking…' : 'Refresh'}</Text>
+            </Pressable>
           </View>
           <View style={styles.tableSearchRow}>
             <Search size={18} color={portalColors.muted} />
@@ -1499,7 +1507,7 @@ function TablesPricingView(props: DashboardContentProps) {
               </Pressable>
             ) : null}
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.tableFilterRow}>
+          <View style={styles.tableFiltersWrap}>
             {filterOptions.map((option) => {
               const selected = tableFilter === option.id;
               return (
@@ -1509,33 +1517,22 @@ function TablesPricingView(props: DashboardContentProps) {
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </View>
           {props.liveTablesError ? <Text accessibilityRole="alert" style={styles.tableLiveError}>Live table status could not be checked. Refresh before changing table availability.</Text> : null}
-          <FlatList
-            key={`table-grid-${numColumns}`}
-            testID="owner-physical-table-grid"
-            data={visibleTables}
-            extraData={props}
-            numColumns={numColumns}
-            columnWrapperStyle={numColumns > 1 ? styles.tableGridRow : undefined}
-            keyExtractor={(table) => table.tableId}
-            renderItem={renderTableCard}
-            style={styles.tableGridList}
-            contentContainerStyle={styles.tableGridContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator
-            ListEmptyComponent={props.physicalTables.length === 0
+          <Text accessibilityLiveRegion="polite" style={styles.tableBrowserMeta}>{visibleTables.length} {visibleTables.length === 1 ? 'table' : 'tables'} shown · {numColumns === 1 ? 'List view' : `${numColumns}-column view`}</Text>
+          {!props.isClubFloorPlan ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Add a table" disabled={props.savingSettings} onPress={props.onAddTable} style={[styles.tableAvailability, props.savingSettings && styles.disabledButton]}>
+              <Plus size={18} color={portalColors.primary} /><Text style={styles.tableMeta}>Add table</Text>
+            </Pressable>
+          ) : null}
+        </View>}
+        ListEmptyComponent={props.physicalTables.length === 0
               ? <EmptyPanel title="No Tables Configured" body="Add your first table, then publish the reservation settings." />
               : <EmptyPanel title="No Matching Tables" body="Try a different name or change the filter." />}
-          />
-        </View>
-      </View>
+      />
+      <View testID="owner-table-publish-footer" style={styles.tablePublishFooter}>
+      <Text accessibilityLiveRegion="polite" style={styles.tableHelperCopy}>{props.savingSettings ? 'Saving your settings…' : hasChanges ? 'Unsaved changes · publish when you’re ready.' : props.spot?.reservation_inventory_verified_at ? 'Inventory confirmed · published settings are up to date.' : 'Review your tables, then publish to confirm your inventory.'}</Text>
       <View style={styles.tableFooterActions}>
-        {!props.isClubFloorPlan ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Add a table" disabled={props.savingSettings} onPress={props.onAddTable} style={[styles.tableAvailability, props.savingSettings && styles.disabledButton]}>
-            <Plus size={18} color={portalColors.primary} /><Text style={styles.tableMeta}>Add table</Text>
-          </Pressable>
-        ) : null}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Publish table and reservation settings"
@@ -1545,9 +1542,10 @@ function TablesPricingView(props: DashboardContentProps) {
           onPress={props.onSaveReservationSettings}
         >
           <Text style={styles.primaryPortalButtonText}>
-            {props.savingSettings ? 'Publishing...' : props.isClubFloorPlan ? 'Publish Price & Floor Plan' : 'Publish Reservation Settings'}
+            {props.savingSettings ? 'Publishing...' : 'Publish table settings'}
           </Text>
         </Pressable>
+      </View>
       </View>
     </View>
   );

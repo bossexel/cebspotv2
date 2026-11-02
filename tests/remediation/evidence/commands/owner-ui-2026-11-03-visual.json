@@ -1,0 +1,11 @@
+{
+  "label": "owner-ui-2026-11-03-visual",
+  "command": [
+    "node",
+    "tests/owner-dashboard/tables-pricing.cjs"
+  ],
+  "startedAt": "2026-11-02T17:43:33.093Z",
+  "finishedAt": "2026-11-02T17:44:44.780Z",
+  "exitCode": 0,
+  "output": "{\"device\":\"phone-small\",\"viewport\":[320,700],\"fontScale\":1,\"layout\":\"list\",\"tests\":\"price editing, natural header layout, safe footer, table controls, search, filters, rotation, cancel/publish/owner confirmation, venue-scoped analytics\"}\n{\"device\":\"phone\",\"viewport\":[360,804],\"fontScale\":1,\"layout\":\"list\",\"tests\":\"price editing, natural header layout, safe footer, table controls, search, filters, rotation, cancel/publish/owner confirmation, venue-scoped analytics\"}\n{\"device\":\"phone-wide\",\"viewport\":[430,932],\"fontScale\":1,\"layout\":\"list\",\"tests\":\"price editing, natural header layout, safe footer, table controls, search, filters, rotation, cancel/publish/owner confirmation, venue-scoped analytics\"}\n{\"device\":\"phone-landscape\",\"viewport\":[804,360],\"fontScale\":1,\"layout\":\"grid\",\"tests\":\"price editing, natural header layout, safe footer, table controls, search, filters, rotation, cancel/publish/owner confirmation, venue-scoped analytics\"}\n{\"device\":\"tablet\",\"viewport\":[800,1280],\"fontScale\":1,\"layout\":\"grid\",\"tests\":\"price editing, natural header layout, safe footer, table controls, search, filters, rotation, cancel/publish/owner confirmation, venue-scoped analytics\"}\n{\"device\":\"tablet-landscape\",\"viewport\":[1280,800],\"fontScale\":1,\"layout\":\"grid\",\"tests\":\"price editing, natural header layout, safe footer, table controls, search, filters, rotation, cancel/publish/owner confirmation, venue-scoped analytics\"}\n{\"device\":\"phone-large-text\",\"viewport\":[360,804],\"fontScale\":1.4,\"layout\":\"list\",\"tests\":\"price editing, natural header layout, safe footer, table controls, search, filters, rotation, cancel/publish/owner confirmation, venue-scoped analytics\"}\n{\"device\":\"tablet-large-text\",\"viewport\":[800,1280],\"fontScale\":1.4,\"layout\":\"list\",\"tests\":\"price editing, natural header layout, safe footer, table controls, search, filters, rotation, cancel/publish/owner confirmation, venue-scoped analytics\"}\n"
+}

@@ -31,7 +31,10 @@ fixture.liveTables=tables.map((t,i)=>({...t,bookingPolicy:i===0?'walk_in_only':'
 for(const [i,state] of [[2,'held'],[3,'due'],[4,'occupied'],[5,'cleaning']])Object.assign(fixture.liveTables[i],{state,onlineAvailable:false,policyLocked:true});
 fixture.liveTables[6].capacity=1;
 fixture.liveFail=false;fixture.mutationFail=false;fixture.mutationDelay=0;
-fixture.mutate=async()=>{if(fixture.mutationDelay)await new Promise(r=>setTimeout(r,fixture.mutationDelay));if(fixture.mutationFail)throw Error('Table changed on another device. Refresh live tables.');};
+// Keep pending-save assertions independent of browser/CPU speed. The test must
+// explicitly release the synthetic response after checking the pending state.
+fixture.holdMutation=()=>{fixture.mutationGate=new Promise(resolve=>{fixture.releaseMutation=resolve;});};
+fixture.mutate=async()=>{if(fixture.mutationGate){const gate=fixture.mutationGate;fixture.mutationGate=null;await gate;}if(fixture.mutationDelay)await new Promise(r=>setTimeout(r,fixture.mutationDelay));if(fixture.mutationFail)throw Error('Table changed on another device. Refresh live tables.');};
 for(const slot of ['sunset','prime','late'])fixture.spot.table_inventory[slot]=fixture.spot.table_inventory[slot].map((t,i)=>({...t,bookingPolicy:i===0?'walk_in_only':'online_and_walk_ins'}));
 document.addEventListener('click',()=>{const start=performance.now();window.__paintTiming=new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(performance.now()-start))));},true);
 const root=createRoot(document.getElementById('root'));
@@ -48,6 +51,7 @@ function mockModule(id) {
     const scaleStyle=(style)=>{const s=RN.StyleSheet.flatten(style)||{};const f=window.__ownerTest?.fontScale||1;return {...s,fontSize:(s.fontSize||14)*f,...(s.lineHeight?{lineHeight:s.lineHeight*f}:{})};};
     export const Text=React.forwardRef((p,r)=><RN.Text {...p} ref={r} style={scaleStyle(p.style)}/>);
     export const TextInput=React.forwardRef((p,r)=><RN.TextInput {...p} ref={r} style={scaleStyle(p.style)}/>);
+    export const useWindowDimensions=()=>({...RN.useWindowDimensions(),fontScale:window.__ownerTest?.fontScale||1});
   `;
   if (id === 'react-native-svg') return `
     import React from 'react';
@@ -64,7 +68,11 @@ function mockModule(id) {
   if (id.endsWith('/lib/supabase')) return `export const hasSupabaseConfig=true,supabase={};`;
   if (id.endsWith('/components/ScreenContainer')) return `import React from 'react';import {View} from 'react-native';export const ScreenContainer=({children})=><View style={{flex:1}}>{children}</View>;`;
   if (id.endsWith('/services/ownerAccessService')) return `export const ownerAccessService={getPrimaryManagedSpotId:async()=>window.__ownerTest.request('access')};`;
-  if (id.endsWith('/services/spotService')) return `export const spotService={getSpotById:async()=>window.__ownerTest.request('spot'),subscribeToSpotById:()=>()=>{},replaceTableInventory:async()=>window.__ownerTest.spot,updateReservationSettings:async()=>window.__ownerTest.spot,setTableBookingPolicy:async(spot,id,policy)=>{const f=window.__ownerTest;await f.mutate();for(const slot of ['sunset','prime','late'])f.spot.table_inventory[slot]=f.spot.table_inventory[slot].map(t=>t.tableId===id?{...t,bookingPolicy:policy}:t);const table=f.liveTables.find(t=>t.tableId===id);table.bookingPolicy=policy;table.onlineAvailable=policy==='online_and_walk_ins'&&table.state==='free';return {...f.spot};}};`;
+  if (id.endsWith('/services/spotService')) return `export const spotService={
+    getSpotById:async()=>window.__ownerTest.request('spot'),subscribeToSpotById:()=>()=>{},replaceTableInventory:async()=>window.__ownerTest.spot,
+    updateReservationSettings:async(id,settings)=>{const f=window.__ownerTest;await f.mutate();f.publishCalls=(f.publishCalls||0)+1;f.spot={...f.spot,reservation_fee:settings.reservationFee,gcash_amount:settings.reservationFee,table_inventory:settings.tableInventory};return f.spot;},
+    confirmReservationInventory:async()=>{const f=window.__ownerTest;f.confirmCalls=(f.confirmCalls||0)+1;f.spot={...f.spot,reservation_inventory_verified_at:new Date().toISOString()};return f.spot;},
+    setTableBookingPolicy:async(spot,id,policy)=>{const f=window.__ownerTest;await f.mutate();for(const slot of ['sunset','prime','late'])f.spot.table_inventory[slot]=f.spot.table_inventory[slot].map(t=>t.tableId===id?{...t,bookingPolicy:policy}:t);const table=f.liveTables.find(t=>t.tableId===id);table.bookingPolicy=policy;table.onlineAvailable=policy==='online_and_walk_ins'&&table.state==='free';return {...f.spot};}};`;
   if (id.endsWith('/services/venueTableService')) return `
     export const venueTableStateLabels={free:'Free',held:'Held',due:'Due / reserved',occupied:'Occupied',cleaning:'Cleaning',unavailable:'Unavailable'};
     export const venueTableService={
@@ -107,7 +115,9 @@ async function main() {
     {name:'xiaomi-pad5-dark',width:800,height:1280,dark:true},
   ];
   try {
-    for(const device of cases) {
+    const selectedDevice=process.argv.find(arg=>arg.startsWith('--device='))?.slice('--device='.length);
+    if(selectedDevice&&!cases.some(d=>d.name===selectedDevice))throw Error('Unknown isolated device');
+    for(const device of cases.filter(d=>!selectedDevice||d.name===selectedDevice)) {
       const page=await browser.newPage({viewport:{width:device.width,height:device.height},deviceScaleFactor:2});
       const errors=[];
       page.on('pageerror',e=>errors.push(e.message));
@@ -206,11 +216,12 @@ async function main() {
         await page.getByRole('button',{name:'Increase capacity for T001',exact:true}).click();
         const draftCapacity=await page.getByRole('button',{name:'Increase capacity for T001',exact:true}).locator('..').innerText();
         await page.getByRole('textbox',{name:'Reservation price in pesos',exact:true}).fill('300');
-        await page.evaluate(()=>{window.__ownerTest.mutationFail=true;window.__ownerTest.mutationDelay=500;});
+        await page.evaluate(()=>{window.__ownerTest.mutationFail=true;window.__ownerTest.holdMutation();});
         await policyButton.click();
         assert.equal(await policyButton.getAttribute('aria-checked'),'false','Toggle changed before backend confirmation');
         assert.equal(await policyButton.isDisabled(),true,'Pending toggle permitted another save');
         assert.equal(await page.getByRole('switch',{name:'Allow online reservations for T002',exact:true}).isDisabled(),true,'Another policy change was allowed during a pending save');
+        await page.evaluate(()=>window.__ownerTest.releaseMutation());
         await page.getByRole('alert').filter({hasText:'Table changed on another device'}).waitFor();
         assert.equal(await policyButton.getAttribute('aria-checked'),'false','Failed toggle changed policy');
         await page.evaluate(()=>{window.__ownerTest.mutationFail=false;window.__ownerTest.mutationDelay=0;});
@@ -233,10 +244,11 @@ async function main() {
         await page.getByRole('button',{name:'Cancel marking T001 ready',exact:true}).click();
         assert.equal(await page.evaluate(()=>window.__ownerTest.liveTables[0].state),'cleaning','Cancel changed table state');
         await readyButton.click();
-        await page.evaluate(()=>{window.__ownerTest.mutationFail=true;window.__ownerTest.mutationDelay=500;});
+        await page.evaluate(()=>{window.__ownerTest.mutationFail=true;window.__ownerTest.holdMutation();});
         const confirmReady=page.getByRole('button',{name:'Confirm T001 is ready',exact:true});
         await confirmReady.click();
         assert.equal(await page.evaluate(()=>window.__ownerTest.liveTables[0].state),'cleaning','Readiness changed before backend confirmation');
+        await page.evaluate(()=>window.__ownerTest.releaseMutation());
         await page.getByRole('alert').filter({hasText:'Table changed on another device'}).waitFor();
         assert.equal(await page.evaluate(()=>window.__ownerTest.liveTables[0].state),'cleaning','Failed readiness changed table state');
         await page.evaluate(()=>{window.__ownerTest.mutationFail=false;window.__ownerTest.mutationDelay=0;});
@@ -272,4 +284,5 @@ async function main() {
   } finally { await browser.close(); }
   fs.writeFileSync(path.join(out,baseline?'before.json':'after.json'),JSON.stringify(results,null,2));
 }
-main().catch(error=>{console.error(error);process.exitCode=1;});
+module.exports={bundle};
+if(require.main===module)main().catch(error=>{console.error(error);process.exitCode=1;});

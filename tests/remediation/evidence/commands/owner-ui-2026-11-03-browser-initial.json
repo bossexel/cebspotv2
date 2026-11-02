@@ -1,0 +1,8 @@
+{
+  "label": "owner-ui-2026-11-03-browser-initial",
+  "command": "node tests/owner-dashboard/tables-pricing.cjs",
+  "exitCode": 1,
+  "note": "Initial new fixture: protected confirmation was not reached.",
+  "logModifiedAt": "2026-11-02T17:26:41.960Z",
+  "output": "node : page.waitForFunction: Timeout 20000ms exceeded.\r\nAt line:2 char:113\r\n+ ... /esbuild'); node tests/owner-dashboard/tables-pricing.cjs > .codex-tm ...\r\n+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : NotSpecified: (page.waitForFun...000ms exceeded.:String) [], RemoteException\r\n    + FullyQualifiedErrorId : NativeCommandError\r\n \r\n    at main (C:\\Users\\9real\\Downloads\\cebspotv3\\tests\\owner-dashboard\\tables-pricing.cjs:29:179) {\r\n  log: [],\r\n  name: 'TimeoutError'\r\n}\r\n"
+}

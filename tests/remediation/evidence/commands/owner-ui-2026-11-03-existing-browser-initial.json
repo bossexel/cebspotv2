@@ -1,0 +1,8 @@
+{
+  "label": "owner-ui-2026-11-03-existing-browser-initial",
+  "command": "node tests/owner-dashboard/browser.cjs",
+  "exitCode": 1,
+  "note": "Original 500ms pending-state fixture failed on landscape; assertions retained.",
+  "logModifiedAt": "2026-11-02T17:31:11.480Z",
+  "output": "Dashboard bundled; starting isolated browser checks.\r\n{\"device\":\"vivo-y29-portrait\",\"viewport\":[360,804],\"fontScale\":1,\"cpuThrottle\":4,\"records\":300,\"timings\":[{\"tab\":\"Reservations\",\"ms\":928},{\"tab\":\"Payments\",\"ms\":631},{\"tab\":\"Reviews\",\"ms\":578},{\"tab\":\"Tables & Pricing\",\"ms\":746},{\"tab\":\"Spot Profile\",\"ms\":583},{\"tab\":\"Overview\",\"ms\":297}]}\r\nnode : AssertionError [ERR_ASSERTION]: Pending toggle permitted another save\r\nAt line:2 char:113\r\n+ ... /esbuild'); node tests/owner-dashboard/browser.cjs > .codex-tmp/owner ...\r\n+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : NotSpecified: (AssertionError ...ed another save:String) [], RemoteException\r\n    + FullyQualifiedErrorId : NativeCommandError\r\n \r\n\r\nfalse !== true\r\n\r\n    at main (C:\\Users\\9real\\Downloads\\cebspotv3\\tests\\owner-dashboard\\browser.cjs:217:16) {\r\n  generatedMessage: false,\r\n  code: 'ERR_ASSERTION',\r\n  actual: false,\r\n  expected: true,\r\n  operator: 'strictEqual'\r\n}\r\n"
+}

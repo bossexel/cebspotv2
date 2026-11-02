@@ -1,0 +1,8 @@
+{
+  "label": "owner-ui-2026-11-03-existing-browser-controlled-isolated",
+  "command": "node tests/owner-dashboard/browser.cjs --device=vivo-y29-landscape",
+  "exitCode": 0,
+  "note": "Explicitly held mock response; assertions unchanged.",
+  "logModifiedAt": "2026-11-02T17:36:55.488Z",
+  "output": "Dashboard bundled; starting isolated browser checks.\r\n{\"device\":\"vivo-y29-landscape\",\"viewport\":[804,360],\"fontScale\":1,\"cpuThrottle\":4,\"records\":300,\"timings\":[{\"tab\":\"Reservations\",\"ms\":399},{\"tab\":\"Payments\",\"ms\":291},{\"tab\":\"Reviews\",\"ms\":363},{\"tab\":\"Tables & Pricing\",\"ms\":621},{\"tab\":\"Spot Profile\",\"ms\":487},{\"tab\":\"Overview\",\"ms\":172}]}\r\n"
+}
