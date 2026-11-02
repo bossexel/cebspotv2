@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-11-02T19:44:20.193Z",
+  "functions": [
+    {
+      "name": "paymongo-webhook",
+      "version": 24,
+      "status": "ACTIVE",
+      "verifyJwt": false
+    },
+    {
+      "name": "paymongo-create-gcash-checkout",
+      "version": 24,
+      "status": "ACTIVE",
+      "verifyJwt": true
+    },
+    {
+      "name": "paymongo-create-qrph-checkout",
+      "version": 21,
+      "status": "ACTIVE",
+      "verifyJwt": true
+    },
+    {
+      "name": "payment-release-control",
+      "version": 6,
+      "status": "ACTIVE",
+      "verifyJwt": false
+    },
+    {
+      "name": "paymongo-test-webhook",
+      "version": 5,
+      "status": "ACTIVE",
+      "verifyJwt": false
+    },
+    {
+      "name": "payment-maintenance",
+      "version": 9,
+      "status": "ACTIVE",
+      "verifyJwt": false
+    }
+  ],
+  "limitation": "Function metadata alone does not establish deployed source or workflow success; see paid-ledger and maintenance evidence."
+}

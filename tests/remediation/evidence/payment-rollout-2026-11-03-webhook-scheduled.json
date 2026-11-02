@@ -1,0 +1,15 @@
+﻿{
+    "requestedWrite":  true,
+    "testOnly":  true,
+    "checkedAt":  "2026-11-02T18:39:56.8337733Z",
+    "result":  {
+                   "testOnly":  true,
+                   "scopeHash":  "dc0af3dae18cbdf0fcd8ccb49374864b86b173bfbbb6a7fee61c424cc6d48906",
+                   "matchingEnabledTestHooks":  1,
+                   "secretMatches":  true,
+                   "routedToDurableTestHandler":  true,
+                   "liveHooksUntouched":  true,
+                   "readOnly":  false,
+                   "maintenanceScheduled":  true
+               }
+}

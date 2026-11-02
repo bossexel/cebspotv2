@@ -1,0 +1,12 @@
+{
+  "label": "payment-rollout-2026-11-03-typecheck",
+  "command": [
+    "node",
+    "node_modules/typescript/bin/tsc",
+    "--noEmit"
+  ],
+  "startedAt": "2026-11-02T19:46:04.027Z",
+  "finishedAt": "2026-11-02T19:46:58.805Z",
+  "exitCode": 0,
+  "output": ""
+}

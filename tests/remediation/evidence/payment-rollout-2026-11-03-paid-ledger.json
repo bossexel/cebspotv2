@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-11-02T19:36:20.020Z",
+  "syntheticTestOnly": true,
+  "paid_methods": [
+    "gcash",
+    "qrph"
+  ],
+  "paid_bookings": 2,
+  "payment_count": 5,
+  "distinct_sessions": 5,
+  "synthetic_bookings": 5,
+  "failed_fixture_events": 0,
+  "processed_paid_events": 2,
+  "distinct_paid_references": 2
+}

@@ -2,6 +2,49 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.0';
 
 export type ReservationPaymentStatus = 'pending' | 'paid' | 'failed' | 'expired';
 
+export class PaymongoProviderError extends Error {
+  constructor(public status: number, public category: string) {
+    super('Payment provider request unavailable.');
+  }
+}
+
+// Persist only bounded, documented diagnostic categories, never provider text,
+// identifiers, URLs, billing details or response bodies.
+export function paymentFailureCode(error: unknown): string {
+  if (error instanceof PaymongoProviderError) return `provider_${error.status}_${error.category}`;
+  if (error instanceof Error && 'code' in error && typeof error.code === 'string' && /^[0-9A-Z]{5}$/.test(error.code)) {
+    return `database_${error.code}`;
+  }
+  return 'checkout_outcome_unknown';
+}
+
+export function checkoutContractFailure(resource: Record<string, any> | undefined, attempt: Record<string, any>): string {
+  const a=resource?.attributes;
+  const checks: [string, boolean][] = [
+    ['id', /^cs_[A-Za-z0-9_]+$/.test(resource?.id ?? '')],
+    ['test_mode', a?.livemode === false],
+    ['reference', a?.reference_number === attempt.reservation_id],
+    ['attempt_metadata', a?.metadata?.checkout_attempt_id === attempt.id],
+    ['reservation_metadata', a?.metadata?.reservation_id === attempt.reservation_id],
+    ['currency', a?.line_items?.[0]?.currency === 'PHP'],
+    ['amount', Number(a?.line_items?.[0]?.amount) === Math.round(Number(attempt.amount)*100)],
+    ['quantity', a?.line_items?.[0]?.quantity === 1],
+    ['items', Array.isArray(a?.line_items) && a.line_items.length === 1],
+    ['url', /^https:\/\/checkout\.paymongo\.com\//.test(a?.checkout_url ?? '')],
+  ];
+  return checks.find(([,valid])=>!valid)?.[0] ?? 'unclassified';
+}
+
+export async function checkoutResourceForAttempt(resource: Record<string, any>, attempt: Record<string, any>) {
+  // Creation responses can omit reservation references. Fetch the authoritative
+  // session rather than filling missing provider fields from our request.
+  if (checkoutContractFailure(resource,attempt)==='unclassified') return resource;
+  if (!/^cs_[A-Za-z0-9_]+$/.test(resource?.id ?? '')) throw new Error('Invalid provider session identity.');
+  const retrieved=await paymongoRequest(`/checkout_sessions/${encodeURIComponent(resource.id)}`);
+  if (retrieved.data?.id !== resource.id) throw new Error('Provider session identity changed.');
+  return retrieved.data;
+}
+
 export function getRequiredEnv(name: string) {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`Missing ${name}.`);
@@ -57,12 +100,10 @@ export async function paymongoRequest(path: string, init: RequestInit = {}) {
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    const message =
-      payload?.errors?.[0]?.detail ??
-      payload?.errors?.[0]?.code ??
-      payload?.error ??
-      `PayMongo request failed with ${response.status}.`;
-    throw new Error(message);
+    const code = payload?.errors?.[0]?.code;
+    const allowed = ['parameter_invalid', 'parameter_required', 'parameter_format_invalid', 'resource_not_found',
+      'authentication_invalid', 'api_key_invalid', 'api_key_required', 'rate_limit_exceeded', 'payment_method_not_allowed'];
+    throw new PaymongoProviderError(response.status, allowed.includes(code) ? code : 'unclassified');
   }
   return payload;
 }

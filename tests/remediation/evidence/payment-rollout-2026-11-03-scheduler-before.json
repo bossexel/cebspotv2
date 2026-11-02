@@ -1,0 +1,25 @@
+{
+  "checkedAt": "2026-11-02T18:10:57.176Z",
+  "active_attempts": 0,
+  "extensions": [
+    {
+      "installed": true,
+      "name": "supabase_vault",
+      "schema": "vault"
+    },
+    {
+      "installed": false,
+      "name": "pg_net",
+      "schema": null
+    },
+    {
+      "installed": false,
+      "name": "pg_cron",
+      "schema": null
+    }
+  ],
+  "hold_expiry_live_obligations": 0,
+  "recovery": {
+    "manual_count": 0
+  }
+}

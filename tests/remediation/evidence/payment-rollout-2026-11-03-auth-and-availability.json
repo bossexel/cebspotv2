@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-11-02T18:50:31.560Z",
+  "target": "authorized beta; PayMongo test mode only",
+  "confirmedTestIdentities": 2,
+  "unconfirmedSignInRejected": true,
+  "actualClientAvailabilityPassed": true,
+  "configuredTables": 62,
+  "onlineTables": 58,
+  "anonymousPrivateReadDenied": true,
+  "financialRecordsCreated": 0
+}

@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-11-02T18:47:27.132Z",
+  "allExistingPaymentsAndBookingsRetained": true,
+  "payment_count": 48,
+  "reservation_count": 72,
+  "pending_test_count": 0,
+  "payment_status_counts": {
+    "paid": 13,
+    "expired": 35
+  },
+  "legacy_rpc_service_only": true,
+  "reviewed_legacy_test_paid": 6,
+  "shared_account_guard_hash": "6547b36261be951b48cafef7c716d073",
+  "shared_identity_guard_hash": "68669646fa9c5a57e7ca4fd09dca5c23",
+  "reviewed_legacy_test_expired": 4,
+  "historical_live_bookings_hash": "0ebda95203d3bee2b45cb4cc03d45bef",
+  "historical_live_payment_count": 12,
+  "historical_live_payments_hash": "fd935d11c0a448f338a87a0d05c4b0f4"
+}

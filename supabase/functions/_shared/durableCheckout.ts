@@ -1,5 +1,6 @@
 import { corsHeaders, jsonResponse } from './cors.ts';
-import { getReservationBilling, getUserFromRequest, makeServiceClient, paymongoRequest, getRequiredEnv } from './paymongo.ts';
+import { getReservationBilling, getUserFromRequest, makeServiceClient, paymongoRequest, getRequiredEnv, paymentFailureCode, checkoutResourceForAttempt } from './paymongo.ts';
+import { paymentSnapshot } from './paymentSnapshot.ts';
 import { readPrivateUpload } from './privateUpload.ts';
 
 export class PaymentDatabaseError extends Error {
@@ -28,6 +29,9 @@ export function checkoutHandler(method: 'gcash' | 'qrph') {
     let client: ReturnType<typeof makeServiceClient> | undefined;
     let attemptId: string | undefined;
     try {
+      if (Deno.env.get('PAYMENT_CHECKOUT_ENABLED') !== 'true') {
+        return jsonResponse({ error: 'Reservation payments are undergoing maintenance. Please try again shortly.', retryable: true }, 503);
+      }
       if (!getRequiredEnv('PAYMONGO_SECRET_KEY').startsWith('sk_test_')) {
         return jsonResponse({ error: 'Only PayMongo test mode is enabled for this release.' }, 503);
       }
@@ -63,14 +67,15 @@ export function checkoutHandler(method: 'gcash' | 'qrph') {
       const response = await paymongoRequest('/v2/checkout_sessions', {
         method: 'POST', headers: { 'Idempotency-Key': `cebspot-${attempt.idempotency_key}` }, body: JSON.stringify(savedRequest),
       });
-      const persisted = await paymentRpc(client, 'record_checkout_session', { target_attempt_id: attempt.id, session_snapshot: response?.data });
+      const resource=await checkoutResourceForAttempt(response?.data,attempt);
+      const persisted = await paymentRpc(client, 'record_checkout_session', { target_attempt_id: attempt.id, session_snapshot: paymentSnapshot(resource) });
       if (persisted.attempt_state !== 'active') return jsonResponse({ error: 'The reservation expired or changed. Checkout is being retired.' }, 409);
       return jsonResponse({ checkoutUrl: persisted.checkout_url, checkoutSessionId: persisted.provider_checkout_session_id,
         amount: Number(persisted.amount), currency: 'PHP', attemptId: persisted.id });
-    } catch {
+    } catch (error) {
       if (client && attemptId) {
         await client.from('reservation_payments').update({ attempt_state: 'reconciliation_required', lease_expires_at: null,
-          last_error_code: 'checkout_outcome_unknown' }).eq('id', attemptId).eq('status', 'pending').then(() => {}, () => {});
+          last_error_code: paymentFailureCode(error) }).eq('id', attemptId).eq('status', 'pending').then(() => {}, () => {});
       }
       return jsonResponse({ error: 'Checkout unavailable. Retry the same reservation; its payment status is unchanged.', retryable: true }, 503);
     }

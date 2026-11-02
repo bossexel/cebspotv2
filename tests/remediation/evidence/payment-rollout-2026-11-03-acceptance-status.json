@@ -1,0 +1,86 @@
+{
+  "checkedAt": "2026-11-02T19:39:57.177Z",
+  "syntheticFixturesOnly": true,
+  "bookings": [
+    {
+      "testIdentity": "customer-a",
+      "purpose": "android-qrph",
+      "status": "checked_in",
+      "payment": "paid",
+      "financialResolution": null,
+      "holdExpired": false,
+      "attempts": [
+        {
+          "status": "paid",
+          "state": "complete",
+          "providerMode": "not retained",
+          "hasSession": true
+        }
+      ]
+    },
+    {
+      "testIdentity": "customer-b",
+      "purpose": "api-gcash",
+      "status": "cancelled",
+      "payment": "failed",
+      "financialResolution": null,
+      "holdExpired": true,
+      "attempts": [
+        {
+          "status": "expired",
+          "state": "retired",
+          "providerMode": "not retained",
+          "hasSession": true
+        }
+      ]
+    },
+    {
+      "testIdentity": "customer-b",
+      "purpose": "api-gcash-retrieved",
+      "status": "cancelled",
+      "payment": "failed",
+      "financialResolution": null,
+      "holdExpired": true,
+      "attempts": [
+        {
+          "status": "expired",
+          "state": "retired",
+          "providerMode": "not retained",
+          "hasSession": true
+        }
+      ]
+    },
+    {
+      "testIdentity": "customer-b",
+      "purpose": "api-gcash-payment",
+      "status": "cancelled",
+      "payment": "failed",
+      "financialResolution": null,
+      "holdExpired": true,
+      "attempts": [
+        {
+          "status": "expired",
+          "state": "retired",
+          "providerMode": "not retained",
+          "hasSession": true
+        }
+      ]
+    },
+    {
+      "testIdentity": "customer-b",
+      "purpose": "api-gcash-authorize",
+      "status": "confirmed",
+      "payment": "paid",
+      "financialResolution": null,
+      "holdExpired": false,
+      "attempts": [
+        {
+          "status": "paid",
+          "state": "complete",
+          "providerMode": "not retained",
+          "hasSession": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "label": "payment-rollout-2026-11-03-account-deletion-isolated",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/account-deletion-handler.test.cjs"
+  ],
+  "recordedAt": "2026-11-02T19:44:14.094Z",
+  "exitCode": 0,
+  "counts": {
+    "tests": 6,
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  "output": "TAP version 13\r\n# Subtest: unauthenticated and stale/refreshed/recovery sessions cannot start deletion\r\nok 1 - unauthenticated and stale/refreshed/recovery sessions cannot start deletion\r\n  ---\r\n  duration_ms: 28177.3003\r\n  type: 'test'\r\n  ...\r\n# Subtest: face cleanup failure cannot create a locked account or delete Auth\r\nok 2 - face cleanup failure cannot create a locked account or delete Auth\r\n  ---\r\n  duration_ms: 665.2114\r\n  type: 'test'\r\n  ...\r\n# Subtest: quiescence is resumable, idempotent and never reports premature deletion\r\nok 3 - quiescence is resumable, idempotent and never reports premature deletion\r\n  ---\r\n  duration_ms: 6355.9864\r\n  type: 'test'\r\n  ...\r\n# Subtest: storage failure retries the same job and Auth waits for actual cleanup\r\nok 4 - storage failure retries the same job and Auth waits for actual cleanup\r\n  ---\r\n  duration_ms: 4521.417\r\n  type: 'test'\r\n  ...\r\n# Subtest: running photo jobs and Auth deletion failure remain pending and resumable\r\nok 5 - running photo jobs and Auth deletion failure remain pending and resumable\r\n  ---\r\n  duration_ms: 7658.9342\r\n  type: 'test'\r\n  ...\r\n# Subtest: failed final bookkeeping cannot turn successful Auth deletion into a retryable failure\r\nok 6 - failed final bookkeeping cannot turn successful Auth deletion into a retryable failure\r\n  ---\r\n  duration_ms: 2437.9599\r\n  type: 'test'\r\n  ...\r\n1..6\r\n# tests 6\r\n# suites 0\r\n# pass 6\r\n# fail 0\r\n# cancelled 0\r\n# skipped 0\r\n# todo 0\r\n# duration_ms 55099.8622\r\n"
+}

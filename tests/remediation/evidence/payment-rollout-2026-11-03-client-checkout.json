@@ -1,0 +1,15 @@
+{
+  "checkedAt": "2026-11-02T19:34:03.351Z",
+  "environment": "Hosted beta with actual shared client services, synthetic customer, PayMongo test API",
+  "bookingCreated": true,
+  "authoritativeFeePhp": 1,
+  "holdRecorded": true,
+  "gcashCheckoutCreated": true,
+  "sameSessionOnRetry": true,
+  "persistedAttempts": 1,
+  "crossUserPrivateReadDenied": true,
+  "crossUserCheckoutDenied": true,
+  "activityLoggingWarnings": 0,
+  "realMoneyCharged": false,
+  "providerPaymentCompleted": false
+}

@@ -10,7 +10,10 @@ The working tree was clean before this UI work.
 3. Add venue-scoped analytics using the reservation and live-table data already loaded by the owner dashboard.
 4. Check synthetic phone/tablet interactions, existing owner guards, typecheck, local Android export and admin export.
 
-The operator reports that the owner has now confirmed inventory. This change does not independently verify that hosted status or mark inventory verified. Financial-handler replacement and the real Android booking/payment acceptance flow (steps 2 and 3) remain separate next steps.
+The later payment rollout independently verified owner-confirmed hosted inventory,
+replaced the test-mode financial handlers, and passed user-assisted Android payment
+and owner check-in. See [the payment rollout record](reservation-payment-rollout-2026-11-03.md).
+This owner UI/analytics change remains a local preview; no Android update was published.
 
 ## Changes
 

@@ -45,6 +45,12 @@ enabled = false
 [functions.paymongo-webhook]
 verify_jwt = false
 
+[functions.paymongo-test-webhook]
+verify_jwt = false
+
+[functions.payment-release-control]
+verify_jwt = false
+
 [functions.provision-owner-account]
 verify_jwt = true
 

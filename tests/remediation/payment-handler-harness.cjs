@@ -8,7 +8,7 @@ function fixture(db,{userId,env:overrides={}}={}) {
   const state={failProvider:false,failRetrieval:false,failPersistOnce:false,failDatabase:false,failDbAfterCreationOnce:false,loseProviderResponseOnce:false,liveResponse:false};
   const calls=[],sessions=new Map(),handlers=new Map(),cache=new Map();let sequence=0;
   const prefix=randomUUID().replaceAll('-','');
-  const env={SUPABASE_URL:'https://fixture.invalid',SUPABASE_SERVICE_ROLE_KEY:'fixture-server-key',PAYMONGO_SECRET_KEY:'sk_test_fixture',
+  const env={SUPABASE_URL:'https://fixture.invalid',SUPABASE_SERVICE_ROLE_KEY:'fixture-server-key',PAYMONGO_SECRET_KEY:'sk_test_fixture',PAYMENT_CHECKOUT_ENABLED:'true',
     PAYMONGO_TEST_WEBHOOK_SECRET:'fixture-webhook-secret',CHECKOUT_RETURN_BASE_URL:'https://admin.fixture.invalid/payment-return.html',
     PAYMENT_WORKER_TOKEN:'fixture-worker-token-of-at-least-32-characters',...overrides};
   async function sql(query,values=[]) {
@@ -60,7 +60,7 @@ function fixture(db,{userId,env:overrides={}}={}) {
       fetch:async(url,init={})=>{
         const method=init.method??'GET';const key=init.headers?.['Idempotency-Key'];const payload=init.body?JSON.parse(init.body):null;
         calls.push({url,method,key,payload});
-        if(state.failProvider)return Response.json({errors:[{detail:'Injected provider failure'}]},{status:503});
+        if(state.failProvider)return Response.json({errors:[{code:state.providerErrorCode,detail:'Private provider detail must never escape'}]},{status:state.providerStatus??503});
         if(method==='POST'&&url.endsWith('/v2/checkout_sessions')){
           // A provider call is never allowed to precede the durable attempt/request.
           const attempt=payload?.data?.attributes?.metadata?.checkout_attempt_id;
@@ -72,7 +72,9 @@ function fixture(db,{userId,env:overrides={}}={}) {
           sessions.set(id,providerSessions.get(id));
           if(state.failDbAfterCreationOnce){state.failDbAfterCreationOnce=false;state.failDatabase=true;}
           if(state.loseProviderResponseOnce){state.loseProviderResponseOnce=false;throw Error('Injected lost response after provider creation');}
-          return Response.json({data:structuredClone(sessions.get(id))});
+          const created=structuredClone(sessions.get(id));
+          if(state.omitCreationReference)delete created.attributes.reference_number;
+          return Response.json({data:created});
         }
         const match=url.match(/\/checkout_sessions\/(cs_[A-Za-z0-9_]+)(\/expire)?$/);const resource=match&&providerSessions.get(match[1]);
         if(!resource||state.failRetrieval)return Response.json({errors:[{detail:'Injected retrieval failure'}]},{status:503});

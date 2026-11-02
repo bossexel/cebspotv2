@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-11-02T19:34:17.096Z",
+  "syntheticTestOnly": true,
+  "httpStatus": 200,
+  "knownLabels": [
+    "Continue"
+  ],
+  "buttonCount": 2,
+  "inputCount": 0,
+  "frames": [
+    "https://checkout.paymongo.com"
+  ],
+  "knownState": {
+    "expired": false,
+    "testMode": false,
+    "gcashMention": false,
+    "selectPayment": false
+  },
+  "networkFailures": [],
+  "afterOrigin": "https://secure-authentication.paymongo.com",
+  "afterLabels": [],
+  "testPage": true,
+  "authorizeControls": 1,
+  "testAuthorizationClicked": true,
+  "returnOrigin": "https://secure-authentication.paymongo.com"
+}

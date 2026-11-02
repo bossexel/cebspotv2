@@ -6,6 +6,17 @@ test('payment maintenance serves CORS preflight without accessing payment state'
   const {f}=await fresh();const response=await f.invoke('payment-maintenance',{}, {token:'',method:'OPTIONS'});
   assert.equal(response.status,200);assert.ok(response.headers.get('access-control-allow-origin'));
 });
+test('provider diagnostics retain safe categories, never provider details, and preserve the durable request',async()=>{
+  for (const [status,code,expected] of [[400,'parameter_invalid','provider_400_parameter_invalid'],[503,'private-unrecognized-code','provider_503_unclassified']]) {
+    const {f,r}=await fresh();f.state.failProvider=true;f.state.providerStatus=status;f.state.providerErrorCode=code;
+    const response=await checkout(f,r);assert.equal(response.status,503);
+    assert.doesNotMatch(await response.text(),/Private provider|parameter_invalid|private-unrecognized/);
+    const attempt=(await db.query('select * from reservation_payments where reservation_id=$1',[r.id])).rows[0];
+    assert.equal(attempt.last_error_code,expected);assert.ok(attempt.checkout_request);assert.equal(attempt.attempt_state,'reconciliation_required');
+    const worker=await f.invoke('payment-maintenance',{}, {token:f.env.PAYMENT_WORKER_TOKEN});assert.equal(worker.status,503);
+    assert.equal((await db.query('select last_error_code from reservation_payments where id=$1',[attempt.id])).rows[0].last_error_code,expected);
+  }
+});
 async function fresh(options={}){
   await db.as(ids.a);const r=await booking(db,{reservation_date:new Date(Date.now()+(++sequence+1)*86400000).toISOString().slice(0,10)});
   await db.exec('reset role');return {r,f:fixture(db,{userId:ids.a,...options})};
@@ -13,6 +24,14 @@ async function fresh(options={}){
 async function checkout(f,r,method='qrph'){return f.invoke(`paymongo-create-${method}-checkout`,{reservationId:r.id,successUrl:'https://attacker.invalid/'});}
 async function saved(id){await db.exec('reset role');return (await db.query('select * from reservations where id=$1',[id])).rows[0];}
 for(const method of ['gcash','qrph']){
+  test(`${method}: checkout admission stays closed until the coordinated release is explicitly enabled`,async()=>{
+    const {r}=await fresh();
+    for(const value of [undefined,'false','1']){
+      const f=fixture(db,{userId:ids.a,env:{PAYMENT_CHECKOUT_ENABLED:value}});
+      const response=await checkout(f,r,method);assert.equal(response.status,503);assert.equal((await response.json()).retryable,true);assert.equal(f.calls.length,0);
+      assert.equal((await db.query('select count(*)::int n from reservation_payments where reservation_id=$1',[r.id])).rows[0].n,0);
+    }
+  });
   test(`${method}: authenticated owner of reservation only; no provider calls for missing/other identity`,async()=>{
     const {f,r}=await fresh();assert.equal((await f.invoke(`paymongo-create-${method}-checkout`,{reservationId:r.id},{token:''})).status,401);
     const other=fixture(db,{userId:ids.b});assert.equal((await checkout(other,r,method)).status,503);assert.equal(other.calls.length,0);assert.equal(f.calls.length,0);
@@ -29,6 +48,12 @@ for(const method of ['gcash','qrph']){
     const {f,r}=await fresh();f.state.loseProviderResponseOnce=true;assert.equal((await checkout(f,r,method)).status,503);
     assert.equal((await db.query('select count(*)::int n from reservation_payments where reservation_id=$1',[r.id])).rows[0].n,1);
     assert.equal((await checkout(f,r,method)).status,200);assert.equal(f.sessions.size,1);assert.equal(f.calls[0].key,f.calls[1].key);assert.deepEqual(f.calls[0].payload,f.calls[1].payload);
+  });
+  test(`${method}: incomplete creation response is retrieved and strictly verified before returning checkout`,async()=>{
+    const {f,r}=await fresh();f.state.omitCreationReference=true;
+    const response=await checkout(f,r,method);assert.equal(response.status,200);const result=await response.json();
+    assert.equal(f.calls.length,2);assert.equal(f.calls[1].method,'GET');assert.ok(f.calls[1].url.endsWith('/'+result.checkoutSessionId));
+    assert.equal(f.sessions.size,1);assert.equal((await checkout(f,r,method)).status,200);assert.equal(f.calls.length,2);
   });
   test(`${method}: provider success followed by local persistence failure is reconciled without another session`,async()=>{
     const {f,r}=await fresh();f.state.failPersistOnce=true;assert.equal((await checkout(f,r,method)).status,503);

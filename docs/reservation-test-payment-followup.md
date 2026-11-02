@@ -1,5 +1,12 @@
 # Reservation follow-up — November 2, 2026
 
+November 3 final payment update: the coordinated test-mode rollout and
+user-assisted Android checkout / owner check-in passed. The new creation-response
+compatibility fix and current hosted evidence are documented in
+[reservation-payment-rollout-2026-11-03.md](reservation-payment-rollout-2026-11-03.md).
+The full local rerun passed 554 tests, with 0 failures and 5 skipped. The dated
+checkpoint below predates those actions. No Android update was published.
+
 November 3 update: the ten pending legacy test sessions were reconciled: six paid
 records were verified and four unused test sessions were expired and verified.
 The 12 live-labelled historical records and their bookings are unchanged. See

@@ -1,0 +1,21 @@
+{
+  "recordedAt": "2026-11-02T19:44:14.109Z",
+  "physicalDeviceConnected": true,
+  "installedNativeVersion": "1.0.4",
+  "testedClient": "Current local Android preview in Expo Go",
+  "ownerPricingLayoutPreviouslyObserved": true,
+  "availableVenueLinkOpenedBooking": true,
+  "syntheticPhoneAndTermsAccepted": true,
+  "actualQrphCheckoutRequestedFromPhone": true,
+  "userConfirmedTestPaymentApproval": true,
+  "userConfirmedOwnerCheckIn": true,
+  "customerAppVisibleAfterPayment": true,
+  "confirmedVenueCardObserved": true,
+  "backendPaymentPaid": true,
+  "backendReservationCheckedIn": true,
+  "automaticReturnToInstalledNativeNotVerified": true,
+  "exactNativeExpoUpdateUnknown": true,
+  "androidUpdatePublished": false,
+  "testQrScannedByAutomation": false,
+  "limitations": "User-assisted test-mode acceptance. Native app launch encountered the device app-clone chooser; no account/session extraction or device-profile bypass was used. Does not certify an installed native OTA update or automatic deep-link adoption."
+}

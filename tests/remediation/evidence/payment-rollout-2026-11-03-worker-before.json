@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-11-02T18:08:27.696Z",
+  "extensions": [
+    "supabase_vault"
+  ],
+  "manual_recovery_rows": 38,
+  "payment_status_counts": {
+    "expired": 35,
+    "paid": 13
+  },
+  "pending_manual_recovery_rows": 0,
+  "recorded_mode_counts": [
+    {
+      "n": 27,
+      "recorded_livemode": "false",
+      "status": "expired"
+    },
+    {
+      "n": 8,
+      "recorded_livemode": "true",
+      "status": "expired"
+    },
+    {
+      "n": 9,
+      "recorded_livemode": "false",
+      "status": "paid"
+    },
+    {
+      "n": 4,
+      "recorded_livemode": "true",
+      "status": "paid"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-11-02T19:13:26.101Z",
+  "testFixtureOnly": true,
+  "tokenSigningAlgorithm": "ES256",
+  "bookingStatus": "cancelled",
+  "bookingPaymentStatus": "failed",
+  "recordedFeePhp": 1,
+  "attempts": [
+    {
+      "status": "expired",
+      "state": "retired",
+      "hasSession": true,
+      "hasDurableRequest": true,
+      "outcomeUnknown": false,
+      "safeFailureCategory": "session_contract_reference"
+    }
+  ],
+  "invalidTargetProbeHttpStatus": 503,
+  "invalidTargetProbeClassification": "admission-closed",
+  "probeCreatedNoCheckout": true
+}

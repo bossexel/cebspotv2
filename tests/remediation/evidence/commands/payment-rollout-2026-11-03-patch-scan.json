@@ -1,0 +1,9 @@
+{
+  "checkedAt": "2026-11-02T19:48:08.662Z",
+  "patchFilesScanned": 56,
+  "exportFilesScanned": 106,
+  "matchCount": 0,
+  "matched": [],
+  "knownSyntheticPrivateValuesCompared": true,
+  "limitations": "Pattern and known synthetic credential/identity/link scan of changed files and local exports only. No environment files or historical blobs read. Not an exhaustive secret audit."
+}

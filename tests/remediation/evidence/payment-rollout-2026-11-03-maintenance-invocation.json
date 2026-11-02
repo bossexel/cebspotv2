@@ -1,0 +1,13 @@
+﻿{
+    "ok":  true,
+    "testOnly":  true,
+    "checkedAt":  "2026-11-02T19:15:11.8920358Z",
+    "counts":  {
+                   "recovered":  0,
+                   "reconciled":  0,
+                   "retired":  0,
+                   "failed":  0,
+                   "manual":  0
+               },
+    "httpStatus":  200
+}

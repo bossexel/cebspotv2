@@ -1,0 +1,24 @@
+{
+  "checkedAt": "2026-11-02T19:48:05.687Z",
+  "allOriginalSourceFilesUnchanged": true,
+  "originalMetadataVersion": 20,
+  "finalMetadataVersion": 24,
+  "checks": [
+    {
+      "file": "paymongo-webhook/index.ts",
+      "unchanged": true,
+      "sha256": "a0a2e26f027be0afd9209df63543f6a2a5356968b89e943047c1db10cee49a18"
+    },
+    {
+      "file": "_shared/cors.ts",
+      "unchanged": true,
+      "sha256": "827676ff9a4731f7bdc1f3e396cc84878dc1c8012d88e41121d8e1671f2778f8"
+    },
+    {
+      "file": "_shared/paymongo.ts",
+      "unchanged": true,
+      "sha256": "4ece60ac8f0fe34c1e2e9ad37d73be211e4f425d37a39be162141803716d19e6"
+    }
+  ],
+  "limitation": "Metadata version increased, but a fresh source download matches all original entrypoint and dependency bytes. No provider keys or source contents are included."
+}

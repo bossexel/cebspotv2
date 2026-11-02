@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-11-02T18:43:13.048Z",
+  "active_minute_jobs": 1,
+  "claimed_minutes": 4,
+  "configure_client_denied": true,
+  "cron_failures": 0,
+  "cron_installed": true,
+  "cron_successes": 4,
+  "failed_http_responses": 0,
+  "manual_recovery_count": 0,
+  "minute_claim_client_denied": true,
+  "minute_table_rls": true,
+  "net_installed": true,
+  "queued_reusable_credentials": 0,
+  "retirement_backlog": 0,
+  "successful_worker_responses": 4,
+  "vault_client_reads_blocked": true,
+  "vault_secret_exists": true
+}
