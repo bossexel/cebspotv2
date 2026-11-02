@@ -150,7 +150,7 @@ export default function BookingConfirmedScreen() {
     : isCheckedIn
     ? 'The spot confirmed your arrival. Your table remains assigned to this reservation.'
     : isCancelled
-    ? 'Payment was not completed, so the reservation was voided and the table is available again.'
+    ? reservation.cancellation_reason || 'Payment was not completed, so the reservation was voided and the table is available again.'
     : requiresPayment
     ? isPaid
       ? 'Your payment was confirmed. Your reservation details are ready.'

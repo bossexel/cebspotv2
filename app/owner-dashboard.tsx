@@ -11,6 +11,7 @@ import {
   isPaymongoReservation,
   getPaymongoMethodLabel,
   canManuallyApproveReservation,
+  canRejectManualPayment,
   canRecordAttendance,
   getApprovalGateReason,
   getReservationGuestName,
@@ -138,6 +139,7 @@ function getSpotTableInventory(spot: Spot | null): TableInventory {
 type PortalIcon = React.ComponentType<any>;
 type OwnerConfirmation =
   | { kind: 'approve-reservation'; reservation: Reservation }
+  | { kind: 'reject-payment'; reservation: Reservation }
   | { kind: 'mark-arrived'; reservation: Reservation }
   | { kind: 'mark-no-show'; reservation: Reservation }
   | { kind: 'view-payment-proof'; reservation: Reservation }
@@ -162,6 +164,7 @@ const galleryFilters: Array<{ value: GalleryFilter; label: string; icon: PortalI
 function getOwnerConfirmationTitle(confirmation: OwnerConfirmation | null) {
   if (confirmation?.kind === 'complete-visit') return 'Complete this visit?';
   if (confirmation?.kind === 'approve-reservation') return 'Approve this reservation?';
+  if (confirmation?.kind === 'reject-payment') return 'Reject this payment proof?';
   if (confirmation?.kind === 'mark-arrived') return 'Confirm guest arrival?';
   if (confirmation?.kind === 'mark-no-show') return 'Mark this guest as no-show?';
   if (confirmation?.kind === 'view-payment-proof') return 'Open payment proof?';
@@ -170,6 +173,7 @@ function getOwnerConfirmationTitle(confirmation: OwnerConfirmation | null) {
 }
 
 function getOwnerConfirmationMessage(confirmation: OwnerConfirmation | null) {
+  if (confirmation?.kind === 'reject-payment') return 'Reject only if the submitted GCash photo and reference cannot be verified against your account. This cancels the unpaid reservation, releases the table and notifies the guest. The submitted details remain on record. This does not issue a refund.';
   if (confirmation?.kind === 'complete-visit') return `Complete ${getReservationGuestName(confirmation.reservation)}'s visit at ${confirmation.reservation.table_id ? clubTableDisplayName(confirmation.reservation.table_id) : 'their table'}? The table will move to cleaning and stay unavailable until you mark it ready in Tables & Pricing.`;
   if (confirmation?.kind === 'approve-reservation') {
     return `This confirms ${getReservationDisplayRef(confirmation.reservation)} for ${formatReservationDateTime(confirmation.reservation)} and marks it as paid. Make sure the amount and reference match what actually landed in your GCash account before proceeding — this can't be auto-reversed.`;
@@ -197,6 +201,7 @@ function getOwnerConfirmationActionLabel(
 ) {
   if (confirmation?.kind === 'complete-visit') return updatingAttendance ? 'Completing...' : 'Complete visit';
   if (confirmation?.kind === 'approve-reservation') return approvingReservation ? 'Approving...' : 'Approve';
+  if (confirmation?.kind === 'reject-payment') return 'Reject reservation';
   if (confirmation?.kind === 'mark-arrived') return updatingAttendance ? 'Confirming...' : 'Guest Arrived';
   if (confirmation?.kind === 'mark-no-show') return updatingAttendance ? 'Updating...' : 'Mark No Show';
   if (confirmation?.kind === 'view-payment-proof') return 'Open Proof';
@@ -227,6 +232,8 @@ export default function OwnerDashboardScreen() {
   const [liveTablesError, setLiveTablesError] = useState(false);
   const liveTablesRequest = useRef(0);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const paymentDecisionBusy = useRef(false);
   const [attendanceUpdatingId, setAttendanceUpdatingId] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutConfirmationOpen, setSignOutConfirmationOpen] = useState(false);
@@ -593,6 +600,8 @@ export default function OwnerDashboardScreen() {
   }
 
   async function approveReservation(reservation: Reservation) {
+    if(paymentDecisionBusy.current) { Alert.alert('Review in progress','Wait for the current payment decision to finish.'); return; }
+    paymentDecisionBusy.current=true;
     try {
       setApprovingId(reservation.id);
       const approvedReservation = await reservationService.approvePaidReservation(reservation.id, ownerSupabase);
@@ -613,6 +622,7 @@ export default function OwnerDashboardScreen() {
       Alert.alert('Approval failed', error.message ?? 'Please try again.');
     } finally {
       setApprovingId(null);
+      paymentDecisionBusy.current=false;
     }
   }
 
@@ -621,6 +631,20 @@ export default function OwnerDashboardScreen() {
       kind: status === 'checked_in' ? 'mark-arrived' : 'mark-no-show',
       reservation,
     });
+  }
+
+  async function rejectPayment(reservation: Reservation) {
+    if(paymentDecisionBusy.current) { Alert.alert('Review in progress','Wait for the current payment decision to finish.'); return; }
+    paymentDecisionBusy.current=true;
+    setRejectingId(reservation.id);
+    try {
+      const rejected=await reservationService.rejectManualPayment(reservation.id,ownerSupabase);
+      setReservations(current=>current.map(item=>item.id===rejected.id?rejected:item));
+      void refreshLiveTables();
+      Alert.alert('Reservation rejected','The guest has been notified and the table released.');
+    } catch(error: unknown) {
+      Alert.alert('Rejection not confirmed',error instanceof Error?error.message:'Refresh the reservation before retrying.');
+    } finally { setRejectingId(null); paymentDecisionBusy.current=false; }
   }
 
   async function recordAttendance(reservation: Reservation, status: 'checked_in' | 'no_show') {
@@ -692,6 +716,7 @@ export default function OwnerDashboardScreen() {
       void approveReservation(confirmation.reservation);
       return;
     }
+    if (confirmation.kind === 'reject-payment') { void rejectPayment(confirmation.reservation); return; }
     if (confirmation.kind === 'mark-arrived') {
       void recordAttendance(confirmation.reservation, 'checked_in');
       return;
@@ -776,12 +801,14 @@ export default function OwnerDashboardScreen() {
     accessClaimed,
     activeTables,
     approvingId,
+    rejectingId,
     attendanceUpdatingId,
     approvedReservations,
     draftFee,
     physicalTables,
     isClubFloorPlan: spot.id === testCebspotClubSpotId,
     onApproveReservation: requestApproveReservation,
+    onRejectPayment: (reservation) => setOwnerConfirmation({ kind: 'reject-payment', reservation }),
     onRecordAttendance: requestRecordAttendance,
     onOpenPaymentProof: requestOpenPaymentProof,
     onPostOwnerPhotos: postOwnerPhotos,
@@ -854,7 +881,7 @@ export default function OwnerDashboardScreen() {
         message={getOwnerConfirmationMessage(ownerConfirmation)}
         onRequestClose={closeOwnerConfirmation}
         actions={[
-          { label: 'Cancel', disabled: savingSettings || Boolean(approvingId) || Boolean(attendanceUpdatingId), onPress: closeOwnerConfirmation },
+          { label: 'Cancel', disabled: savingSettings || Boolean(approvingId) || Boolean(rejectingId) || Boolean(attendanceUpdatingId), onPress: closeOwnerConfirmation },
           {
             label: getOwnerConfirmationActionLabel(
               ownerConfirmation,
@@ -863,12 +890,12 @@ export default function OwnerDashboardScreen() {
               Boolean(attendanceUpdatingId),
             ),
             variant:
-              ownerConfirmation?.kind === 'mark-no-show'
+              ownerConfirmation?.kind === 'mark-no-show' || ownerConfirmation?.kind === 'reject-payment'
                 ? 'destructive'
                 : ownerConfirmation?.kind === 'approve-reservation' || ownerConfirmation?.kind === 'mark-arrived'
                   ? 'primary'
                   : 'secondary',
-            disabled: savingSettings || Boolean(approvingId) || Boolean(attendanceUpdatingId),
+            disabled: savingSettings || Boolean(approvingId) || Boolean(rejectingId) || Boolean(attendanceUpdatingId),
             onPress: confirmOwnerAction,
           },
         ]}
@@ -890,6 +917,7 @@ type DashboardContentProps = {
   accessClaimed: boolean | null;
   activeTables: number;
   approvingId: string | null;
+  rejectingId: string | null;
   attendanceUpdatingId: string | null;
   approvedReservations: Reservation[];
   draftFee: string;
@@ -898,6 +926,7 @@ type DashboardContentProps = {
   onAddTable: () => void;
   isClubFloorPlan: boolean;
   onApproveReservation: (reservation: Reservation) => void;
+  onRejectPayment: (reservation: Reservation) => void;
   onRecordAttendance: (reservation: Reservation, status: 'checked_in' | 'no_show') => void;
   onOpenPaymentProof: (reservation: Reservation) => void;
   onPostOwnerPhotos: () => void;
@@ -1096,6 +1125,8 @@ function OverviewView(props: DashboardContentProps) {
                   updatingAttendance={props.attendanceUpdatingId === reservation.id}
                   viewedProofIds={props.viewedProofIds}
                   onApprove={() => props.onApproveReservation(reservation)}
+                  rejecting={props.rejectingId === reservation.id}
+                  onReject={() => props.onRejectPayment(reservation)}
                   onRecordAttendance={(status) => props.onRecordAttendance(reservation, status)}
                   onComplete={() => props.onCompleteReservation(reservation)}
                   onOpenPaymentProof={() => props.onOpenPaymentProof(reservation)}
@@ -1172,6 +1203,8 @@ function ReservationsView(props: DashboardContentProps) {
               updatingAttendance={props.attendanceUpdatingId === reservation.id}
               viewedProofIds={props.viewedProofIds}
               onApprove={() => props.onApproveReservation(reservation)}
+              rejecting={props.rejectingId === reservation.id}
+              onReject={() => props.onRejectPayment(reservation)}
               onRecordAttendance={(status) => props.onRecordAttendance(reservation, status)}
               onComplete={() => props.onCompleteReservation(reservation)}
               onOpenPaymentProof={() => props.onOpenPaymentProof(reservation)}
@@ -1212,6 +1245,8 @@ function PaymentsView(props: DashboardContentProps) {
               approving={props.approvingId === reservation.id}
               viewedProofIds={props.viewedProofIds}
               onApprove={() => props.onApproveReservation(reservation)}
+              rejecting={props.rejectingId === reservation.id}
+              onReject={() => props.onRejectPayment(reservation)}
               onOpenPaymentProof={() => props.onOpenPaymentProof(reservation)}
             />
       )}
@@ -1723,6 +1758,27 @@ function PortalMetric({
   );
 }
 
+function ManualPaymentDecisionActions({reservation,approving,rejecting,gateReason,onApprove,onReject}: {
+  reservation: Reservation; approving: boolean; rejecting: boolean; gateReason: string | null;
+  onApprove: () => void; onReject: () => void;
+}) {
+  const busy=approving||rejecting;
+  return <View style={styles.paymentDecisionActions}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Accept manual GCash payment"
+      style={[styles.acceptButton,styles.paymentDecisionButton,(busy||Boolean(gateReason))&&styles.disabledButton]}
+      onPress={onApprove} disabled={busy||Boolean(gateReason)}>
+      <CheckCircle2 size={15} color={colors.white}/>
+      <Text style={[styles.acceptButtonText,styles.paymentDecisionText]}>{approving?'Approving...':gateReason??'Accept'}</Text>
+    </Pressable>
+    {canRejectManualPayment(reservation)&&<Pressable accessibilityRole="button" accessibilityLabel="Reject manual GCash payment"
+      style={[styles.noShowButton,styles.paymentDecisionButton,busy&&styles.disabledButton]}
+      onPress={onReject} disabled={busy}>
+      <TriangleAlert size={15} color={portalColors.danger}/>
+      <Text style={[styles.noShowButtonText,styles.paymentDecisionText]}>{rejecting?'Rejecting...':'Reject'}</Text>
+    </Pressable>}
+  </View>;
+}
+
 function ReservationRow({
   reservation,
   approving,
@@ -1730,6 +1786,8 @@ function ReservationRow({
   expanded,
   viewedProofIds,
   onApprove,
+  rejecting,
+  onReject,
   onRecordAttendance,
   onComplete,
   onOpenPaymentProof,
@@ -1740,6 +1798,8 @@ function ReservationRow({
   expanded?: boolean;
   viewedProofIds: Set<string>;
   onApprove: () => void;
+  rejecting: boolean;
+  onReject: () => void;
   onRecordAttendance: (status: 'checked_in' | 'no_show') => void;
   onComplete: () => void;
   onOpenPaymentProof: () => void;
@@ -1768,7 +1828,7 @@ function ReservationRow({
         <Text
           style={[
             styles.statusBadge,
-            canApprove ? styles.pendingStatusBadge : isNoShow ? styles.noShowStatusBadge : styles.approvedStatusBadge,
+            canApprove ? styles.pendingStatusBadge : isNoShow || reservation.status === 'cancelled' ? styles.noShowStatusBadge : styles.approvedStatusBadge,
           ]}
         >
           {canApprove ? 'Pending' : getReservationStatusLabel(reservation.status)}
@@ -1808,17 +1868,9 @@ function ReservationRow({
             {isPaymongoReservationRecord ? 'Gateway' : 'Proof'}
           </Text>
         </Pressable>
-        {canApprove ? (
-          <Pressable
-            accessibilityRole="button"
-            style={[styles.acceptButton, (approving || Boolean(gateReason)) && styles.disabledButton]}
-            onPress={onApprove}
-            disabled={approving || Boolean(gateReason)}
-          >
-            <CheckCircle2 size={15} color={colors.white} />
-            <Text style={styles.acceptButtonText}>{approving ? 'Approving...' : gateReason ?? 'Accept'}</Text>
-          </Pressable>
-        ) : null}
+        {canApprove ? <ManualPaymentDecisionActions reservation={reservation}
+          approving={approving} rejecting={rejecting} gateReason={gateReason}
+          onApprove={onApprove} onReject={onReject} /> : null}
         {canUpdateAttendance ? (
           <>
             <Pressable
@@ -1851,12 +1903,16 @@ function PaymentCard({
   approving,
   viewedProofIds,
   onApprove,
+  rejecting,
+  onReject,
   onOpenPaymentProof,
 }: {
   reservation: Reservation;
   approving: boolean;
   viewedProofIds: Set<string>;
   onApprove: () => void;
+  rejecting: boolean;
+  onReject: () => void;
   onOpenPaymentProof: () => void;
 }) {
   const isPaymongoReservationRecord = isPaymongoReservation(reservation);
@@ -1870,7 +1926,7 @@ function PaymentCard({
           <Text style={styles.paymentCardTitle} numberOfLines={1}>{guestName}</Text>
           <Text style={styles.paymentCardMeta} numberOfLines={1}>{reservation.spot_name} - {formatReservationDateTime(reservation)}</Text>
         </View>
-        <Text style={[styles.statusBadge, canApprove ? styles.pendingStatusBadge : styles.approvedStatusBadge]}>
+        <Text style={[styles.statusBadge, canApprove ? styles.pendingStatusBadge : reservation.payment_status === 'failed' || reservation.status === 'cancelled' ? styles.noShowStatusBadge : styles.approvedStatusBadge]}>
           {getPaymentStatusLabel(reservation.payment_status)}
         </Text>
       </View>
@@ -1895,17 +1951,9 @@ function PaymentCard({
             {isPaymongoReservationRecord ? 'Automated Checkout' : 'View Screenshot'}
           </Text>
         </Pressable>
-        {canApprove ? (
-          <Pressable
-            accessibilityRole="button"
-            style={[styles.acceptButton, (approving || Boolean(gateReason)) && styles.disabledButton]}
-            onPress={onApprove}
-            disabled={approving || Boolean(gateReason)}
-          >
-            <CheckCircle2 size={15} color={colors.white} />
-            <Text style={styles.acceptButtonText}>{approving ? 'Approving...' : gateReason ?? 'Approve'}</Text>
-          </Pressable>
-        ) : null}
+        {canApprove ? <ManualPaymentDecisionActions reservation={reservation}
+          approving={approving} rejecting={rejecting} gateReason={gateReason}
+          onApprove={onApprove} onReject={onReject} /> : null}
       </View>
     </View>
   );

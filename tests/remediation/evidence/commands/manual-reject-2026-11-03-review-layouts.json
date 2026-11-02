@@ -1,0 +1,11 @@
+{
+  "recordedAt": "2026-11-02T20:27:00.675Z",
+  "label": "review-layouts",
+  "command": [
+    "node",
+    "tests/owner-dashboard/manual-payment-review.cjs"
+  ],
+  "exitCode": 0,
+  "output": "{\"layoutsPassed\":3,\"tabsChecked\":9}\r\n",
+  "environment": "Isolated RN Web rendering, mocked services; not an Android installed-build test"
+}

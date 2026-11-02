@@ -48,6 +48,8 @@ function mockModule(id) {
     import React from 'react';
     import * as RN from 'react-native-web';
     export * from 'react-native-web';
+    export const Linking={openURL:async()=>{}};
+    export const Alert={alert:(title,message)=>{window.__ownerTest.alerts=(window.__ownerTest.alerts||[]).concat({title,message});}};
     const scaleStyle=(style)=>{const s=RN.StyleSheet.flatten(style)||{};const f=window.__ownerTest?.fontScale||1;return {...s,fontSize:(s.fontSize||14)*f,...(s.lineHeight?{lineHeight:s.lineHeight*f}:{})};};
     export const Text=React.forwardRef((p,r)=><RN.Text {...p} ref={r} style={scaleStyle(p.style)}/>);
     export const TextInput=React.forwardRef((p,r)=><RN.TextInput {...p} ref={r} style={scaleStyle(p.style)}/>);
@@ -80,10 +82,15 @@ function mockModule(id) {
       markReady:async(spot,id)=>{const f=window.__ownerTest;await f.mutate();const t=f.liveTables.find(t=>t.tableId===id);Object.assign(t,{state:'free',policyLocked:false,onlineAvailable:t.bookingPolicy==='online_and_walk_ins'});}
     };
   `;
-  if (id.endsWith('/services/reservationService')) return `export const reservationService={getSpotReservations:async()=>window.__ownerTest.request('reservations'),subscribeToSpotReservations:()=>()=>{}};`;
+  if (id.endsWith('/services/reservationService')) return `export const reservationService={
+    getSpotReservations:async()=>window.__ownerTest.request('reservations'),
+    subscribeToSpotReservations:(_spot,callback)=>{window.__ownerTest.emitReservations=()=>callback(window.__ownerTest.reservations.map(r=>({...r})));return ()=>{};},
+    rejectManualPayment:async(id)=>{const f=window.__ownerTest;f.rejectCalls=(f.rejectCalls||0)+1;await f.mutate();const r=f.reservations.find(r=>r.id===id);Object.assign(r,{status:'cancelled',payment_status:'failed',cancellation_reason:'Manual GCash proof could not be verified.'});return {...r};},
+    approvePaidReservation:async(id)=>{const f=window.__ownerTest;f.approveCalls=(f.approveCalls||0)+1;await f.mutate();const r=f.reservations.find(r=>r.id===id);Object.assign(r,{status:'confirmed',payment_status:'paid'});return {...r};}
+  };`;
   if (id.endsWith('/services/reviewService')) return `export const reviewService={getReviewsForSpot:async()=>window.__ownerTest.request('reviews'),getRepliesForSpot:async()=>window.__ownerTest.request('replies'),createReviewReply:async(input)=>({id:'new-reply',...input,created_at:new Date().toISOString()})};`;
   if (id.endsWith('/services/ownerGalleryService')) return `export const ownerGalleryService={};`;
-  if (id.endsWith('/services/paymentProofService')) return `export const paymentProofService={};`;
+  if (id.endsWith('/services/paymentProofService')) return `export const paymentProofService={getProofUrl:async()=> 'https://proof.fixture.invalid/synthetic'};`;
   throw Error('Unexpected mocked import: '+id);
 }
 

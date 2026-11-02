@@ -198,6 +198,26 @@ function throwReservationSlotConflict() {
 }
 
 export const reservationService = {
+  async rejectManualPayment(id: string, client: SupabaseClient = supabase): Promise<Reservation> {
+    if (!hasSupabaseConfig) throw new UserFacingError('Connect to the booking service before reviewing a payment.');
+    let result;
+    try { result = await client.rpc('reject_manual_reservation_payment', { reservation_id: id }); }
+    catch { throw new UserFacingError('Unable to confirm rejection. Refresh this reservation before retrying; no payment was marked paid.'); }
+    const { data, error } = result;
+    if (error) {
+      if (['PGRST202','PGRST204','42883','42703'].includes(error.code)) {
+        throw new UserFacingError('Payment rejection is not available on this backend yet. The reservation was not changed.');
+      }
+      if (error.code === '55000') throw new UserFacingError('This payment review expired or was already resolved. Refresh the reservation before trying again.');
+      if (error.code === '42501') throw new UserFacingError('Only an active assigned owner can reject this payment proof.');
+      throw new UserFacingError('Unable to confirm rejection. Refresh this reservation before retrying; no payment was marked paid.');
+    }
+    const row=Array.isArray(data)?data[0]:data;
+    if (!row || row.id!==id || row.status!=='cancelled' || row.payment_status!=='failed') {
+      throw new UserFacingError('Rejection could not be confirmed. Refresh the reservation to check its current status.');
+    }
+    return normalizeReservation(row);
+  },
   async submitPaymentProof(reservationId: string, proofPath: string, reference: string, payerNumber: string): Promise<Reservation> {
     if (!hasSupabaseConfig) throw new Error('A connected account is required to submit payment proof.');
     const { data, error } = await supabase.rpc('submit_reservation_payment_proof', {

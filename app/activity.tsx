@@ -118,6 +118,7 @@ function getNotificationTitle(item: Activity) {
   if (item.type === 'review_comment') return 'Review comment';
   if (item.type === 'review_liked') return 'Review liked';
   if (item.type === 'reservation_approved') return 'Reservation approved';
+  if (item.type === 'reservation_cancelled') return 'Reservation cancelled';
   if (item.type.includes('reservation')) return 'Reservation update';
   if (item.type.includes('circle')) return 'Circle activity';
   if (item.spot_name || item.type.includes('spot') || item.type === 'discovery') return 'Spot update';
@@ -790,7 +791,7 @@ export default function ActivityScreen() {
       return;
     }
 
-    if (item.type === 'reservation_reminder' && item.target_id) {
+    if (['reservation_reminder','reservation_cancelled'].includes(item.type) && item.target_id) {
       setShowNotifications(false);
       router.push(`/confirmed/${item.target_id}`);
       return;

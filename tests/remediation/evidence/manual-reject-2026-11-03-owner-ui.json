@@ -1,0 +1,33 @@
+{
+  "recordedAt": "2026-11-02T20:25:56.103Z",
+  "environment": "Isolated RN Web rendering of Android components; mocked services only",
+  "results": [
+    {
+      "device": "small-phone",
+      "tabsChecked": 3,
+      "adjacentButtons": true,
+      "cancelMakesNoRequest": true,
+      "failureKeepsPending": true,
+      "bothDecisionsDisabledInFlight": true,
+      "rejectionRemovedAfterSuccess": true
+    },
+    {
+      "device": "large-text-phone",
+      "tabsChecked": 3,
+      "adjacentButtons": true,
+      "cancelMakesNoRequest": true,
+      "failureKeepsPending": true,
+      "bothDecisionsDisabledInFlight": true,
+      "rejectionRemovedAfterSuccess": true
+    },
+    {
+      "device": "tablet",
+      "tabsChecked": 3,
+      "adjacentButtons": true,
+      "cancelMakesNoRequest": true,
+      "failureKeepsPending": true,
+      "bothDecisionsDisabledInFlight": true,
+      "rejectionRemovedAfterSuccess": true
+    }
+  ]
+}

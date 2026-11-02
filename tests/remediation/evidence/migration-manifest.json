@@ -113,6 +113,10 @@
     {
       "name": "20261102124004_legacy_test_payment_reconciliation.sql",
       "sha256": "e7af0307a48ad37221080e3aec1a6be60f0807c7fbabb58b19e6a53cb26744c6"
+    },
+    {
+      "name": "20261102200338_reject_manual_reservation_payment.sql",
+      "sha256": "72cc7e9806f167cd53e69bd1ec605149e6a45ff32a0f0957d2f947ea564c67de"
     }
   ]
 }

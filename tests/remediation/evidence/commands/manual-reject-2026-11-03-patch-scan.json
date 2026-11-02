@@ -1,0 +1,8 @@
+{
+  "recordedAt": "2026-11-02T20:27:02.056Z",
+  "patchFilesScanned": 31,
+  "exportsScanned": 106,
+  "matchCount": 0,
+  "matches": [],
+  "limitations": "Pattern scan of changed files and local exports only. No environment files, credentials or history were read; not an exhaustive secret audit."
+}

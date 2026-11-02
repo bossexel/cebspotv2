@@ -70,6 +70,7 @@ async function prepareNotifyKit() {
 function getNotificationTitle(activity: Activity) {
   if (activity.type === 'reservation_reminder') return 'Reservation reminder';
   if (activity.type === 'reservation_approved') return 'Reservation confirmed';
+  if (activity.type === 'reservation_cancelled') return 'Reservation cancelled';
   if (activity.type === 'reservation_checked_in') return 'You are checked in';
   if (activity.type === 'reservation_no_show') return 'Reservation marked no show';
   if (activity.type === 'spot_comment') return 'New comment';
@@ -88,7 +89,7 @@ function getNotificationBody(activity: Activity) {
 
 function getRouteForActivity(activity: Activity): UserNotificationRoute | null {
   if (
-    ['reservation_reminder', 'reservation_approved', 'reservation_checked_in', 'reservation_no_show'].includes(activity.type) &&
+    ['reservation_reminder', 'reservation_approved', 'reservation_checked_in', 'reservation_no_show', 'reservation_cancelled'].includes(activity.type) &&
     activity.target_id
   ) {
     return { routeType: 'reservation', reservationId: activity.target_id };
@@ -169,6 +170,7 @@ export const userNotificationService = {
       'spot_liked',
       'submission_approved',
       'reservation_approved',
+      'reservation_cancelled',
       'reservation_checked_in',
       'reservation_no_show',
     ].includes(activity.type)) return;

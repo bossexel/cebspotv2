@@ -679,6 +679,11 @@ export const styles = StyleSheet.create({
     gap: spacing.sm,
     flexWrap: 'wrap',
   },
+  paymentDecisionActions: {
+    flexDirection: 'row', flexGrow: 1, flexBasis: 220, maxWidth: '100%', gap: spacing.sm,
+  },
+  paymentDecisionButton: { flex: 1, minWidth: 0, minHeight: 48 },
+  paymentDecisionText: { flexShrink: 1, textAlign: 'center' },
   proofButton: {
     minHeight: 42,
     borderRadius: radius.md,

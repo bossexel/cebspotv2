@@ -92,6 +92,15 @@ export function canManuallyApproveReservation(reservation: Reservation) {
   return reservation.payment_required && !isPaymongoReservation(reservation) && !isAlreadySettled(reservation);
 }
 
+export function canRejectManualPayment(reservation: Reservation) {
+  return reservation.payment_required && reservation.payment_method === 'gcash'
+    && ['pending','pending_payment','rescheduled'].includes(reservation.status)
+    && ['pending','unpaid','failed'].includes(reservation.payment_status)
+    && Boolean(reservation.proof_submitted_at && reservation.payment_proof_url?.trim() && reservation.payment_reference?.trim())
+    && !reservation.paid_at && !reservation.approved_by && reservation.financial_resolution !== 'resolution_required'
+    && !['pending_review','approved'].includes(reservation.refund_status ?? '');
+}
+
 export function canRecordAttendance(reservation: Reservation) {
   if (['checked_in', 'completed', 'cancelled', 'no_show'].includes(reservation.status)) return false;
   if (reservation.payment_required && reservation.payment_status !== 'paid') return false;
