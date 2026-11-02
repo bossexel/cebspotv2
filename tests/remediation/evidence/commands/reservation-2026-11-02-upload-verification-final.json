@@ -1,0 +1,11 @@
+{
+  "label": "reservation-2026-11-02-upload-verification",
+  "command": [
+    "node",
+    "tests/remediation/verify-reservation-upload-probe.cjs"
+  ],
+  "startedAt": "2026-11-02T11:59:38.356Z",
+  "finishedAt": "2026-11-02T11:59:56.160Z",
+  "exitCode": 0,
+  "output": "Exact upload postcheck executed with all local assertions passing.\n"
+}

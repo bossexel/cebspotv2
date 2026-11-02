@@ -1,0 +1,41 @@
+﻿{
+    "worker_preflight":  {
+                             "extensions":  [
+                                                "supabase_vault"
+                                            ],
+                             "manual_recovery_rows":  48,
+                             "payment_status_counts":  {
+                                                           "expired":  31,
+                                                           "paid":  7,
+                                                           "pending":  10
+                                                       },
+                             "pending_manual_recovery_rows":  10,
+                             "recorded_mode_counts":  [
+                                                          {
+                                                              "n":  23,
+                                                              "recorded_livemode":  "false",
+                                                              "status":  "expired"
+                                                          },
+                                                          {
+                                                              "n":  8,
+                                                              "recorded_livemode":  "true",
+                                                              "status":  "expired"
+                                                          },
+                                                          {
+                                                              "n":  3,
+                                                              "recorded_livemode":  "false",
+                                                              "status":  "paid"
+                                                          },
+                                                          {
+                                                              "n":  4,
+                                                              "recorded_livemode":  "true",
+                                                              "status":  "paid"
+                                                          },
+                                                          {
+                                                              "n":  10,
+                                                              "recorded_livemode":  "false",
+                                                              "status":  "pending"
+                                                          }
+                                                      ]
+                         }
+}

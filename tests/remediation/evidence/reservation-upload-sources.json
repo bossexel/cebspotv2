@@ -1,0 +1,13 @@
+{
+  "output": "supabase/migrations/20261102070521_reservation_private_upload_dependencies.sql",
+  "sources": [
+    {
+      "name": "20261013000500_request_bound_private_uploads.sql",
+      "sha256": "9dd661e41712f77d408b5fc04e3781d135fa0a13477427b80d0b8af6710845c8"
+    },
+    {
+      "name": "20261013000800_account_erasure.sql",
+      "sha256": "4171be5264f8385d74034a48d90b1e7b192a1521cac07e059a8b57b9080dfc98"
+    }
+  ]
+}

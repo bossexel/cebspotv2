@@ -1,0 +1,12 @@
+﻿{
+    "provider_keys_changed":  false,
+    "configured_names":  [
+                             "CHECKOUT_RETURN_BASE_URL",
+                             "PAYMENT_WORKER_TOKEN",
+                             "PRIVATE_UPLOAD_WORKER_TOKEN"
+                         ],
+    "project_ref":  "fathkdyxgeeokxeobxqp",
+    "verified_utc":  "2026-11-02T07:21:37.5820117Z",
+    "generated_values_backup":  "reservation-worker-settings-20261102-151909.dpapi",
+    "existing_values_changed":  false
+}

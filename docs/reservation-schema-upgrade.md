@@ -1,5 +1,10 @@
 # Reservation schema alignment — November 2, 2026
 
+Follow-up status: [reservation-test-payment-followup.md](reservation-test-payment-followup.md)
+records the later proof dependency migration, private-upload deployment,
+485/0/5 final test result, and remaining payment/inventory acceptance work.
+The original application results below describe the first migration's checkpoint.
+
 ## Verified application result
 
 The focused migration was applied on November 2 at 06:58 UTC. Hosted postchecks

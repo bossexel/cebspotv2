@@ -1,0 +1,12 @@
+{
+  "label": "reservation-2026-11-02-readiness",
+  "command": [
+    "node",
+    "--test",
+    "tests/remediation/payment-readiness.test.cjs"
+  ],
+  "startedAt": "2026-11-02T11:38:44.495Z",
+  "finishedAt": "2026-11-02T11:38:54.463Z",
+  "exitCode": 0,
+  "output": "TAP version 13\n# Subtest: payment readiness reports only contract and booleans, with no credential values\nok 1 - payment readiness reports only contract and booleans, with no credential values\n  ---\n  duration_ms: 104.9456\n  type: 'test'\n  ...\n# Subtest: live/missing credentials and missing workers or return bridge fail closed\nok 2 - live/missing credentials and missing workers or return bridge fail closed\n  ---\n  duration_ms: 10.8329\n  type: 'test'\n  ...\n# Subtest: webhook GET stays unavailable and never invokes database, payment or signature handlers\nok 3 - webhook GET stays unavailable and never invokes database, payment or signature handlers\n  ---\n  duration_ms: 2884.4189\n  type: 'test'\n  ...\n# Subtest: standalone readiness can be deployed without replacing the existing payment webhook\nok 4 - standalone readiness can be deployed without replacing the existing payment webhook\n  ---\n  duration_ms: 32.829\n  type: 'test'\n  ...\n1..4\n# tests 4\n# suites 0\n# pass 4\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 7637.5597\n"
+}

@@ -16,10 +16,9 @@ Deno.serve(async (request: Request) => {
     const client = makeServiceClient(); const deadline = Date.now()+40000;
     const counts = { recovered:0, reconciled:0, retired:0, failed:0, manual:0 };
     await paymentRpc(client,'expire_incomplete_reservation_holds',{});
-    const recovery = await client.from('reservation_payments').select('*')
-      .in('attempt_state',['creating','reconciliation_required']).order('created_at',{ascending:true}).limit(5);
-    if (recovery.error) throw new Error('Recovery lookup unavailable.');
-    for (const attempt of recovery.data ?? []) {
+    const recovery = await paymentRpc(client,'get_payment_recovery_batch',{batch_size:5});
+    counts.manual = Number(recovery.manual_count ?? 0);
+    for (const attempt of recovery.attempts ?? []) {
       if (Date.now()>=deadline) break;
       if (!attempt.checkout_request || Date.now()-Date.parse(attempt.created_at)>=23*60*60*1000) {
         counts.manual++;continue; // Never recreate after the provider's 24-hour key retention.

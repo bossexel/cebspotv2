@@ -1,0 +1,13 @@
+{
+  "checkedAt": "2026-11-02T11:44:05.021Z",
+  "contract": "reservation-payments-v1",
+  "configurationReady": true,
+  "checks": {
+    "testModeConfigured": true,
+    "testWebhookConfigured": true,
+    "paymentWorkerConfigured": true,
+    "privateUploadWorkerConfigured": true,
+    "returnBridgeConfigured": true
+  },
+  "limitations": "Configuration booleans only. No provider request, authenticated checkout or payment was tested."
+}

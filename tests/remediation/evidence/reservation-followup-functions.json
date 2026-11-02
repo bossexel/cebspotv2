@@ -1,0 +1,29 @@
+{
+  "checked_utc": "2026-11-02T12:08:23.239Z",
+  "functions": [
+    {
+      "name": "paymongo-webhook",
+      "status": "ACTIVE",
+      "version": 20,
+      "verify_jwt": false
+    },
+    {
+      "name": "paymongo-create-qrph-checkout",
+      "status": "ACTIVE",
+      "version": 15,
+      "verify_jwt": true
+    },
+    {
+      "name": "payment-readiness",
+      "status": "ACTIVE",
+      "version": 1,
+      "verify_jwt": false
+    },
+    {
+      "name": "private-upload",
+      "status": "ACTIVE",
+      "version": 1,
+      "verify_jwt": true
+    }
+  ]
+}

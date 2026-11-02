@@ -57,6 +57,9 @@ verify_jwt = true
 [functions.payment-maintenance]
 verify_jwt = false
 
+[functions.payment-readiness]
+verify_jwt = false
+
 [functions.private-upload-maintenance]
 verify_jwt = false
 

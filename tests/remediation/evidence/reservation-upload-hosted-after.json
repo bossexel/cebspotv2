@@ -1,0 +1,13 @@
+﻿{
+    "postcheck":  {
+                      "client_direct_writes_blocked":  true,
+                      "dependency_tables_present":  true,
+                      "dependency_tables_rls":  true,
+                      "legacy_manual_review_count":  10,
+                      "payment_proofs_private":  true,
+                      "private_rpcs_service_only":  true,
+                      "recovery_eligible_count":  0,
+                      "shared_account_guard_hash":  "6547b36261be951b48cafef7c716d073",
+                      "shared_identity_guard_hash":  "68669646fa9c5a57e7ca4fd09dca5c23"
+                  }
+}

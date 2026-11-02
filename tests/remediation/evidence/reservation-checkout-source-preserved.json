@@ -1,0 +1,8 @@
+{
+  "checked_utc": "2026-11-02T12:10:30.789Z",
+  "checkout_source_unchanged": true,
+  "source_sha256": "d47665867151e995dab2672d1e6a74761d60a03ae2b56eba9d4fa07a1c9b13a6",
+  "observed_version_before": 14,
+  "observed_version_after": 15,
+  "note": "Function version changed after configuration update; downloaded checkout entrypoint bytes match the earlier deployed source. Download first needed an existing local work directory; retry succeeded."
+}

@@ -1,0 +1,16 @@
+{
+  "checked_utc": "2026-11-02T12:08:23.242Z",
+  "counts": {
+    "security_definer_view / ERROR": 1,
+    "function_search_path_mutable / WARN": 5,
+    "pg_graphql_anon_table_exposed / WARN": 23,
+    "pg_graphql_authenticated_table_exposed / WARN": 32,
+    "anon_security_definer_function_executable / WARN": 52,
+    "authenticated_security_definer_function_executable / WARN": 68,
+    "auth_leaked_password_protection / WARN": 1,
+    "auth_rls_initplan / WARN": 50,
+    "multiple_permissive_policies / WARN": 93,
+    "duplicate_index / WARN": 6
+  },
+  "limitations": "Counts only; prior findings and intended exposures require individual interpretation."
+}

@@ -105,6 +105,10 @@
     {
       "name": "20261101192553_align_reservation_backend.sql",
       "sha256": "aba6136f2bddb7da3c49d2047e6dc1d57c68f80ed15a45fc326a2d2715a3ad00"
+    },
+    {
+      "name": "20261102070521_reservation_private_upload_dependencies.sql",
+      "sha256": "6087fc82ecf51667f137db268f0ebc4e965497a2ed06df36510ac99932a2af7b"
     }
   ]
 }

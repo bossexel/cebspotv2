@@ -1,0 +1,11 @@
+{
+  "label": "reservation-2026-11-02-upload-verification",
+  "command": [
+    "node",
+    "tests/remediation/verify-reservation-upload-probe.cjs"
+  ],
+  "startedAt": "2026-11-02T11:58:37.014Z",
+  "finishedAt": "2026-11-02T11:58:54.586Z",
+  "exitCode": 1,
+  "output": "payment_proofs_private\n\nfalse !== true\n\n"
+}

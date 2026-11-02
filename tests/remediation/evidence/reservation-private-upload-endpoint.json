@@ -1,0 +1,17 @@
+﻿{
+    "checked_utc":  "2026-11-02T12:07:37.8397263Z",
+    "transport_note":  "Initial Node fetch failed at transport; repeated using Windows HTTP client with normal TLS verification.",
+    "tests":  [
+                  {
+                      "expected":  200,
+                      "method":  "OPTIONS",
+                      "status":  200
+                  },
+                  {
+                      "expected":  401,
+                      "method":  "POST",
+                      "status":  401
+                  }
+              ],
+    "limitations":  "No account, file, provider call or storage write. Unauthenticated rejection and CORS only."
+}
