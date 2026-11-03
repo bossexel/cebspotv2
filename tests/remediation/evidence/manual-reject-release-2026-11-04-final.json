@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-11-03T18:14:30.490Z",
+  "branch": "feat/manual-gcash-rejection",
+  "publicationSourceCommit": "bc57cc87ebcd74d1f44749c84c545bc0a80375ff",
+  "databaseMigrationApplied": true,
+  "previewAndroidUpdatePublished": true,
+  "servedBundleMatchesValidatedExport": true,
+  "userConfirmedFinalUpdateApplied": true,
+  "finalOwnerDashboardRendered": true,
+  "exactNativeUpdateIdRead": false,
+  "physicalOwnerRejectionAndGuestApiAcceptancePassed": true,
+  "tests": {
+    "passed": 579,
+    "failed": 0,
+    "skipped": 5,
+    "total": 584,
+    "existingSkipsUnchanged": true
+  },
+  "typecheckPassed": true,
+  "androidConfiguredExportPassed": true,
+  "adminExportPassed": true,
+  "originalTestAssertionsRetained": true,
+  "initialRefactorFailureRecordedAndCorrected": true,
+  "configuredHumanAuthorVerified": true,
+  "assistantAttribution": false,
+  "sourceUnchangedSinceValidation": true,
+  "renderDeploymentOrProductionPublication": false,
+  "githubPushOrMerge": false,
+  "remaining": [
+    "Guest native notification/banner tap device acceptance",
+    "Other installed users must apply the update; runtime 1.0.3 needs the 1.0.4 APK",
+    "Existing security-advisor findings",
+    "Admin account action buttons are placeholders; recommendations only"
+  ]
+}

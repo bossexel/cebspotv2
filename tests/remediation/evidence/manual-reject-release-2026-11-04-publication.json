@@ -1,9 +1,9 @@
 {
-  "publishedAt": "2026-11-03T17:29:04.202Z",
+  "publishedAt": "2026-11-03T18:08:12.661Z",
   "channel": "preview",
   "environment": "preview",
-  "sourceCommit": "39a4beac8334f055fcb18fabdcc1733f511f8b91",
-  "previousGroup": "5d226edd-cde5-4aa0-8caf-590f209c9267",
+  "sourceCommit": "bc57cc87ebcd74d1f44749c84c545bc0a80375ff",
+  "previousGroup": "616229f6-66cd-47bb-9906-3cdc2e4281af",
   "command": [
     "eas",
     "update",
@@ -23,11 +23,11 @@
   ],
   "updates": [
     {
-      "id": "01a1a275-13b1-7237-8eae-8cdb67ce2785",
-      "group": "616229f6-66cd-47bb-9906-3cdc2e4281af",
+      "id": "01a1a298-e989-723d-9f6b-ae8dae3923ff",
+      "group": "cf125a10-dd09-46ec-b2ba-f83ba1d78929",
       "runtimeVersion": "1.0.4",
       "platform": "android",
-      "gitCommitHash": "39a4beac8334f055fcb18fabdcc1733f511f8b91",
+      "gitCommitHash": "bc57cc87ebcd74d1f44749c84c545bc0a80375ff",
       "message": "Owner manual GCash rejection, responsive tables and analytics"
     }
   ],

@@ -1,5 +1,11 @@
 # Manual GCash review release — November 4, 2026
 
+**Released to the authorized beta database and Android preview.** Physical owner
+rejection passed; final Android update publication and served bundle are verified.
+The owner confirmed applying the final update, and its dashboard rendered on the
+connected phone. Guest native notification/banner tapping remains a separate
+device check; existing security-advisor findings remain open.
+
 User authorized the focused database migration and Android preview release.
 Starting branch `feat/manual-gcash-rejection`, clean HEAD
 `17ef013e61457be4887c2680d2aa7decb711e43a`. This release keeps the existing
@@ -81,18 +87,45 @@ attendance/client isolation run passed **11/11**; the failed full run is retaine
 in `commands/manual-reject-release-2026-11-04-full-initial-failed.json`.
 The corrected full-suite rerun passed **579 tests, 0 failed, 5 skipped** (584 total),
 one additional passing test over the 578/0/5 feature baseline. Typecheck and the
-configured Android and admin exports also passed. Follow-up publication remains
-pending at this checkpoint; the first publication alone does not deliver that
-last correction. This was an
+configured Android and admin exports also passed. The final follow-up publication
+below delivers the correction. This was an
 introduced regression in the proposed refactor, not a Windows failure or a flaky
 test, and was not masked by changing an existing assertion.
+
+The final preview group is **`cf125a10-dd09-46ec-b2ba-f83ba1d78929`**, Android
+update **`01a1a298-e989-723d-9f6b-ae8dae3923ff`**, runtime **1.0.4**, source
+**`bc57cc87ebcd74d1f44749c84c545bc0a80375ff`**. Published after every corrected gate
+passed, using the same pinned preview environment and Android-only target. The
+served manifest points to this ID. Its downloaded **8,732,459-byte** bundle
+matches both the manifest hash and the exact validated local export. The export
+is also bound to hashes of 169 tracked app/source/asset/config files; publication
+refuses a source mismatch or a failing full-suite result. No production channel,
+Play Store release or Render deployment was performed.
+
+Publication and download evidence: `manual-reject-release-2026-11-04-publication.json`
+and `manual-reject-release-2026-11-04-served-update.json`. Final gates are under
+`commands/manual-reject-release-2026-11-04-{full,typecheck,export,admin,isolation}.json`.
 
 Compared the installed code-12 build too: direct app dependencies, 85 resolved
 Expo/React Native module versions, and native app/EAS configuration are unchanged.
 Its difference from current source is previously applied JavaScript/build-tool
 advisory patches. It successfully ran the new owner controls after the user
-applied the initial update. The owner-only route guard redirects About to the
-dashboard, so its exact running update ID has not been read from About.
+applied the initial update. The owner subsequently confirmed applying the final
+follow-up; the connected phone rendered the owner dashboard after that update.
+The owner-only route guard redirects About to the dashboard, so its exact running
+update ID has not been read from About. Do not turn user confirmation or a rendered
+dashboard into a claim that the exact native ID was independently read. Device
+evidence is `manual-reject-release-2026-11-04-device.json`.
+
+Existing 1.0.4 preview users reopen CebSpot and tap **Update** when prompted. The
+custom foreground checker has a five-minute cooldown after a check; dismissing
+the prompt may require foregrounding it again after that period. Publication
+does not establish adoption on every phone. Customer accounts can verify **Profile
+→ About → App information**: channel `preview`, runtime `1.0.4`, and final Update ID
+above. Owners currently verify via the update prompt and working owner controls;
+their route guard does not permit About. Version 1.0.3 users first need a compatible
+1.0.4 APK from the [verified latest internal build page](https://expo.dev/accounts/exl123/projects/cebspot/builds/8fa1d0de-c361-4a19-a219-317d71ffb67d),
+then the preview update. Do not distribute an expired signed CDN URL.
 
 Previous exact feature-source gates: 578 passed, 0 failed, 5 skipped; focused
 31 passed; typecheck, Android and admin exports passed. Evidence remains under
@@ -136,6 +169,25 @@ Retain the additive RPC and all recorded decisions/history. Do not reopen
 cancelled bookings or delete proof/notifications. If a server authorization issue
 is discovered, revoke authenticated EXECUTE on this new RPC only while
 investigating; existing Accept and provider handlers are independent.
+
+Operator-only UI rollback command, prepared but **not executed** (this restores
+the pre-feature 1.0.4 UI, leaving the additive database function and all decisions):
+
+```powershell
+$env:NODE_USE_SYSTEM_CA = '1'
+$env:EXPO_NO_DOTENV = '1'
+eas.cmd update:republish --group 5d226edd-cde5-4aa0-8caf-590f209c9267 --destination-channel preview --platform android --message "Rollback manual GCash owner UI" --non-interactive
+```
+
+Republishing still requires device adoption. For a notification-only regression,
+group `616229f6-66cd-47bb-9906-3cdc2e4281af` is the initial, phone-tested owner UI;
+it omits the cancellation notification listener correction. Review the desired
+rollback scope before selecting a group. No rollback was performed.
+
+Release source and evidence are committed on local branch
+`feat/manual-gcash-rejection`; publication source is the commit cited above.
+This task did not push/merge GitHub main or deploy Render. Do not infer the
+published Android version from main or the APK's embedded commit.
 
 ## Admin user actions (inspection and recommendation only)
 

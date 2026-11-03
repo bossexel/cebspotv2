@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-11-03T18:10:37.293Z",
+  "package": "com.cebspot.app",
+  "nativeVersion": "1.0.4",
+  "nativeVersionCode": 12,
+  "userConfirmedInitialUpdateApplied": true,
+  "initialNewManualReviewControlsObserved": true,
+  "userConfirmedSyntheticRejectionOnPhone": true,
+  "syntheticCancellationVerifiedInHostedApi": true,
+  "userConfirmedFinalUpdateApplied": true,
+  "finalOwnerDashboardRendered": true,
+  "finalPublishedUpdateId": "01a1a298-e989-723d-9f6b-ae8dae3923ff",
+  "exactRunningNativeUpdateIdRead": false,
+  "ownerAboutRouteRedirectsToDashboard": true,
+  "guestNativeBannerAndTapNotPhysicallyTested": true,
+  "privateScreenOrDocumentContentsRetained": false,
+  "noDeviceProfileOrAppLockBypass": true
+}
