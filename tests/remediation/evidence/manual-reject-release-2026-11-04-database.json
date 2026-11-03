@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-11-03T17:16:38.685Z",
+  "projectRef": "fathkdyxgeeokxeobxqp",
+  "migration": "supabase/migrations/20261102200338_reject_manual_reservation_payment.sql",
+  "migrationSha256": "72cc7e9806f167cd53e69bd1ec605149e6a45ff32a0f0957d2f947ea564c67de",
+  "atomicInstallAndLedger": true,
+  "existingDataFunctionsPoliciesPreserved": true,
+  "exists": true,
+  "anon_denied": true,
+  "source_hash": "cdb2547a1465e6a0522532af1aedd80d",
+  "active_guard": "6547b36261be951b48cafef7c716d073",
+  "activity_rls": true,
+  "approval_guard": "5b7932a078ed7ab17da3c84e3e752474",
+  "identity_guard": "68669646fa9c5a57e7ca4fd09dca5c23",
+  "ledger_recorded": true,
+  "safe_search_path": true,
+  "security_definer": true,
+  "authenticated_allowed": true
+}

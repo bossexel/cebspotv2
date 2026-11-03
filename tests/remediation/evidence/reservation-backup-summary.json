@@ -1,11 +1,11 @@
 ﻿{
     "project_ref":  "fathkdyxgeeokxeobxqp",
     "kind":  "encrypted-public-schema-and-data-backup",
-    "table_count":  35,
+    "table_count":  36,
     "encrypted_roundtrip_verified":  true,
-    "created_utc":  "2026-11-02T18:07:28.0611588Z",
+    "created_utc":  "2026-11-03T17:15:30.5887770Z",
     "storage_policy_count":  13,
     "limitations":  "Public database rows and schema plus Storage bucket metadata and policies only. Excludes Auth credentials/users and Storage object bytes. Not a full project restore rehearsal.",
-    "row_count":  903,
-    "file":  "reservation-preupgrade-20261103-020727.dpapi"
+    "row_count":  2313,
+    "file":  "reservation-preupgrade-20261104-011530.dpapi"
 }

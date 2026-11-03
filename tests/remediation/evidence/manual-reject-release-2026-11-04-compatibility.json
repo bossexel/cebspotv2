@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-11-03T17:22:48.978Z",
+  "channel": "preview",
+  "branch": "preview",
+  "environment": "preview",
+  "runtime": "1.0.4",
+  "installedNativeVersion": "1.0.4",
+  "installedNativeVersionCode": 12,
+  "latestCompatibleBuildId": "8fa1d0de-c361-4a19-a219-317d71ffb67d",
+  "latestNativeVersionCode": "14",
+  "latestNativeSourceCommit": "37cca02c4281879485fec8d7b6789c7d0c97ff53",
+  "noNativeOrDependencyChangesSinceBuild": true,
+  "existingAdvisorErrorPreserved": true,
+  "newAdvisorErrors": 0,
+  "newAdvisorWarnings": {
+    "authenticated_security_definer_function_executable:WARN": 1
+  },
+  "realMoneyEnabled": false
+}

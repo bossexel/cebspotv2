@@ -6,8 +6,11 @@ Payments, with a confirmation explaining that the unpaid booking will be
 cancelled, its table released and its guest notified. This does not enable
 real-money transfers or change PayMongo's test-only configuration.
 
-This change is being prepared locally. The new migration has not been applied
-to the hosted database, and no Android update has been published by this task.
+The focused migration was applied to the authorized beta database on November 4,
+2026 (Manila date), with its migration ledger entry in the same transaction.
+Existing public records, functions and privacy policies were verified unchanged.
+Android publication and device acceptance are tracked separately in
+`docs/manual-gcash-rejection-release-2026-11-04.md`.
 
 Starting HEAD: `eabc2bf`; branch: `feat/manual-gcash-rejection`. The tree was clean
 before this work. The photo-processing and automated checkout handlers are
