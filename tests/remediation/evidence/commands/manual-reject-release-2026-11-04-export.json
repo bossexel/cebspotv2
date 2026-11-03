@@ -1,0 +1,6 @@
+{
+  "command": "Expo Android export with verified EAS preview environment; EXPO_NO_DOTENV=1",
+  "exitCode": 0,
+  "finishedAt": "2026-11-03T17:54:38.798Z",
+  "output": "node_modules\\expo-router\\assets\\error.png (469 B)\nnode_modules\\expo-router\\assets\\file.png (138 B)\nnode_modules\\expo-router\\assets\\forward.png (188 B)\nnode_modules\\expo-router\\assets\\pkg.png (364 B)\nnode_modules\\expo-router\\assets\\sitemap.png (465 B)\nnode_modules\\expo-router\\assets\\unmatched.png (4.75 kB)\n\n› android bundles (1):\n_expo/static/js/android/index-d83105ed43598c9b057e2658118b0054.hbc (8.73 MB)\n\n› Files (1):\nmetadata.json (4.25 kB)\n\nExported: .codex-tmp/manual-reject-configured-release\n"
+}

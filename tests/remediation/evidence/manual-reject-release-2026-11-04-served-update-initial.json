@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-11-03T17:30:16.474Z",
+  "channel": "preview",
+  "runtimeVersion": "1.0.4",
+  "updateId": "01a1a275-13b1-7237-8eae-8cdb67ce2785",
+  "group": "616229f6-66cd-47bb-9906-3cdc2e4281af",
+  "sourceCommit": "39a4beac8334f055fcb18fabdcc1733f511f8b91",
+  "manifestHTTP": 200,
+  "bundleHTTP": 200,
+  "bundleHashMatchesManifest": true,
+  "bundleMatchesLocallyValidatedExport": true,
+  "bundleBytes": 8732471,
+  "assets": 64,
+  "privatePatternFindings": 0,
+  "deviceAdoptionVerified": false
+}

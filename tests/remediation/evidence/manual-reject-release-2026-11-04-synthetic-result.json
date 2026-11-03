@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-11-03T17:57:32.632Z",
+  "syntheticOnly": true,
+  "fixtureLabel": "Synthetic Rejection Test",
+  "status": "cancelled",
+  "paymentStatus": "failed",
+  "paid": false,
+  "approved": false,
+  "holdReleased": true,
+  "tableAvailableAgain": true,
+  "privateProofAndReferenceRetained": true,
+  "cancellationReasonReturnedToGuest": true,
+  "syntheticProofDownloadMatchesOriginal": true,
+  "anonymousPublicProofAccessDenied": true,
+  "recipientNotifications": 1,
+  "unrelatedReadsDenied": true,
+  "privateProofRecipientAllowedOtherDenied": true,
+  "noMoneyTransferred": true
+}

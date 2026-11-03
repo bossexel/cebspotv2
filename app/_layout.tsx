@@ -34,6 +34,7 @@ const spotNotificationTypes = [
   'spot_liked',
   'submission_approved',
   'reservation_approved',
+  'reservation_cancelled',
   'reservation_checked_in',
   'reservation_no_show',
 ];

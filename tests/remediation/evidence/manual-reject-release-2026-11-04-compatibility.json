@@ -15,5 +15,11 @@
   "newAdvisorWarnings": {
     "authenticated_security_definer_function_executable:WARN": 1
   },
-  "realMoneyEnabled": false
+  "realMoneyEnabled": false,
+  "installedNativeSourceCommit": "50400371d93ec73bf0a6e3804235a8c0ea641b16",
+  "installedDirectDependenciesUnchanged": true,
+  "installedExpoAndReactNativeResolvedModulesCompared": 85,
+  "installedExpoAndReactNativeResolvedVersionsUnchanged": true,
+  "installedNativeAppConfigurationUnchanged": true,
+  "installedDifference": "Previously applied JavaScript/build dependency advisory patches only; no added native module or configuration."
 }

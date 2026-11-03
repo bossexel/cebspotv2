@@ -1,0 +1,36 @@
+{
+  "publishedAt": "2026-11-03T17:29:04.202Z",
+  "channel": "preview",
+  "environment": "preview",
+  "sourceCommit": "39a4beac8334f055fcb18fabdcc1733f511f8b91",
+  "previousGroup": "5d226edd-cde5-4aa0-8caf-590f209c9267",
+  "command": [
+    "eas",
+    "update",
+    "--channel",
+    "preview",
+    "--environment",
+    "preview",
+    "--platform",
+    "android",
+    "--input-dir",
+    ".codex-tmp/manual-reject-configured-release",
+    "--skip-bundler",
+    "--message",
+    "Owner manual GCash rejection, responsive tables and analytics",
+    "--json",
+    "--non-interactive"
+  ],
+  "updates": [
+    {
+      "id": "01a1a275-13b1-7237-8eae-8cdb67ce2785",
+      "group": "616229f6-66cd-47bb-9906-3cdc2e4281af",
+      "runtimeVersion": "1.0.4",
+      "platform": "android",
+      "gitCommitHash": "39a4beac8334f055fcb18fabdcc1733f511f8b91",
+      "message": "Owner manual GCash rejection, responsive tables and analytics"
+    }
+  ],
+  "configuredBundleVerified": true,
+  "productionOrStorePublication": false
+}

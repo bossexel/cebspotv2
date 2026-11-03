@@ -1,0 +1,15 @@
+{
+  "configured": true,
+  "publicSupabaseKeyPresent": true,
+  "expectedBackendAndFaceHostPresent": true,
+  "rejectionRpcPresent": true,
+  "privatePatternFindings": 0,
+  "bundle": ".codex-tmp/manual-reject-configured-release/_expo/static/js/android/index-d83105ed43598c9b057e2658118b0054.hbc",
+  "bytes": 8732459,
+  "sourceFingerprint": {
+    "sha256": "b8dbc28dd3f64548029a2d592a1a75183de933894fdaaaa71bb5ea892557203b",
+    "files": 169
+  },
+  "bundleSha256": "HwU_YJPW6MQZQeN3QGz5s-RWBx40SKcTDbzahSv80DY",
+  "notificationListenerCancellationAdded": true
+}

@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-11-03T17:33:17.680Z",
+  "syntheticOnly": true,
+  "fixtureLabel": "Synthetic Rejection Test",
+  "createdThroughActualClientService": true,
+  "authoritativeFeePhp": 1,
+  "privateUploadPassed": true,
+  "proofSubmitted": true,
+  "noProviderCheckoutOrMoneyTransfer": true,
+  "awaitingOwnerRejection": true
+}

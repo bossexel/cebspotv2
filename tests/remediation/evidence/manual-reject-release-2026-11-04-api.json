@@ -1,8 +1,9 @@
 {
-  "checkedAt": "2026-11-03T17:20:25.565Z",
+  "checkedAt": "2026-11-03T17:40:25.251Z",
   "anonymousDenied": true,
   "authenticatedSyntheticNonOwnersDenied": true,
   "rpcPresentInSchemaCache": true,
+  "targetWasSyntheticReservation": true,
   "errorCodes": [
     "42501",
     "42501",

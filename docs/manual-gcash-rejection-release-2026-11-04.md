@@ -24,8 +24,9 @@ identity and payment-approval function hashes are unchanged. No existing payment
 or reservation was changed by installation.
 
 Through the actual Data API, anonymous and two designated authenticated customer
-accounts were denied with `42501` for invalid targets. The new RPC is present in
-PostgREST's schema cache. These are denial checks, not an end-to-end owner review.
+accounts were denied with `42501`, first for invalid targets, then for the actual
+synthetic booking (including its own guest). The new RPC is present in PostgREST's
+schema cache. Owner/device acceptance is recorded separately below.
 
 Security advisor: 186 findings before, 187 after. The only addition is the
 expected authenticated SECURITY DEFINER EXECUTE warning for the new, explicitly
@@ -56,9 +57,42 @@ validated against the pinned beta database and photo-service hosts. No `.env`
 file was read, and no key value was printed or retained in evidence. Export uses
 `EXPO_NO_DOTENV=1`. The existing GCash/QR Ph public flags are preserved.
 
-Publication, served-manifest verification and actual device adoption are pending
-at this checkpoint. They must be recorded separately; a compatible runtime or
-successful export alone does not establish installation or workflow success.
+The initial update was published to preview: group
+`616229f6-66cd-47bb-9906-3cdc2e4281af`, Android update
+`01a1a275-13b1-7237-8eae-8cdb67ce2785`, source commit `39a4bea`.
+The served 1.0.4 preview manifest points to that ID and its downloaded launch
+bundle exactly matches the validated configured local export. Initial receipt
+and served evidence are retained with the `-initial.json` suffix.
+
+Final integration review found a missing connection: the notification service
+handled cancellation, but the root live-activity listener's type list omitted it.
+The correction adds `reservation_cancelled` to that existing list. It preserves
+the existing supported event types and excludes unrelated activity and separately
+managed reminders. A new regression test exercises the actual listener list.
+
+An initial attempt to share a notification predicate passed typecheck and 45
+focused tests, but the full suite returned **578 passed, 1 failed, 5 skipped**.
+The existing `tests/backend/reservation-attendance.test.cjs` test "arrival and
+no-show activities become user notifications linked to reservation details"
+asserts the root listener's explicit arrival/no-show event declarations. Moving
+them into a helper broke that assertion. The refactor was removed: the existing
+listener structure and all original assertions are retained. The corrected
+attendance/client isolation run passed **11/11**; the failed full run is retained
+in `commands/manual-reject-release-2026-11-04-full-initial-failed.json`.
+The corrected full-suite rerun passed **579 tests, 0 failed, 5 skipped** (584 total),
+one additional passing test over the 578/0/5 feature baseline. Typecheck and the
+configured Android and admin exports also passed. Follow-up publication remains
+pending at this checkpoint; the first publication alone does not deliver that
+last correction. This was an
+introduced regression in the proposed refactor, not a Windows failure or a flaky
+test, and was not masked by changing an existing assertion.
+
+Compared the installed code-12 build too: direct app dependencies, 85 resolved
+Expo/React Native module versions, and native app/EAS configuration are unchanged.
+Its difference from current source is previously applied JavaScript/build-tool
+advisory patches. It successfully ran the new owner controls after the user
+applied the initial update. The owner-only route guard redirects About to the
+dashboard, so its exact running update ID has not been read from About.
 
 Previous exact feature-source gates: 578 passed, 0 failed, 5 skipped; focused
 31 passed; typecheck, Android and admin exports passed. Evidence remains under
@@ -66,12 +100,36 @@ Previous exact feature-source gates: 578 passed, 0 failed, 5 skipped; focused
 
 ## Owner acceptance and rollback
 
-Use only the designated synthetic unpaid booking and synthetic private proof.
-Never approve that proof or make a real transfer. Verify Reject cancels it,
-releases its table, preserves proof/reference, and produces one private guest
-notification. Unrelated accounts must not read the booking, proof or notification.
-Local role/race tests cover repeated rejection and simultaneous Accept/Reject;
-hosted/device coverage must be reported independently.
+The designated synthetic unpaid booking was created through the actual reservation
+client service, with authoritative PHP 1 fee. A synthetic PNG was uploaded through
+the hosted private-upload function and attached through the payment-proof RPC.
+No provider checkout or money transfer occurred. The owner applied the initial
+update and rejected only "Synthetic Rejection Test" on their physical phone.
+The device showed adjacent Accept/Reject controls before rejection and no Reject
+control for the same fixture afterward. One earlier automation attempt stopped
+without a decision because the phone had locked; the user subsequently performed
+and confirmed the action. No app-lock or profile restriction was bypassed.
+
+Guest API read-back: cancelled/failed, no paid/approval stamp, hold cleared, table
+available again, original proof/reference retained, and exactly one private
+reservation_cancelled event. Unrelated customer/anonymous event reads returned
+no rows. Another customer's booking read returned no rows. The guest could create
+a proof signed link; the unrelated customer could not. The authorized synthetic
+PNG download matched its original bytes; its anonymous public URL was denied.
+No signed link or document contents were logged or retained in evidence. The cancelled synthetic fixture is
+retained for traceability, not deleted.
+
+Evidence: `tests/remediation/evidence/manual-reject-release-2026-11-04-synthetic-created.json`
+and `manual-reject-release-2026-11-04-synthetic-result.json`. Historical provider
+records and shared guards still match preserved hashes; scheduled payment
+maintenance has zero failed responses and no manual/retirement backlog, recorded
+in `manual-reject-release-2026-11-04-{legacy-preservation,maintenance}.json`.
+
+Local role/race tests cover repeated rejection and simultaneous Accept/Reject.
+The physical guest-side native banner/tap flow has not been exercised: this
+phone remains signed in as owner. A persisted private event and API routing test
+do not establish closed-app push delivery. The root listener uses the existing
+client activity subscription; this release adds no server push service.
 
 If the UI fails, republish the recorded previous 1.0.4 preview update group.
 Retain the additive RPC and all recorded decisions/history. Do not reopen

@@ -1,0 +1,12 @@
+{
+  "label": "manual-reject-release-2026-11-04-typecheck",
+  "command": [
+    "node",
+    "node_modules/typescript/bin/tsc",
+    "--noEmit"
+  ],
+  "startedAt": "2026-11-03T17:48:46.420Z",
+  "finishedAt": "2026-11-03T17:50:35.093Z",
+  "exitCode": 0,
+  "output": ""
+}
