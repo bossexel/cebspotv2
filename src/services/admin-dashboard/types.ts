@@ -122,6 +122,22 @@ export type AdminUserRow = {
   joined: string;
   avatar: string;
   photoUrl?: string | null;
+  isFlagged?: boolean;
+  flagReason?: string | null;
+  flaggedAt?: string | null;
+  reportedCommentCount?: number;
+  deletionState?: string | null;
+};
+
+export type AdminSpotUpdate = {
+  name: string;
+  description: string;
+  category: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  isPublic: boolean;
+  isReservable: boolean;
 };
 
 export type AdminOwnerRequestRow = {
@@ -186,7 +202,7 @@ export type AdminSpotSubmissionRow = {
 };
 
 export type AdminDashboardData = {
-  source: 'live' | 'sample';
+  source: 'live';
   generatedAt: string;
   metrics: AdminMetricSnapshot;
   reservationsBars: number[];

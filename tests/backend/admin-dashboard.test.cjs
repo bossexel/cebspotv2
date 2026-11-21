@@ -83,7 +83,9 @@ test('spot deletion is admin-only and preserves booking history', () => {
   assert.match(deletion, /from public\.reservations[\s\S]*reservation\.spot_id\s*=\s*target_spot_id/i);
   assert.match(deletion, /delete from public\.spots where id = target_spot_id/i);
   assert.match(migration, /revoke all on function public\.delete_admin_spot\(uuid\) from public, anon/i);
-  assert.match(screen, /accessibilityLabel={`Delete \$\{item\.name\}`}/);
+  assert.match(screen, /Use the three-dot menu to show or hide spot actions/);
+  assert.doesNotMatch(screen, /onContextMenu|Right-click a spot/);
+  assert.match(screen, /confirmMapSpotDelete/);
   assert.match(screen, /Spots with booking history are protected and cannot be deleted/);
 });
 
@@ -177,7 +179,7 @@ test('admin members are paged from the full profiles table instead of the 12-row
 
   assert.match(service, /readAllAdminProfiles/);
   assert.match(service, /\.select\('id,email,display_name,role,location,created_at,photo_url', \{ count: 'exact' \}\)[\s\S]*\.range\(/);
-  assert.match(service, /users: normalizeAdminUserRows\(allProfileRows/);
+  assert.match(service, /users: mergeUserModeration\(/);
   assert.match(service, /formatAdminUserLocation/);
   assert.match(screen, /if \(item === 'All'\) onClearQuery\(\)/);
   assert.match(screen, /const usersPerPage = 7/);
@@ -185,6 +187,80 @@ test('admin members are paged from the full profiles table instead of the 12-row
   assert.match(screen, /Show previous users/);
   assert.match(screen, /Show next users/);
   assert.doesNotMatch(sql, /from public\.profiles[\s\S]{0,100}limit 12/i);
+});
+
+test('admin user moderation flags reported authors and reuses durable account erasure', () => {
+  const migration = read('supabase/migrations/20261117000100_admin_moderation_and_spot_controls.sql');
+  const service = read('src/services/adminDashboardService.ts');
+  const screen = read('app/admin.tsx');
+  const deletion = read('supabase/functions/delete-account/index.ts');
+
+  assert.match(migration, /create trigger review_reports_flag_author[\s\S]*after insert on public\.review_reports/i);
+  assert.match(sqlFunction(migration, 'set_admin_user_flag'), /if not public\.is_current_user_admin\(\)/i);
+  assert.match(sqlFunction(migration, 'get_admin_user_moderation'), /reported_comment_count/i);
+  assert.match(service, /rpc\('set_admin_user_flag'/);
+  assert.match(service, /functions\.invoke\('delete-account', \{ body: \{ targetUserId: userId \} \}\)/);
+  assert.match(deletion, /actor\.data\?\.role !== 'admin'/);
+  assert.match(deletion, /const id = targetUserId \?\? actorId/);
+  assert.match(screen, /Flag this user for admin review/);
+  assert.match(screen, /same protected account-erasure process as user self-deletion/);
+});
+
+test('map overview owns spot edit and delete actions while recent listings stay read-only', () => {
+  const migration = read('supabase/migrations/20261117000100_admin_moderation_and_spot_controls.sql');
+  const screen = read('app/admin.tsx');
+  const spotsSection = screen.slice(screen.indexOf('function SpotsSection'), screen.indexOf('function SpotMapOverviewModal'));
+  const update = sqlFunction(migration, 'update_admin_spot');
+
+  assert.match(update, /if not public\.is_current_user_admin\(\)/i);
+  assert.doesNotMatch(screen, /onContextMenu|onLongPress=\{\(\) => openSpotActions/);
+  assert.match(screen, /setActionSpotId\(\(current\) => current === spot\.id \? null : spot\.id\)/);
+  assert.match(screen, /Use the three-dot menu to show or hide spot actions/);
+  assert.match(screen, /Edit spot details/);
+  assert.match(screen, /No open reports\. Direct admin corrections are still allowed/);
+  assert.doesNotMatch(spotsSection, /key: 'actions'/);
+  assert.doesNotMatch(spotsSection, /Editing .*isn't wired up yet/);
+});
+
+test('admin removes placeholder controls and sample dashboard fallbacks', () => {
+  const screen = read('app/admin.tsx');
+  const service = read('src/services/adminDashboardService.ts');
+
+  assert.doesNotMatch(screen, /Coming soon|Export CSV|Request Velocity|Growth vs last week|Add User|Active Sessions|Search system settings/);
+  assert.doesNotMatch(service, /sampleDashboard|sampleSpots|sampleReviews|sampleActivities|sample-user|sample-owner-request/);
+  assert.match(service, /Supabase is not configured for the admin dashboard/);
+});
+
+test('owner dashboard owns the functional reservation CSV export', () => {
+  const owner = read('app/owner-dashboard.tsx');
+  const csv = read('src/utils/ownerCsv.ts');
+
+  assert.match(owner, /Export reservations as CSV/);
+  assert.match(owner, /buildOwnerReservationsCsv\(reservations\)/);
+  assert.match(csv, /Payment Reference/);
+  assert.doesNotMatch(csv, /payment_proof_url|payer_gcash_number/i);
+});
+
+test('system page checks database, auth, functions and face privacy APIs', () => {
+  const screen = read('app/admin.tsx');
+  const health = read('src/services/adminSystemHealthService.ts');
+
+  assert.match(screen, /<AdminSystemHealthPanel client=\{client\}/);
+  assert.match(health, /'database', 'Database API'/);
+  assert.match(health, /'auth', 'Authentication API'/);
+  assert.match(health, /'functions', 'Backend Functions API'/);
+  assert.match(health, /'privacy', 'Face privacy API'/);
+  assert.match(health, /\/health/);
+});
+
+test('owner requests use wrapping cards instead of a fixed horizontal table', () => {
+  const screen = read('app/admin.tsx');
+  const section = screen.slice(screen.indexOf('function OwnerRequestsSection'), screen.indexOf('function OwnerRequestDecisionModal'));
+
+  assert.match(section, /styles\.ownerRequestList/);
+  assert.match(section, /styles\.ownerRequestCard/);
+  assert.match(section, /numberOfLines=\{2\}/);
+  assert.doesNotMatch(section, /<ScrollView horizontal/);
 });
 
 test('Admin Updates supports protected CRUD and a published-only user feed', () => {

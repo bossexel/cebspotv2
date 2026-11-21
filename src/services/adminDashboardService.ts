@@ -1,7 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 import { getReviewReportCategory } from '../constants/reportCategories';
-import { makeSampleReservation, sampleActivities, sampleReviews, sampleSpots } from '../constants/sampleData';
 import type { Activity, OwnerAccessRequest, Reservation, Spot, SpotEditSuggestion, SpotSubmission, UserProfile } from '../types';
 import type {
   AdminDailyInsight,
@@ -18,6 +17,7 @@ import type {
   AdminOwnerRequestDecisionResult,
   AdminSpotSubmissionRow,
   AdminDashboardData,
+  AdminSpotUpdate,
 } from './admin-dashboard/types';
 import {
   numberValue,
@@ -266,7 +266,28 @@ function normalizeAdminUserRows(rows: any[] = []): AdminUserRow[] {
     joined: row.joined ?? formatShortDate(row.created_at),
     avatar: row.avatar ?? getInitials(row.name ?? row.display_name, row.email),
     photoUrl: row.photoUrl ?? row.photo_url ?? null,
+    isFlagged: Boolean(row.isFlagged ?? row.is_flagged),
+    flagReason: row.flagReason ?? row.flag_reason ?? null,
+    flaggedAt: row.flaggedAt ?? row.flagged_at ?? null,
+    reportedCommentCount: numberValue(row.reportedCommentCount ?? row.reported_comment_count),
+    deletionState: row.deletionState ?? row.deletion_state ?? null,
   }));
+}
+
+function mergeUserModeration(users: AdminUserRow[], moderationRows: any[] = []) {
+  const moderationByUser = new Map(moderationRows.map((row) => [String(row.user_id ?? row.userId), row]));
+  return users.map((user) => {
+    const moderation = moderationByUser.get(user.id);
+    if (!moderation) return user;
+    return {
+      ...user,
+      isFlagged: Boolean(moderation.is_flagged ?? moderation.isFlagged),
+      flagReason: moderation.flag_reason ?? moderation.flagReason ?? null,
+      flaggedAt: moderation.flagged_at ?? moderation.flaggedAt ?? null,
+      reportedCommentCount: numberValue(moderation.reported_comment_count ?? moderation.reportedCommentCount),
+      deletionState: moderation.deletion_state ?? moderation.deletionState ?? null,
+    };
+  });
 }
 
 function mapOwnerRequest(request: OwnerAccessRequest): AdminOwnerRequestRow {
@@ -425,7 +446,7 @@ function buildSpotCategoryProgress(
 }
 
 function buildDashboardFromRows(input: {
-  source: 'live' | 'sample';
+  source: 'live';
   spots: Spot[];
   reservations: Reservation[];
   activities: Activity[];
@@ -503,98 +524,14 @@ function buildDashboardFromRows(input: {
   };
 }
 
-function sampleDashboard(): AdminDashboardData {
-  const reservations = sampleSpots.slice(0, 18).map(makeSampleReservation);
-  const users: UserProfile[] = [
-    {
-      id: 'sample-user',
-      display_name: 'Exiel',
-      email: 'exielramen@gmail.com',
-      role: 'user',
-      photo_url: null,
-      location: { lat: 10.3157, lng: 123.8854, address: 'Mabolo, Cebu City' },
-      level: 1,
-      points: 0,
-      friends: [],
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'sample-owner',
-      display_name: 'Clyde',
-      email: 'testowner@cebspot.com',
-      role: 'owner',
-      photo_url: null,
-      location: { lat: 10.33, lng: 123.9, address: 'Lahug, Cebu City' },
-      level: 1,
-      points: 0,
-      friends: [],
-      created_at: new Date().toISOString(),
-    },
-  ];
-  const ownerRequests: OwnerAccessRequest[] = [
-    {
-      id: 'sample-owner-request',
-      requester_id: 'sample-owner',
-      contact_name: 'Clyde',
-      contact_email: 'testowner@cebspot.com',
-      spot_name: 'Test Cebspot Club',
-      spot_address: 'Barangay Apas, Cebu City',
-      category: 'Restaurant',
-      access_needs: ['Reservations', 'Payments'],
-      message: 'Demo owner request for the admin console.',
-      status: 'pending',
-      admin_notes: null,
-      created_at: new Date().toISOString(),
-    },
-  ];
-  const reports = sampleReviews.slice(0, 3).map((review, index) => {
-    const spot = sampleSpots.find((item) => item.id === review.spot_id);
-    return {
-      id: `sample-report-${review.id}`,
-      source: 'review_report' as const,
-      createdAt: review.created_at,
-      type: index === 0 ? 'Spot Issue' : index === 1 ? 'Fake Review' : 'Wrong Info',
-      spotId: spot?.id ?? null,
-      reviewId: review.id,
-      spot: spot?.name ?? 'CebSpot',
-      area: spot?.address ?? 'Cebu City',
-      reporter: getInitials(review.user_name),
-      date: formatShortDate(review.created_at),
-      description: review.comment || 'This review was flagged for admin review.',
-      reviewAuthor: review.user_name ?? null,
-      reviewRating: review.rating,
-      reviewComment: review.comment ?? null,
-      reviewDate: formatShortDate(review.created_at),
-      reviewMediaUrls: stringArray(review.media_urls),
-      reviewThread: sampleReviews
-        .filter((item) => item.spot_id === review.spot_id)
-        .map((item) => ({
-          id: item.id,
-          author: item.user_name ?? 'CebSpot user',
-          rating: item.rating,
-          comment: item.comment ?? '',
-          date: formatShortDate(item.created_at),
-          flagged: item.id === review.id,
-          mediaUrls: stringArray(item.media_urls),
-        })),
-      expanded: index === 1,
-    };
-  });
-
-  return buildDashboardFromRows({
-    source: 'sample',
-    spots: sampleSpots.map(normalizeSpot),
-    reservations,
-    activities: sampleActivities,
-    users,
-    ownerRequests,
-    pendingSubmissions: [],
-    reports,
-  });
-}
-
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
+}
+
+function requireAdminBackend() {
+  if (!hasSupabaseConfig) {
+    throw new Error('Supabase is not configured for the admin dashboard. Configure the backend and refresh.');
+  }
 }
 
 function isMissingAdminDashboardRpc(error: any) {
@@ -650,6 +587,11 @@ async function readAllAdminProfiles(client: SupabaseClient) {
   }
 }
 
+async function readAdminUserModeration(client: SupabaseClient) {
+  const { data, error } = await client.rpc('get_admin_user_moderation');
+  return { data: (data ?? []) as any[], error };
+}
+
 async function readAllAdminSpotCategories(client: SupabaseClient) {
   const pageSize = 500;
   const spots: Array<{ id: string; category: string | null; categories: string[] | null }> = [];
@@ -676,7 +618,7 @@ async function readAllAdminSpotCategories(client: SupabaseClient) {
 }
 
 export async function getAdminDashboardData(client: SupabaseClient = supabase): Promise<AdminDashboardData> {
-  if (!hasSupabaseConfig) return sampleDashboard();
+  requireAdminBackend();
 
   const { data: rpcData, error: rpcError } = await client.rpc('get_admin_dashboard');
   if (!rpcError && rpcData) {
@@ -691,7 +633,7 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
       pendingSubmissions: [],
       reports: [],
     });
-    const [submissionResult, profilesResult, categoryResult] = await Promise.all([
+    const [submissionResult, profilesResult, categoryResult, moderationResult] = await Promise.all([
       client
         .from('pending_spot_submission_popularity')
         .select('*')
@@ -700,6 +642,7 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
         .limit(100),
       readAllAdminProfiles(client),
       readAllAdminSpotCategories(client),
+      readAdminUserModeration(client),
     ]);
     const detailedSubmissionRows = submissionResult.data;
     const allProfileRows = profilesResult.data;
@@ -744,7 +687,10 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
       recentListings: rows.recentListings ?? data.recentListings,
       livePulse: rows.livePulse ?? data.livePulse,
       reports: normalizeAdminReportRows(rows.reports ?? data.reports),
-      users: normalizeAdminUserRows(allProfileRows ?? rows.users ?? data.users),
+      users: mergeUserModeration(
+        normalizeAdminUserRows(allProfileRows ?? rows.users ?? data.users),
+        moderationResult.data,
+      ),
       ownerRequests: normalizeAdminOwnerRequestRows(rows.ownerRequests ?? data.ownerRequests),
       pendingSubmissions: normalizeAdminSpotSubmissionRows(
         pendingSubmissionRows ?? data.pendingSubmissions,
@@ -753,6 +699,7 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
       errors: [
         ...(profilesResult.error ? [`Profiles: ${profilesResult.error.message}`] : []),
         ...(categoryResult.error ? [`Spot categories: ${categoryResult.error.message}`] : []),
+        ...(moderationResult.error ? [`User moderation: ${moderationResult.error.message}`] : []),
         ...(pendingSubmittersError ? [`Submission senders: ${pendingSubmittersError.message}`] : []),
       ],
     };
@@ -912,23 +859,32 @@ export async function getAdminDashboardData(client: SupabaseClient = supabase): 
     reports: normalizeAdminReportRows(reports),
     errors,
   });
-
-  return dashboard;
+  const moderationResult = await readAdminUserModeration(client);
+  return {
+    ...dashboard,
+    users: mergeUserModeration(dashboard.users, moderationResult.data),
+    errors: [
+      ...dashboard.errors,
+      ...(moderationResult.error ? [`User moderation: ${moderationResult.error.message}`] : []),
+    ],
+  };
 }
 
 export async function linkSpotSubmission(submissionId: string, spotId: string, client: SupabaseClient = supabase) {
+  requireAdminBackend();
   const { data, error } = await client.rpc('link_spot_submission', { target_submission_id: submissionId, target_spot_id: spotId });
   if (error) throw error;
   return data;
 }
 
 export async function confirmDistinctSpotSubmission(submissionId: string, client: SupabaseClient = supabase) {
+  requireAdminBackend();
   const { error } = await client.rpc('confirm_distinct_spot_submission', { target_submission_id: submissionId });
   if (error) throw error;
 }
 
 export async function approveSpotSubmission(submissionId: string, client: SupabaseClient = supabase) {
-  if (!hasSupabaseConfig) return null;
+  requireAdminBackend();
 
   const { data, error } = await withTimeout<{ data: any; error: any }>(
     client.rpc('approve_spot_submission', {
@@ -952,7 +908,7 @@ export async function approveSpotSubmission(submissionId: string, client: Supaba
 }
 
 export async function deleteAdminSpotSubmission(submissionId: string, client: SupabaseClient = supabase) {
-  if (!hasSupabaseConfig) return { id: submissionId };
+  requireAdminBackend();
 
   const { data, error } = await client.rpc('delete_admin_spot_submission', {
     target_submission_id: submissionId,
@@ -970,23 +926,7 @@ export async function deleteAdminSpotSubmission(submissionId: string, client: Su
 }
 
 export async function getAdminSpotMapRows(client: SupabaseClient = supabase): Promise<AdminMapSpotRow[]> {
-  if (!hasSupabaseConfig) {
-    return sampleSpots.map(normalizeSpot).map((spot) => ({
-      id: spot.id,
-      name: spot.name,
-      description: spot.description ?? null,
-      category: spot.category,
-      categories: spot.categories ?? [],
-      address: spot.address,
-      barangay: getBarangay(spot.address),
-      latitude: spot.latitude,
-      longitude: spot.longitude,
-      rating: numberValue(spot.rating),
-      reviewCount: numberValue(spot.review_count),
-      isPublic: spot.is_public,
-      isReservable: spot.is_reservable,
-    }));
-  }
+  requireAdminBackend();
 
   const { data, error } = await client
     .from('spots')
@@ -1015,8 +955,73 @@ export async function getAdminSpotMapRows(client: SupabaseClient = supabase): Pr
     .filter((spot) => Number.isFinite(spot.latitude) && Number.isFinite(spot.longitude));
 }
 
+export async function updateAdminSpot(spotId: string, update: AdminSpotUpdate, client: SupabaseClient = supabase) {
+  requireAdminBackend();
+  const { data, error } = await client.rpc('update_admin_spot', {
+    target_spot_id: spotId,
+    spot_name: update.name.trim(),
+    spot_description: update.description.trim() || null,
+    spot_category: update.category.trim(),
+    spot_address: update.address.trim(),
+    spot_latitude: update.latitude,
+    spot_longitude: update.longitude,
+    spot_is_public: update.isPublic,
+    spot_is_reservable: update.isReservable,
+  });
+  if (error) {
+    if (/update_admin_spot|schema cache|could not find the function|pgrst202/i.test(error.message ?? error.details ?? '')) {
+      throw new Error('Apply the admin moderation and spot-controls migration, then retry.');
+    }
+    throw new Error(error.message ?? 'Unable to update the spot.');
+  }
+  return data;
+}
+
+export async function setAdminUserFlag(
+  userId: string,
+  flagged: boolean,
+  reason: string,
+  client: SupabaseClient = supabase,
+) {
+  requireAdminBackend();
+  const { data, error } = await client.rpc('set_admin_user_flag', {
+    target_user_id: userId,
+    should_flag: flagged,
+    moderation_reason: reason.trim() || null,
+  });
+  if (error) {
+    if (/set_admin_user_flag|schema cache|could not find the function|pgrst202/i.test(error.message ?? error.details ?? '')) {
+      throw new Error('Apply the admin moderation and spot-controls migration, then retry.');
+    }
+    throw new Error(error.message ?? 'Unable to update the user flag.');
+  }
+  return Array.isArray(data) ? data[0] : data;
+}
+
+export async function deleteAdminUser(userId: string, client: SupabaseClient = supabase) {
+  requireAdminBackend();
+  const { data, error } = await client.functions.invoke('delete-account', { body: { targetUserId: userId } });
+  if (error) {
+    let message = error.message ?? 'Unable to delete the user account.';
+    const response = error.context as Response | undefined;
+    if (response && typeof response.clone === 'function') {
+      try {
+        const payload = await response.clone().json();
+        if (typeof payload?.error === 'string' && payload.error) message = payload.error;
+      } catch {
+        // Retain the Functions client error when the response is not JSON.
+      }
+    }
+    throw new Error(message);
+  }
+  if (data?.status !== 'pending' && data?.status !== 'deleted') {
+    throw new Error('Account deletion returned an unexpected status.');
+  }
+  return data as { status: 'pending' | 'deleted'; retryAfter?: number };
+}
+
 export async function deleteAdminSpot(spotId: string, client: SupabaseClient = supabase) {
-  if (!hasSupabaseConfig) return { id: spotId };
+  requireAdminBackend();
 
   const { data, error } = await client.rpc('delete_admin_spot', { target_spot_id: spotId });
   if (error) {
@@ -1032,7 +1037,7 @@ export async function deleteAdminSpot(spotId: string, client: SupabaseClient = s
 }
 
 export async function deleteAdminOwnerRequest(requestId: string, client: SupabaseClient = supabase) {
-  if (!hasSupabaseConfig) return { id: requestId };
+  requireAdminBackend();
 
   const { data, error } = await client.rpc('delete_admin_owner_request', { target_request_id: requestId });
   if (error) {
@@ -1053,7 +1058,7 @@ export async function reviewOwnerAccessRequest(
   adminNotes = '',
   client: SupabaseClient = supabase,
 ): Promise<AdminOwnerRequestDecisionResult | null> {
-  if (!hasSupabaseConfig) return null;
+  requireAdminBackend();
 
   if (decision === 'approved') {
     const { data, error } = await withTimeout<{
@@ -1111,7 +1116,7 @@ export async function reviewOwnerAccessRequest(
 }
 
 export async function dismissAdminReport(report: AdminReportRow, adminNotes = '', client: SupabaseClient = supabase) {
-  if (!hasSupabaseConfig) return null;
+  requireAdminBackend();
 
   const { data, error } = await withTimeout<{ data: any; error: any }>(
     client.rpc('dismiss_admin_report', {
@@ -1137,7 +1142,7 @@ export async function dismissAdminReport(report: AdminReportRow, adminNotes = ''
 }
 
 export async function applySpotEditSuggestion(report: AdminReportRow, adminNotes = '', client: SupabaseClient = supabase) {
-  if (!hasSupabaseConfig) return null;
+  requireAdminBackend();
   if (report.source !== 'spot_edit_suggestion') {
     throw new Error('Only spot edit suggestions can update spot details.');
   }

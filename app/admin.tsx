@@ -46,6 +46,7 @@ import {
   ChevronUp,
   Edit3,
   FileText,
+  Flag,
   GitBranch,
   LayoutDashboard,
   LogOut,
@@ -56,7 +57,6 @@ import {
   MapPin,
   Megaphone,
   MoreHorizontal,
-  Plus,
   Radio,
   RefreshCw,
   Search,
@@ -73,6 +73,7 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { SupabaseConnectionPanel } from '../src/components/SupabaseConnectionPanel';
+import { AdminSystemHealthPanel } from '../src/components/AdminSystemHealthPanel';
 import { PasswordInput } from '../src/components/PasswordInput';
 import { TileMap } from '../src/components/TileMap';
 import { ADMIN_EMAIL, hasAdminAccess, normalizeAuthEmail } from '../src/constants/authRoles';
@@ -98,10 +99,13 @@ import {
   deleteAdminOwnerRequest,
   deleteAdminSpot,
   deleteAdminSpotSubmission,
+  deleteAdminUser,
   dismissAdminReport,
   getAdminSpotMapRows,
   getAdminDashboardData,
   reviewOwnerAccessRequest,
+  setAdminUserFlag,
+  updateAdminSpot,
   type AdminDashboardData,
   type AdminListingRow,
   type AdminMapSpotRow,
@@ -111,6 +115,7 @@ import {
   type AdminPulseRow,
   type AdminReportRow,
   type AdminSpotSubmissionRow,
+  type AdminSpotUpdate,
   type AdminUserRow,
 } from '../src/services/adminDashboardService';
 
@@ -120,7 +125,7 @@ type NavItem = {
   id: AdminSection;
   label: string;
   icon: LucideIcon;
-  searchPlaceholder: string;
+  searchPlaceholder?: string;
 };
 
 type StatCardProps = {
@@ -137,11 +142,10 @@ const navItems: NavItem[] = [
   { id: 'reports', label: 'Reports', icon: BarChart3, searchPlaceholder: 'Search in reports...' },
   { id: 'users', label: 'All Users', icon: Users, searchPlaceholder: 'Search in users...' },
   { id: 'requests', label: 'Owner Requests', icon: UserPlus, searchPlaceholder: 'Search in requests...' },
-  { id: 'system', label: 'System', icon: Settings, searchPlaceholder: 'Search system settings...' },
+  { id: 'system', label: 'System', icon: Settings },
 ];
 
 const cebspotLogo = require('../assets/cebspot-logo.png');
-const requestBars = [40, 60, 30, 80, 100, 52, 70];
 
 // Simple trailing debounce. Used to coalesce bursts of realtime table-change
 // events (a single bulk operation can touch several tables at once) into one
@@ -199,6 +203,8 @@ export default function AdminConsoleScreen() {
   const [moderatingReportId, setModeratingReportId] = useState<string | null>(null);
   const [reviewingOwnerRequestId, setReviewingOwnerRequestId] = useState<string | null>(null);
   const [deletingOwnerRequestId, setDeletingOwnerRequestId] = useState<string | null>(null);
+  const [savingUserId, setSavingUserId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [approvalNotice, setApprovalNotice] = useState<{ tone: 'success' | 'error'; title: string; copy: string } | null>(null);
   const [updatesOpen, setUpdatesOpen] = useState(false);
 
@@ -424,24 +430,84 @@ export default function AdminConsoleScreen() {
       refreshDashboard().catch((error: any) => {
         setDashboardError(error?.message ?? 'The spot was deleted, but dashboard refresh failed.');
       });
+      return true;
     } catch (error: any) {
       setApprovalNotice({
         tone: 'error',
         title: 'Delete failed',
         copy: error?.message ?? 'Please try again.',
       });
+      return false;
     } finally {
       setDeletingSpotId(null);
     }
   }
 
-  function confirmDeleteSpot(listing: AdminListingRow) {
+  async function handleSetUserFlag(user: AdminUserRow, flagged: boolean, reason: string) {
+    try {
+      setSavingUserId(user.id);
+      setApprovalNotice(null);
+      const result = await setAdminUserFlag(user.id, flagged, reason, client);
+      setDashboard((current) => current ? {
+        ...current,
+        users: current.users.map((item) => item.id === user.id ? {
+          ...item,
+          isFlagged: flagged,
+          flagReason: flagged ? reason.trim() : null,
+          flaggedAt: flagged ? result?.flagged_at ?? new Date().toISOString() : null,
+        } : item),
+      } : current);
+      setApprovalNotice({
+        tone: 'success',
+        title: flagged ? 'User flagged for review' : 'User flag cleared',
+        copy: flagged ? `${user.name} is now visible in the flagged-user queue.` : `${user.name} returned to clear status.`,
+      });
+      return true;
+    } catch (error: any) {
+      setApprovalNotice({ tone: 'error', title: 'Moderation update failed', copy: error?.message ?? 'Please try again.' });
+      return false;
+    } finally {
+      setSavingUserId(null);
+    }
+  }
+
+  async function handleDeleteUser(user: AdminUserRow) {
+    try {
+      setDeletingUserId(user.id);
+      setApprovalNotice(null);
+      const result = await deleteAdminUser(user.id, client);
+      if (result.status === 'deleted') {
+        setDashboard((current) => current ? {
+          ...current,
+          metrics: { ...current.metrics, totalUsers: Math.max(0, current.metrics.totalUsers - 1) },
+          users: current.users.filter((item) => item.id !== user.id),
+        } : current);
+        setApprovalNotice({ tone: 'success', title: 'User deleted', copy: `${user.name}'s account and personal progress were erased.` });
+      } else {
+        setDashboard((current) => current ? {
+          ...current,
+          users: current.users.map((item) => item.id === user.id ? { ...item, deletionState: 'quiescing' } : item),
+        } : current);
+        setApprovalNotice({
+          tone: 'success',
+          title: 'Deletion cleanup started',
+          copy: `${user.name}'s account is locked while personal data and files are erased. Use the delete action again after ${result.retryAfter ?? 30} seconds to finish.`,
+        });
+      }
+    } catch (error: any) {
+      setApprovalNotice({ tone: 'error', title: 'User deletion failed', copy: error?.message ?? 'Please try again.' });
+    } finally {
+      setDeletingUserId(null);
+    }
+  }
+
+  function confirmDeleteUser(user: AdminUserRow) {
     Alert.alert(
-      `Delete ${listing.name}?`,
-      'This permanently removes the spot and related discovery content. Spots with booking history are protected and cannot be deleted.',
+      user.deletionState ? `Continue deleting ${user.name}?` : `Delete ${user.name}?`,
+      'This uses the same protected account-erasure process as user self-deletion. Personal progress, posts, private files, and authentication access are removed. Active bookings, payments, owned venues, or owner access must be resolved first.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete Spot', style: 'destructive', onPress: () => void handleDeleteSpot(listing) },
+        { text: user.deletionState ? 'Continue Deletion' : 'Delete User', style: 'destructive', onPress: () => void handleDeleteUser(user) },
       ],
     );
   }
@@ -537,12 +603,6 @@ export default function AdminConsoleScreen() {
                 ...current.metrics,
                 pendingOwnerRequests: Math.max(0, current.metrics.pendingOwnerRequests - 1),
               },
-              users:
-                decision === 'approved'
-                  ? current.users.map((user) =>
-                      user.id === request.requesterId ? { ...user, role: user.role === 'Admin' ? user.role : 'Owner' } : user,
-                    )
-                  : current.users,
               ownerRequests: current.ownerRequests.map((item) =>
                 item.id === request.id
                   ? {
@@ -784,16 +844,18 @@ export default function AdminConsoleScreen() {
           <View style={[styles.topbarLead, mobile && styles.topbarLeadMobile]}>
             {mobile && <Pressable accessibilityLabel="Open navigation" onPress={() => setMobileNavOpen(true)} style={styles.mobileMenuButton}><Menu size={21} color={adminPalette.onSurface} /></Pressable>}
             {mobile && <Text style={styles.mobileSectionTitle}>{activeNav.label}</Text>}
-          <View style={[styles.searchBox, mobile && styles.searchBoxMobile]}>
-            <Search size={18} color={adminPalette.outline} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder={activeNav.searchPlaceholder}
-              placeholderTextColor={adminPalette.outline}
-              style={styles.searchInput}
-            />
-          </View>
+          {activeSection !== 'system' && (
+            <View style={[styles.searchBox, mobile && styles.searchBoxMobile]}>
+              <Search size={18} color={adminPalette.outline} />
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder={activeNav.searchPlaceholder}
+                placeholderTextColor={adminPalette.outline}
+                style={styles.searchInput}
+              />
+            </View>
+          )}
           </View>
           <View style={[styles.topbarActions, mobile && styles.topbarActionsMobile]}>
             <IconButton icon={RefreshCw} onPress={refreshDashboard} loading={dashboardLoading} />
@@ -832,6 +894,8 @@ export default function AdminConsoleScreen() {
                   query={query}
                   mobile={mobile}
                   onNavigate={navigateTo}
+                  deletingSpotId={deletingSpotId}
+                  onDeleteSpot={handleDeleteSpot}
                 />
               )}
               {activeSection === 'spots' && (
@@ -844,7 +908,7 @@ export default function AdminConsoleScreen() {
                   deletingSpotId={deletingSpotId}
                   onApproveSubmission={handleApproveSubmission}
                   onDeleteSubmission={confirmDeleteSubmission}
-                  onDeleteSpot={confirmDeleteSpot}
+                  onDeleteMapSpot={handleDeleteSpot}
                 />
               )}
               {activeSection === 'reports' && (
@@ -858,7 +922,15 @@ export default function AdminConsoleScreen() {
                 />
               )}
               {activeSection === 'users' && (
-                <UsersSection dashboard={dashboard} query={query} onClearQuery={() => setQuery('')} />
+                <UsersSection
+                  dashboard={dashboard}
+                  query={query}
+                  onClearQuery={() => setQuery('')}
+                  savingUserId={savingUserId}
+                  deletingUserId={deletingUserId}
+                  onSaveFlag={handleSetUserFlag}
+                  onDeleteUser={confirmDeleteUser}
+                />
               )}
               {activeSection === 'requests' && (
                 <OwnerRequestsSection
@@ -1481,12 +1553,16 @@ function OverviewSection({
   query,
   mobile,
   onNavigate,
+  deletingSpotId,
+  onDeleteSpot,
 }: {
   dashboard: AdminDashboardData;
   client: SupabaseClient;
   query: string;
   mobile: boolean;
   onNavigate: (section: AdminSection) => void;
+  deletingSpotId: string | null;
+  onDeleteSpot: (listing: AdminListingRow) => Promise<boolean>;
 }) {
   const pulseRows = filterPulse(dashboard.livePulse, query);
   const dailyInsights = dashboard.dailyInsights;
@@ -1543,6 +1619,7 @@ function OverviewSection({
         <ActionCard icon={UserPlus} label="Owner requests" value={dashboard.ownerRequests.filter((item) => item.status.toLowerCase() === 'pending').length} copy="Verify business ownership" tone="primary" onPress={() => onNavigate('requests')} />
         <ActionCard icon={TriangleAlert} label="Reports" value={dashboard.reports.length} copy="Review trust and safety issues" tone="danger" onPress={() => onNavigate('reports')} />
         <ActionCard icon={MapPin} label="Spot submissions" value={dashboard.metrics.pendingSpotSubmissions} copy="Approve new places" tone="blue" onPress={() => onNavigate('spots')} />
+        <ActionCard icon={Radio} label="System health" value={dashboard.errors.length} copy="Check APIs and connectivity" tone="primary" onPress={() => onNavigate('system')} />
       </View>
 
       <View style={[styles.overviewGrid, mobile && styles.overviewGridMobile]}>
@@ -1656,6 +1733,8 @@ function OverviewSection({
         />
       </DataPanel>
       <SpotMapOverviewModal
+        client={client}
+        deletingSpotId={deletingSpotId}
         error={mapError}
         loading={mapLoading}
         onClose={() => setMapVisible(false)}
@@ -1665,7 +1744,11 @@ function OverviewSection({
         onSelectSpot={setSelectedMapSpotId}
         selectedSpotId={selectedMapSpotId}
         spots={mapSpots}
+        reports={dashboard.reports}
         visible={mapVisible}
+        onDeleteSpot={onDeleteSpot}
+        onSpotDeleted={(spotId) => setMapSpots((current) => current.filter((spot) => spot.id !== spotId))}
+        onSpotUpdated={(updated) => setMapSpots((current) => current.map((spot) => spot.id === updated.id ? updated : spot))}
       />
     </View>
   );
@@ -1694,7 +1777,7 @@ function SpotsSection({
   deletingSpotId,
   onApproveSubmission,
   onDeleteSubmission,
-  onDeleteSpot,
+  onDeleteMapSpot,
 }: {
   dashboard: AdminDashboardData;
   client: SupabaseClient;
@@ -1704,7 +1787,7 @@ function SpotsSection({
   deletingSpotId: string | null;
   onApproveSubmission: (submission: AdminSpotSubmissionRow) => void;
   onDeleteSubmission: (submission: AdminSpotSubmissionRow) => void;
-  onDeleteSpot: (listing: AdminListingRow) => void;
+  onDeleteMapSpot: (listing: AdminListingRow) => Promise<boolean>;
 }) {
   const listings = filterListings(dashboard.recentListings, query);
   const pendingSubmissions = filterSubmissions(dashboard.pendingSubmissions, query);
@@ -1747,7 +1830,6 @@ function SpotsSection({
         eyebrow="Discovery"
         title="Spots"
         subtitle="Venue listings registered in CebSpot."
-        right={<SimpleRangePills />}
       />
       <View style={styles.spotStatsGrid}>
         <StatCard label="Spots in range" value={formatCompactNumber(dashboard.metrics.publicSpots)} icon={MapPin} delta="Live" />
@@ -1795,14 +1877,7 @@ function SpotsSection({
         />
       </DataPanel>
 
-      <DataPanel
-        title="Recent Listings"
-        right={
-          <Pressable onPress={() => Alert.alert('Coming soon', "CSV export isn't wired up yet.")}>
-            <Text style={styles.exportLink}>Export CSV</Text>
-          </Pressable>
-        }
-      >
+      <DataPanel title="Recent Listings">
         <DataTable
           columns={[
             {
@@ -1823,50 +1898,15 @@ function SpotsSection({
             { key: 'barangay', label: 'Barangay', render: (item) => <Text style={styles.tableMuted}>{item.barangay}</Text> },
             { key: 'status', label: 'Status', render: (item) => <StatusBadge label={item.status} /> },
             { key: 'date', label: 'Date Registered', flex: 1.2, render: (item) => <Text style={styles.tableMuted}>{item.date}</Text> },
-            {
-              key: 'actions',
-              label: 'Actions',
-              align: 'right',
-              render: (item) => (
-                <View style={styles.inlineActions}>
-                  <Pressable
-                    accessibilityLabel={`Edit ${item.name}`}
-                    accessibilityRole="button"
-                    style={styles.tableIconButton}
-                    onPress={() => Alert.alert('Coming soon', `Editing ${item.name} isn't wired up yet.`)}
-                  >
-                    <Edit3 size={16} color={adminPalette.onSurfaceVariant} />
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={`Delete ${item.name}`}
-                    accessibilityRole="button"
-                    disabled={deletingSpotId === item.id}
-                    style={[styles.tableIconButton, deletingSpotId === item.id && styles.tableIconButtonDisabled]}
-                    onPress={() => onDeleteSpot(item)}
-                  >
-                    {deletingSpotId === item.id ? (
-                      <ActivityIndicator size="small" color={adminPalette.error} />
-                    ) : (
-                      <Trash2 size={16} color={adminPalette.error} />
-                    )}
-                  </Pressable>
-                </View>
-              ),
-            },
           ]}
           data={listings}
           emptyCopy="No spots match this search."
         />
       </DataPanel>
 
-      <Pressable
-        style={styles.floatingAdd}
-        onPress={() => Alert.alert('Coming soon', "Manually adding a spot isn't wired up yet.")}
-      >
-        <Plus size={24} color={colors.white} />
-      </Pressable>
-
       <SpotMapOverviewModal
+        client={client}
+        deletingSpotId={deletingSpotId}
         error={mapError}
         loading={mapLoading}
         onClose={() => setMapVisible(false)}
@@ -1876,35 +1916,55 @@ function SpotsSection({
         onSelectSpot={setSelectedMapSpotId}
         selectedSpotId={selectedMapSpotId}
         spots={mapSpots}
+        reports={dashboard.reports}
         visible={mapVisible}
+        onDeleteSpot={onDeleteMapSpot}
+        onSpotDeleted={(spotId) => setMapSpots((current) => current.filter((spot) => spot.id !== spotId))}
+        onSpotUpdated={(updated) => setMapSpots((current) => current.map((spot) => spot.id === updated.id ? updated : spot))}
       />
     </View>
   );
 }
 
 function SpotMapOverviewModal({
+  client,
   visible,
   spots,
+  reports,
   selectedSpotId,
+  deletingSpotId,
   loading,
   error,
   onSelectSpot,
   onRetry,
   onClose,
+  onDeleteSpot,
+  onSpotDeleted,
+  onSpotUpdated,
 }: {
+  client: SupabaseClient;
   visible: boolean;
   spots: AdminMapSpotRow[];
+  reports: AdminReportRow[];
   selectedSpotId: string | null;
+  deletingSpotId: string | null;
   loading: boolean;
   error: string | null;
   onSelectSpot: (spotId: string) => void;
   onRetry: () => void;
   onClose: () => void;
+  onDeleteSpot: (listing: AdminListingRow) => Promise<boolean>;
+  onSpotDeleted: (spotId: string) => void;
+  onSpotUpdated: (spot: AdminMapSpotRow) => void;
 }) {
   const { width } = useWindowDimensions();
   const compact = width < 860;
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [actionSpotId, setActionSpotId] = useState<string | null>(null);
+  const [editingSpot, setEditingSpot] = useState<AdminMapSpotRow | null>(null);
+  const [savingSpot, setSavingSpot] = useState(false);
+  const [actionNotice, setActionNotice] = useState('');
   const categoryOptions = useMemo(() => {
     const counts = new globalThis.Map<string, number>();
     spots.forEach((spot) => {
@@ -1966,7 +2026,73 @@ function SpotMapOverviewModal({
     if (firstVisibleSpot) onSelectSpot(firstVisibleSpot.id);
   }
 
-  return (
+  function toggleSpotActions(spot: AdminMapSpotRow) {
+    onSelectSpot(spot.id);
+    setActionSpotId((current) => current === spot.id ? null : spot.id);
+    setActionNotice('');
+  }
+
+  async function saveSpot(update: AdminSpotUpdate) {
+    if (!editingSpot) return;
+    try {
+      setSavingSpot(true);
+      setActionNotice('');
+      await updateAdminSpot(editingSpot.id, update, client);
+      const nextSpot = {
+        ...editingSpot,
+        name: update.name.trim(),
+        description: update.description.trim() || null,
+        category: update.category.trim(),
+        categories: Array.from(new Set([update.category.trim(), ...editingSpot.categories.filter((item) => item !== editingSpot.category)])),
+        address: update.address.trim(),
+        barangay: update.address.split(',')[0]?.trim() || 'Cebu City',
+        latitude: update.latitude,
+        longitude: update.longitude,
+        isPublic: update.isPublic,
+        isReservable: update.isReservable,
+      };
+      onSpotUpdated(nextSpot);
+      setEditingSpot(null);
+      setActionNotice(`${nextSpot.name} was updated.`);
+    } catch (saveError: any) {
+      setActionNotice(saveError?.message ?? 'Unable to update the spot.');
+    } finally {
+      setSavingSpot(false);
+    }
+  }
+
+  function confirmMapSpotDelete(spot: AdminMapSpotRow) {
+    setActionSpotId(null);
+    Alert.alert(
+      `Delete ${spot.name}?`,
+      'This permanently removes the spot and related discovery content. Spots with booking history are protected and cannot be deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Spot',
+          style: 'destructive',
+          onPress: () => void onDeleteSpot({
+            id: spot.id,
+            name: spot.name,
+            category: spot.category,
+            barangay: spot.barangay,
+            status: spot.isPublic ? 'Verified' : 'Pending',
+            date: '-',
+            image: '',
+          }).then((deleted) => {
+            if (!deleted) return;
+            onSpotDeleted(spot.id);
+            setActionNotice(`${spot.name} was removed from the map.`);
+          }),
+        },
+      ],
+    );
+  }
+
+  const actionSpot = visibleSpots.find((spot) => spot.id === actionSpotId) ?? null;
+  const editingReports = editingSpot ? reports.filter((report) => report.spotId === editingSpot.id) : [];
+
+  return (<>
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
       <View style={styles.spotMapBackdrop}>
         <Pressable accessibilityLabel="Close spot map" onPress={onClose} style={styles.spotMapScrim} />
@@ -2122,8 +2248,47 @@ function SpotMapOverviewModal({
                         <Text style={styles.spotMapDescription} numberOfLines={3}>{selectedSpot.description}</Text>
                       ) : null}
                     </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`${actionSpotId === selectedSpot.id ? 'Hide' : 'Show'} actions for ${selectedSpot.name}`}
+                      accessibilityState={{ expanded: actionSpotId === selectedSpot.id }}
+                      onPress={() => toggleSpotActions(selectedSpot)}
+                      style={styles.spotMapMoreAction}
+                    >
+                      <MoreHorizontal size={19} color={adminPalette.onSurfaceVariant} />
+                    </Pressable>
                   </View>
                 )}
+
+                <Text style={styles.spotMapContextHint}>Use the three-dot menu to show or hide spot actions.</Text>
+                {actionSpot && <View style={styles.spotMapContextMenu}>
+                  <View style={styles.spotMapContextHeader}>
+                    <View style={styles.spotMapContextCopy}>
+                      <Text style={styles.spotMapContextEyebrow}>SPOT ACTIONS</Text>
+                      <Text style={styles.spotMapContextTitle} numberOfLines={1}>{actionSpot.name}</Text>
+                    </View>
+                    <Pressable accessibilityLabel="Close spot actions" onPress={() => setActionSpotId(null)} style={styles.spotMapContextClose}>
+                      <X size={16} color={adminPalette.onSurfaceVariant} />
+                    </Pressable>
+                  </View>
+                  <View style={styles.spotMapContextReport}>
+                    <TriangleAlert size={14} color="#8a5600" />
+                    <Text style={styles.spotMapContextReportText}>
+                      {reports.filter((report) => report.spotId === actionSpot.id).length
+                        ? `${reports.filter((report) => report.spotId === actionSpot.id).length} open report(s) can inform this edit.`
+                        : 'No open reports. Direct admin corrections are still allowed.'}
+                    </Text>
+                  </View>
+                  <Pressable accessibilityRole="button" onPress={() => { setEditingSpot(actionSpot); setActionSpotId(null); }} style={styles.spotMapContextAction}>
+                    <Edit3 size={16} color={adminPalette.primary} />
+                    <Text style={styles.spotMapContextActionText}>Edit spot details</Text>
+                  </Pressable>
+                  <Pressable accessibilityRole="button" disabled={deletingSpotId === actionSpot.id} onPress={() => confirmMapSpotDelete(actionSpot)} style={[styles.spotMapContextAction, styles.spotMapContextDanger]}>
+                    {deletingSpotId === actionSpot.id ? <ActivityIndicator size="small" color={adminPalette.error} /> : <Trash2 size={16} color={adminPalette.error} />}
+                    <Text style={styles.spotMapContextDangerText}>Delete spot</Text>
+                  </Pressable>
+                </View>}
+                {!!actionNotice && <Text accessibilityRole="alert" style={styles.spotMapActionNotice}>{actionNotice}</Text>}
 
                 <Text style={styles.spotMapListHeading}>
                   {selectedCategory === 'All' ? 'ALL MAPPED SPOTS' : `${selectedCategory.toUpperCase()} SPOTS`}
@@ -2158,7 +2323,140 @@ function SpotMapOverviewModal({
         </View>
       </View>
     </Modal>
-  );
+    <SpotEditorModal
+      reports={editingReports}
+      saving={savingSpot}
+      spot={editingSpot}
+      visible={Boolean(editingSpot)}
+      onClose={() => setEditingSpot(null)}
+      onSave={saveSpot}
+    />
+  </>);
+}
+
+function SpotEditorModal({
+  visible,
+  spot,
+  reports,
+  saving,
+  onClose,
+  onSave,
+}: {
+  visible: boolean;
+  spot: AdminMapSpotRow | null;
+  reports: AdminReportRow[];
+  saving: boolean;
+  onClose: () => void;
+  onSave: (update: AdminSpotUpdate) => Promise<void>;
+}) {
+  const { width } = useWindowDimensions();
+  const compact = width < 700;
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+  const [address, setAddress] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [isPublic, setIsPublic] = useState(true);
+  const [isReservable, setIsReservable] = useState(false);
+  const [validation, setValidation] = useState('');
+
+  useEffect(() => {
+    if (!spot) return;
+    setName(spot.name);
+    setDescription(spot.description ?? '');
+    setCategory(spot.category);
+    setAddress(spot.address);
+    setLatitude(String(spot.latitude));
+    setLongitude(String(spot.longitude));
+    setIsPublic(spot.isPublic);
+    setIsReservable(spot.isReservable);
+    setValidation('');
+  }, [spot]);
+
+  async function submit() {
+    const nextLatitude = Number(latitude);
+    const nextLongitude = Number(longitude);
+    if (name.trim().length < 2 || category.trim().length < 2 || address.trim().length < 4) {
+      setValidation('Complete the name, category, and address fields.');
+      return;
+    }
+    if (!Number.isFinite(nextLatitude) || !Number.isFinite(nextLongitude) || nextLatitude < -90 || nextLatitude > 90 || nextLongitude < -180 || nextLongitude > 180) {
+      setValidation('Enter valid latitude and longitude values.');
+      return;
+    }
+    setValidation('');
+    await onSave({ name, description, category, address, latitude: nextLatitude, longitude: nextLongitude, isPublic, isReservable });
+  }
+
+  return <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
+    <View style={styles.spotEditorBackdrop}>
+      <Pressable accessibilityLabel="Close spot editor" onPress={onClose} style={styles.spotEditorScrim} />
+      {spot && <View style={[styles.spotEditorModal, compact && styles.spotEditorModalCompact]}>
+        <View style={styles.spotEditorHeader}>
+          <View style={styles.spotEditorHeaderIcon}><Edit3 size={20} color={adminPalette.primary} /></View>
+          <View style={styles.spotEditorHeaderCopy}>
+            <Text style={styles.spotEditorEyebrow}>CEBU MAP OVERVIEW</Text>
+            <Text style={styles.spotEditorTitle}>Edit spot details</Text>
+            <Text style={styles.spotEditorSubtitle}>Changes publish directly after server-side admin verification.</Text>
+          </View>
+          <Pressable accessibilityLabel="Close spot editor" disabled={saving} onPress={onClose} style={styles.spotEditorClose}><X size={20} color={adminPalette.onSurfaceVariant} /></Pressable>
+        </View>
+        <ScrollView contentContainerStyle={styles.spotEditorBody} showsVerticalScrollIndicator={false}>
+          <View style={styles.spotEditorReportBox}>
+            <TriangleAlert size={17} color="#8a5600" />
+            <View style={styles.spotEditorReportCopy}>
+              <Text style={styles.spotEditorReportTitle}>{reports.length ? `${reports.length} open report${reports.length === 1 ? '' : 's'} about this spot` : 'No open reports about this spot'}</Text>
+              <Text style={styles.spotEditorReportText}>{reports[0]?.description ?? 'You can still make a direct administrative correction.'}</Text>
+            </View>
+          </View>
+          <View style={styles.spotEditorGrid}>
+            <SpotEditorField label="Spot name" value={name} onChangeText={setName} placeholder="Spot name" />
+            <SpotEditorField label="Primary category" value={category} onChangeText={setCategory} placeholder="Cafe, restaurant, outdoor…" />
+            <SpotEditorField wide label="Address" value={address} onChangeText={setAddress} placeholder="Complete Cebu address" />
+            <SpotEditorField label="Latitude" value={latitude} onChangeText={setLatitude} placeholder="10.3157" keyboardType="numbers-and-punctuation" />
+            <SpotEditorField label="Longitude" value={longitude} onChangeText={setLongitude} placeholder="123.8854" keyboardType="numbers-and-punctuation" />
+            <SpotEditorField wide multiline label="Description" value={description} onChangeText={setDescription} placeholder="Public spot description" />
+          </View>
+          <View style={styles.spotEditorToggleRow}>
+            <Pressable accessibilityRole="button" accessibilityState={{ selected: isPublic }} onPress={() => setIsPublic((current) => !current)} style={[styles.spotEditorToggle, isPublic && styles.spotEditorToggleActive]}>
+              <CheckCircle2 size={16} color={isPublic ? adminPalette.success : adminPalette.outline} />
+              <View><Text style={styles.spotEditorToggleTitle}>Published</Text><Text style={styles.spotEditorToggleText}>Visible in discovery and map</Text></View>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityState={{ selected: isReservable }} onPress={() => setIsReservable((current) => !current)} style={[styles.spotEditorToggle, isReservable && styles.spotEditorToggleActive]}>
+              <TicketCheck size={16} color={isReservable ? adminPalette.success : adminPalette.outline} />
+              <View><Text style={styles.spotEditorToggleTitle}>Reservable</Text><Text style={styles.spotEditorToggleText}>Accepts CebSpot bookings</Text></View>
+            </Pressable>
+          </View>
+          {!!validation && <Text accessibilityRole="alert" style={styles.spotEditorValidation}>{validation}</Text>}
+        </ScrollView>
+        <View style={styles.spotEditorFooter}>
+          <Pressable disabled={saving} onPress={onClose} style={styles.spotEditorCancel}><Text style={styles.spotEditorCancelText}>Cancel</Text></Pressable>
+          <Pressable disabled={saving} onPress={() => void submit()} style={[styles.spotEditorSave, saving && styles.ownerActionDisabled]}>
+            {saving ? <ActivityIndicator size="small" color={colors.white} /> : <CheckCircle2 size={16} color={colors.white} />}
+            <Text style={styles.spotEditorSaveText}>{saving ? 'Saving…' : 'Save spot changes'}</Text>
+          </Pressable>
+        </View>
+      </View>}
+    </View>
+  </Modal>;
+}
+
+function SpotEditorField({
+  label,
+  wide,
+  multiline,
+  ...inputProps
+}: React.ComponentProps<typeof TextInput> & { label: string; wide?: boolean; multiline?: boolean }) {
+  return <View style={[styles.spotEditorField, wide && styles.spotEditorFieldWide]}>
+    <Text style={styles.spotEditorLabel}>{label}</Text>
+    <TextInput
+      {...inputProps}
+      multiline={multiline}
+      placeholderTextColor={adminPalette.outline}
+      style={[styles.spotEditorInput, multiline && styles.spotEditorTextarea]}
+    />
+  </View>;
 }
 
 function PendingSubmissionsTable({
@@ -3060,25 +3358,35 @@ function ExpandedReport({
   );
 }
 
-const userRoleFilters = ['All', 'Spotter', 'Owner'] as const;
+const userRoleFilters = ['All', 'Spotter', 'Owner', 'Flagged'] as const;
 const usersPerPage = 7;
 type UserRoleFilter = (typeof userRoleFilters)[number];
 // 'Spotter' in the UI maps to the 'user' role value stored on the record.
-const userRoleFilterValue: Record<Exclude<UserRoleFilter, 'All'>, string> = { Spotter: 'user', Owner: 'owner' };
+const userRoleFilterValue: Record<'Spotter' | 'Owner', string> = { Spotter: 'user', Owner: 'owner' };
 
 function UsersSection({
   dashboard,
   query,
   onClearQuery,
+  savingUserId,
+  deletingUserId,
+  onSaveFlag,
+  onDeleteUser,
 }: {
   dashboard: AdminDashboardData;
   query: string;
   onClearQuery: () => void;
+  savingUserId: string | null;
+  deletingUserId: string | null;
+  onSaveFlag: (user: AdminUserRow, flagged: boolean, reason: string) => Promise<boolean>;
+  onDeleteUser: (user: AdminUserRow) => void;
 }) {
   const [roleFilter, setRoleFilter] = useState<UserRoleFilter>('All');
   const [currentPage, setCurrentPage] = useState(0);
+  const [editingUser, setEditingUser] = useState<AdminUserRow | null>(null);
   const filteredUsers = filterUsers(dashboard.users, query).filter(
-    (user) => roleFilter === 'All' || user.role.toLowerCase() === userRoleFilterValue[roleFilter],
+    (user) => roleFilter === 'All'
+      || (roleFilter === 'Flagged' ? user.isFlagged || Boolean(user.deletionState) : user.role.toLowerCase() === userRoleFilterValue[roleFilter]),
   );
   const pageCount = Math.max(1, Math.ceil(filteredUsers.length / usersPerPage));
   const safePage = Math.min(currentPage, pageCount - 1);
@@ -3101,15 +3409,6 @@ function UsersSection({
         eyebrow="People"
         title="Users"
         subtitle="Profiles registered in CebSpot."
-        right={
-          <Pressable
-            style={styles.addUserButton}
-            onPress={() => Alert.alert('Coming soon', "Manually adding a user isn't wired up yet.")}
-          >
-            <Plus size={19} color={colors.white} />
-            <Text style={styles.addUserText}>Add User</Text>
-          </Pressable>
-        }
       />
 
       <View style={styles.filterBar}>
@@ -3172,24 +3471,39 @@ function UsersSection({
             },
             { key: 'joined', label: 'Joined Date', render: (item) => <Text style={styles.tableMuted}>{item.joined}</Text> },
             {
+              key: 'trust',
+              label: 'Trust status',
+              render: (item) => <View style={styles.userTrustCell}>
+                <StatusBadge
+                  label={item.deletionState ? 'Deletion pending' : item.isFlagged ? 'Flagged' : 'Clear'}
+                  danger={Boolean(item.deletionState || item.isFlagged)}
+                />
+                {!!item.reportedCommentCount && <Text style={styles.tableMini}>{item.reportedCommentCount} reported comment{item.reportedCommentCount === 1 ? '' : 's'}</Text>}
+              </View>,
+            },
+            {
               key: 'actions',
               label: 'Actions',
               align: 'right',
               render: (item) => (
                 <View style={styles.inlineActions}>
                   <Pressable
+                    accessibilityLabel={`Edit moderation for ${item.name}`}
+                    accessibilityRole="button"
+                    disabled={savingUserId === item.id || deletingUserId === item.id}
                     style={styles.tableIconButton}
-                    onPress={() => Alert.alert('Coming soon', `Editing ${item.name} isn't wired up yet.`)}
+                    onPress={() => setEditingUser(item)}
                   >
-                    <Edit3 size={16} color={adminPalette.primary} />
+                    {savingUserId === item.id ? <ActivityIndicator size="small" color={adminPalette.primary} /> : <Edit3 size={16} color={adminPalette.primary} />}
                   </Pressable>
                   <Pressable
+                    accessibilityLabel={`${item.deletionState ? 'Continue deleting' : 'Delete'} ${item.name}`}
+                    accessibilityRole="button"
+                    disabled={savingUserId === item.id || deletingUserId === item.id}
                     style={styles.tableIconButton}
-                    onPress={() =>
-                      Alert.alert('Coming soon', `Removing ${item.name} isn't wired up yet.`)
-                    }
+                    onPress={() => onDeleteUser(item)}
                   >
-                    <XCircle size={17} color={adminPalette.error} />
+                    {deletingUserId === item.id ? <ActivityIndicator size="small" color={adminPalette.error} /> : <XCircle size={17} color={adminPalette.error} />}
                   </Pressable>
                 </View>
               ),
@@ -3210,8 +3524,96 @@ function UsersSection({
           onNext={() => setCurrentPage((page) => Math.min(pageCount - 1, page + 1))}
         />
       </DataPanel>
+      <UserModerationModal
+        user={editingUser}
+        saving={Boolean(editingUser && savingUserId === editingUser.id)}
+        visible={Boolean(editingUser)}
+        onClose={() => setEditingUser(null)}
+        onSave={async (flagged, reason) => {
+          if (!editingUser) return;
+          const completed = await onSaveFlag(editingUser, flagged, reason);
+          if (completed) setEditingUser(null);
+        }}
+      />
     </View>
   );
+}
+
+function UserModerationModal({
+  user,
+  visible,
+  saving,
+  onClose,
+  onSave,
+}: {
+  user: AdminUserRow | null;
+  visible: boolean;
+  saving: boolean;
+  onClose: () => void;
+  onSave: (flagged: boolean, reason: string) => Promise<void>;
+}) {
+  const [flagged, setFlagged] = useState(false);
+  const [reason, setReason] = useState('');
+  const [validation, setValidation] = useState('');
+
+  useEffect(() => {
+    setFlagged(Boolean(user?.isFlagged));
+    setReason(user?.flagReason ?? (user?.reportedCommentCount ? 'A reported comment requires admin review.' : ''));
+    setValidation('');
+  }, [user]);
+
+  async function submit() {
+    if (flagged && !reason.trim()) {
+      setValidation('Add a reason before flagging this user.');
+      return;
+    }
+    setValidation('');
+    await onSave(flagged, reason);
+  }
+
+  return <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
+    <View style={styles.userModerationBackdrop}>
+      <Pressable accessibilityLabel="Close user moderation" onPress={onClose} style={styles.userModerationScrim} />
+      {user && <View style={styles.userModerationModal}>
+        <View style={styles.userModerationHeader}>
+          <View style={[styles.userModerationIcon, flagged && styles.userModerationIconFlagged]}><Flag size={21} color={flagged ? adminPalette.error : adminPalette.primary} /></View>
+          <View style={styles.userModerationHeaderCopy}>
+            <Text style={styles.userModerationEyebrow}>TRUST & SAFETY</Text>
+            <Text style={styles.userModerationTitle}>{user.name}</Text>
+            <Text style={styles.userModerationSubtitle}>{user.email}</Text>
+          </View>
+          <Pressable accessibilityLabel="Close user moderation" disabled={saving} onPress={onClose} style={styles.userModerationClose}><X size={20} color={adminPalette.onSurfaceVariant} /></Pressable>
+        </View>
+        <View style={styles.userModerationStats}>
+          <View style={styles.userModerationStat}><Text style={styles.userModerationStatValue}>{user.reportedCommentCount ?? 0}</Text><Text style={styles.userModerationStatLabel}>Reported comments</Text></View>
+          <View style={styles.userModerationStat}><Text style={styles.userModerationStatValue}>{user.role}</Text><Text style={styles.userModerationStatLabel}>Account role</Text></View>
+          <View style={styles.userModerationStat}><Text style={styles.userModerationStatValue}>{user.deletionState ?? 'Active'}</Text><Text style={styles.userModerationStatLabel}>Account state</Text></View>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityState={{ selected: flagged }} onPress={() => setFlagged((current) => !current)} style={[styles.userFlagToggle, flagged && styles.userFlagToggleActive]}>
+          <View style={[styles.userFlagCheckbox, flagged && styles.userFlagCheckboxActive]}>{flagged && <CheckCircle2 size={15} color={colors.white} />}</View>
+          <View style={styles.userFlagToggleCopy}><Text style={styles.userFlagToggleTitle}>Flag this user for admin review</Text><Text style={styles.userFlagToggleText}>Reported comments are flagged automatically; an admin can clear the flag after review.</Text></View>
+        </Pressable>
+        <Text style={styles.userModerationLabel}>Moderation reason {flagged ? '(required)' : '(cleared on save)'}</Text>
+        <TextInput
+          multiline
+          editable={!saving}
+          value={reason}
+          onChangeText={setReason}
+          placeholder="Explain the concern and next review step…"
+          placeholderTextColor={adminPalette.outline}
+          style={styles.userModerationNotes}
+        />
+        {!!validation && <Text accessibilityRole="alert" style={styles.userModerationValidation}>{validation}</Text>}
+        <View style={styles.userModerationActions}>
+          <Pressable disabled={saving} onPress={onClose} style={styles.userModerationCancel}><Text style={styles.userModerationCancelText}>Cancel</Text></Pressable>
+          <Pressable disabled={saving} onPress={() => void submit()} style={[styles.userModerationSave, saving && styles.ownerActionDisabled]}>
+            {saving ? <ActivityIndicator size="small" color={colors.white} /> : <Flag size={15} color={colors.white} />}
+            <Text style={styles.userModerationSaveText}>{flagged ? 'Save flag' : 'Clear flag'}</Text>
+          </Pressable>
+        </View>
+      </View>}
+    </View>
+  </Modal>;
 }
 
 function OwnerRequestsSection({
@@ -3282,15 +3684,7 @@ function OwnerRequestsSection({
         <Text style={styles.filterSummary}>{visibleRequests.length} matching requests</Text>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.tableScrollContainer}>
-      <View style={[styles.requestsTable, styles.ownerRequestsScrollContent]}>
-        <View style={styles.requestHeader}>
-          {['Applicant', 'Spot Name', 'Category', 'Barangay', 'Applied', 'Actions'].map((label) => (
-            <Text key={label} style={styles.requestHeading}>
-              {label}
-            </Text>
-          ))}
-        </View>
+      <View style={styles.ownerRequestList}>
         {visibleRequests.map((request) => {
           const expanded = expandedRequestId === request.id;
           const pending = request.status.toLowerCase() === 'pending';
@@ -3298,64 +3692,65 @@ function OwnerRequestsSection({
           const deleting = deletingRequestId === request.id;
           const busy = reviewing || deleting;
           return (
-          <View key={request.id}>
-            <View style={[styles.requestRow, expanded && styles.requestRowExpanded]}>
-              <View style={styles.requestColumn}>
-                <View style={styles.userCell}>
-                  <View style={styles.requestAvatar}>
-                    <Text style={styles.requestAvatarText}>{request.initials}</Text>
-                  </View>
-                  <View>
-                    <Text style={styles.tableStrong}>{request.applicant}</Text>
-                    <Text style={styles.tableMini}>{request.email}</Text>
-                  </View>
+          <View key={request.id} style={[styles.ownerRequestCard, expanded && styles.ownerRequestCardExpanded]}>
+            <View style={styles.ownerRequestSummary}>
+              <View style={styles.ownerRequestApplicant}>
+                <View style={styles.requestAvatar}>
+                  <Text style={styles.requestAvatarText}>{request.initials}</Text>
+                </View>
+                <View style={styles.ownerRequestApplicantCopy}>
+                  <Text style={styles.ownerRequestName} numberOfLines={2}>{request.applicant}</Text>
+                  <Text style={styles.ownerRequestEmail} numberOfLines={2}>{request.email}</Text>
                 </View>
               </View>
-              <View style={styles.requestColumn}>
-                <Text style={styles.tableStrong}>{request.spot}</Text>
+              <View style={styles.ownerRequestSpotBlock}>
+                <Text style={styles.ownerRequestMetaLabel}>Requested spot</Text>
+                <Text style={styles.ownerRequestSpotName} numberOfLines={2}>{request.spot}</Text>
+                <Text style={styles.ownerRequestAddress} numberOfLines={2}>{request.fullAddress}</Text>
               </View>
-              <View style={styles.requestColumn}>
-                <StatusBadge label={request.category} />
+              <View style={styles.ownerRequestMetaGrid}>
+                <View style={styles.ownerRequestMetaItem}><Text style={styles.ownerRequestMetaLabel}>Category</Text><StatusBadge label={request.category} /></View>
+                <View style={styles.ownerRequestMetaItem}><Text style={styles.ownerRequestMetaLabel}>Barangay</Text><Text style={styles.ownerRequestMetaValue} numberOfLines={2}>{request.barangay}</Text></View>
+                <View style={styles.ownerRequestMetaItem}><Text style={styles.ownerRequestMetaLabel}>Applied</Text><Text style={styles.ownerRequestMetaValue}>{request.applied}</Text></View>
+                <View style={styles.ownerRequestMetaItem}><Text style={styles.ownerRequestMetaLabel}>Status</Text><StatusBadge label={request.status} /></View>
               </View>
-              <View style={styles.requestColumn}>
-                <Text style={styles.tableMuted}>{request.barangay}</Text>
-              </View>
-              <View style={styles.requestColumn}>
-                <Text style={styles.tableMuted}>{request.applied}</Text>
-              </View>
-              <View style={[styles.requestColumn, styles.requestActions]}>
+              <View style={styles.ownerRequestActions}>
                 {pending ? (
                   <>
                     <Pressable
                       accessibilityLabel={`Approve ${request.applicant}'s owner request`}
                       disabled={busy}
                       onPress={() => confirmDecision(request, 'approved', request.adminNotes ?? '')}
-                      style={[styles.requestIconAction, busy && styles.ownerActionDisabled]}
+                      style={[styles.ownerRequestActionButton, styles.ownerRequestApprove, busy && styles.ownerActionDisabled]}
                     >
                       {reviewing ? <ActivityIndicator size="small" color="#16a34a" /> : <CheckCircle2 size={18} color="#16a34a" />}
+                      <Text style={[styles.ownerRequestActionText, styles.ownerRequestApproveText]}>Approve</Text>
                     </Pressable>
                     <Pressable
                       accessibilityLabel={expanded ? 'Collapse owner request' : 'View owner request details'}
                       onPress={() => setExpandedRequestId(expanded ? null : request.id)}
-                      style={[styles.requestIconAction, expanded && styles.collapseAction]}
+                      style={[styles.ownerRequestActionButton, expanded && styles.collapseAction]}
                     >
                       {expanded ? <ChevronUp size={18} color={colors.white} /> : <Mail size={18} color="#2563eb" />}
+                      <Text style={[styles.ownerRequestActionText, expanded && styles.ownerRequestActionTextInverse]}>{expanded ? 'Close' : 'Details'}</Text>
                     </Pressable>
                     <Pressable
                       accessibilityLabel={`Reject ${request.applicant}'s owner request`}
                       disabled={busy}
                       onPress={() => confirmDecision(request, 'rejected', request.adminNotes ?? '')}
-                      style={[styles.requestIconAction, busy && styles.ownerActionDisabled]}
+                      style={[styles.ownerRequestActionButton, busy && styles.ownerActionDisabled]}
                     >
                       <XCircle size={18} color={adminPalette.error} />
+                      <Text style={[styles.ownerRequestActionText, styles.ownerRequestDangerText]}>Reject</Text>
                     </Pressable>
                     <Pressable
                       accessibilityLabel={`Delete ${request.applicant}'s owner request`}
                       disabled={busy}
                       onPress={() => onDeleteRequest(request)}
-                      style={[styles.requestIconAction, busy && styles.ownerActionDisabled]}
+                      style={[styles.ownerRequestActionButton, busy && styles.ownerActionDisabled]}
                     >
                       {deleting ? <ActivityIndicator size="small" color={adminPalette.error} /> : <Trash2 size={17} color={adminPalette.error} />}
+                      <Text style={[styles.ownerRequestActionText, styles.ownerRequestDangerText]}>Delete</Text>
                     </Pressable>
                   </>
                 ) : (
@@ -3364,17 +3759,19 @@ function OwnerRequestsSection({
                       accessibilityLabel={expanded ? 'Collapse owner request' : 'View owner request details'}
                       disabled={deleting}
                       onPress={() => setExpandedRequestId(expanded ? null : request.id)}
-                      style={styles.reviewedRequestAction}
+                      style={styles.ownerRequestActionButton}
                     >
-                      <StatusBadge label={request.status} />
+                      {expanded ? <ChevronUp size={18} color={adminPalette.primary} /> : <ChevronDown size={18} color={adminPalette.primary} />}
+                      <Text style={styles.ownerRequestActionText}>{expanded ? 'Close' : 'Details'}</Text>
                     </Pressable>
                     <Pressable
                       accessibilityLabel={`Delete ${request.applicant}'s owner request`}
                       disabled={deleting}
                       onPress={() => onDeleteRequest(request)}
-                      style={[styles.requestIconAction, deleting && styles.ownerActionDisabled]}
+                      style={[styles.ownerRequestActionButton, deleting && styles.ownerActionDisabled]}
                     >
                       {deleting ? <ActivityIndicator size="small" color={adminPalette.error} /> : <Trash2 size={17} color={adminPalette.error} />}
+                      <Text style={[styles.ownerRequestActionText, styles.ownerRequestDangerText]}>Delete</Text>
                     </Pressable>
                   </>
                 )}
@@ -3393,24 +3790,7 @@ function OwnerRequestsSection({
           );
         })}
         {!visibleRequests.length && <EmptyState title="No owner requests found" copy="There are no matching access requests." compact />}
-        <Pagination copy={`Showing ${visibleRequests.length} of ${dashboard.ownerRequests.length} requests`} />
-      </View>
-      </ScrollView>
-
-      <View style={styles.bottomBento}>
-        <View style={styles.velocityCard}>
-          <Text style={styles.microHeadingPrimary}>Request Velocity</Text>
-          <BarChart values={requestBars} activeIndex={4} compact />
-          <View style={styles.velocityFooter}>
-            <View>
-              <Text style={styles.velocityValue}>+24%</Text>
-              <Text style={styles.velocityLabel}>Growth vs last week</Text>
-            </View>
-            <View style={styles.velocityIcon}>
-              <TrendingUp size={21} color={adminPalette.success} />
-            </View>
-          </View>
-        </View>
+        {!!visibleRequests.length && <Pagination copy={`Showing ${visibleRequests.length} of ${dashboard.ownerRequests.length} requests`} />}
       </View>
 
       <OwnerRequestDecisionModal
@@ -3535,6 +3915,8 @@ function ExpandedOwnerRequest({
   onApprove: (notes: string) => void;
   onReject: (notes: string) => void;
 }) {
+  const { width } = useWindowDimensions();
+  const compact = width < 900;
   const [notes, setNotes] = useState(request.adminNotes ?? '');
   const [openingDocument, setOpeningDocument] = useState<string | null>(null);
   const pending = request.status.toLowerCase() === 'pending';
@@ -3556,8 +3938,8 @@ function ExpandedOwnerRequest({
   }
 
   return (
-    <View style={styles.expandedRequest}>
-      <View style={styles.expandedRequestColumn}>
+    <View style={[styles.expandedRequest, compact && styles.expandedRequestCompact]}>
+      <View style={[styles.expandedRequestColumn, compact && styles.expandedRequestColumnCompact]}>
         <Text style={styles.microHeadingPrimary}>Application Message</Text>
         <View style={styles.messageCard}>
           <Text style={styles.messageText}>
@@ -3565,7 +3947,7 @@ function ExpandedOwnerRequest({
           </Text>
         </View>
       </View>
-      <View style={styles.expandedRequestColumn}>
+      <View style={[styles.expandedRequestColumn, compact && styles.expandedRequestColumnCompact]}>
         <Text style={styles.microHeadingPrimary}>Applicant Details</Text>
         <View style={styles.ownerDetailGroup}>
           <Text style={styles.ownerDetailLabel}>Contact</Text>
@@ -3591,13 +3973,13 @@ function ExpandedOwnerRequest({
           {request.verificationDocuments.length ? request.verificationDocuments.map((path, index) => (
             <Pressable key={path} disabled={Boolean(openingDocument)} onPress={() => openDocument(path)} style={styles.documentRow}>
               <FileText size={15} color={adminPalette.primary} />
-              <Text style={styles.documentText}>{path.split('/').pop() || `Document ${index + 1}`}</Text>
+              <Text style={styles.documentText} numberOfLines={2}>{path.split('/').pop() || `Document ${index + 1}`}</Text>
               <Text style={styles.documentOpenText}>{openingDocument === path ? 'Opening...' : 'Open'}</Text>
             </Pressable>
           )) : <Text style={styles.ownerDetailValue}>No documents attached</Text>}
         </View>
       </View>
-      <View style={styles.expandedRequestColumn}>
+      <View style={[styles.expandedRequestColumn, compact && styles.expandedRequestColumnCompact]}>
         <Text style={styles.microHeadingPrimary}>Internal Admin Notes</Text>
         <TextInput
           multiline
@@ -3641,6 +4023,7 @@ function SystemSection({ dashboard, client, userId }: { dashboard: AdminDashboar
         subtitle="Console health, moderation queues, and operational safeguards."
       />
       <View style={styles.supabaseHealthWrap}>
+        <AdminSystemHealthPanel client={client} />
         <SupabaseConnectionPanel
           scope="admin"
           client={client}
@@ -3650,25 +4033,10 @@ function SystemSection({ dashboard, client, userId }: { dashboard: AdminDashboar
         />
       </View>
       <View style={styles.systemGrid}>
-        <StatCard label="Data Source" value={dashboard.source === 'live' ? 'Live' : 'Sample'} icon={Radio} tone="green" delta="Active" />
+        <StatCard label="Data Source" value="Live" icon={Radio} tone="green" delta="Active" />
         <StatCard label="Queued Jobs" value={formatCompactNumber(queuedJobs)} icon={FileText} tone="blue" delta="Review" />
         <StatCard label="Data Alerts" value={formatCompactNumber(securityAlerts)} icon={TriangleAlert} tone="danger" delta={securityAlerts ? 'Review' : 'Clear'} />
       </View>
-      <DataPanel title="System Checklist">
-        {[
-          'Review pending owner verification documents',
-          'Audit high-volume reservation refunds',
-          'Refresh featured Cebu barangay leaderboards',
-          `Confirm admin dashboard SQL is applied in Supabase`,
-        ].map((item, index) => (
-          <View key={item} style={styles.checklistRow}>
-            <View style={[styles.checklistNumber, index < 2 && styles.checklistNumberActive]}>
-              <Text style={[styles.checklistNumberText, index < 2 && styles.checklistNumberTextActive]}>{index + 1}</Text>
-            </View>
-            <Text style={styles.checklistText}>{item}</Text>
-          </View>
-        ))}
-      </DataPanel>
     </View>
   );
 }
@@ -3689,18 +4057,6 @@ function StatCard({ label, value, icon: Icon, tone = 'primary', delta }: StatCar
       </View>
       <Text style={styles.statLabel}>{label}</Text>
       <Text style={[styles.statValue, tone === 'danger' && styles.statValueDanger]}>{value}</Text>
-    </View>
-  );
-}
-
-function SimpleRangePills() {
-  return (
-    <View style={styles.simpleRange}>
-      {['24h', '7d', '30d', '90d'].map((range) => (
-        <Pressable key={range} style={[styles.simpleRangeButton, range === '30d' && styles.simpleRangeButtonActive]}>
-          <Text style={[styles.simpleRangeText, range === '30d' && styles.simpleRangeTextActive]}>{range}</Text>
-        </Pressable>
-      ))}
     </View>
   );
 }
@@ -4020,17 +4376,8 @@ function LiveSessionLabel({ count }: { count: number }) {
   return (
     <View style={styles.liveSessionLabel}>
       <View style={styles.liveSessionDot} />
-      <Text style={styles.liveSessionText}>{count} Active Sessions</Text>
+      <Text style={styles.liveSessionText}>{count} Recent Events</Text>
     </View>
-  );
-}
-
-function ToolbarButton({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
-  return (
-    <Pressable style={styles.toolbarButton}>
-      <Icon size={16} color={adminPalette.onSurface} />
-      <Text style={styles.toolbarButtonText}>{label}</Text>
-    </Pressable>
   );
 }
 
