@@ -2,7 +2,8 @@ import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import { getRequiredEnv, makeServiceClient } from '../_shared/paymongo.ts';
 
 // Auth is verified on every retry, including when the profile is already locked.
-// No target ID is accepted from the client and no payment-provider call is made.
+// A target ID is accepted only from the single database-authorized administrator.
+// Both self-service and admin deletion use the same durable cleanup pipeline.
 Deno.serve(async (request: Request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return jsonResponse({ error: 'Method not allowed.' }, 405);
@@ -15,10 +16,31 @@ Deno.serve(async (request: Request) => {
     if (!token || token.length > 8192) return jsonResponse({ error: 'Sign in again to delete your account.' }, 401);
     const identity = await client.auth.getUser(token);
     if (identity.error || !identity.data.user) return jsonResponse({ error: 'Sign in again to delete your account.' }, 401);
-    const id = identity.data.user.id;
+    const actorId = identity.data.user.id;
+    let targetUserId: string | null = null;
+    try {
+      const body = await request.json();
+      targetUserId = typeof body?.targetUserId === 'string' ? body.targetUserId.trim() : null;
+    } catch {
+      targetUserId = null;
+    }
+    if (targetUserId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetUserId)) {
+      return jsonResponse({ error: 'Invalid user identifier.' }, 400);
+    }
+
+    const adminInitiated = Boolean(targetUserId);
+    if (adminInitiated) {
+      const actor = await client.from('profiles').select('role,email').eq('id', actorId).maybeSingle();
+      if (actor.error || actor.data?.role !== 'admin' || actor.data.email?.trim().toLowerCase() !== 'testadmin6000@gmail.com') {
+        return jsonResponse({ error: 'Admin access required.' }, 403);
+      }
+      if (targetUserId === actorId) return jsonResponse({ error: 'The active administrator cannot delete their own account here.' }, 409);
+    }
+
+    const id = targetUserId ?? actorId;
     const existing = await client.from('account_deletion_requests').select('state,erase_after').eq('user_id', id).maybeSingle();
     if (existing.error) throw new Error('database_unavailable');
-    if (!existing.data) {
+    if (!existing.data && !adminInitiated) {
       // Signature/issuer/session were checked by getUser before reading AMR.
       let fresh = false;
       try {

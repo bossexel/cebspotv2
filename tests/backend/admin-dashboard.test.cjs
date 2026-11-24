@@ -190,7 +190,7 @@ test('admin members are paged from the full profiles table instead of the 12-row
 });
 
 test('admin user moderation flags reported authors and reuses durable account erasure', () => {
-  const migration = read('supabase/migrations/20261117000100_admin_moderation_and_spot_controls.sql');
+  const migration = read('supabase/migrations/20261123000552_admin_moderation_and_spot_controls.sql');
   const service = read('src/services/adminDashboardService.ts');
   const screen = read('app/admin.tsx');
   const deletion = read('supabase/functions/delete-account/index.ts');
@@ -207,7 +207,7 @@ test('admin user moderation flags reported authors and reuses durable account er
 });
 
 test('map overview owns spot edit and delete actions while recent listings stay read-only', () => {
-  const migration = read('supabase/migrations/20261117000100_admin_moderation_and_spot_controls.sql');
+  const migration = read('supabase/migrations/20261123000552_admin_moderation_and_spot_controls.sql');
   const screen = read('app/admin.tsx');
   const spotsSection = screen.slice(screen.indexOf('function SpotsSection'), screen.indexOf('function SpotMapOverviewModal'));
   const update = sqlFunction(migration, 'update_admin_spot');
