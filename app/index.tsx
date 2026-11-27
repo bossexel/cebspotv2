@@ -53,7 +53,7 @@ const cebuRegion = {
 const fallbackImage =
   'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=600';
 
-const categories = ['All', 'Outdoor', 'Specialty Coffee', 'Social Dining', 'Street Food', 'Chill Vibe', 'High Pulse', 'Club'];
+const categories = ['All', 'Outdoor', 'Specialty Coffee', 'Social Dining', 'Street Food', 'Chill Vibe', 'High Pulse', 'Club', 'Arcade'];
 const ratingOptions = [0, 3, 3.5, 4, 4.5];
 const distanceOptions = [1, 5, 10, 25, 50];
 

@@ -6,6 +6,7 @@ import {
   BackHandler,
   DeviceEventEmitter,
   Image,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -77,6 +78,8 @@ export default function SubmitSpotScreen() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [acceptsReservations, setAcceptsReservations] = useState<boolean | null>(null);
   const [media, setMedia] = useState<SpotSubmissionMediaAsset[]>([]);
+  const [selectingMedia, setSelectingMedia] = useState(false);
+  const mediaPickerOpen = useRef(false);
   const [latitude, setLatitude] = useState(10.3157);
   const [longitude, setLongitude] = useState(123.8854);
   const [locationOrigin, setLocationOrigin] = useState({ latitude: 10.3157, longitude: 123.8854 });
@@ -262,57 +265,97 @@ export default function SubmitSpotScreen() {
     }
   }
 
-  async function selectMedia(mediaType: 'images' | 'videos') {
+  function choosePhotoSource() {
+    if (mediaPickerOpen.current || submitting || savingDraft || media.length >= maxMediaItems) return;
+    Alert.alert('Add Spot Media', 'Take a new photo or choose photos from your gallery.', [
+      { text: 'Take Photo', onPress: () => { void selectMedia('images', 'camera'); } },
+      { text: 'Choose from Gallery', onPress: () => { void selectMedia('images'); } },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
+
+  async function selectMedia(mediaType: 'images' | 'videos', source: 'library' | 'camera' = 'library') {
+    if (mediaPickerOpen.current || submitting || savingDraft) return;
     const remainingSlots = maxMediaItems - media.length;
     if (remainingSlots <= 0) {
       Alert.alert('Media limit reached', `You can attach up to ${maxMediaItems} photos and videos.`);
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: [mediaType],
-      allowsMultipleSelection: true,
-      selectionLimit: remainingSlots,
-      orderedSelection: true,
-      quality: 0.8,
-      videoMaxDuration: 15,
-    });
-
-    if (!result.canceled) {
-      const rejected: string[] = [];
-      const accepted = result.assets.flatMap<SpotSubmissionMediaAsset>((asset, index) => {
-        const type = asset.type === 'video' || asset.mimeType?.startsWith('video/') ? 'video' : 'image';
-        if (type === 'video' && (!asset.duration || asset.duration > maxVideoDurationMs)) {
-          rejected.push(asset.duration ? 'Videos must be 15 seconds or shorter.' : 'A video length could not be verified.');
-          return [];
+    mediaPickerOpen.current = true;
+    setSelectingMedia(true);
+    try {
+      if (source === 'camera') {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Camera access needed', permission.canAskAgain
+            ? 'Allow camera access to take a spot photo. You can also choose a photo from your gallery.'
+            : 'Enable camera access for CebSpot in your phone settings, or choose a photo from your gallery.',
+          permission.canAskAgain ? [{ text: 'OK' }] : [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => { void Linking.openSettings().catch(() => {
+              Alert.alert('Open phone settings', 'Open your phone settings and enable camera access for CebSpot.');
+            }); } },
+          ]);
+          return;
         }
-        if (type === 'video' && asset.fileSize && asset.fileSize > maxVideoFileSize) {
-          rejected.push('Videos must be 25 MB or smaller.');
-          return [];
-        }
-        return [{
-          id: createLocalId(`${type}-${index}`),
-          uri: asset.uri,
-          type,
-          mimeType: asset.mimeType ?? null,
-          durationMs: asset.duration ?? null,
-          fileName: asset.fileName ?? null,
-          fileSize: asset.fileSize ?? null,
-        }];
-      });
-
-      setMedia((current) => {
-        const knownUris = new Set(current.map((asset) => asset.uri));
-        const next = [...current, ...accepted.filter((asset) => !knownUris.has(asset.uri))].slice(0, maxMediaItems);
-        return [
-          ...next.filter((asset) => asset.type === 'image'),
-          ...next.filter((asset) => asset.type === 'video'),
-        ];
-      });
-
-      if (rejected.length) {
-        Alert.alert('Some media was not added', [...new Set(rejected)].join('\n'));
       }
+      const result = source === 'camera' ? await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 0.8,
+      }) : await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: [mediaType],
+        allowsMultipleSelection: true,
+        selectionLimit: remainingSlots,
+        orderedSelection: true,
+        quality: 0.8,
+        videoMaxDuration: 15,
+      });
+
+      if (!result.canceled) {
+        const rejected: string[] = [];
+        const accepted = result.assets.flatMap<SpotSubmissionMediaAsset>((asset, index) => {
+          const type = asset.type === 'video' || asset.mimeType?.startsWith('video/') ? 'video' : 'image';
+          if (type === 'video' && (!asset.duration || asset.duration > maxVideoDurationMs)) {
+            rejected.push(asset.duration ? 'Videos must be 15 seconds or shorter.' : 'A video length could not be verified.');
+            return [];
+          }
+          if (type === 'video' && asset.fileSize && asset.fileSize > maxVideoFileSize) {
+            rejected.push('Videos must be 25 MB or smaller.');
+            return [];
+          }
+          return [{
+            id: createLocalId(`${type}-${index}`),
+            uri: asset.uri,
+            type,
+            mimeType: asset.mimeType ?? null,
+            durationMs: asset.duration ?? null,
+            fileName: asset.fileName ?? null,
+            fileSize: asset.fileSize ?? null,
+          }];
+        });
+
+        setMedia((current) => {
+          const knownUris = new Set(current.map((asset) => asset.uri));
+          const next = [...current, ...accepted.filter((asset) => !knownUris.has(asset.uri))].slice(0, maxMediaItems);
+          return [
+            ...next.filter((asset) => asset.type === 'image'),
+            ...next.filter((asset) => asset.type === 'video'),
+          ];
+        });
+
+        if (rejected.length) {
+          Alert.alert('Some media was not added', [...new Set(rejected)].join('\n'));
+        }
+      }
+    } catch (error) {
+      Alert.alert(source === 'camera' ? 'Camera unavailable' : 'Media unavailable',
+        userErrorMessage(error, source === 'camera'
+          ? 'We could not open the camera. Please try again or choose a photo from your gallery.'
+          : 'We could not open your media. Please try again.'));
+    } finally {
+      mediaPickerOpen.current = false;
+      setSelectingMedia(false);
     }
   }
 
@@ -556,12 +599,13 @@ export default function SubmitSpotScreen() {
           ) : (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Add spot photos"
+              accessibilityLabel="Add spot media"
+              disabled={selectingMedia || submitting || savingDraft}
               style={[
                 styles.emptyMedia,
                 { backgroundColor: appColors.inputSurface, borderColor: appColors.inputBorder },
               ]}
-              onPress={() => selectMedia('images')}
+              onPress={choosePhotoSource}
             >
               <View style={styles.uploadIcon}>
                 <Camera size={24} color={colors.primary} />
@@ -573,8 +617,8 @@ export default function SubmitSpotScreen() {
           <View style={styles.mediaActions}>
             <Pressable
               accessibilityRole="button"
-              disabled={media.length >= maxMediaItems || submitting || savingDraft}
-              onPress={() => selectMedia('images')}
+              disabled={media.length >= maxMediaItems || selectingMedia || submitting || savingDraft}
+              onPress={choosePhotoSource}
               style={({ pressed }) => [
                 styles.mediaAction,
                 { backgroundColor: appColors.surfaceRaised, borderColor: appColors.outlineVariant },
@@ -587,7 +631,7 @@ export default function SubmitSpotScreen() {
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              disabled={media.length >= maxMediaItems || submitting || savingDraft}
+              disabled={media.length >= maxMediaItems || selectingMedia || submitting || savingDraft}
               onPress={() => selectMedia('videos')}
               style={({ pressed }) => [
                 styles.mediaAction,

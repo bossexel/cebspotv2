@@ -62,6 +62,7 @@ export const categories = [
   'Cafe',
   'Club',
   'Bar',
+  'Arcade',
 ];
 
 export const reservationStatuses = {

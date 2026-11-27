@@ -1,3 +1,4 @@
+import { SpotApprovalHistory } from '../src/features/admin-dashboard/SpotApprovalHistory';
 import { type TableColumn, DataPanel, DataTable, StatusBadge, LoadingPanel, InlineNotice, EmptyState } from '../src/features/admin-dashboard/components';
 import { adminPalette, adminFontFamily, styles } from '../src/features/admin-dashboard/styles';
 import {
@@ -1861,6 +1862,7 @@ function SpotsSection({
       </View>
 
       <HistoricalSpotPostAudit client={client} />
+      <SpotApprovalHistory key={query} client={client} search={query} refreshKey={dashboard.generatedAt} />
 
       <DataPanel title="Pending Spot Submissions" right={<Text style={styles.exportLink}>{pendingSubmissions.length} Pending</Text>}>
         <PendingSubmissionsTable
